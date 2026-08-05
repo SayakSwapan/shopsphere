@@ -29,9 +29,11 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+*.log
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
 
 # vercel
 .vercel
@@ -39,3 +41,18 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local dev/scratch files
+_admintoken.ts
+_tmp_query.ts
+migration.sql
+nike1.html
+
+# editor / ai tooling
+.claude/
+.qodo/
+
+# runtime uploads
+/public/uploads/
+
+/app/generated/prisma

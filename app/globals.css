@@ -1,26 +1,1356 @@
+@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&family=Lato:wght@300;400;700&family=Yatra+One&family=Nunito:wght@300;400;600;700&family=Cormorant+Garamond:wght@400;500;600;700&family=Montserrat:wght@300;400;500;600;700&family=Marcellus&family=Anton&family=Barlow+Condensed:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 
+/* ============================================================
+   TAILWIND v4 @theme — maps CSS vars to Tailwind utilities
+   ============================================================ */
+@theme {
+  --color-primary: var(--t-primary);
+  --color-accent: var(--t-accent);
+  --color-button-text: var(--t-button-text);
+  --color-bg-page: var(--t-bg-page);
+  --color-bg-card: var(--t-bg-card);
+  --color-bg-card-nested: var(--t-bg-card-nested);
+  --color-bg-card-alt: var(--t-bg-card-alt);
+  --color-text-heading: var(--t-text-heading);
+  --color-text-body: var(--t-text-body);
+  --color-text-muted-1: var(--t-text-muted-1);
+  --color-text-muted-2: var(--t-text-muted-2);
+  --color-text-muted-3: var(--t-text-muted-3);
+  --color-border-subtle: var(--t-border-subtle);
+  --color-border-card: var(--t-border-card);
+  --color-success: var(--t-success);
+  --color-danger: var(--t-danger);
+
+  --font-heading: var(--t-font-heading);
+  --font-body: var(--t-font-body);
+
+  --radius-card: var(--t-radius-card);
+  --radius-button: var(--t-radius-button);
+  --radius-badge: var(--t-radius-badge);
+  --radius-input: var(--t-radius-input);
+
+  --shadow-card: var(--t-shadow-card);
+  --shadow-card-hover: var(--t-shadow-card-hover);
+  --shadow-button: var(--t-shadow-button);
+}
+
+/*
+============================================================
+DEFAULT TOKENS — Luxury theme as the default
+============================================================
+*/
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --t-primary: #D4AF37;
+  --t-accent: #000000;
+  --t-bg-page: #FFFFFF;
+  --t-bg-card: #F8F8F8;
+  --t-bg-card-nested: #F0F0F0;
+  --t-bg-card-alt: #E8E8E8;
+  --t-text-heading: #000000;
+  --t-text-body: #333333;
+  --t-text-muted-1: #6B6B6B;
+  --t-text-muted-2: #999999;
+  --t-text-muted-3: #BBBBBB;
+  --t-border-subtle: rgba(0,0,0,0.06);
+  --t-border-card: rgba(0,0,0,0.10);
+  --t-success: #16A34A;
+  --t-danger: #DC2626;
+  --t-button-text: #1A1A1A;
+  --t-font-heading: 'Cormorant Garamond', serif;
+  --t-font-body: 'Montserrat', sans-serif;
+  --t-radius-card: 2px;
+  --t-radius-button: 0px;
+  --t-radius-badge: 2px;
+  --t-radius-input: 4px;
+  --t-shadow-card: 0 1px 8px rgba(0,0,0,0.04);
+  --t-shadow-card-hover: 0 4px 16px rgba(0,0,0,0.08);
+  --t-shadow-button: 0 1px 4px rgba(0,0,0,0.10);
+
+  /* Legacy variables (kept for backward compat) */
+  --background: #f4f7fb;
+  --foreground: #111827;
+  --primary: #7c3aed;
+  --primary-hover: #6d28d9;
+  --border: #e5e7eb;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/*
+============================================================
+SPORTS THEME
+============================================================
+*/
+[data-theme="sports"] {
+  --t-primary: #CBFF3E;
+  --t-accent: #FF6A2B;
+  --t-bg-page: #0A0E13;
+  --t-bg-card: #0E1319;
+  --t-bg-card-nested: #141A22;
+  --t-bg-card-alt: #10161D;
+  --t-text-heading: #F4F3EE;
+  --t-text-body: #D7DBD3;
+  --t-text-muted-1: #A6ACB4;
+  --t-text-muted-2: #7A8289;
+  --t-text-muted-3: #4A5159;
+  --t-border-subtle: rgba(255,255,255,0.08);
+  --t-border-card: rgba(255,255,255,0.12);
+  --t-success: #A3E635;
+  --t-danger: #FF4D4F;
+  --t-button-text: #0A0E13;
+  --t-font-heading: 'Anton', sans-serif;
+  --t-font-body: 'Inter', sans-serif;
+  --t-radius-card: 12px;
+  --t-radius-button: 6px;
+  --t-radius-badge: 4px;
+  --t-radius-input: 6px;
+  --t-shadow-card: 0 1px 6px rgba(0,0,0,0.35);
+  --t-shadow-card-hover: 0 12px 26px rgba(0,0,0,0.45);
+  --t-shadow-button: 0 2px 10px rgba(203,255,62,0.25);
+
+  --sports-volt: #CBFF3E;
+  --sports-ink: #0A0E13;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* Sports: home page court-grid texture + ambient glow */
+.sports-page {
+  position: relative;
+  background-image:
+    repeating-linear-gradient(
+      135deg,
+      rgba(203, 255, 62, 0.04) 0,
+      rgba(203, 255, 62, 0.04) 1px,
+      transparent 1px,
+      transparent 22px
+    ),
+    radial-gradient(900px 380px at 85% -5%, rgba(203, 255, 62, 0.08), transparent 60%);
+}
+
+/* Sports: diagonal slash sweep across the hero */
+@keyframes sports-splash {
+  0% {
+    transform: translateX(-160%) skewX(-14deg);
+  }
+  60%,
+  100% {
+    transform: translateX(260%) skewX(-14deg);
   }
 }
 
+/* Sports: infinite marquee */
+@keyframes sports-marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+/* Sports: floating hero chips */
+@keyframes sports-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+/* Sports: pulsing live indicator */
+@keyframes sports-pulse-dot {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+/* Sports: volt highlight sweep on hover */
+@keyframes sports-sweep {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(120%);
+  }
+}
+
+/* Sports: Anton outlined watermark text */
+.sports-outline-text {
+  color: transparent;
+  -webkit-text-stroke: 1.5px rgba(203, 255, 62, 0.28);
+}
+
+/*
+============================================================
+FASHION THEME
+============================================================
+*/
+[data-theme="fashion"] {
+  --t-primary: #C9A96E;
+  --t-accent: #1A1A1A;
+  --t-bg-page: #FAFAFA;
+  --t-bg-card: #FFFFFF;
+  --t-bg-card-nested: #F5F5F5;
+  --t-bg-card-alt: #F0F0F0;
+  --t-text-heading: #1A1A1A;
+  --t-text-body: #333333;
+  --t-text-muted-1: #6B7280;
+  --t-text-muted-2: #9CA3AF;
+  --t-text-muted-3: #D1D5DB;
+  --t-border-subtle: rgba(0,0,0,0.08);
+  --t-border-card: rgba(0,0,0,0.10);
+  --t-success: #16A34A;
+  --t-danger: #DC2626;
+  --t-button-text: #1A1A1A;
+  --t-font-heading: 'Playfair Display', serif;
+  --t-font-body: 'Lato', sans-serif;
+  --t-radius-card: 16px;
+  --t-radius-button: 24px;
+  --t-radius-badge: 999px;
+  --t-radius-input: 12px;
+  --t-shadow-card: 0 2px 12px rgba(0,0,0,0.06);
+  --t-shadow-card-hover: 0 8px 24px rgba(0,0,0,0.10);
+  --t-shadow-button: 0 1px 4px rgba(0,0,0,0.08);
+}
+
+/*
+============================================================
+ETHNIC THEME
+============================================================
+*/
+[data-theme="ethnic"] {
+  --t-primary: #6E1F27;
+  --t-accent: #0F4C46;
+  --t-bg-page: #FBF3E6;
+  --t-bg-card: #FFFFFF;
+  --t-bg-card-nested: #F5EDE0;
+  --t-bg-card-alt: #EDE3D1;
+  --t-text-heading: #2B211A;
+  --t-text-body: #3D3229;
+  --t-text-muted-1: #6B5D4F;
+  --t-text-muted-2: #8A7A63;
+  --t-text-muted-3: #B5A894;
+  --t-border-subtle: rgba(107,93,79,0.12);
+  --t-border-card: rgba(107,93,79,0.18);
+  --t-success: #2D7A3A;
+  --t-danger: #A52020;
+  --t-button-text: #FFFFFF;
+  --t-font-heading: 'Cormorant Garamond', serif;
+  --t-font-body: 'Inter', sans-serif;
+  --t-radius-card: 4px;
+  --t-radius-button: 2px;
+  --t-radius-badge: 2px;
+  --t-radius-input: 4px;
+  --t-shadow-card: 0 1px 8px rgba(43,33,26,0.05);
+  --t-shadow-card-hover: 0 4px 20px rgba(110,31,39,0.10);
+  --t-shadow-button: 0 1px 4px rgba(110,31,39,0.15);
+}
+
+/*
+============================================================
+LUXURY THEME (same as :root defaults, explicit for clarity)
+============================================================
+*/
+[data-theme="luxury"] {
+  --t-primary: #D4AF37;
+  --t-accent: #000000;
+  --t-bg-page: #FFFFFF;
+  --t-bg-card: #F8F8F8;
+  --t-bg-card-nested: #F0F0F0;
+  --t-bg-card-alt: #E8E8E8;
+  --t-text-heading: #000000;
+  --t-text-body: #333333;
+  --t-text-muted-1: #6B6B6B;
+  --t-text-muted-2: #999999;
+  --t-text-muted-3: #BBBBBB;
+  --t-border-subtle: rgba(0,0,0,0.06);
+  --t-border-card: rgba(0,0,0,0.10);
+  --t-success: #16A34A;
+  --t-danger: #DC2626;
+  --t-button-text: #1A1A1A;
+  --t-font-heading: 'Cormorant Garamond', serif;
+  --t-font-body: 'Montserrat', sans-serif;
+  --t-radius-card: 2px;
+  --t-radius-button: 0px;
+  --t-radius-badge: 2px;
+  --t-radius-input: 4px;
+  --t-shadow-card: 0 1px 8px rgba(0,0,0,0.04);
+  --t-shadow-card-hover: 0 4px 16px rgba(0,0,0,0.08);
+  --t-shadow-button: 0 1px 4px rgba(0,0,0,0.10);
+}
+
+/*
+============================================================
+BODY
+============================================================
+*/
+html,
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  margin: 0;
+  padding: 0;
+  background: var(--t-bg-page);
+  color: var(--t-text-body);
+  font-family: var(--t-font-body);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/*
+============================================================
+SCROLLBAR
+============================================================
+*/
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 999px;
+}
+
+/*
+============================================================
+INPUTS
+============================================================
+*/
+.input {
+  width: 100%;
+  height: 52px;
+  border-radius: var(--t-radius-input);
+  border: 1px solid var(--t-border-card);
+  background: var(--t-bg-card);
+  color: var(--t-text-body);
+  padding-left: 16px;
+  padding-right: 16px;
+  outline: none;
+  transition: all 0.2s ease;
+}
+.input:focus {
+  border-color: var(--t-primary);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--t-primary) 15%, transparent);
+}
+
+.textarea {
+  width: 100%;
+  min-height: 150px;
+  border-radius: var(--t-radius-input);
+  border: 1px solid var(--t-border-card);
+  background: var(--t-bg-card);
+  color: var(--t-text-body);
+  padding: 16px;
+  resize: none;
+  outline: none;
+  transition: all 0.2s ease;
+}
+.textarea:focus {
+  border-color: var(--t-primary);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--t-primary) 15%, transparent);
+}
+
+.label {
+  display: block;
+  margin-bottom: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--t-text-heading);
+}
+
+/*
+============================================================
+BUTTONS
+============================================================
+*/
+.primary-btn {
+  background: var(--t-primary);
+  border: none;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+.primary-btn:hover {
+  transform: translateY(-1px);
+  opacity: 0.9;
+}
+.primary-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/*
+============================================================
+CARDS
+============================================================
+*/
+.glass-card {
+  background: var(--t-bg-card);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--t-border-card);
+  box-shadow: var(--t-shadow-card);
+}
+
+/*
+============================================================
+TABLE
+============================================================
+*/
+.table-container {
+  overflow-x: auto;
+  border-radius: var(--t-radius-card);
+  background: var(--t-bg-card);
+  border: 1px solid var(--t-border-card);
+}
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.table th {
+  background: var(--t-bg-card-nested);
+  padding: 16px;
+  text-align: left;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--t-text-muted-2);
+}
+.table td {
+  padding: 16px;
+  border-top: 1px solid var(--t-border-subtle);
+}
+
+/*
+============================================================
+BADGES
+============================================================
+*/
+.badge-success {
+  background: color-mix(in srgb, var(--t-success) 15%, transparent);
+  color: var(--t-success);
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.badge-danger {
+  background: color-mix(in srgb, var(--t-danger) 15%, transparent);
+  color: var(--t-danger);
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/*
+============================================================
+PAGE CONTAINER
+============================================================
+*/
+.admin-container {
+  width: 100%;
+  max-width: 1600px;
+  margin: auto;
+  padding: 24px;
+}
+
+/*
+============================================================
+PRINT — INVOICE ONLY
+============================================================
+*/
+@media print {
+  @page {
+    size: A4;
+    margin: 10mm;
+  }
+  html,
+  body {
+    height: auto !important;
+    background: #ffffff !important;
+  }
+  /* Collapse every non-invoice element to zero height so no
+     blank pages are emitted (visibility alone keeps layout space). */
+  body * {
+    visibility: hidden;
+    height: 0 !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: hidden;
+  }
+  .invoice-print,
+  .invoice-print * {
+    visibility: visible;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible;
+  }
+  .invoice-print {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+  .invoice-print table {
+    font-size: 11px;
+  }
+  .invoice-print table th,
+  .invoice-print table td {
+    padding: 4px 6px;
+  }
+}
+
+/*
+============================================================
+CART MINI LIST — Per-theme styling
+============================================================
+*/
+[data-theme="sports"] .cart-mini-item {
+  border-left: 3px solid var(--t-primary);
+  padding-left: 12px;
+}
+[data-theme="sports"] .cart-mini-name {
+  font-family: var(--t-font-heading);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.8125rem;
+}
+[data-theme="sports"] .cart-mini-price {
+  color: var(--t-primary);
+  font-weight: 800;
+}
+
+[data-theme="fashion"] .cart-mini-item {
+  background: rgba(201, 169, 110, 0.04);
+  border-radius: 12px;
+  padding: 8px 12px;
+  margin-left: -12px;
+  margin-right: -12px;
+}
+[data-theme="fashion"] .cart-mini-name {
+  font-family: var(--t-font-heading);
+  font-style: italic;
+  font-size: 0.875rem;
+}
+
+[data-theme="ethnic"] .cart-mini-item {
+  border-bottom: 1px solid rgba(110, 31, 39, 0.12);
+  padding-bottom: 10px;
+}
+[data-theme="ethnic"] .cart-mini-name {
+  font-family: var(--t-font-heading);
+  color: var(--t-text-heading);
+  font-weight: 600;
+}
+[data-theme="ethnic"] .cart-mini-price {
+  color: var(--t-primary);
+}
+
+[data-theme="luxury"] .cart-mini-item {
+  padding: 4px 0;
+}
+[data-theme="luxury"] .cart-mini-name {
+  font-family: var(--t-font-heading);
+  font-size: 0.8125rem;
+  letter-spacing: 0.02em;
+}
+[data-theme="luxury"] .cart-mini-price {
+  color: var(--t-primary);
+}
+
+/*
+============================================================
+CHECKOUT MINI LIST — Per-theme styling
+============================================================
+*/
+[data-theme="sports"] .checkout-mini-item {
+  border-left: 3px solid var(--t-primary);
+  padding-left: 12px;
+}
+[data-theme="sports"] .checkout-mini-name {
+  font-family: var(--t-font-heading);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.8125rem;
+}
+[data-theme="sports"] .checkout-mini-price {
+  color: var(--t-primary);
+  font-weight: 800;
+}
+
+[data-theme="fashion"] .checkout-mini-item {
+  background: rgba(201, 169, 110, 0.04);
+  border-radius: 12px;
+  padding: 8px 12px;
+  margin-left: -12px;
+  margin-right: -12px;
+}
+[data-theme="fashion"] .checkout-mini-name {
+  font-family: var(--t-font-heading);
+  font-style: italic;
+  font-size: 0.875rem;
+}
+
+[data-theme="ethnic"] .checkout-mini-item {
+  border-bottom: 1px solid rgba(110, 31, 39, 0.12);
+  padding-bottom: 10px;
+}
+[data-theme="ethnic"] .checkout-mini-name {
+  font-family: var(--t-font-heading);
+  color: var(--t-text-heading);
+  font-weight: 600;
+}
+[data-theme="ethnic"] .checkout-mini-price {
+  color: var(--t-primary);
+}
+
+[data-theme="luxury"] .checkout-mini-item {
+  padding: 4px 0;
+}
+[data-theme="luxury"] .checkout-mini-name {
+  font-family: var(--t-font-heading);
+  font-size: 0.8125rem;
+  letter-spacing: 0.02em;
+}
+[data-theme="luxury"] .checkout-mini-price {
+  color: var(--t-primary);
+}
+
+/*
+============================================================
+ORDER SUCCESS — THEMED DECORATIONS
+============================================================
+*/
+.os-hero-deco {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.os-hero-deco::after {
+  content: "";
+  position: absolute;
+  inset: -20%;
+  opacity: 0.8;
+}
+
+[data-theme="luxury"] .os-hero-deco::after {
+  background: radial-gradient(circle at 50% 30%, rgba(212, 175, 55, 0.10), transparent 60%),
+    conic-gradient(
+      from 0deg at 50% 30%,
+      transparent 0 30deg,
+      rgba(212, 175, 55, 0.10) 30deg 55deg,
+      transparent 55deg 120deg,
+      rgba(212, 175, 55, 0.10) 120deg 145deg,
+      transparent 145deg 210deg,
+      rgba(212, 175, 55, 0.10) 210deg 235deg,
+      transparent 235deg 300deg,
+      rgba(212, 175, 55, 0.10) 300deg 325deg,
+      transparent 325deg 360deg
+    );
+}
+
+[data-theme="ethnic"] .os-hero-deco::after {
+  background: radial-gradient(circle at 50% 40%, rgba(110, 31, 39, 0.08), transparent 55%),
+    radial-gradient(circle at 16% 18%, rgba(15, 76, 70, 0.07), transparent 42%),
+    radial-gradient(circle at 84% 16%, rgba(15, 76, 70, 0.07), transparent 42%),
+    radial-gradient(circle at 20% 85%, rgba(110, 31, 39, 0.05), transparent 40%),
+    radial-gradient(circle at 80% 88%, rgba(110, 31, 39, 0.05), transparent 40%);
+}
+
+[data-theme="sports"] .os-hero-deco::after {
+  background: linear-gradient(115deg, transparent 44%, rgba(203, 255, 62, 0.07) 44% 56%, transparent 56%),
+    linear-gradient(65deg, transparent 58%, rgba(255, 106, 43, 0.06) 58% 70%, transparent 70%);
+  transform: skewX(-4deg);
+}
+
+[data-theme="fashion"] .os-hero-deco::after {
+  background: radial-gradient(circle at 18% 14%, rgba(201, 169, 110, 0.14), transparent 42%),
+    radial-gradient(circle at 86% 22%, rgba(26, 26, 26, 0.05), transparent 38%),
+    radial-gradient(circle at 50% 92%, rgba(201, 169, 110, 0.10), transparent 48%);
+}
+
+/* Success badge gradient — one per theme */
+.os-badge-grad {
+  background: linear-gradient(135deg, #34d399 0%, #059669 100%);
+}
+[data-theme="luxury"] .os-badge-grad {
+  background: linear-gradient(135deg, #f6e6b4 0%, #d4af37 48%, #9c7c1e 100%);
+  box-shadow: 0 18px 40px rgba(212, 175, 55, 0.35);
+}
+[data-theme="ethnic"] .os-badge-grad {
+  background: linear-gradient(135deg, #9e3a42 0%, #6e1f27 52%, #0f4c46 135%);
+  box-shadow: 0 18px 40px rgba(110, 31, 39, 0.30);
+}
+[data-theme="sports"] .os-badge-grad {
+  background: linear-gradient(135deg, #CBFF3E 0%, #8FD400 55%, #FF6A2B 175%);
+  box-shadow: 0 18px 40px rgba(203, 255, 62, 0.30);
+}
+[data-theme="fashion"] .os-badge-grad {
+  background: linear-gradient(135deg, #e2cb96 0%, #c9a96e 55%, #8c7a4f 100%);
+  box-shadow: 0 18px 40px rgba(201, 169, 110, 0.35);
+}
+
+/* Heading flourish */
+.os-flourish {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+.os-flourish-line {
+  height: 1px;
+  width: 64px;
+  background: linear-gradient(90deg, transparent, rgba(100, 116, 139, 0.5));
+}
+.os-flourish-line.right {
+  transform: scaleX(-1);
+}
+.os-flourish-dot {
+  width: 9px;
+  height: 9px;
+  background: var(--t-primary);
+  transform: rotate(45deg);
+}
+[data-theme="fashion"] .os-flourish-dot {
+  border-radius: 999px;
+}
+[data-theme="sports"] .os-flourish-line {
+  height: 4px;
+  width: 46px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, transparent, var(--t-accent));
+}
+[data-theme="fashion"] .os-flourish-line {
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, var(--t-primary));
+}
+[data-theme="ethnic"] .os-flourish-line {
+  background: linear-gradient(90deg, transparent, rgba(110, 31, 39, 0.6));
+}
+[data-theme="luxury"] .os-flourish-line {
+  background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.7));
+}
+
+/* Meta chips */
+.os-chip {
+  border: 1px solid var(--t-border-card);
+  background: var(--t-bg-card);
+  box-shadow: var(--t-shadow-card);
+}
+[data-theme="ethnic"] .os-chip {
+  border-top: 3px solid var(--t-primary);
+}
+[data-theme="luxury"] .os-chip {
+  border: 1px solid rgba(212, 175, 55, 0.45);
+}
+[data-theme="sports"] .os-chip {
+  border-left: 4px solid var(--t-accent);
+}
+[data-theme="fashion"] .os-chip {
+  border: 1px dashed rgba(201, 169, 110, 0.7);
+  border-radius: 999px;
+}
+
+/* Status stepper */
+.os-step {
+  border: 1px solid var(--t-border-card);
+  background: var(--t-bg-card);
+}
+.os-step-done {
+  background: color-mix(in srgb, var(--t-primary) 10%, transparent);
+  border-color: color-mix(in srgb, var(--t-primary) 35%, transparent);
+}
+.os-step-icon {
+  background: var(--t-bg-card-nested);
+  color: var(--t-text-muted-2);
+}
+.os-step-done .os-step-icon {
+  background: var(--t-primary);
+  color: var(--t-button-text, #ffffff);
+}
+
+/*
+============================================================
+ORDER DETAILS — THEMED DECORATIONS
+============================================================
+*/
+.od-hero-deco {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.od-hero-deco::after {
+  content: "";
+  position: absolute;
+  inset: -20%;
+  opacity: 0.85;
+}
+[data-theme="luxury"] .od-hero-deco::after {
+  background: radial-gradient(circle at 85% 20%, rgba(212, 175, 55, 0.12), transparent 45%),
+    linear-gradient(90deg, transparent 0%, rgba(212, 175, 55, 0.06) 50%, transparent 100%);
+}
+[data-theme="ethnic"] .od-hero-deco::after {
+  background: radial-gradient(circle at 12% 22%, rgba(110, 31, 39, 0.10), transparent 40%),
+    radial-gradient(circle at 88% 80%, rgba(15, 76, 70, 0.08), transparent 42%),
+    repeating-linear-gradient(45deg, transparent 0 14px, rgba(110, 31, 39, 0.04) 14px 15px);
+}
+[data-theme="sports"] .od-hero-deco::after {
+  background: linear-gradient(120deg, transparent 46%, rgba(203, 255, 62, 0.08) 46% 58%, transparent 58%),
+    linear-gradient(60deg, transparent 60%, rgba(255, 106, 43, 0.07) 60% 72%, transparent 72%);
+  transform: skewX(-6deg);
+}
+[data-theme="fashion"] .od-hero-deco::after {
+  background: radial-gradient(circle at 20% 16%, rgba(201, 169, 110, 0.16), transparent 40%),
+    radial-gradient(circle at 82% 30%, rgba(26, 26, 26, 0.05), transparent 38%);
+}
+
+/* Themed accent bar under section titles */
+.od-title-bar {
+  position: relative;
+}
+.od-title-bar::after {
+  content: "";
+  display: block;
+  margin-top: 8px;
+  height: 3px;
+  width: 56px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--t-primary), transparent);
+}
+[data-theme="fashion"] .od-title-bar::after {
+  height: 2px;
+  width: 72px;
+  background: linear-gradient(90deg, var(--t-primary), rgba(201, 169, 110, 0));
+  border-radius: 999px;
+}
+[data-theme="sports"] .od-title-bar::after {
+  height: 4px;
+  width: 48px;
+  background: linear-gradient(90deg, var(--t-accent), transparent);
+}
+[data-theme="ethnic"] .od-title-bar::after {
+  height: 3px;
+  width: 60px;
+  border-radius: 0;
+  background: linear-gradient(90deg, var(--t-primary), rgba(110, 31, 39, 0));
+}
+[data-theme="luxury"] .od-title-bar::after {
+  height: 1px;
+  width: 64px;
+  background: linear-gradient(90deg, var(--t-primary), transparent);
+}
+
+/* Themed section card */
+.od-card {
+  border: 1px solid var(--t-border-card);
+  background: var(--t-bg-card);
+  box-shadow: var(--t-shadow-card);
+  border-radius: var(--t-radius-card);
+}
+[data-theme="ethnic"] .od-card {
+  border-top: 3px solid var(--t-primary);
+}
+[data-theme="luxury"] .od-card {
+  border: 1px solid rgba(212, 175, 55, 0.4);
+}
+[data-theme="sports"] .od-card {
+  border-left: 4px solid var(--t-primary);
+}
+[data-theme="fashion"] .od-card {
+  border: 1px dashed rgba(201, 169, 110, 0.6);
+}
+
+/* Themed meta chip */
+.od-chip {
+  border: 1px solid var(--t-border-card);
+  background: var(--t-bg-card-nested);
+  color: var(--t-text-muted-1);
+}
+[data-theme="luxury"] .od-chip {
+  border: 1px solid rgba(212, 175, 55, 0.45);
+}
+[data-theme="sports"] .od-chip {
+  border-left: 4px solid var(--t-accent);
+  font-weight: 700;
+}
+[data-theme="fashion"] .od-chip {
+  border: 1px dashed rgba(201, 169, 110, 0.7);
+  border-radius: 999px;
+}
+[data-theme="ethnic"] .od-chip {
+  border-top: 3px solid var(--t-primary);
+}
+
+/* Themed status pill */
+.od-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 14px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  border: 1px solid var(--t-border-card);
+  background: var(--t-bg-card);
+}
+[data-theme="luxury"] .od-pill {
+  border: 1px solid rgba(212, 175, 55, 0.5);
+  background: color-mix(in srgb, rgba(212, 175, 55, 0.06), var(--t-bg-card));
+}
+[data-theme="sports"] .od-pill {
+  border-radius: 6px;
+  border: 1px solid rgba(203, 255, 62, 0.35);
+  background: color-mix(in srgb, rgba(203, 255, 62, 0.08), var(--t-bg-card));
+  text-transform: uppercase;
+}
+[data-theme="fashion"] .od-pill {
+  border-radius: 999px;
+  border: 1px dashed rgba(201, 169, 110, 0.75);
+}
+[data-theme="ethnic"] .od-pill {
+  border-radius: 2px;
+  border: none;
+  border-top: 3px solid var(--t-primary);
+  background: var(--t-bg-card-nested);
+}
+
+/* Primary action button (themed) */
+.od-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--t-primary);
+  color: #ffffff;
+  font-weight: 700;
+  border-radius: var(--t-radius-button);
+  box-shadow: var(--t-shadow-button);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  cursor: pointer;
+}
+.od-btn-primary:hover {
+  opacity: 0.9;
+}
+[data-theme="luxury"] .od-btn-primary {
+  background: linear-gradient(135deg, #d4af37, #9c7c1e);
+  color: #ffffff;
+}
+[data-theme="sports"] .od-btn-primary {
+  background: var(--t-primary);
+}
+[data-theme="ethnic"] .od-btn-primary {
+  background: var(--t-primary);
+  border-radius: 2px;
+}
+[data-theme="fashion"] .od-btn-primary {
+  background: linear-gradient(135deg, #c9a96e, #8c7a4f);
+  border-radius: 999px;
+}
+
+/* Ghost / secondary button */
+.od-btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid var(--t-border-card);
+  background: var(--t-bg-card);
+  color: var(--t-text-body);
+  font-weight: 600;
+  border-radius: var(--t-radius-button);
+  transition: border-color 0.2s ease, background 0.2s ease;
+  cursor: pointer;
+}
+.od-btn-ghost:hover {
+  border-color: var(--t-primary);
+  background: var(--t-bg-card-nested);
+}
+
+/* Chat conversation bubbles */
+.od-chat {
+  border: 1px solid var(--t-border-card);
+  background: var(--t-bg-card);
+  border-radius: var(--t-radius-card);
+}
+.od-msg {
+  max-width: 82%;
+  padding: 10px 14px;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  border-radius: var(--t-radius-badge);
+}
+.od-msg-customer {
+  align-self: flex-start;
+  background: var(--t-bg-card-nested);
+  border: 1px solid var(--t-border-card);
+  border-top-left-radius: 2px;
+}
+.od-msg-admin {
+  align-self: flex-end;
+  background: var(--t-primary);
+  color: #ffffff;
+  border-top-right-radius: 2px;
+}
+[data-theme="fashion"] .od-msg-customer,
+[data-theme="fashion"] .od-msg-admin {
+  border-radius: 18px;
+}
+[data-theme="sports"] .od-msg-customer,
+[data-theme="sports"] .od-msg-admin {
+  border-radius: 10px;
+}
+[data-theme="ethnic"] .od-msg-customer {
+  border-radius: 2px;
+  border-left: 3px solid var(--t-primary);
+}
+[data-theme="ethnic"] .od-msg-admin {
+  border-radius: 2px;
+}
+[data-theme="luxury"] .od-msg-admin {
+  background: linear-gradient(135deg, #d4af37, #9c7c1e);
+}
+
+/*
+============================================================
+PRODUCT DETAILS — THEMED DECORATIONS (pd-*)
+============================================================
+*/
+.pd-hero-deco {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.pd-hero-deco::after {
+  content: "";
+  position: absolute;
+  inset: -20%;
+  opacity: 0.85;
+}
+[data-theme="luxury"] .pd-hero-deco::after {
+  background: radial-gradient(circle at 85% 15%, rgba(212, 175, 55, 0.12), transparent 42%),
+    linear-gradient(90deg, transparent 0%, rgba(212, 175, 55, 0.05) 50%, transparent 100%);
+}
+[data-theme="ethnic"] .pd-hero-deco::after {
+  background: radial-gradient(circle at 10% 20%, rgba(110, 31, 39, 0.10), transparent 40%),
+    radial-gradient(circle at 90% 75%, rgba(15, 76, 70, 0.09), transparent 42%),
+    radial-gradient(circle at 50% 45%, rgba(110, 31, 39, 0.06) 1.5px, transparent 2px);
+  background-size: auto, auto, 26px 26px;
+}
+[data-theme="sports"] .pd-hero-deco::after {
+  background: linear-gradient(115deg, transparent 44%, rgba(203, 255, 62, 0.10) 44% 55%, transparent 55%),
+    linear-gradient(65deg, transparent 58%, rgba(255, 106, 43, 0.08) 58% 70%, transparent 70%);
+  transform: skewX(-8deg);
+}
+[data-theme="fashion"] .pd-hero-deco::after {
+  background: radial-gradient(circle at 20% 18%, rgba(201, 169, 110, 0.15), transparent 38%),
+    radial-gradient(circle at 80% 25%, rgba(26, 26, 26, 0.05), transparent 35%);
+}
+
+/* Themed accent marker before section titles */
+.pd-title-bar {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.pd-title-bar::before {
+  content: "";
+  width: 4px;
+  height: 18px;
+  background: var(--t-primary);
+  border-radius: 999px;
+}
+[data-theme="luxury"] .pd-title-bar::before {
+  width: 2px;
+  height: 22px;
+  background: linear-gradient(180deg, #d4af37, transparent);
+}
+[data-theme="ethnic"] .pd-title-bar::before {
+  width: 3px;
+  height: 22px;
+  border-radius: 0;
+}
+[data-theme="sports"] .pd-title-bar::before {
+  width: 14px;
+  height: 6px;
+  background: var(--t-accent);
+  border-radius: 999px;
+}
+[data-theme="fashion"] .pd-title-bar::before {
+  width: 8px;
+  height: 8px;
+  background: var(--t-primary);
+  border-radius: 999px;
+}
+
+/* Themed section card */
+.pd-card {
+  border: 1px solid var(--t-border-card);
+  background: var(--t-bg-card);
+  border-radius: var(--t-radius-card);
+  box-shadow: var(--t-shadow-card);
+}
+[data-theme="luxury"] .pd-card {
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  border-top: 2px solid rgba(212, 175, 55, 0.55);
+}
+[data-theme="ethnic"] .pd-card {
+  border-radius: 2px;
+  border: 1px solid rgba(107, 93, 79, 0.25);
+  border-left: 4px solid var(--t-primary);
+}
+[data-theme="sports"] .pd-card {
+  border-radius: 14px;
+  border: 1px solid var(--t-border-card);
+  border-top: 4px solid var(--t-accent);
+}
+[data-theme="fashion"] .pd-card {
+  border: 1px dashed rgba(201, 169, 110, 0.65);
+  border-radius: 20px;
+}
+
+/* Themed meta chip */
+.pd-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border: 1px solid var(--t-border-card);
+  background: var(--t-bg-card-nested);
+  color: var(--t-text-muted-1);
+  border-radius: var(--t-radius-badge);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+[data-theme="luxury"] .pd-chip {
+  border: 1px solid rgba(212, 175, 55, 0.45);
+  color: #8a6d1f;
+}
+[data-theme="ethnic"] .pd-chip {
+  border-radius: 0;
+  border-top: 3px solid var(--t-primary);
+}
+[data-theme="sports"] .pd-chip {
+  border-radius: 999px;
+  border-left: 4px solid var(--t-accent);
+  font-weight: 700;
+}
+[data-theme="fashion"] .pd-chip {
+  border: 1px dashed rgba(201, 169, 110, 0.7);
+  border-radius: 999px;
+}
+
+/* Discount badge — always derived from real price gap */
+.pd-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border-radius: var(--t-radius-badge);
+  background: color-mix(in srgb, var(--t-primary) 14%, transparent);
+  color: var(--t-primary);
+}
+[data-theme="luxury"] .pd-badge {
+  background: linear-gradient(90deg, rgba(212, 175, 55, 0.16), rgba(212, 175, 55, 0.04));
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  color: #8a6d1f;
+}
+[data-theme="ethnic"] .pd-badge {
+  background: var(--t-primary);
+  color: #ffffff;
+  border-radius: 2px;
+}
+[data-theme="sports"] .pd-badge {
+  background: var(--t-accent);
+  color: #ffffff;
+  border-radius: 4px;
+}
+[data-theme="fashion"] .pd-badge {
+  background: transparent;
+  border: 1.5px solid var(--t-primary);
+  color: var(--t-primary);
+  border-radius: 999px;
+}
+
+/* Price display */
+.pd-price {
+  font-weight: 900;
+  color: var(--t-text-heading);
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+.pd-price-original {
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--t-text-muted-2);
+  text-decoration: line-through;
+}
+.pd-savings {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--t-success);
+}
+
+/* Primary action button (themed) */
+.pd-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--t-primary);
+  color: #ffffff;
+  font-weight: 700;
+  border-radius: var(--t-radius-button);
+  box-shadow: var(--t-shadow-button);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  cursor: pointer;
+}
+.pd-btn-primary:hover {
+  opacity: 0.9;
+}
+[data-theme="luxury"] .pd-btn-primary {
+  background: linear-gradient(135deg, #d4af37, #9c7c1e);
+  border-radius: 0;
+}
+[data-theme="ethnic"] .pd-btn-primary {
+  background: var(--t-primary);
+  border-radius: 0;
+}
+[data-theme="sports"] .pd-btn-primary {
+  background: var(--t-primary);
+  color: var(--t-button-text, #0A0E13);
+  border-radius: 999px;
+  text-transform: uppercase;
+  font-weight: 900;
+}
+[data-theme="fashion"] .pd-btn-primary {
+  background: linear-gradient(135deg, #c9a96e, #8c7a4f);
+  border-radius: 999px;
+}
+
+/* Secondary action button */
+.pd-btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid var(--t-border-card);
+  background: var(--t-bg-card);
+  color: var(--t-text-body);
+  font-weight: 600;
+  border-radius: var(--t-radius-button);
+  transition: border-color 0.2s ease, background 0.2s ease;
+  cursor: pointer;
+}
+.pd-btn-ghost:hover {
+  border-color: var(--t-primary);
+  background: var(--t-bg-card-nested);
+}
+[data-theme="sports"] .pd-btn-ghost {
+  border-radius: 999px;
+}
+[data-theme="fashion"] .pd-btn-ghost {
+  border-radius: 999px;
+  border: 1px dashed rgba(201, 169, 110, 0.7);
+}
+[data-theme="ethnic"] .pd-btn-ghost {
+  border-radius: 0;
+}
+
+/* Spec row with dotted connector */
+.pd-spec {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+.pd-spec-label {
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--t-text-muted-1);
+}
+.pd-spec-dots {
+  flex: 1;
+  min-width: 12px;
+  border-bottom: 1px dotted var(--t-border-card);
+}
+.pd-spec-value {
+  flex-shrink: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--t-text-heading);
+  text-align: right;
+}
+
+/* Size selector chip (themed) */
+.pd-size-btn {
+  position: relative;
+  padding: 12px 20px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  border: 1px solid var(--t-border-card);
+  background: var(--t-bg-card-nested);
+  color: var(--t-text-heading);
+  border-radius: var(--t-radius-button);
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+.pd-size-btn:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--t-primary) 40%, transparent);
+}
+.pd-size-btn[data-selected="true"] {
+  background: var(--t-primary);
+  border-color: var(--t-primary);
+  color: var(--t-button-text, #ffffff);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--t-primary) 30%, transparent);
+}
+.pd-size-btn:disabled {
+  background: color-mix(in srgb, var(--t-text-muted-3) 8%, transparent);
+  color: var(--t-text-muted-3);
+  cursor: not-allowed;
+  text-decoration: line-through;
+}
+[data-theme="luxury"] .pd-size-btn[data-selected="true"] {
+  background: linear-gradient(135deg, #d4af37, #9c7c1e);
+  border-radius: 0;
+}
+[data-theme="ethnic"] .pd-size-btn[data-selected="true"],
+[data-theme="ethnic"] .pd-size-btn {
+  border-radius: 0;
+}
+[data-theme="sports"] .pd-size-btn,
+[data-theme="sports"] .pd-size-btn[data-selected="true"] {
+  border-radius: 999px;
+}
+[data-theme="fashion"] .pd-size-btn,
+[data-theme="fashion"] .pd-size-btn[data-selected="true"] {
+  border-radius: 999px;
+  border: 1px dashed rgba(201, 169, 110, 0.7);
+}
+
+/* Gallery thumbnails (themed) */
+.pd-thumb {
+  border: 2px solid var(--t-border-card);
+  border-radius: var(--t-radius-card);
+  transition: all 0.2s ease;
+}
+.pd-thumb[data-active="true"] {
+  border-color: var(--t-primary);
+  box-shadow: 0 8px 30px color-mix(in srgb, var(--t-primary) 15%, transparent);
 }

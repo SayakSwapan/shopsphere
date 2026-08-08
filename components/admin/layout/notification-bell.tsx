@@ -121,16 +121,32 @@ export default function NotificationBell() {
   }
 
   useEffect(() => {
+    if (!open || document.hidden) return;
+
     startTransition(() => {
       fetchNotifications();
     });
     const interval = setInterval(() => {
+      if (document.hidden) return;
       startTransition(() => {
         fetchNotifications();
       });
     }, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    function onVisibilityChange() {
+      if (!document.hidden) {
+        startTransition(() => {
+          fetchNotifications();
+        });
+      }
+    }
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", onVisibilityChange);
+  }, [open]);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {

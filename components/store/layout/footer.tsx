@@ -68,7 +68,7 @@ export default async function Footer() {
       </div> */}
 
       {/* Main Footer */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-16">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10 sm:py-16">
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6 md:gap-10 lg:gap-8">
           {/* Brand */}
           <div className="col-span-2 md:col-span-4 lg:col-span-1">
@@ -182,7 +182,7 @@ export default async function Footer() {
         </div>
 
         {/* Trust Badges */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-14 pt-10 border-t border-border-subtle">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-8 pt-8 sm:mt-14 sm:pt-10 border-t border-border-subtle">
           {[
             { icon: Truck, title: "Fast Delivery", text: "Pan India delivery support" },
             { icon: ShieldCheck, title: "Secure Payments", text: "100% protected checkout" },

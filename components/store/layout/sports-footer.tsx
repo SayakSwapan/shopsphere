@@ -181,7 +181,7 @@ export default async function SportsFooter() {
       </div>
 
       {/* Main footer */}
-      <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6">
+      <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-16">
         <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 lg:gap-8">
           {/* Brand column */}
           <div className="sm:col-span-2 lg:col-span-2">
@@ -314,7 +314,7 @@ export default async function SportsFooter() {
 
         {/* Trust badges */}
         <div
-          className="mt-14 grid grid-cols-1 gap-3 border-t pt-10 sm:grid-cols-3"
+          className="mt-8 grid grid-cols-1 gap-3 border-t pt-8 sm:mt-14 sm:grid-cols-3 sm:pt-10"
           style={{ borderColor: "rgba(255,255,255,0.08)" }}
         >
           {TRUST_BADGES.map((item) => (

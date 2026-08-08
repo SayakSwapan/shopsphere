@@ -74,7 +74,7 @@ function SportsHero({
   return (
     <div
       className="relative w-full overflow-hidden"
-      style={{ minHeight: "clamp(400px, 80vw, 560px)", background: "#0A0E13" }}
+      style={{ minHeight: "clamp(340px, 70vw, 560px)", background: "#0A0E13" }}
     >
       {/* Full-width background image */}
       {slide.imageUrl ? (
@@ -152,8 +152,8 @@ function SportsHero({
         PRO
       </span>
 
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 flex items-center" style={{ minHeight: "clamp(400px, 80vw, 560px)" }}>
-        <div className="max-w-3xl py-12 sm:py-20">
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 flex items-center" style={{ minHeight: "clamp(340px, 70vw, 560px)" }}>
+        <div className="max-w-3xl py-10 sm:py-20">
           {/* Live season badge */}
           <div
             className="mb-5 inline-flex items-center gap-2 px-3 py-1.5"
@@ -345,8 +345,8 @@ function FashionHero({
         style={{ background: "linear-gradient(180deg, rgba(250,250,250,0.88) 0%, rgba(250,250,250,0.50) 100%)" }}
       />
 
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 flex items-end" style={{ minHeight: "clamp(420px, 85vw, 600px)" }}>
-        <div className="max-w-3xl py-12 sm:py-20">
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 flex items-end" style={{ minHeight: "clamp(340px, 70vw, 600px)" }}>
+        <div className="max-w-3xl py-10 sm:py-20">
           <span className="text-[11px] font-semibold uppercase tracking-[0.4em] text-text-muted-1 block mb-4">
             ✦ New Collection
           </span>
@@ -394,7 +394,7 @@ function FashionHero({
           )}
 
           {/* Decorative line */}
-          <div className="mt-16 h-[1px] w-24" style={{ background: "var(--t-primary)" }} />
+          <div className="mt-8 sm:mt-16 h-[1px] w-24" style={{ background: "var(--t-primary)" }} />
         </div>
       </div>
 
@@ -413,16 +413,16 @@ function EthnicHero({
   setCurrent: (n: number) => void; prev: () => void; next: () => void;
 }) {
   return (
-    <div className="relative w-full overflow-hidden" style={{ minHeight: "clamp(440px, 90vw, 640px)", background: "#FBF3E6" }}>
+    <div className="relative w-full overflow-hidden" style={{ minHeight: "clamp(360px, 75vw, 640px)", background: "#FBF3E6" }}>
       {/* 50/50 Grid Layout */}
-      <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2" style={{ minHeight: "clamp(440px, 90vw, 640px)" }}>
+      <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2" style={{ minHeight: "clamp(360px, 75vw, 640px)" }}>
         {/* LEFT: Text Content */}
-        <div className="relative flex flex-col justify-center px-8 sm:px-12 lg:px-16 py-16 lg:py-0">
+        <div className="relative flex flex-col justify-center px-5 sm:px-12 lg:px-16 py-10 sm:py-14 lg:py-0">
           {/* Gold accent line at top */}
-          <div className="absolute top-12 left-8 sm:left-12 lg:left-16 w-14 h-[2px]" style={{ background: "#C9972F" }} />
+          <div className="absolute top-8 left-5 sm:left-12 lg:left-16 w-14 h-[2px]" style={{ background: "#C9972F" }} />
 
           <span
-            className="mt-16 mb-5 text-[11px] font-semibold uppercase tracking-[0.35em]"
+            className="mt-4 mb-4 text-[11px] font-semibold uppercase tracking-[0.35em]"
             style={{ color: "#6E1F27", fontFamily: "var(--t-font-heading)" }}
           >
             Festive Edit 2026
@@ -542,7 +542,7 @@ function LuxuryHero({
   setCurrent: (n: number) => void; prev: () => void; next: () => void;
 }) {
   return (
-    <div className="relative w-full overflow-hidden" style={{ minHeight: "clamp(420px, 85vw, 600px)" }}>
+    <div className="relative w-full overflow-hidden" style={{ minHeight: "clamp(340px, 70vw, 600px)" }}>
       {slide.imageUrl ? (
         <div
           key={slide.id}
@@ -565,8 +565,8 @@ function LuxuryHero({
       {/* Subtle gold accent lines */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1px] h-24 bg-primary opacity-20" />
 
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 flex items-center" style={{ minHeight: "clamp(420px, 85vw, 600px)" }}>
-        <div className="max-w-3xl py-12 sm:py-20 mx-auto text-center">
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 flex items-center" style={{ minHeight: "clamp(340px, 70vw, 600px)" }}>
+        <div className="max-w-3xl py-10 sm:py-20 mx-auto text-center">
           <span
             className="text-[10px] font-medium uppercase tracking-[0.5em] text-text-muted-2 block mb-6"
             style={{ fontFamily: "var(--t-font-body)" }}
@@ -617,7 +617,7 @@ function LuxuryHero({
           )}
 
           {/* Minimal bottom line */}
-          <div className="mt-16 mx-auto w-12 h-[1px] bg-primary opacity-30" />
+          <div className="mt-8 sm:mt-16 mx-auto w-12 h-[1px] bg-primary opacity-30" />
         </div>
       </div>
 

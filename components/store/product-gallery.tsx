@@ -17,7 +17,7 @@ export default function ProductGallery({ images }: Props) {
   if (!images || images.length === 0) {
     return (
       <div
-        className="flex h-90 items-center justify-center md:h-140"
+        className="flex h-72 items-center justify-center sm:h-90 md:h-140"
         style={{
           borderRadius: "var(--t-radius-card)",
           border: "1px solid var(--t-border-card)",
@@ -49,13 +49,13 @@ export default function ProductGallery({ images }: Props) {
         <img
           src={selectedImage}
           alt="Product"
-          className="relative h-90 w-full object-cover transition duration-500 group-hover:scale-105 md:h-140"
+          className="relative h-72 w-full object-cover transition duration-500 group-hover:scale-105 sm:h-90 md:h-140"
         />
       </div>
 
       {/* Thumbnails */}
       {images.length > 1 && (
-        <div className="grid grid-cols-4 gap-3 md:grid-cols-5">
+        <div className="grid grid-cols-4 gap-2 md:grid-cols-5 md:gap-3">
           {images.map((image) => {
             const isActive = selectedImage === image.url;
             return (
@@ -73,7 +73,7 @@ export default function ProductGallery({ images }: Props) {
                 <img
                   src={image.url}
                   alt="Thumbnail"
-                  className="h-20 w-full object-cover transition duration-300 hover:scale-105 md:h-24"
+                  className="h-16 w-full object-cover transition duration-300 hover:scale-105 sm:h-20 md:h-24"
                 />
               </button>
             );

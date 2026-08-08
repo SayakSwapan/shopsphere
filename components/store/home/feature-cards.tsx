@@ -14,9 +14,9 @@ export default async function FeatureCards() {
   if (!cards.length) return null;
 
   return (
-    <section className="py-12 md:py-16">
+    <section className="py-10 sm:py-12 md:py-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-10">
+        <div className="text-center mb-6 sm:mb-10">
           <p
             className="text-[11px] font-black uppercase tracking-[0.3em] mb-3"
             style={{ color: "var(--t-primary)", fontFamily: "var(--t-font-heading)" }}
@@ -36,7 +36,7 @@ export default async function FeatureCards() {
             <Link
               key={card.id}
               href={card.linkUrl || "#"}
-              className="group relative overflow-hidden h-64 md:h-72 flex flex-col justify-end transition-all duration-500 hover:shadow-2xl hover:-translate-y-1"
+              className="group relative overflow-hidden h-48 sm:h-64 md:h-72 flex flex-col justify-end transition-all duration-500 hover:shadow-2xl hover:-translate-y-1"
               style={{ borderRadius: "var(--t-radius-card)" }}
             >
               <img

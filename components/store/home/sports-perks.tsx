@@ -17,8 +17,8 @@ export default function SportsPerks() {
 
   return (
     <section style={{ background: "var(--sports-ink)" }}>
-      <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 md:py-20 lg:px-8">
-        <div className="mb-12 flex flex-wrap items-end justify-between gap-4">
+      <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-14 md:py-20 lg:px-8">
+        <div className="mb-6 sm:mb-12 flex flex-wrap items-end justify-between gap-4">
           <div>
             <p
               className="mb-2 text-[11px] font-black uppercase tracking-[0.3em]"

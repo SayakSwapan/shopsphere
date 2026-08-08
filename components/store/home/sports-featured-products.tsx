@@ -78,7 +78,7 @@ export default async function SportsFeaturedProducts() {
     <section className="py-12 md:py-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* header */}
-        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-10">
+        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-6 sm:mb-10">
           <div className="flex items-start gap-4">
             <div
               className="mt-1 h-14 w-1.5 shrink-0 rounded-full"

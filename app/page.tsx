@@ -185,7 +185,7 @@ export default async function HomePage(props: { searchParams?: Promise<{ preview
 
       {/* Featured Products */}
       {featuredProducts.length > 0 && (
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 py-12 sm:py-20">
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 py-10 sm:py-20">
           <div className="flex items-end justify-between mb-6 sm:mb-10">
             <div>
               <p className="text-xs font-bold tracking-[0.3em] uppercase mb-2 text-primary">{isEthnic ? "◆" : "●"} Handpicked</p>
@@ -241,7 +241,7 @@ export default async function HomePage(props: { searchParams?: Promise<{ preview
 
       {/* Trending Products */}
       {trendingProducts.length > 0 && (
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 py-12 sm:py-20">
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 py-10 sm:py-20">
           <div className="flex items-end justify-between mb-6 sm:mb-10">
             <div>
               <p className="text-xs font-bold tracking-[0.3em] uppercase mb-2 text-primary">{isEthnic ? "◆" : "●"} Right Now</p>

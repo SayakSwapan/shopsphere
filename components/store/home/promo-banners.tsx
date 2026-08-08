@@ -24,7 +24,7 @@ export default async function PromoBanners() {
           <Link
             key={banner.id}
             href={banner.linkUrl || "#"}
-            className="group relative h-64 md:h-80 overflow-hidden transition-transform duration-300 hover:scale-[1.01]"
+            className="group relative h-52 sm:h-64 md:h-80 overflow-hidden transition-transform duration-300 hover:scale-[1.01]"
             style={{ borderRadius: "var(--t-radius-card)" }}
           >
             <img

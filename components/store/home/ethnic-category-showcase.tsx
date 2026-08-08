@@ -33,9 +33,9 @@ export default async function EthnicCategoryShowcase() {
 
   return (
     <section style={{ background: "var(--t-bg-page)" }}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-16">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-10 sm:pb-16">
         {/* Section Header */}
-        <div className="text-center mb-10">
+        <div className="text-center mb-6 sm:mb-10">
           <p
             className="text-[11px] font-semibold uppercase tracking-[0.35em] mb-3"
             style={{ color: "#6E1F27", fontFamily: "var(--t-font-heading)" }}
@@ -51,7 +51,7 @@ export default async function EthnicCategoryShowcase() {
         </div>
 
         {/* Arched Category Grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-7">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 lg:gap-7">
           {categories.map((cat, idx) => (
             <Link
               key={cat.id}
@@ -62,7 +62,7 @@ export default async function EthnicCategoryShowcase() {
               <div
                 className="relative overflow-hidden mx-auto mb-4 transition-all duration-500 group-hover:shadow-lg"
                 style={{
-                  height: 280,
+                  height: "clamp(180px, 44vw, 280px)",
                   borderRadius: "min(140px, 45%) min(140px, 45%) 6px 6px",
                   border: "2px solid #C9972F",
                   background: cat.image

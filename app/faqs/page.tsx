@@ -18,7 +18,7 @@ export default async function FaqsPage() {
       {/* Hero */}
       <div className="relative overflow-hidden bg-gradient-to-br from-[#0A0F1E] via-[#0D1424] to-[#111827]">
         <div className="absolute inset-0 pointer-events-none opacity-[0.03]" style={{ backgroundImage: "repeating-linear-gradient(0deg, #fff 0, transparent 1px, transparent 60px), repeating-linear-gradient(90deg, #fff 0, transparent 1px, transparent 60px)" }} />
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-16 sm:py-24 text-center">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-10 sm:py-24 text-center">
           <p className="text-xs font-bold uppercase tracking-[0.3em] text-amber-400 mb-3">Help Center</p>
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black uppercase leading-none tracking-tight text-white">
             Frequently Asked <span className="text-amber-400">Questions</span>

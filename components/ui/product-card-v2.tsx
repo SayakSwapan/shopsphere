@@ -43,7 +43,7 @@ export default function ProductCardV2({
               "/placeholder.png"
             }
             alt={product.name}
-            className="h-[420px] w-full object-cover group-hover:scale-105 transition-all duration-700"
+            className="h-[260px] w-full object-cover group-hover:scale-105 transition-all duration-700 sm:h-[320px] lg:h-[420px]"
           />
 
           <div className="absolute top-4 left-4 flex gap-2">

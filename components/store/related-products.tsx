@@ -46,7 +46,7 @@ export default async function RelatedProducts({
   const isFallback = products.length > 0 && !products.some((p) => p.categoryId === categoryId);
 
   return (
-    <section className="mt-12 sm:mt-16">
+    <section className="mt-8 sm:mt-16">
       {/* Section Header */}
       <div className="flex items-end justify-between gap-4 mb-6 sm:mb-8">
         <div>

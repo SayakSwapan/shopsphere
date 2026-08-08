@@ -42,7 +42,7 @@ export default async function AboutPage() {
         <div className="absolute inset-0 pointer-events-none opacity-[0.03]" style={{ backgroundImage: "repeating-linear-gradient(0deg, #fff 0, transparent 1px, transparent 60px), repeating-linear-gradient(90deg, #fff 0, transparent 1px, transparent 60px)" }} />
         <div className="absolute pointer-events-none -top-28 -right-20 w-[420px] h-[420px] bg-[radial-gradient(circle,color-mix(in srgb,var(--t-primary) 10%,transparent),transparent_70%)]" />
 
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-16 sm:py-24 text-center">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-10 sm:py-24 text-center">
           <p className="text-xs font-bold uppercase tracking-[0.3em] text-primary mb-3">About Us</p>
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black uppercase leading-none tracking-tight text-text-heading" style={{ fontFamily: "var(--t-font-heading)" }}>
             {heading.replace("About ", "")}

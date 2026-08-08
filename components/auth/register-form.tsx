@@ -86,7 +86,7 @@ export default function RegisterForm() {
       <button
         type="button"
         onClick={handleGoogleLogin}
-        className="flex h-12 w-full items-center justify-center gap-3 rounded-xl border border-white/10 bg-white/5 font-semibold text-white transition hover:bg-white/10"
+        className="flex h-12 w-full items-center justify-center gap-3 rounded-xl border border-border-card bg-bg-card-nested font-semibold text-text-heading transition hover:bg-bg-card-alt"
       >
         <svg width="18" height="18" viewBox="0 0 24 24">
           <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
@@ -98,14 +98,14 @@ export default function RegisterForm() {
       </button>
 
       <div className="relative flex items-center gap-4">
-        <div className="h-px flex-1 bg-white/10" />
-        <span className="text-xs text-slate-500">or</span>
-        <div className="h-px flex-1 bg-white/10" />
+        <div className="h-px flex-1 bg-border-subtle" />
+        <span className="text-xs text-text-muted-2">or</span>
+        <div className="h-px flex-1 bg-border-subtle" />
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
         <div>
-          <label className="mb-2 block text-sm font-semibold text-white">
+          <label className="mb-2 block text-sm font-semibold text-text-heading">
             Full Name
           </label>
           <input
@@ -113,12 +113,12 @@ export default function RegisterForm() {
             value={form.name}
             onChange={(e) => updateField("name", e.target.value)}
             placeholder="John Doe"
-            className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none focus:border-amber-500"
+            className="w-full rounded-xl border border-border-card bg-bg-card-nested px-4 py-3 text-text-heading outline-none focus:border-primary"
           />
         </div>
 
         <div>
-          <label className="mb-2 block text-sm font-semibold text-white">
+          <label className="mb-2 block text-sm font-semibold text-text-heading">
             Email
           </label>
           <input
@@ -127,12 +127,12 @@ export default function RegisterForm() {
             value={form.email}
             onChange={(e) => updateField("email", e.target.value)}
             placeholder="example@gmail.com"
-            className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none focus:border-amber-500"
+            className="w-full rounded-xl border border-border-card bg-bg-card-nested px-4 py-3 text-text-heading outline-none focus:border-primary"
           />
         </div>
 
         <div>
-          <label className="mb-2 block text-sm font-semibold text-white">
+          <label className="mb-2 block text-sm font-semibold text-text-heading">
             Phone
           </label>
           <input
@@ -140,12 +140,12 @@ export default function RegisterForm() {
             value={form.phone}
             onChange={(e) => updateField("phone", e.target.value)}
             placeholder="9876543210"
-            className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none focus:border-amber-500"
+            className="w-full rounded-xl border border-border-card bg-bg-card-nested px-4 py-3 text-text-heading outline-none focus:border-primary"
           />
         </div>
 
         <div>
-          <label className="mb-2 block text-sm font-semibold text-white">
+          <label className="mb-2 block text-sm font-semibold text-text-heading">
             Password
           </label>
           <div className="relative">
@@ -154,12 +154,12 @@ export default function RegisterForm() {
               required
               value={form.password}
               onChange={(e) => updateField("password", e.target.value)}
-              className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 pr-12 text-white outline-none focus:border-amber-500"
+              className="w-full rounded-xl border border-border-card bg-bg-card-nested px-4 py-3 pr-12 text-text-heading outline-none focus:border-primary"
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400"
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-text-muted-2"
             >
               {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
@@ -169,19 +169,19 @@ export default function RegisterForm() {
               size={15}
               className={
                 passwordStrength === "Strong"
-                  ? "text-green-500"
+                  ? "text-success"
                   : passwordStrength === "Medium"
-                  ? "text-yellow-500"
-                  : "text-red-500"
+                  ? "text-accent"
+                  : "text-danger"
               }
             />
             <span
               className={
                 passwordStrength === "Strong"
-                  ? "text-green-500"
+                  ? "text-success"
                   : passwordStrength === "Medium"
-                  ? "text-yellow-500"
-                  : "text-red-500"
+                  ? "text-accent"
+                  : "text-danger"
               }
             >
               {passwordStrength} Password
@@ -190,7 +190,7 @@ export default function RegisterForm() {
         </div>
 
         <div>
-          <label className="mb-2 block text-sm font-semibold text-white">
+          <label className="mb-2 block text-sm font-semibold text-text-heading">
             Confirm Password
           </label>
           <div className="relative">
@@ -199,12 +199,12 @@ export default function RegisterForm() {
               required
               value={form.confirmPassword}
               onChange={(e) => updateField("confirmPassword", e.target.value)}
-              className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 pr-12 text-white outline-none focus:border-amber-500"
+              className="w-full rounded-xl border border-border-card bg-bg-card-nested px-4 py-3 pr-12 text-text-heading outline-none focus:border-primary"
             />
             <button
               type="button"
               onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400"
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-text-muted-2"
             >
               {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
@@ -213,8 +213,8 @@ export default function RegisterForm() {
 
         <button
           disabled={loading}
-          className="flex h-12 w-full items-center justify-center rounded-xl font-bold transition"
-          style={{ background: "#F5A623", color: "#0A0F1E" }}
+          className="flex h-12 w-full items-center justify-center rounded-xl font-bold transition disabled:opacity-60"
+          style={{ background: "var(--t-primary)", color: "var(--t-button-text)" }}
         >
           {loading ? <Loader2 className="animate-spin" size={20} /> : "Create Account"}
         </button>

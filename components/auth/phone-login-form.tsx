@@ -103,14 +103,14 @@ export default function PhoneLoginForm({ onBack }: { onBack: () => void }) {
             setOtpSent(false);
             setOtp("");
           }}
-          className="flex items-center gap-2 text-sm text-slate-400 hover:text-white transition"
+          className="flex items-center gap-2 text-sm text-text-muted-1 hover:text-text-heading transition"
         >
           <ArrowLeft size={14} />
           Change phone number
         </button>
 
-        <div className="rounded-xl border border-green-500/30 bg-green-500/10 p-3">
-          <div className="flex items-center gap-2 text-sm text-green-400">
+        <div className="rounded-xl border border-success/30 bg-success/10 p-3">
+          <div className="flex items-center gap-2 text-sm text-success">
             <CheckCircle size={16} />
             <span>
               OTP sent via <strong>{sentChannel === "sms" ? "SMS" : "WhatsApp"}</strong> to <strong>+{phone}</strong>
@@ -119,7 +119,7 @@ export default function PhoneLoginForm({ onBack }: { onBack: () => void }) {
         </div>
 
         <div>
-          <label className="mb-2 block text-sm font-semibold text-white">
+          <label className="mb-2 block text-sm font-semibold text-text-heading">
             Enter OTP
           </label>
           <input
@@ -130,14 +130,14 @@ export default function PhoneLoginForm({ onBack }: { onBack: () => void }) {
             value={otp}
             onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
             placeholder="6-digit code"
-            className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-center text-2xl tracking-[0.5em] text-white outline-none transition focus:border-amber-500"
+            className="w-full rounded-xl border border-border-card bg-bg-card-nested px-4 py-3 text-center text-2xl tracking-[0.5em] text-text-heading outline-none transition focus:border-primary"
           />
         </div>
 
         <button
           disabled={loading || otp.length !== 6}
-          className="flex h-12 w-full items-center justify-center rounded-xl font-bold transition"
-          style={{ background: "#F5A623", color: "#0A0F1E" }}
+          className="flex h-12 w-full items-center justify-center rounded-xl font-bold transition disabled:opacity-60"
+          style={{ background: "var(--t-primary)", color: "var(--t-button-text)" }}
         >
           {loading ? (
             <Loader2 size={20} className="animate-spin" />
@@ -148,14 +148,15 @@ export default function PhoneLoginForm({ onBack }: { onBack: () => void }) {
 
         <div className="text-center">
           {cooldown > 0 ? (
-            <span className="text-xs text-slate-500">
+            <span className="text-xs text-text-muted-2">
               Resend OTP in {cooldown}s
             </span>
           ) : (
             <button
               type="button"
               onClick={handleRequestOtp}
-              className="text-xs font-medium text-amber-400 hover:text-amber-300 transition"
+              className="text-xs font-medium transition hover:opacity-80"
+              style={{ color: "var(--t-primary)" }}
             >
               Resend OTP
             </button>
@@ -170,18 +171,18 @@ export default function PhoneLoginForm({ onBack }: { onBack: () => void }) {
       <button
         type="button"
         onClick={onBack}
-        className="flex items-center gap-2 text-sm text-slate-400 hover:text-white transition"
+        className="flex items-center gap-2 text-sm text-text-muted-1 hover:text-text-heading transition"
       >
         <ArrowLeft size={14} />
         Back to email login
       </button>
 
       <div>
-        <label className="mb-2 block text-sm font-semibold text-white">
+        <label className="mb-2 block text-sm font-semibold text-text-heading">
           Phone Number
         </label>
         <div className="flex gap-2">
-          <span className="flex items-center rounded-xl border border-white/10 bg-white/5 px-3 text-white text-sm">
+          <span className="flex items-center rounded-xl border border-border-card bg-bg-card-nested px-3 text-sm text-text-heading">
             +91
           </span>
           <input
@@ -191,18 +192,18 @@ export default function PhoneLoginForm({ onBack }: { onBack: () => void }) {
             onChange={(e) => setPhone(e.target.value.replace(/\D/g, ""))}
             placeholder="9876543210"
             maxLength={10}
-            className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none transition focus:border-amber-500"
+            className="flex-1 rounded-xl border border-border-card bg-bg-card-nested px-4 py-3 text-text-heading outline-none transition focus:border-primary"
           />
         </div>
-        <p className="mt-1 text-xs text-slate-500">
+        <p className="mt-1 text-xs text-text-muted-2">
           We&apos;ll send an OTP via WhatsApp or SMS
         </p>
       </div>
 
       <button
         disabled={loading || phone.length < 10 || cooldown > 0}
-        className="flex h-12 w-full items-center justify-center rounded-xl font-bold transition"
-        style={{ background: "#F5A623", color: "#0A0F1E" }}
+        className="flex h-12 w-full items-center justify-center rounded-xl font-bold transition disabled:opacity-60"
+        style={{ background: "var(--t-primary)", color: "var(--t-button-text)" }}
       >
         {loading ? (
           <Loader2 size={20} className="animate-spin" />

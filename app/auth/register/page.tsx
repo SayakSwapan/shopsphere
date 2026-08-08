@@ -1,5 +1,6 @@
 import Link from "next/link";
 import RegisterForm from "@/components/auth/register-form";
+import SiteBrand from "@/components/brand/site-brand";
 import { getSiteSettings, getSiteName } from "@/lib/site-settings";
 
 export default async function RegisterPage() {
@@ -7,42 +8,52 @@ export default async function RegisterPage() {
   const siteName = getSiteName(settings);
 
   return (
-    <div className="min-h-screen bg-[#0A0F1E] flex items-center justify-center px-6">
-
+    <div
+      className="min-h-screen flex items-center justify-center px-4 py-10"
+      style={{ background: "var(--t-bg-page)" }}
+    >
       <div
-        className="w-full max-w-md rounded-3xl p-8 border"
+        className="w-full max-w-md rounded-3xl p-6 sm:p-8 border"
         style={{
-          background: "#111827",
-          borderColor: "rgba(255,255,255,.08)",
+          background: "var(--t-bg-card)",
+          borderColor: "var(--t-border-card)",
         }}
       >
-        <h1 className="text-4xl font-black text-white mb-2">
+        <Link
+          href="/"
+          className="inline-block text-2xl font-black tracking-tight"
+          style={{ fontFamily: "var(--t-font-heading)", color: "var(--t-text-heading)" }}
+        >
+          <SiteBrand name={siteName} />
+        </Link>
+
+        <h1
+          className="mt-4 text-4xl font-black uppercase mb-2"
+          style={{ color: "var(--t-text-heading)" }}
+        >
           Join {siteName}
         </h1>
 
-        <p className="text-slate-400 mb-8">
+        <p className="mb-8 text-sm" style={{ color: "var(--t-text-muted-1)" }}>
           Create your account and start shopping.
         </p>
 
         <RegisterForm />
 
         <div className="mt-8 text-center">
-
-          <span className="text-slate-400">
+          <span className="text-sm" style={{ color: "var(--t-text-muted-1)" }}>
             Already have an account?
           </span>
 
           <Link
             href="/login"
-            className="ml-2 font-bold text-amber-400 hover:text-amber-300"
+            className="ml-2 font-bold transition hover:opacity-80"
+            style={{ color: "var(--t-primary)" }}
           >
             Login
           </Link>
-
         </div>
-
       </div>
-
     </div>
   );
 }

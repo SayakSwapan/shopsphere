@@ -2,6 +2,8 @@
 
 import Modal from "@/components/common/modal";
 import { useAuthModal } from "./auth-context";
+import { useSiteName } from "@/components/store/site-settings-provider";
+import SiteBrand from "@/components/brand/site-brand";
 import LoginForm from "./login-form";
 import RegisterForm from "./register-form";
 import { X } from "lucide-react";
@@ -15,13 +17,15 @@ export default function AuthModal() {
     switchMode,
   } = useAuthModal();
 
+  const siteName = useSiteName();
+
   return (
     <Modal
       open={open}
       onClose={closeAuth}
       maxWidth="max-w-lg"
     >
-      <div className="relative overflow-hidden">
+      <div className="relative overflow-hidden rounded-[inherit] bg-bg-card">
 
         {/* Background */}
 
@@ -29,7 +33,7 @@ export default function AuthModal() {
           className="absolute inset-0"
           style={{
             background:
-              "linear-gradient(135deg,#0A0F1E 0%,#0D1424 45%,#111827 100%)",
+              "linear-gradient(135deg, var(--t-bg-card) 0%, var(--t-bg-card-alt) 45%, var(--t-bg-page) 100%)",
           }}
         />
 
@@ -47,7 +51,7 @@ export default function AuthModal() {
           opacity-20
           "
           style={{
-            background: "#F5A623",
+            background: "var(--t-primary)",
           }}
         />
 
@@ -63,11 +67,11 @@ export default function AuthModal() {
           rounded-full
           p-2
           transition
-          hover:bg-white/10
+          hover:bg-bg-card-alt
+          text-text-heading
           "
         >
           <X
-            className="text-white"
             size={20}
           />
         </button>
@@ -77,7 +81,7 @@ export default function AuthModal() {
           <p
             className="text-xs uppercase tracking-[0.35em]"
             style={{
-              color: "#F5A623",
+              color: "var(--t-primary)",
             }}
           >
             Welcome to
@@ -86,21 +90,15 @@ export default function AuthModal() {
           <h1
             className="mt-2 text-4xl font-black"
             style={{
-              color: "#FFFFFF",
+              color: "var(--t-text-heading)",
+              fontFamily: "var(--t-font-heading)",
             }}
           >
-            Shop
-            <span
-              style={{
-                color: "#F5A623",
-              }}
-            >
-              Sphere
-            </span>
+            <SiteBrand name={siteName} />
           </h1>
 
-          <p className="mt-3 text-sm text-slate-400">
-            Premium fashion for everyone.
+          <p className="mt-3 text-sm text-text-muted-1">
+            Premium shopping, made for you.
           </p>
 
           <AnimatePresence mode="wait">
@@ -131,7 +129,7 @@ export default function AuthModal() {
 
                   <div className="mt-8 text-center">
 
-                    <span className="text-slate-400">
+                    <span className="text-text-muted-1">
                       Do not have an account?
                     </span>
 
@@ -141,7 +139,7 @@ export default function AuthModal() {
                           "register"
                         )
                       }
-                      className="ml-2 font-bold text-amber-400 hover:text-amber-300"
+                      className="ml-2 font-bold text-primary hover:opacity-80"
                     >
                       Create Account
                     </button>
@@ -154,7 +152,7 @@ export default function AuthModal() {
 
                   <div className="mt-8 text-center">
 
-                    <span className="text-slate-400">
+                    <span className="text-text-muted-1">
                       Already have an account?
                     </span>
 
@@ -164,7 +162,7 @@ export default function AuthModal() {
                           "login"
                         )
                       }
-                      className="ml-2 font-bold text-amber-400 hover:text-amber-300"
+                      className="ml-2 font-bold text-primary hover:opacity-80"
                     >
                       Login
                     </button>

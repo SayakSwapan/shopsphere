@@ -68,7 +68,7 @@ export default function LoginForm() {
         type="button"
         onClick={handleGoogleLogin}
         disabled={googleLoading}
-        className="flex h-12 w-full items-center justify-center gap-3 rounded-xl border border-white/10 bg-white/5 font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
+        className="flex h-12 w-full items-center justify-center gap-3 rounded-xl border border-border-card bg-bg-card-nested font-semibold text-text-heading transition hover:bg-bg-card-alt disabled:cursor-not-allowed disabled:opacity-60"
       >
         {googleLoading ? (
           <Loader2 size={18} className="animate-spin" />
@@ -84,19 +84,19 @@ export default function LoginForm() {
       </button>
 
       <div className="relative flex items-center gap-4">
-        <div className="h-px flex-1 bg-white/10" />
-        <span className="text-xs text-slate-500">or</span>
-        <div className="h-px flex-1 bg-white/10" />
+        <div className="h-px flex-1 bg-border-subtle" />
+        <span className="text-xs text-text-muted-2">or</span>
+        <div className="h-px flex-1 bg-border-subtle" />
       </div>
 
-      <div className="flex rounded-xl border border-white/10 bg-white/5 p-1">
+      <div className="flex rounded-xl border border-border-card bg-bg-card-nested p-1">
         <button
           type="button"
           onClick={() => setLoginMethod("email")}
           className={`flex-1 rounded-lg py-2.5 text-sm font-semibold transition ${
             loginMethod === "email"
-              ? "bg-amber-500 text-black"
-              : "text-slate-400 hover:text-white"
+              ? "bg-primary text-button-text"
+              : "text-text-muted-1 hover:text-text-heading"
           }`}
         >
           Email
@@ -106,8 +106,8 @@ export default function LoginForm() {
           onClick={() => setLoginMethod("phone")}
           className={`flex-1 rounded-lg py-2.5 text-sm font-semibold transition ${
             loginMethod === "phone"
-              ? "bg-amber-500 text-black"
-              : "text-slate-400 hover:text-white"
+              ? "bg-primary text-button-text"
+              : "text-text-muted-1 hover:text-text-heading"
           }`}
         >
           Phone
@@ -119,7 +119,7 @@ export default function LoginForm() {
       ) : (
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="mb-2 block text-sm font-semibold text-white">
+            <label className="mb-2 block text-sm font-semibold text-text-heading">
               Email
             </label>
             <input
@@ -128,12 +128,12 @@ export default function LoginForm() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Enter your email"
-              className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none transition focus:border-amber-500"
+              className="w-full rounded-xl border border-border-card bg-bg-card-nested px-4 py-3 text-text-heading outline-none transition focus:border-primary"
             />
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-semibold text-white">
+            <label className="mb-2 block text-sm font-semibold text-text-heading">
               Password
             </label>
             <div className="relative">
@@ -143,12 +143,12 @@ export default function LoginForm() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter password"
-                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 pr-12 text-white outline-none transition focus:border-amber-500"
+                className="w-full rounded-xl border border-border-card bg-bg-card-nested px-4 py-3 pr-12 text-text-heading outline-none transition focus:border-primary"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400"
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-text-muted-2"
               >
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
@@ -159,7 +159,8 @@ export default function LoginForm() {
             <button
               type="button"
               onClick={() => setShowForgotPassword(true)}
-              className="text-xs font-medium text-amber-400 transition hover:text-amber-300"
+              className="text-xs font-medium transition hover:opacity-80"
+              style={{ color: "var(--t-primary)" }}
             >
               Forgot Password?
             </button>
@@ -167,8 +168,8 @@ export default function LoginForm() {
 
           <button
             disabled={loading}
-            className="flex h-12 w-full items-center justify-center rounded-xl font-bold transition"
-            style={{ background: "#F5A623", color: "#0A0F1E" }}
+            className="flex h-12 w-full items-center justify-center rounded-xl font-bold transition disabled:opacity-60"
+            style={{ background: "var(--t-primary)", color: "var(--t-button-text)" }}
           >
             {loading ? (
               <Loader2 size={20} className="animate-spin" />

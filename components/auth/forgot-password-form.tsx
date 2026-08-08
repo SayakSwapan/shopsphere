@@ -97,7 +97,7 @@ export default function ForgotPasswordForm({ onBack }: Props) {
       <button
         type="button"
         onClick={onBack}
-        className="flex items-center gap-2 text-sm text-slate-400 transition hover:text-amber-400"
+        className="flex items-center gap-2 text-sm text-text-muted-1 transition hover:text-text-heading"
       >
         <ArrowLeft size={16} />
         Back to Login
@@ -107,19 +107,19 @@ export default function ForgotPasswordForm({ onBack }: Props) {
       {step === "email" && (
         <form onSubmit={handleSendOtp} className="space-y-5">
           <div>
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-amber-500/10">
-              <Mail size={28} className="text-amber-400" />
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+              <Mail size={28} className="text-primary" />
             </div>
-            <h2 className="mt-4 text-center text-2xl font-black text-white">
+            <h2 className="mt-4 text-center text-2xl font-black text-text-heading">
               Forgot Password?
             </h2>
-            <p className="mt-2 text-center text-sm text-slate-400">
+            <p className="mt-2 text-center text-sm text-text-muted-1">
               Enter your email address and we&apos;ll send you a verification code to reset your password.
             </p>
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-semibold text-white">
+            <label className="mb-2 block text-sm font-semibold text-text-heading">
               Email Address
             </label>
             <input
@@ -128,15 +128,15 @@ export default function ForgotPasswordForm({ onBack }: Props) {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Enter your registered email"
-              className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none transition focus:border-amber-500"
+              className="w-full rounded-xl border border-border-card bg-bg-card-nested px-4 py-3 text-text-heading outline-none transition focus:border-primary"
             />
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="flex h-12 w-full items-center justify-center rounded-xl font-bold transition"
-            style={{ background: "#F5A623", color: "#0A0F1E" }}
+            className="flex h-12 w-full items-center justify-center rounded-xl font-bold transition disabled:opacity-60"
+            style={{ background: "var(--t-primary)", color: "var(--t-button-text)" }}
           >
             {loading ? (
               <Loader2 size={20} className="animate-spin" />
@@ -151,20 +151,20 @@ export default function ForgotPasswordForm({ onBack }: Props) {
       {step === "otp" && (
         <form onSubmit={handleVerifyOtp} className="space-y-5">
           <div>
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-amber-500/10">
-              <ShieldCheck size={28} className="text-amber-400" />
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+              <ShieldCheck size={28} className="text-primary" />
             </div>
-            <h2 className="mt-4 text-center text-2xl font-black text-white">
+            <h2 className="mt-4 text-center text-2xl font-black text-text-heading">
               Enter OTP
             </h2>
-            <p className="mt-2 text-center text-sm text-slate-400">
+            <p className="mt-2 text-center text-sm text-text-muted-1">
               We&apos;ve sent a 6-digit code to{" "}
-              <span className="font-medium text-white">{email}</span>
+              <span className="font-medium text-text-heading">{email}</span>
             </p>
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-semibold text-white">
+            <label className="mb-2 block text-sm font-semibold text-text-heading">
               Verification Code
             </label>
             <input
@@ -177,9 +177,9 @@ export default function ForgotPasswordForm({ onBack }: Props) {
               }}
               placeholder="Enter 6-digit OTP"
               maxLength={6}
-              className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-center font-mono text-2xl tracking-[0.3em] text-white outline-none transition focus:border-amber-500"
+              className="w-full rounded-xl border border-border-card bg-bg-card-nested px-4 py-3 text-center font-mono text-2xl tracking-[0.3em] text-text-heading outline-none transition focus:border-primary"
             />
-            <p className="mt-2 text-center text-xs text-slate-500">
+            <p className="mt-2 text-center text-xs text-text-muted-2">
               OTP expires in 10 minutes
             </p>
           </div>
@@ -187,11 +187,8 @@ export default function ForgotPasswordForm({ onBack }: Props) {
           <button
             type="submit"
             disabled={otp.length !== 6}
-            className="flex h-12 w-full items-center justify-center rounded-xl font-bold transition"
-            style={{
-              background: otp.length === 6 ? "#F5A623" : "rgba(255,255,255,0.06)",
-              color: otp.length === 6 ? "#0A0F1E" : "#3A4455",
-            }}
+            className="flex h-12 w-full items-center justify-center rounded-xl font-bold transition disabled:opacity-60"
+            style={{ background: "var(--t-primary)", color: "var(--t-button-text)" }}
           >
             Verify OTP
           </button>
@@ -200,7 +197,7 @@ export default function ForgotPasswordForm({ onBack }: Props) {
             type="button"
             onClick={handleSendOtp}
             disabled={loading}
-            className="w-full text-center text-xs font-medium text-slate-500 transition hover:text-amber-400"
+            className="w-full text-center text-xs font-medium text-text-muted-2 transition hover:text-primary"
           >
             Resend OTP
           </button>
@@ -211,19 +208,19 @@ export default function ForgotPasswordForm({ onBack }: Props) {
       {step === "reset" && (
         <form onSubmit={handleResetPassword} className="space-y-5">
           <div>
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-amber-500/10">
-              <Lock size={28} className="text-amber-400" />
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+              <Lock size={28} className="text-primary" />
             </div>
-            <h2 className="mt-4 text-center text-2xl font-black text-white">
+            <h2 className="mt-4 text-center text-2xl font-black text-text-heading">
               Set New Password
             </h2>
-            <p className="mt-2 text-center text-sm text-slate-400">
+            <p className="mt-2 text-center text-sm text-text-muted-1">
               Create a strong password for your account
             </p>
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-semibold text-white">
+            <label className="mb-2 block text-sm font-semibold text-text-heading">
               New Password
             </label>
             <div className="relative">
@@ -233,12 +230,12 @@ export default function ForgotPasswordForm({ onBack }: Props) {
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 placeholder="Enter new password"
-                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 pr-12 text-white outline-none transition focus:border-amber-500"
+                className="w-full rounded-xl border border-border-card bg-bg-card-nested px-4 py-3 pr-12 text-text-heading outline-none transition focus:border-primary"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400"
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-text-muted-2"
               >
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
@@ -253,11 +250,11 @@ export default function ForgotPasswordForm({ onBack }: Props) {
                       background:
                         newPassword.length >= i * 4
                           ? newPassword.length >= 10
-                            ? "#34D399"
+                            ? "var(--t-success)"
                             : newPassword.length >= 6
-                            ? "#F5A623"
-                            : "#F87171"
-                          : "rgba(255,255,255,0.08)",
+                            ? "var(--t-primary)"
+                            : "var(--t-danger)"
+                          : "var(--t-border-subtle)",
                     }}
                   />
                 ))}
@@ -269,10 +266,10 @@ export default function ForgotPasswordForm({ onBack }: Props) {
                 style={{
                   color:
                     newPassword.length >= 10
-                      ? "#34D399"
+                      ? "var(--t-success)"
                       : newPassword.length >= 6
-                      ? "#F5A623"
-                      : "#F87171",
+                      ? "var(--t-primary)"
+                      : "var(--t-danger)",
                 }}
               >
                 {newPassword.length >= 10
@@ -285,7 +282,7 @@ export default function ForgotPasswordForm({ onBack }: Props) {
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-semibold text-white">
+            <label className="mb-2 block text-sm font-semibold text-text-heading">
               Confirm Password
             </label>
             <input
@@ -294,27 +291,18 @@ export default function ForgotPasswordForm({ onBack }: Props) {
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder="Confirm new password"
-              className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none transition focus:border-amber-500"
+              className="w-full rounded-xl border border-border-card bg-bg-card-nested px-4 py-3 text-text-heading outline-none transition focus:border-primary"
             />
             {confirmPassword.length > 0 && newPassword !== confirmPassword && (
-              <p className="mt-1 text-xs text-red-400">Passwords do not match</p>
+              <p className="mt-1 text-xs text-danger">Passwords do not match</p>
             )}
           </div>
 
           <button
             type="submit"
             disabled={loading || newPassword.length < 6 || newPassword !== confirmPassword}
-            className="flex h-12 w-full items-center justify-center rounded-xl font-bold transition"
-            style={{
-              background:
-                newPassword.length >= 6 && newPassword === confirmPassword
-                  ? "#F5A623"
-                  : "rgba(255,255,255,0.06)",
-              color:
-                newPassword.length >= 6 && newPassword === confirmPassword
-                  ? "#0A0F1E"
-                  : "#3A4455",
-            }}
+            className="flex h-12 w-full items-center justify-center rounded-xl font-bold transition disabled:opacity-60"
+            style={{ background: "var(--t-primary)", color: "var(--t-button-text)" }}
           >
             {loading ? (
               <Loader2 size={20} className="animate-spin" />

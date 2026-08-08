@@ -45,8 +45,9 @@ next-env.d.ts
 # local dev/scratch files
 _admintoken.ts
 _tmp_query.ts
-migration.sql
+/migration.sql
 nike1.html
+shopsphere-dump.sql
 
 # editor / ai tooling
 .claude/

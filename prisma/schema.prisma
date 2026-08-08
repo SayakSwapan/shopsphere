@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model address {
@@ -25,7 +26,7 @@ model address {
   updatedAt    DateTime
   user         user     @relation(fields: [userId], references: [id], onDelete: Cascade, map: "Address_userId_fkey")
 
-  @@index([userId], map: "Address_userId_fkey")
+  @@index([userId])
 }
 
 model cart {
@@ -52,9 +53,9 @@ model cartitem {
   product          product        @relation(fields: [productId], references: [id], map: "CartItem_productId_fkey")
   productvariant   productvariant? @relation(fields: [productVariantId], references: [id], map: "CartItem_productVariantId_fkey")
 
-  @@index([cartId], map: "CartItem_cartId_fkey")
-  @@index([productId], map: "CartItem_productId_fkey")
-  @@index([productVariantId], map: "CartItem_productVariantId_fkey")
+  @@index([cartId])
+  @@index([productId])
+  @@index([productVariantId])
 }
 
 model category {
@@ -135,7 +136,7 @@ coupon Coupon? @relation(fields: [couponId], references: [id])
   paymentTransactions PaymentTransaction[]
   productQueries productQuery[]
 
-  @@index([userId], map: "Order_userId_fkey")
+  @@index([userId])
 }
 
 model orderitem {
@@ -168,8 +169,8 @@ model orderitem {
   order     order   @relation(fields: [orderId], references: [id], onDelete: Cascade, map: "OrderItem_orderId_fkey")
   product   product @relation(fields: [productId], references: [id], map: "OrderItem_productId_fkey")
 
-  @@index([orderId], map: "OrderItem_orderId_fkey")
-  @@index([productId], map: "OrderItem_productId_fkey")
+  @@index([orderId])
+  @@index([productId])
 }
 
 model PaymentTransaction {
@@ -208,7 +209,7 @@ model product {
   id             String           @id
   name           String
   slug           String           @unique(map: "Product_slug_key")
-  description    String           @db.LongText
+  description    String           @db.Text
   sellingPrice Decimal @db.Decimal(10,2)
   costPrice Decimal @default(0) @db.Decimal(10,2) 
   discountType String @default("PERCENT") 
@@ -261,7 +262,7 @@ metaKeywords    String?   @db.Text
   productQueries  productQuery[]
   printTypes      ProductPrintType[]
   sportsFeaturedProduct SportsFeaturedProduct[]
-  @@index([categoryId], map: "Product_categoryId_fkey")
+  @@index([categoryId])
 }
 
 /**
@@ -358,7 +359,7 @@ model productimage {
   createdAt DateTime @default(now())
   product   product  @relation(fields: [productId], references: [id], map: "ProductImage_productId_fkey")
 
-  @@index([productId], map: "ProductImage_productId_fkey")
+  @@index([productId])
 }
 
 model productvariant {
@@ -375,9 +376,9 @@ model productvariant {
   size      size     @relation(fields: [sizeId], references: [id], map: "ProductVariant_sizeId_fkey")
   cartitem  cartitem[]
 
-  @@index([genderId], map: "ProductVariant_genderId_fkey")
-  @@index([productId], map: "ProductVariant_productId_fkey")
-  @@index([sizeId], map: "ProductVariant_sizeId_fkey")
+  @@index([genderId])
+  @@index([productId])
+  @@index([sizeId])
 }
 
 model size {
@@ -393,7 +394,7 @@ model size {
   productvariant productvariant[]
   gender         gender           @relation(fields: [genderId], references: [id], map: "Size_genderId_fkey")
 
-  @@index([genderId], map: "Size_genderId_fkey")
+  @@index([genderId])
 }
 
 model stockmovement {
@@ -405,7 +406,7 @@ model stockmovement {
   createdAt DateTime           @default(now())
   product   product            @relation(fields: [productId], references: [id], onDelete: Cascade, map: "StockMovement_productId_fkey")
 
-  @@index([productId], map: "StockMovement_productId_fkey")
+  @@index([productId])
 }
 
 model wishlist {
@@ -426,7 +427,7 @@ model wishlistitem {
   wishlist   wishlist @relation(fields: [wishlistId], references: [id], onDelete: Cascade, map: "WishlistItem_wishlistId_fkey")
 
   @@unique([wishlistId, productId], map: "WishlistItem_wishlistId_productId_key")
-  @@index([productId], map: "WishlistItem_productId_fkey")
+  @@index([productId])
 }
 
 model WishlistCouponLog {
@@ -450,7 +451,7 @@ model policy {
   title     String
   slug      String   @unique(map: "Policy_slug_key")
   type      String   @default("General")
-  content   String   @db.LongText
+  content   String   @db.Text
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now())
@@ -468,8 +469,8 @@ model review {
   product   product  @relation(fields: [productId], references: [id], onDelete: Cascade, map: "Review_productId_fkey")
   user      user     @relation(fields: [userId], references: [id], onDelete: Cascade, map: "Review_userId_fkey")
 
-  @@index([productId], map: "Review_productId_fkey")
-  @@index([userId], map: "Review_userId_fkey")
+  @@index([productId])
+  @@index([userId])
 }
 model account {
   id                String @id
@@ -480,7 +481,7 @@ model account {
   user              user   @relation(fields: [userId], references: [id], onDelete: Cascade, map: "Account_userId_fkey")
 
   @@unique([provider, providerAccountId], map: "Account_provider_providerAccountId_key")
-  @@index([userId], map: "Account_userId_fkey")
+  @@index([userId])
 }
 
 model session {
@@ -490,7 +491,7 @@ model session {
   expires      DateTime
   user         user     @relation(fields: [userId], references: [id], onDelete: Cascade, map: "Session_userId_fkey")
 
-  @@index([userId], map: "Session_userId_fkey")
+  @@index([userId])
 }
 
 model user {
@@ -1159,7 +1160,7 @@ model EmailTemplate {
   templateKey  String   @unique
   templateName String
   subject      String
-  body         String   @db.LongText
+  body         String   @db.Text
   description  String?
   placeholders String?  @db.Text
   isActive     Boolean  @default(true)
@@ -1174,7 +1175,7 @@ model WhatsAppTemplate {
   id           String   @id @default(cuid())
   templateKey  String   @unique
   templateName String
-  body         String   @db.LongText
+  body         String   @db.Text
   description  String?
   placeholders String?  @db.Text
   isActive     Boolean  @default(true)
@@ -1414,7 +1415,7 @@ model sizechart {
   sizeCategory String   @default("CLOTHING")
   description  String?  @db.Text
   headerRow    String   @db.Text
-  rows         String   @db.LongText
+  rows         String   @db.Text
   image        String?
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())

@@ -73,6 +73,21 @@ export default function EditHeroBannerPage() {
       toast.error("Image must be under 5MB");
       return;
     }
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      if (img.width < img.height) {
+        toast.warning(
+          `Image is portrait (${img.width}×${img.height}). Use a wide landscape image — recommended 1920×800.`
+        );
+      } else if (img.width / img.height < 1.5) {
+        toast.warning(
+          `Image is near-square (${img.width}×${img.height}). A wide landscape image (1920×800) fills the banner best.`
+        );
+      }
+    };
+    img.src = url;
     handleUpload(file);
   };
 
@@ -151,6 +166,14 @@ export default function EditHeroBannerPage() {
 
         <div>
           <label className="block text-sm font-medium text-slate-300 mb-1.5">Image *</label>
+          <div className="mb-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2.5">
+            <p className="text-xs font-semibold text-amber-300">
+              Recommended size: 1920 × 800 px (wide landscape)
+            </p>
+            <p className="mt-0.5 text-[11px] text-slate-400">
+              Shown full-width on the home page. Use a wide landscape image (width wider than height) so it fills the banner without awkward cropping.
+            </p>
+          </div>
           <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
           {form.imageUrl ? (
             <div className="relative rounded-xl overflow-hidden border border-[#1E293B]">

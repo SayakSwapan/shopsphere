@@ -1,0 +1,5 @@
+.env
+.env.local
+.env.mysql-backup
+.env.local.mysql-backup
+shopsphere-dump.sql

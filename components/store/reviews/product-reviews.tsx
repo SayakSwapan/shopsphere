@@ -81,8 +81,8 @@ export default function ProductReviews({
   }
 
   return (
-    <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6">
-      <div className="mb-8">
+    <section className="mx-auto max-w-7xl px-0 py-6 sm:px-6 sm:py-16">
+      <div className="mb-6 sm:mb-8">
         <p
           className="mb-3 text-xs font-bold uppercase tracking-[0.3em]"
           style={{ color: "var(--t-primary)", fontFamily: "var(--t-font-heading)" }}
@@ -91,7 +91,7 @@ export default function ProductReviews({
         </p>
         <h2
           className="font-black uppercase leading-none"
-          style={{ fontSize: "clamp(2rem, 4vw, 3rem)", letterSpacing: "-0.02em", color: "var(--t-text-heading)", fontFamily: "var(--t-font-heading)" }}
+          style={{ fontSize: "clamp(1.5rem, 5vw, 3rem)", letterSpacing: "-0.02em", color: "var(--t-text-heading)", fontFamily: "var(--t-font-heading)" }}
         >
           Ratings &<span style={{ color: "var(--t-primary)" }}> Reviews</span>
         </h2>
@@ -101,14 +101,14 @@ export default function ProductReviews({
         style={{
           height: 2,
           background: "linear-gradient(90deg, var(--t-primary), transparent)",
-          marginBottom: "2rem",
+          marginBottom: "1.5rem",
         }}
       />
 
-      <div className="grid gap-8 lg:grid-cols-[320px_1fr]">
+      <div className="grid gap-6 sm:gap-8 lg:grid-cols-[320px_1fr]">
         {/* ── SUMMARY + DISTRIBUTION ── */}
         <div
-          className="h-fit p-6"
+          className="h-fit p-5 sm:p-6"
           style={{
             borderRadius: "var(--t-radius-card)",
             border: "1px solid var(--t-border-card)",
@@ -116,7 +116,7 @@ export default function ProductReviews({
           }}
         >
           <div
-            className="flex flex-col items-center pb-6 text-center"
+            className="flex items-center gap-4 pb-5 sm:flex-col sm:items-center sm:gap-0 sm:pb-6 sm:text-center"
             style={{ borderBottom: "1px solid var(--t-border-card)" }}
           >
             <span
@@ -125,16 +125,16 @@ export default function ProductReviews({
             >
               {summary.average.toFixed(1)}
             </span>
-            <div className="mt-2">
+            <div className="mt-1 sm:mt-2">
               <Stars value={summary.average} size={20} />
             </div>
-            <p className="mt-2 text-xs" style={{ color: "var(--t-text-muted-1)" }}>
+            <p className="text-xs sm:mt-2" style={{ color: "var(--t-text-muted-1)" }}>
               Based on {summary.count}{" "}
               {summary.count === 1 ? "review" : "reviews"}
             </p>
           </div>
 
-          <div className="mt-6 space-y-2">
+          <div className="mt-5 space-y-2 sm:mt-6">
             {[5, 4, 3, 2, 1].map((star) => {
               const value = summary.distribution?.[String(star)] || 0;
               const pct =
@@ -195,7 +195,7 @@ export default function ProductReviews({
         </div>
 
         {/* ── FORM + LIST ── */}
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           {showForm && isLoggedIn && (
             <ReviewForm
               productId={productId}
@@ -212,7 +212,7 @@ export default function ProductReviews({
 
           {loading ? (
             <div
-              className="p-8 text-center text-sm"
+              className="p-6 text-center text-sm sm:p-8"
               style={{
                 borderRadius: "var(--t-radius-card)",
                 border: "1px solid var(--t-border-card)",
@@ -224,7 +224,7 @@ export default function ProductReviews({
             </div>
           ) : reviews.length === 0 ? (
             <div
-              className="p-10 text-center"
+              className="p-8 text-center sm:p-10"
               style={{
                 borderRadius: "var(--t-radius-card)",
                 border: "1px dashed var(--t-border-card)",
@@ -239,31 +239,31 @@ export default function ProductReviews({
               </p>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               {reviews.map((review) => (
                 <div
                   key={review.id}
-                  className="p-6"
+                  className="p-4 sm:p-6"
                   style={{
                     borderRadius: "var(--t-radius-card)",
                     border: "1px solid var(--t-border-card)",
                     background: "var(--t-bg-card)",
                   }}
                 >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex items-center gap-3">
+                  <div className="flex items-start justify-between gap-3 sm:gap-4">
+                    <div className="flex items-center gap-2.5 sm:gap-3">
                       <div
-                        className="flex h-11 w-11 items-center justify-center rounded-full text-sm font-black"
+                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-black sm:h-11 sm:w-11"
                         style={{ background: "var(--t-primary)", color: "var(--t-bg-page)" }}
                       >
                         {review.userName.charAt(0).toUpperCase()}
                       </div>
-                      <div>
+                      <div className="min-w-0">
                         <p className="flex items-center gap-2 text-sm font-bold" style={{ color: "var(--t-text-heading)" }}>
-                          {review.userName}
+                          <span className="truncate">{review.userName}</span>
                           {review.verified && (
                             <span
-                              className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold"
+                              className="inline-flex shrink-0 items-center gap-1 px-2 py-0.5 text-[10px] font-bold"
                               style={{
                                 background: "color-mix(in srgb, var(--t-success) 15%, transparent)",
                                 color: "var(--t-success)",
@@ -271,7 +271,7 @@ export default function ProductReviews({
                               }}
                             >
                               <CheckCircle2 size={11} />
-                              Verified Purchase
+                              Verified
                             </span>
                           )}
                         </p>
@@ -280,7 +280,7 @@ export default function ProductReviews({
                         </p>
                       </div>
                     </div>
-                    <Stars value={review.rating} size={15} />
+                    <Stars value={review.rating} size={14} />
                   </div>
 
                   <p className="mt-4 text-sm leading-6" style={{ color: "var(--t-text-body)" }}>

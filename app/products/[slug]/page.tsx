@@ -14,7 +14,7 @@ import CallbackRequest from "@/components/store/product/callback-request";
 import NavbarWrapper from "@/components/store/layout/navbar-wrapper";
 import ShareButton from "@/components/store/share-button";
 import SizeChartButton from "@/components/store/product/size-chart-button";
-import { ArrowUpRight, RotateCcw, RefreshCw, Info, Home } from "lucide-react";
+import { ArrowUpRight, RotateCcw, RefreshCw, Info, Home, Star, LayoutGrid, Sparkles } from "lucide-react";
 
 interface Props {
   params: Promise<{
@@ -199,6 +199,38 @@ export default async function ProductPage({ params }: Props) {
             </span>
           </nav>
 
+          {/* Mobile quick-nav — jump straight to key sections */}
+          <nav
+            className="sticky top-[4.5rem] z-40 -mx-4 px-4 py-2 lg:hidden"
+            style={{
+              background: "color-mix(in srgb, var(--t-bg-page) 92%, transparent)",
+              backdropFilter: "blur(12px)",
+              borderBottom: "1px solid var(--t-border-subtle)",
+            }}
+          >
+            <div className="flex items-center gap-2 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+              {[
+                { href: "#details", label: "Details", icon: <Info size={13} /> },
+                { href: "#reviews", label: `Reviews (${reviewCount})`, icon: <Star size={13} /> },
+                { href: "#related", label: "Related", icon: <LayoutGrid size={13} /> },
+              ].map((chip) => (
+                <a
+                  key={chip.href}
+                  href={chip.href}
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-bold transition active:scale-95"
+                  style={{
+                    borderColor: "var(--t-border-card)",
+                    background: "var(--t-bg-card)",
+                    color: "var(--t-text-body)",
+                  }}
+                >
+                  {chip.icon}
+                  {chip.label}
+                </a>
+              ))}
+            </div>
+          </nav>
+
           {/* Main grid */}
           <div className="grid gap-6 sm:gap-8 pb-10 lg:grid-cols-2 lg:gap-12 lg:pb-16">
             {/* Gallery */}
@@ -337,7 +369,7 @@ export default async function ProductPage({ params }: Props) {
       </section>
 
       {/* DESCRIPTION + DETAILS */}
-      <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8 lg:py-14">
+      <section id="details" className="mx-auto max-w-7xl scroll-mt-32 px-4 py-10 sm:px-6 lg:scroll-mt-24 lg:px-8 lg:py-14">
         <div className="grid gap-6 lg:grid-cols-5 lg:gap-8">
           {/* Description */}
           <div className="lg:col-span-3">
@@ -505,7 +537,7 @@ export default async function ProductPage({ params }: Props) {
       </section>
 
       {/* REVIEWS */}
-      <section id="reviews" className="mx-auto max-w-7xl px-4 pb-14 sm:px-6 lg:px-8 lg:pb-20">
+      <section id="reviews" className="mx-auto max-w-7xl scroll-mt-32 px-4 pb-14 sm:px-6 lg:scroll-mt-24 lg:px-8 lg:pb-20">
         <div className="pd-card p-5 sm:p-8">
           <ProductReviews
             productId={product.id}
@@ -516,7 +548,7 @@ export default async function ProductPage({ params }: Props) {
       </section>
 
       {/* RELATED PRODUCTS */}
-      <section className="mx-auto max-w-7xl px-4 pb-16 sm:px-6 lg:px-8 lg:pb-24">
+      <section id="related" className="mx-auto max-w-7xl scroll-mt-32 px-4 pb-16 sm:px-6 lg:scroll-mt-24 lg:px-8 lg:pb-24">
         <RelatedProducts
           categoryId={product.categoryId}
           currentProductId={product.id}

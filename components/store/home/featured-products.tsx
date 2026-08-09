@@ -44,22 +44,28 @@ export default function ProductCard({
     >
       <div className="relative overflow-hidden">
 
-        <img
-          src={
-            product.images?.[0]
-              ?.url ||
-            "/placeholder.png"
-          }
-          alt={product.name}
-          className="
-          w-full
-          h-80
-          object-cover
-          group-hover:scale-105
-          transition-all
-          duration-500
-          "
-        />
+        <Link
+          href={`/products/${product.slug}`}
+          className="block"
+          aria-label={`View ${product.name}`}
+        >
+          <img
+            src={
+              product.images?.[0]
+                ?.url ||
+              "/placeholder.png"
+            }
+            alt={product.name}
+            className="
+            w-full
+            h-80
+            object-cover
+            group-hover:scale-105
+            transition-all
+            duration-500
+            "
+          />
+        </Link>
 
         <div className="absolute top-3 left-3 flex gap-2">
 

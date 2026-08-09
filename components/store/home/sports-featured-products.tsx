@@ -170,13 +170,19 @@ export default async function SportsFeaturedProducts() {
               >
                 {/* image */}
                 <div className="relative overflow-hidden">
-                  <img
-                    src={product.productimage?.[0]?.url || "/placeholder.png"}
-                    alt={product.name}
-                    className="w-full h-52 sm:h-64 md:h-72 object-cover transition-transform duration-700 group-hover:scale-110"
-                  />
+                  <Link
+                    href={`/products/${product.slug}`}
+                    className="block"
+                    aria-label={`View ${product.name}`}
+                  >
+                    <img
+                      src={product.productimage?.[0]?.url || "/placeholder.png"}
+                      alt={product.name}
+                      className="w-full h-52 sm:h-64 md:h-72 object-cover transition-transform duration-700 group-hover:scale-110"
+                    />
 
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                  </Link>
 
                   {/* featured badge */}
                   <span

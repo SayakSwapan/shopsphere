@@ -67,17 +67,23 @@ export default function ProductCard({ product }: Props) {
     >
       {/* IMAGE */}
       <div className="relative overflow-hidden">
-        <img
-          src={
-            product.productimage?.[0]?.url ||
-            "/placeholder.png"
-          }
-          alt={product.name}
-          className="h-[260px] sm:h-[320px] lg:h-[420px] w-full object-cover transition-transform duration-700 group-hover:scale-110"
-        />
+        <Link
+          href={`/products/${product.slug}`}
+          className="block cursor-pointer"
+          aria-label={`View ${product.name}`}
+        >
+          <img
+            src={
+              product.productimage?.[0]?.url ||
+              "/placeholder.png"
+            }
+            alt={product.name}
+            className="h-[260px] sm:h-[320px] lg:h-[420px] w-full object-cover transition-transform duration-700 group-hover:scale-110"
+          />
 
-        {/* overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+          {/* overlay */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+        </Link>
 
         {/* badges */}
         <div className="absolute left-4 top-4 flex gap-2">

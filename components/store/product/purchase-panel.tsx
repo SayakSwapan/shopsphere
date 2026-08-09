@@ -218,17 +218,17 @@ export default function ProductPurchasePanel({
         </div>
 
         {/* CTAs */}
-        <div className="flex flex-col gap-3 px-5 pb-5 sm:flex-row">
-          <div className="flex gap-3">
-            <div className="flex-1 min-w-0">
-              <AddToCartButton
-                productId={productId}
-                productVariantId={selectedVariant?.id}
-                disabled={!canPurchase}
-              />
+          <div className="flex flex-col gap-3 px-5 pb-5 sm:flex-row">
+            <div className="flex flex-1 gap-3 min-w-0">
+              <div className="flex-1 min-w-0">
+                <AddToCartButton
+                  productId={productId}
+                  productVariantId={selectedVariant?.id}
+                  disabled={!canPurchase}
+                />
+              </div>
+              <WishlistButton productId={productId} />
             </div>
-            <WishlistButton productId={productId} />
-          </div>
 
           <button
             type="button"

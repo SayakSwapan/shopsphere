@@ -73,7 +73,7 @@ export default function AddToCartButton({
     <button
       onClick={addToCart}
       disabled={loading || disabled}
-      className="w-full py-5 font-black uppercase tracking-wider transition-colors"
+      className="w-full py-5 text-xs font-black uppercase tracking-wider transition-colors"
       style={{
         borderRadius: "var(--t-radius-card)",
         fontFamily: "var(--t-font-heading)",

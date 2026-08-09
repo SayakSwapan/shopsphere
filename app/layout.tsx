@@ -7,6 +7,7 @@ import "./globals.css";
 import "leaflet/dist/leaflet.css";
 
 import AuthModal from "@/components/auth/auth-modal";
+import LoadingOverlay from "@/components/store/loading-overlay";
 import { AuthProviderContext } from "@/components/auth/auth-context";
 import SessionProvider from "@/components/providers/session-provider";
 import RootThemeShell from "@/components/store/theme/root-theme-shell";
@@ -85,6 +86,7 @@ export default async function RootLayout({
                 </main>
                 <AuthModal />
               </RootThemeShell>
+              <LoadingOverlay />
             </AuthProviderContext>
           </SessionProvider>
         </SiteSettingsProvider>

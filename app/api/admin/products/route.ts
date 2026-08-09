@@ -174,7 +174,7 @@ export async function POST(req: Request) {
 
     // Save Print Type Links
 
-    const printTypeIds: string[] = (body.printTypeIds ?? []).filter(
+    const printTypeIds: string[] = (body.customPrintTypeIds ?? body.printTypeIds ?? []).filter(
       (id: unknown): id is string =>
         typeof id === "string" && id.trim().length > 0
     );

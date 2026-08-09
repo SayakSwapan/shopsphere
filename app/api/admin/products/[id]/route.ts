@@ -135,7 +135,7 @@ export async function PUT(
       }
 
       // Print type links are fully replaced on every update.
-      const printTypeIds: string[] = (body.printTypeIds ?? []).filter(
+      const printTypeIds: string[] = (body.customPrintTypeIds ?? body.printTypeIds ?? []).filter(
         (pid: unknown): pid is string =>
           typeof pid === "string" && pid.trim().length > 0
       );

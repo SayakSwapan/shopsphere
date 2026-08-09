@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { cache } from "react";
 
 export type ThemeId = "sports" | "fashion" | "ethnic" | "luxury";
 
@@ -56,7 +57,7 @@ export const themeList: ThemeTokens[] = [
   luxuryTheme,
 ];
 
-export async function getActiveTheme(): Promise<ThemeId> {
+export const getActiveTheme = cache(async (): Promise<ThemeId> => {
   try {
     const setting = await prisma.siteSetting.findUnique({
       where: { key: "active_theme" },
@@ -68,7 +69,7 @@ export async function getActiveTheme(): Promise<ThemeId> {
     // DB not ready, fall back to default
   }
   return "luxury";
-}
+});
 
 export async function setActiveTheme(themeId: ThemeId): Promise<void> {
   await prisma.siteSetting.upsert({

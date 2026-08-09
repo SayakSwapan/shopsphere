@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 
 const MIN_DISPLAY_MS = 500;
-const MAX_DISPLAY_MS = 20000;
+const MAX_DISPLAY_MS = 8000;
 
 /**
  * Full-screen loading overlay for the storefront.
@@ -13,24 +13,34 @@ const MAX_DISPLAY_MS = 20000;
  * navigation starts — product-card clicks, navbar links, router.push,
  * back/forward — and stays up for at least MIN_DISPLAY_MS so the user
  * always sees it, even on fast navigations.
+ *
+ * The overlay is deliberately non-interactive (`pointer-events: none`)
+ * so it never blocks taps on buttons, links or menus, even while a slow
+ * navigation is in flight.
  */
 export default function LoadingOverlay() {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [visible, setVisible] = useState(false);
 
   const visibleRef = useRef(false);
   const isAdminRef = useRef(false);
-  const lastPathnameRef = useRef(pathname);
+  const lastUrlRef = useRef<string | null>(null);
   const startedAtRef = useRef(0);
   const hideTimerRef = useRef<number | null>(null);
 
+  // Pathname + search combined so that navigations which only change the
+  // query string (e.g. /products?category=sports) are also detected.
+  const currentUrl = `${pathname}${searchParams ? `?${searchParams.toString()}` : ""}`;
+
   useEffect(() => {
-    lastPathnameRef.current = pathname;
     isAdminRef.current = pathname.startsWith("/admin");
-  }, [pathname]);
+    if (lastUrlRef.current === null) lastUrlRef.current = currentUrl;
+  }, [pathname, currentUrl]);
 
   function show() {
     if (isAdminRef.current || visibleRef.current) return;
+    if (hideTimerRef.current) window.clearTimeout(hideTimerRef.current);
     visibleRef.current = true;
     startedAtRef.current = Date.now();
     setVisible(true);
@@ -80,7 +90,7 @@ export default function LoadingOverlay() {
       try {
         const url = new URL(href, window.location.origin);
         if (url.origin !== window.location.origin) return;
-        if (url.pathname + url.search === lastPathnameRef.current) return;
+        if (url.pathname + url.search === lastUrlRef.current) return;
       } catch {
         return;
       }
@@ -102,12 +112,13 @@ export default function LoadingOverlay() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Navigation finished — hide once the pathname actually changes.
+  // Navigation finished — hide once the URL (pathname or search) actually changes.
   useEffect(() => {
-    if (pathname === lastPathnameRef.current) return;
-    lastPathnameRef.current = pathname;
-    if (visibleRef.current) scheduleHide();
-  }, [pathname]);
+    if (!visibleRef.current) return;
+    if (currentUrl === lastUrlRef.current) return;
+    lastUrlRef.current = currentUrl;
+    scheduleHide();
+  }, [currentUrl]);
 
   // Safety net: never leave the overlay stuck behind a failed navigation.
   useEffect(() => {
@@ -130,7 +141,7 @@ export default function LoadingOverlay() {
     <div
       role="status"
       aria-label="Loading"
-      className="fixed inset-0 z-[9997] flex items-center justify-center"
+      className="pointer-events-none fixed inset-0 z-[9997] flex items-center justify-center"
       style={{
         background: "color-mix(in srgb, var(--t-bg-page) 55%, transparent)",
         backdropFilter: "blur(14px) saturate(1.2)",

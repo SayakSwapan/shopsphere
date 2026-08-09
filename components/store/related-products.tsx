@@ -19,7 +19,7 @@ export default async function RelatedProducts({
       NOT: { id: currentProductId },
     },
     include: {
-      productimage: true,
+      productimage: { take: 1 },
     },
     orderBy: [{ isTrending: "desc" }, { totalSold: "desc" }, { createdAt: "desc" }],
     take: 8,
@@ -34,7 +34,7 @@ export default async function RelatedProducts({
         NOT: { id: currentProductId },
       },
       include: {
-        productimage: true,
+        productimage: { take: 1 },
       },
       orderBy: [{ isTrending: "desc" }, { totalSold: "desc" }, { createdAt: "desc" }],
       take: 8,

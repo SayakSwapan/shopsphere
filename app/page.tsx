@@ -22,14 +22,36 @@ import FeatureCards from "@/components/store/home/feature-cards";
 export const dynamic = "force-dynamic";
 
 async function fetchHomeData() {
-  const [featuredProducts, trendingProducts, banners, settings, rawTheme] = await Promise.all([
+  const rawTheme = await getActiveTheme();
+
+  // Sports homepage renders its own product sections — only banners + theme
+  // are needed here, so skip the two heavy product queries entirely.
+  if (rawTheme === "sports") {
+    const [banners] = await Promise.all([
+      prisma.banner.findMany({
+        where: { isActive: true },
+        orderBy: { sortOrder: "asc" },
+        select: {
+          id: true,
+          title: true,
+          subtitle: true,
+          imageUrl: true,
+          linkUrl: true,
+          linkText: true,
+        },
+      }),
+    ]);
+    return { featuredProducts: [], trendingProducts: [], banners, settings: [], rawTheme };
+  }
+
+  const [featuredProducts, trendingProducts, banners, settings] = await Promise.all([
     prisma.product.findMany({
       where: {
         isFeatured: true,
         status: true,
         productvariant: { some: { stock: { gt: 0 } } },
       },
-      include: { productimage: true, productvariant: true },
+      include: { productimage: { take: 1 } },
       take: 8,
     }),
     prisma.product.findMany({
@@ -38,7 +60,7 @@ async function fetchHomeData() {
         status: true,
         productvariant: { some: { stock: { gt: 0 } } },
       },
-      include: { productimage: true, productvariant: true },
+      include: { productimage: { take: 1 } },
       take: 8,
     }),
     prisma.banner.findMany({
@@ -57,7 +79,6 @@ async function fetchHomeData() {
       where: { key: "ticker_texts" },
       select: { key: true, value: true },
     }),
-    getActiveTheme(),
   ]);
 
   return { featuredProducts, trendingProducts, banners, settings, rawTheme };

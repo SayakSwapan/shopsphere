@@ -72,7 +72,14 @@ export default function ProductPurchasePanel({
   );
 
   const handleBuyNow = async () => {
-    if (!selectedVariant) return;
+    if (!selectedVariant) {
+      toast.error("Please select a size to continue");
+      return;
+    }
+    if (selectedVariant.stock <= 0) {
+      toast.error("This size is out of stock");
+      return;
+    }
     setIsBuying(true);
     try {
       const response = await fetch("/api/cart/add", {
@@ -232,9 +239,10 @@ export default function ProductPurchasePanel({
 
           <button
             type="button"
-            disabled={!canPurchase || isBuying}
+            disabled={isBuying}
             onClick={handleBuyNow}
             className="pd-btn-primary w-full py-5 font-black uppercase text-xs tracking-wider sm:w-auto sm:flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
+            style={!canPurchase ? { opacity: 0.6 } : undefined}
           >
             <Zap size={16} strokeWidth={2.5} />
             {isBuying ? "Processing…" : "Buy Now"}

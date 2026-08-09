@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Script from "next/script";
+import { Suspense } from "react";
 import { Geist, Geist_Mono, Bebas_Neue } from "next/font/google";
 import { Toaster } from "sonner";
 
@@ -86,7 +87,9 @@ export default async function RootLayout({
                 </main>
                 <AuthModal />
               </RootThemeShell>
-              <LoadingOverlay />
+              <Suspense fallback={null}>
+                <LoadingOverlay />
+              </Suspense>
             </AuthProviderContext>
           </SessionProvider>
         </SiteSettingsProvider>

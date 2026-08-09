@@ -20,45 +20,46 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
   const selectedPrice = params.price || "";
   const searchQuery = params.q || "";
 
-  const rawProducts = await prisma.product.findMany({
-    where: {
-      status: true,
-      ...(searchQuery && {
-        name: { contains: searchQuery },
-      }),
-      ...(selectedCategories.length > 0 && {
-        category: {
-          OR: [
-            { name: { in: selectedCategories } },
-            { slug: { in: selectedCategories } },
-          ],
-        },
-      }),
-      ...(selectedGenders.length > 0 && {
-        productvariant: { some: { gender: { name: { in: selectedGenders } } } },
-      }),
-    },
-    include: {
-      productimage: true,
-      category: true,
-      productvariant: {
-        include: {
-          gender: true,
+  const [rawProducts, categories, genders] = await Promise.all([
+    prisma.product.findMany({
+      where: {
+        status: true,
+        ...(searchQuery && {
+          name: { contains: searchQuery },
+        }),
+        ...(selectedCategories.length > 0 && {
+          category: {
+            OR: [
+              { name: { in: selectedCategories } },
+              { slug: { in: selectedCategories } },
+            ],
+          },
+        }),
+        ...(selectedGenders.length > 0 && {
+          productvariant: { some: { gender: { name: { in: selectedGenders } } } },
+        }),
+      },
+      include: {
+        productimage: true,
+        category: true,
+        productvariant: {
+          include: {
+            gender: true,
+          },
         },
       },
-    },
-    orderBy:
-      selectedPrice === "low-high"
-        ? { sellingPrice: "asc" }
-        : selectedPrice === "high-low"
-          ? { sellingPrice: "desc" }
-          : { createdAt: "desc" },
-  });
+      orderBy:
+        selectedPrice === "low-high"
+          ? { sellingPrice: "asc" }
+          : selectedPrice === "high-low"
+            ? { sellingPrice: "desc" }
+            : { createdAt: "desc" },
+    }),
+    prisma.category.findMany(),
+    prisma.gender.findMany({ where: { isActive: true } }),
+  ]);
 
   const products = JSON.parse(JSON.stringify(rawProducts)) as typeof rawProducts;
-
-  const categories = await prisma.category.findMany();
-  const genders = await prisma.gender.findMany({ where: { isActive: true } });
 
   return (
     <div className="min-h-screen bg-bg-page">

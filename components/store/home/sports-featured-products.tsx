@@ -29,7 +29,7 @@ export default async function SportsFeaturedProducts() {
   const productInclude = {
     productimage: { take: 1 },
     category: true,
-    review: true,
+    review: { select: { rating: true } },
     productvariant: { where: { stock: { gt: 0 } }, take: 1, select: { id: true } },
   } as const;
 

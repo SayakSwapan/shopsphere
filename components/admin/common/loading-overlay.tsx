@@ -1,26 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-
 export default function LoadingOverlay({ isLoading }: { isLoading: boolean }) {
-  const [show, setShow] = useState(false);
-  const [prevLoading, setPrevLoading] = useState(isLoading);
-
-  if (prevLoading !== isLoading) {
-    setPrevLoading(isLoading);
-    if (isLoading) {
-      setShow(false);
-    }
-  }
-
-  useEffect(() => {
-    if (isLoading) {
-      const timer = setTimeout(() => setShow(true), 150);
-      return () => clearTimeout(timer);
-    }
-  }, [isLoading]);
-
-  if (!isLoading || !show) return null;
+  if (!isLoading) return null;
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm">

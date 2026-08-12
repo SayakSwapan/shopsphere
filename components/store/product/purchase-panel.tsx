@@ -9,6 +9,8 @@ import {
   Truck,
   RotateCcw,
   Check,
+  Minus,
+  Plus,
 } from "lucide-react";
 import AddToCartButton from "@/components/store/add-to-cart-button";
 import WishlistButton from "@/components/store/wishlist-button";
@@ -54,6 +56,7 @@ export default function ProductPurchasePanel({
 }: Props) {
   const router = useRouter();
   const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
+  const [quantity, setQuantity] = useState(1);
   const [isBuying, setIsBuying] = useState(false);
 
   const filteredVariants = useMemo(
@@ -71,6 +74,16 @@ export default function ProductPurchasePanel({
     [filteredVariants, selectedVariantId]
   );
 
+  const maxQuantity = selectedVariant ? Math.max(1, selectedVariant.stock) : 1;
+
+  const decreaseQuantity = () =>
+    setQuantity((q) => (selectedVariant ? Math.max(1, q - 1) : 1));
+
+  const increaseQuantity = () =>
+    setQuantity((q) =>
+      selectedVariant ? Math.min(selectedVariant.stock, q + 1) : 1
+    );
+
   const handleBuyNow = async () => {
     if (!selectedVariant) {
       toast.error("Please select a size to continue");
@@ -87,7 +100,7 @@ export default function ProductPurchasePanel({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           productId,
-          quantity: 1,
+          quantity,
           productVariantId: selectedVariant.id,
         }),
       });
@@ -186,7 +199,10 @@ export default function ProductPurchasePanel({
                 <button
                   key={variant.id}
                   type="button"
-                  onClick={() => !isOOS && setSelectedVariantId(variant.id)}
+                  onClick={() => {
+                    setSelectedVariantId(variant.id);
+                    setQuantity(1);
+                  }}
                   disabled={isOOS}
                   data-selected={isSelected ? "true" : "false"}
                   className="pd-size-btn"
@@ -224,6 +240,57 @@ export default function ProductPurchasePanel({
           )}
         </div>
 
+        {/* Quantity selector */}
+        <div className="border-t px-5 py-4" style={{ borderColor: "var(--t-border-subtle)" }}>
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-bold" style={{ color: "var(--t-text-heading)" }}>
+              Quantity
+            </p>
+            {selectedVariant && (
+              <span className="text-xs font-medium" style={{ color: "var(--t-text-muted-2)" }}>
+                Max {selectedVariant.stock} available
+              </span>
+            )}
+          </div>
+
+          <div className="mt-3 flex items-center gap-4">
+            <button
+              type="button"
+              onClick={decreaseQuantity}
+              disabled={!selectedVariant || quantity <= 1}
+              className="flex h-11 w-11 items-center justify-center rounded-xl border transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
+              style={{ borderColor: "var(--t-border-card)", color: "var(--t-primary)" }}
+              aria-label="Decrease quantity"
+            >
+              <Minus size={18} />
+            </button>
+
+            <span
+              className="w-14 text-center text-xl font-black tabular-nums"
+              style={{ color: "var(--t-text-heading)" }}
+            >
+              {quantity}
+            </span>
+
+            <button
+              type="button"
+              onClick={increaseQuantity}
+              disabled={!selectedVariant || quantity >= maxQuantity}
+              className="flex h-11 w-11 items-center justify-center rounded-xl border transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
+              style={{ borderColor: "var(--t-border-card)", color: "var(--t-primary)" }}
+              aria-label="Increase quantity"
+            >
+              <Plus size={18} />
+            </button>
+
+            {!selectedVariant && (
+              <span className="text-xs" style={{ color: "var(--t-text-muted-2)" }}>
+                Select a size to choose quantity
+              </span>
+            )}
+          </div>
+        </div>
+
         {/* CTAs */}
           <div className="flex flex-col gap-3 px-5 pb-5 sm:flex-row">
             <div className="flex flex-1 gap-3 min-w-0">
@@ -231,6 +298,7 @@ export default function ProductPurchasePanel({
                 <AddToCartButton
                   productId={productId}
                   productVariantId={selectedVariant?.id}
+                  quantity={quantity}
                   disabled={!canPurchase}
                 />
               </div>

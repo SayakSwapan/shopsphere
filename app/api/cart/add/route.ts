@@ -59,6 +59,27 @@ export async function POST(req: Request) {
       );
     }
 
+    const parsedQuantity = Number(quantity);
+    if (!Number.isInteger(parsedQuantity) || parsedQuantity < 1) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Quantity must be at least 1.",
+        },
+        { status: 400 }
+      );
+    }
+
+    if (parsedQuantity > variant.stock) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: `Only ${variant.stock} unit${variant.stock === 1 ? "" : "s"} available in this size.`,
+        },
+        { status: 400 }
+      );
+    }
+
     const { data: customData, error: customError } =
       await sanitizeCustomization(customization, productId);
 
@@ -121,12 +142,16 @@ export async function POST(req: Request) {
         : null;
 
     if (existingMatching) {
+      const mergedQuantity = Math.min(
+        existingMatching.quantity + parsedQuantity,
+        variant.stock
+      );
       await prisma.cartitem.update({
         where: {
           id: existingMatching.id,
         },
         data: {
-          quantity: existingMatching.quantity + quantity,
+          quantity: mergedQuantity,
         },
       });
     } else {
@@ -135,7 +160,7 @@ export async function POST(req: Request) {
           cartId: cart.id,
           productId,
           productVariantId,
-          quantity,
+          quantity: parsedQuantity,
           ...(customData ? { customization: customData } : {}),
         },
       });

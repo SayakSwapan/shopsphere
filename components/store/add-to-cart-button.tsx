@@ -7,6 +7,7 @@ import type { CustomPrintData } from "@/types/custom-print";
 interface Props {
   productId: string;
   productVariantId?: string | null;
+  quantity?: number;
   disabled?: boolean;
   customization?: CustomPrintData | null;
 }
@@ -14,6 +15,7 @@ interface Props {
 export default function AddToCartButton({
   productId,
   productVariantId,
+  quantity = 1,
   disabled = false,
   customization = null,
 }: Props) {
@@ -39,7 +41,7 @@ export default function AddToCartButton({
               body: JSON.stringify({
                 productId,
                 productVariantId,
-                quantity: 1,
+                quantity,
                 customization,
               }),
             }

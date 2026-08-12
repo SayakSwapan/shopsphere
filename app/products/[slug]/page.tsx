@@ -444,15 +444,8 @@ export default async function ProductPage({ params }: Props) {
             </ProductSectionAccordion>
 
             {/* Returns & Replacements */}
-            <div className="pd-card p-5 sm:p-7">
-              <h2
-                className="pd-title-bar text-sm sm:text-base font-black uppercase tracking-[0.2em] text-text-heading"
-                style={{ fontFamily: "var(--t-font-heading)" }}
-              >
-                Returns &amp; Replacements
-              </h2>
-
-              <div className="mt-5 space-y-4">
+            <ProductSectionAccordion id="pd-returns" title="Returns & Replacements">
+              <div className="space-y-4">
                 <div className="flex items-start gap-3">
                   <div
                     className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
@@ -514,7 +507,7 @@ export default async function ProductPage({ params }: Props) {
                   </div>
                 )}
               </div>
-            </div>
+            </ProductSectionAccordion>
 
             <CallbackRequest productId={product.id} />
           </div>

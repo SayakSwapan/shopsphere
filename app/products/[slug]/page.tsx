@@ -372,8 +372,8 @@ export default async function ProductPage({ params }: Props) {
       {/* DESCRIPTION + DETAILS */}
       <section id="details" className="mx-auto max-w-7xl scroll-mt-32 px-4 py-10 sm:px-6 lg:scroll-mt-24 lg:px-8 lg:py-14">
         <div className="grid gap-6 lg:grid-cols-5 lg:gap-8">
-          {/* Description */}
-          <div className="lg:col-span-3">
+          {/* Left column — Description + Details */}
+          <div className="lg:col-span-3 space-y-6">
             <ProductSectionAccordion id="pd-description" title="Description">
               {product.description ? (
                 <div
@@ -387,10 +387,7 @@ export default async function ProductPage({ params }: Props) {
                 </p>
               )}
             </ProductSectionAccordion>
-          </div>
 
-          {/* Side column */}
-          <div className="lg:col-span-2 space-y-6">
             {/* Details */}
             <ProductSectionAccordion id="pd-details" title="Details">
               <div className="space-y-3.5">
@@ -442,7 +439,10 @@ export default async function ProductPage({ params }: Props) {
                 </div>
               </div>
             </ProductSectionAccordion>
+          </div>
 
+          {/* Side column — Returns + Help */}
+          <div className="lg:col-span-2 space-y-6">
             {/* Returns & Replacements */}
             <ProductSectionAccordion id="pd-returns" title="Returns & Replacements">
               <div className="space-y-4">

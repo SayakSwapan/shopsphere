@@ -76,7 +76,7 @@ export default function AuthModal() {
           />
         </button>
 
-        <div className="relative z-10 p-10">
+        <div className="relative z-10 max-h-[calc(100dvh-3rem)] overflow-y-auto p-6 sm:p-10">
 
           <p
             className="text-xs uppercase tracking-[0.35em]"
@@ -88,7 +88,7 @@ export default function AuthModal() {
           </p>
 
           <h1
-            className="mt-2 text-4xl font-black"
+            className="mt-2 text-3xl sm:text-4xl font-black"
             style={{
               color: "var(--t-text-heading)",
               fontFamily: "var(--t-font-heading)",

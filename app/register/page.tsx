@@ -9,7 +9,7 @@ export default async function RegisterPage() {
 
   return (
     <div
-      className="relative min-h-screen flex items-center justify-center overflow-hidden px-4 py-10"
+      className="relative min-h-screen flex items-start sm:items-center justify-center overflow-hidden px-4 py-10"
       style={{ background: "var(--t-bg-page)" }}
     >
       <div
@@ -44,7 +44,7 @@ export default async function RegisterPage() {
         </p>
 
         <h1
-          className="text-4xl font-black uppercase mb-8"
+          className="text-3xl sm:text-4xl font-black uppercase mb-8"
           style={{ color: "var(--t-text-heading)" }}
         >
           Create Account

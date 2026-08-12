@@ -9,7 +9,7 @@ export default async function LoginPage() {
 
   return (
     <div
-      className="min-h-screen flex items-center justify-center px-4 py-10"
+      className="min-h-screen flex items-start sm:items-center justify-center px-4 py-10"
       style={{ background: "var(--t-bg-page)" }}
     >
       <div
@@ -28,7 +28,7 @@ export default async function LoginPage() {
         </Link>
 
         <h1
-          className="mt-4 text-4xl font-black uppercase mb-2"
+          className="mt-4 text-3xl sm:text-4xl font-black uppercase mb-2"
           style={{ color: "var(--t-text-heading)" }}
         >
           Welcome Back

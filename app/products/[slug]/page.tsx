@@ -11,6 +11,7 @@ import PincodeChecker from "@/components/store/product/pincode-checker";
 import Stars from "@/components/store/reviews/stars";
 import ProductReviews from "@/components/store/reviews/product-reviews";
 import CallbackRequest from "@/components/store/product/callback-request";
+import ProductSectionAccordion from "@/components/store/product/section-accordion";
 import NavbarWrapper from "@/components/store/layout/navbar-wrapper";
 import ShareButton from "@/components/store/share-button";
 import SizeChartButton from "@/components/store/product/size-chart-button";
@@ -373,42 +374,26 @@ export default async function ProductPage({ params }: Props) {
         <div className="grid gap-6 lg:grid-cols-5 lg:gap-8">
           {/* Description */}
           <div className="lg:col-span-3">
-            <div className="pd-card p-5 sm:p-8">
-              <h2
-                className="pd-title-bar text-sm sm:text-base font-black uppercase tracking-[0.2em] text-text-heading"
-                style={{ fontFamily: "var(--t-font-heading)" }}
-              >
-                Description
-              </h2>
-
-              <div className="mt-5">
-                {product.description ? (
-                  <div
-                    dangerouslySetInnerHTML={{ __html: product.description }}
-                    className="leading-relaxed text-sm space-y-4"
-                    style={{ color: "var(--t-text-body)" }}
-                  />
-                ) : (
-                  <p className="text-sm" style={{ color: "var(--t-text-muted-2)" }}>
-                    No description available.
-                  </p>
-                )}
-              </div>
-            </div>
+            <ProductSectionAccordion id="pd-description" title="Description">
+              {product.description ? (
+                <div
+                  dangerouslySetInnerHTML={{ __html: product.description }}
+                  className="leading-relaxed text-sm space-y-4"
+                  style={{ color: "var(--t-text-body)" }}
+                />
+              ) : (
+                <p className="text-sm" style={{ color: "var(--t-text-muted-2)" }}>
+                  No description available.
+                </p>
+              )}
+            </ProductSectionAccordion>
           </div>
 
           {/* Side column */}
           <div className="lg:col-span-2 space-y-6">
             {/* Details */}
-            <div className="pd-card p-5 sm:p-7">
-              <h2
-                className="pd-title-bar text-sm sm:text-base font-black uppercase tracking-[0.2em] text-text-heading"
-                style={{ fontFamily: "var(--t-font-heading)" }}
-              >
-                Details
-              </h2>
-
-              <div className="mt-5 space-y-3.5">
+            <ProductSectionAccordion id="pd-details" title="Details">
+              <div className="space-y-3.5">
                 <div className="pd-spec">
                   <span className="pd-spec-label">Category</span>
                   <span className="pd-spec-dots" />
@@ -456,7 +441,7 @@ export default async function ProductPage({ params }: Props) {
                   <span className="pd-spec-value">{variantsForCategory.length}</span>
                 </div>
               </div>
-            </div>
+            </ProductSectionAccordion>
 
             {/* Returns & Replacements */}
             <div className="pd-card p-5 sm:p-7">

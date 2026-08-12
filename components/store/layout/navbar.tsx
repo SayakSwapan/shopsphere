@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Search, Heart, ShoppingBag, Menu, X, ChevronDown, ArrowRight } from "lucide-react";
+import { Search, Heart, ShoppingBag, Menu, X, ChevronDown, ArrowRight, UserRound } from "lucide-react";
 import WishlistCount from "../wishlist-count";
 import { useState } from "react";
 import NavbarAuth from "../auth/navbar-auth";
@@ -88,9 +88,9 @@ export default function Navbar({ session, announcement, categories = [] }: Navba
             {/* ── LOGO ── */}
             <Link
               href="/"
-              className="flex-shrink-0 uppercase leading-none"
+              className="min-w-0 shrink uppercase leading-none overflow-hidden whitespace-nowrap"
               style={{
-                fontSize: "clamp(1.4rem, 3vw, 1.85rem)",
+                fontSize: "clamp(1.15rem, 2.6vw, 1.85rem)",
                 color: themeId === "ethnic" ? "#6E1F27" : "var(--t-text-heading)",
                 letterSpacing: themeId === "ethnic" ? "0.03em" : themeId === "luxury" ? "0.05em" : "-0.03em",
                 fontWeight: themeId === "ethnic" ? 400 : themeId === "fashion" ? 700 : 900,
@@ -241,7 +241,7 @@ export default function Navbar({ session, announcement, categories = [] }: Navba
 
               {/* Search icon (mobile) */}
               <button
-                className="xl:hidden p-3 transition-colors"
+                className="xl:hidden p-1.5 sm:p-3 transition-colors"
                 style={{
                   color: "var(--t-text-muted-1)",
                   borderRadius: "var(--t-radius-button)",
@@ -255,7 +255,7 @@ export default function Navbar({ session, announcement, categories = [] }: Navba
               {/* Wishlist */}
               <Link
                 href="/wishlist"
-                className="relative p-3 transition-colors"
+                className="relative p-1.5 sm:p-3 transition-colors"
                 style={{
                   color: "var(--t-text-muted-1)",
                   borderRadius: "var(--t-radius-button)",
@@ -275,7 +275,7 @@ export default function Navbar({ session, announcement, categories = [] }: Navba
               ) : (
                 <button
                   onClick={() => openAuth("login")}
-                  className="px-5 py-2.5 text-sm font-bold"
+                  className="px-2 sm:px-5 py-2.5 text-xs sm:text-sm font-bold"
                   style={{
                     background: "rgba(0,0,0,0.04)",
                     color: "var(--t-primary)",
@@ -284,14 +284,15 @@ export default function Navbar({ session, announcement, categories = [] }: Navba
                     fontFamily: "var(--t-font-heading)",
                   }}
                 >
-                  Login
+                  <UserRound size={18} className="sm:hidden" />
+                  <span className="hidden sm:inline">Login</span>
                 </button>
               )}
 
               {/* Cart */}
               <Link
                 href="/cart"
-                className="relative flex items-center gap-2 px-4 py-2.5 font-black uppercase text-xs transition-all"
+                className="relative flex items-center gap-1.5 sm:gap-2 px-2 sm:px-4 py-2.5 font-black uppercase text-xs transition-all"
                 style={{
                   background: "var(--t-primary)",
                   color: "var(--t-button-text, #FFFFFF)",
@@ -307,7 +308,7 @@ export default function Navbar({ session, announcement, categories = [] }: Navba
 
               {/* Hamburger (mobile) */}
               <button
-                className="lg:hidden p-3 transition-colors"
+                className="lg:hidden p-1.5 sm:p-3 transition-colors"
                 style={{
                   color: "var(--t-text-muted-1)",
                   borderRadius: "var(--t-radius-button)",

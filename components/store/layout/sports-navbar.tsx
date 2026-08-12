@@ -11,6 +11,7 @@ import {
   Zap,
   ChevronDown,
   ArrowUpRight,
+  UserRound,
 } from "lucide-react";
 import WishlistCount from "../wishlist-count";
 import CartCount from "../cart-count";
@@ -134,9 +135,9 @@ export default function SportsNavbar({
         <div className="mx-auto max-w-7xl px-4">
           <div className="flex items-center justify-between gap-3" style={{ height: 72 }}>
             {/* Logo */}
-            <Link href="/" className="flex shrink-0 items-center gap-2.5">
+            <Link href="/" className="flex min-w-0 shrink items-center gap-2.5 overflow-hidden">
               <span
-                className="flex h-9 w-9 items-center justify-center"
+                className="flex h-9 w-9 items-center justify-center max-[420px]:hidden"
                 style={{
                   background: "var(--sports-volt)",
                   borderRadius: "var(--t-radius-button)",
@@ -146,10 +147,10 @@ export default function SportsNavbar({
                 <Zap size={18} fill="#0A0E13" className="text-[#0A0E13]" />
               </span>
               <span
-                className="uppercase leading-none"
+                className="truncate uppercase leading-none"
                 style={{
                   fontFamily: "'Anton', sans-serif",
-                  fontSize: "clamp(1.3rem, 2.6vw, 1.6rem)",
+                  fontSize: "clamp(1.1rem, 2.2vw, 1.6rem)",
                   color: "#F4F3EE",
                   letterSpacing: "0.02em",
                 }}
@@ -249,7 +250,7 @@ export default function SportsNavbar({
               </div>
 
               <button
-                className="xl:hidden p-3"
+                className="xl:hidden p-1.5 sm:p-3"
                 style={{ color: "#9A9D9F" }}
                 onClick={() => setSearchOpen(!searchOpen)}
                 aria-label="Toggle search"
@@ -259,7 +260,7 @@ export default function SportsNavbar({
 
               <Link
                 href="/wishlist"
-                className="relative p-3"
+                className="relative p-1.5 sm:p-3"
                 style={{ color: "#9A9D9F" }}
                 aria-label="Wishlist"
               >
@@ -272,7 +273,7 @@ export default function SportsNavbar({
               ) : (
                 <button
                   onClick={() => openAuth("login")}
-                  className="px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.12em]"
+                  className="px-2 sm:px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.12em]"
                   style={{
                     color: "var(--sports-volt)",
                     border: "1px solid rgba(203,255,62,0.35)",
@@ -281,13 +282,14 @@ export default function SportsNavbar({
                     background: "rgba(203,255,62,0.06)",
                   }}
                 >
-                  Login
+                  <UserRound size={18} className="sm:hidden" />
+                  <span className="hidden sm:inline">Login</span>
                 </button>
               )}
 
               <Link
                 href="/cart"
-                className="relative flex items-center gap-2 px-4 py-2.5 text-xs font-black uppercase tracking-[0.1em] transition-all hover:opacity-90"
+                className="relative flex items-center gap-1.5 sm:gap-2 px-2 sm:px-4 py-2.5 text-xs font-black uppercase tracking-[0.1em] transition-all hover:opacity-90"
                 style={{
                   background: "var(--sports-volt)",
                   color: "var(--sports-ink)",
@@ -302,7 +304,7 @@ export default function SportsNavbar({
               </Link>
 
               <button
-                className="lg:hidden p-3"
+                className="lg:hidden p-1.5 sm:p-3"
                 style={{ color: "#F4F3EE" }}
                 onClick={() => setMenuOpen(!menuOpen)}
                 aria-label="Toggle menu"

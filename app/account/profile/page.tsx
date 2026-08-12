@@ -6,7 +6,8 @@ import Footer from "@/components/store/layout/footer";
 import ProfileForm from "@/components/store/account/profile-form";
 import PasswordForm from "@/components/store/account/password-form";
 import AddressList from "@/components/store/account/address-list";
-import { User, MapPin, Lock } from "lucide-react";
+import RefundMethodsManager from "@/components/store/account/refund-methods-manager";
+import { User, MapPin, Lock, Landmark } from "lucide-react";
 
 export default async function ProfilePage() {
   const session = await auth();
@@ -177,6 +178,39 @@ export default async function ProfilePage() {
               </div>
               <div className="p-5 sm:p-8">
                 <PasswordForm hasPassword={hasPassword} />
+              </div>
+            </div>
+
+            {/* Refund Methods */}
+            <div
+              id="refund-methods"
+              className="mt-8 overflow-hidden border"
+              style={{
+                borderRadius: "var(--t-radius-card)",
+                borderColor: "var(--t-border-card)",
+                background: "var(--t-bg-card)",
+              }}
+            >
+              <div
+                className="flex items-center gap-3 px-4 sm:px-8 py-4 sm:py-6 border-b"
+                style={{ borderColor: "var(--t-border-subtle)" }}
+              >
+                <Landmark style={{ color: "var(--t-primary)" }} size={20} />
+                <div>
+                  <h2
+                    className="text-2xl font-bold"
+                    style={{ color: "var(--t-text-heading)" }}
+                  >
+                    Refund Methods
+                  </h2>
+                  <p className="mt-1 text-sm" style={{ color: "var(--t-text-muted-1)" }}>
+                    Save a bank account or UPI ID so refunds land faster. You can change these
+                    anytime.
+                  </p>
+                </div>
+              </div>
+              <div className="p-5 sm:p-8">
+                <RefundMethodsManager />
               </div>
             </div>
           </div>

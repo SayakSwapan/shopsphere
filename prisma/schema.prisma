@@ -592,6 +592,7 @@ model user {
   replacement_request replacement_request[]
   refund refund[]
   productQueries productQuery[]
+  refundMethods user_refund_method[]
 }
 
 model PartnerProfile {
@@ -830,6 +831,7 @@ model refund {
   branchName    String?
   accountNumber String?
   ifsc          String?
+  upiId         String?
   initiatedBy   String?
   status        String    @default("INITIATED")
   completedAt   DateTime?
@@ -842,6 +844,25 @@ model refund {
   @@index([orderId])
   @@index([requestId])
   @@index([status])
+}
+
+model user_refund_method {
+  id            String            @id @default(cuid())
+  userId        String
+  type          RefundMethodType
+  accountHolder String?
+  accountNumber String?
+  bankName      String?
+  branchName    String?
+  ifsc          String?
+  upiId         String?
+  isDefault     Boolean           @default(false)
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  user          user              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model returnReason {
@@ -1092,6 +1113,11 @@ enum ReplacementStatus {
   SHIPPED
   COMPLETED
   CLOSED
+}
+
+enum RefundMethodType {
+  BANK
+  UPI
 }
 
 enum ActivityAction {

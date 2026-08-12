@@ -12,7 +12,8 @@ import {
   REPLACEMENT_REASON_OPTIONS,
   type RequestType,
 } from "@/lib/return-replacement";
-import { IFSC_PATTERN, UPI_PATTERN } from "@/lib/refund";
+import type { RefundMethodRecord } from "@/lib/refund";
+import RefundMethodPicker, { refundMethodToBankDetails } from "@/components/store/account/refund-method-picker";
 
 interface Reason {
   id: string;
@@ -47,15 +48,6 @@ const FALLBACK_REASONS: Record<RequestType, string[]> = {
   REPLACEMENT: REPLACEMENT_REASON_OPTIONS,
 };
 
-const bankInputCls =
-  "w-full rounded-xl border px-3 py-2.5 text-sm outline-none transition";
-
-const bankInputStyle: React.CSSProperties = {
-  borderColor: "var(--t-border-card)",
-  background: "var(--t-bg-card)",
-  color: "var(--t-text-heading)",
-};
-
 export default function RequestForm({
   orderId,
   orderNumber,
@@ -77,13 +69,7 @@ export default function RequestForm({
   const [error, setError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [accountHolder, setAccountHolder] = useState("");
-  const [accountNumber, setAccountNumber] = useState("");
-  const [confirmAccountNumber, setConfirmAccountNumber] = useState("");
-  const [bankName, setBankName] = useState("");
-  const [branchName, setBranchName] = useState("");
-  const [ifsc, setIfsc] = useState("");
-  const [upiId, setUpiId] = useState("");
+  const [refundMethod, setRefundMethod] = useState<RefundMethodRecord | null>(null);
 
   const damage = isDamageReason(selectedOption);
   const requiresImages = damage;
@@ -182,21 +168,6 @@ export default function RequestForm({
     setImages((prev) => prev.filter((_, i) => i !== index));
   }
 
-  function validateReturnBankDetails(): string | null {
-    if (!accountHolder.trim()) return "Please enter the account holder name";
-    if (!/^\d{9,18}$/.test(accountNumber.trim()))
-      return "Enter a valid account number (9-18 digits)";
-    if (accountNumber.trim() !== confirmAccountNumber.trim())
-      return "Account numbers do not match";
-    if (!bankName.trim()) return "Please enter the bank name";
-    if (!branchName.trim()) return "Please enter the branch name";
-    if (!IFSC_PATTERN.test(ifsc.trim().toUpperCase()))
-      return "Enter a valid IFSC code (e.g. HDFC0001234)";
-    if (upiId.trim() && !UPI_PATTERN.test(upiId.trim().toLowerCase()))
-      return "Enter a valid UPI ID (e.g. name@bank)";
-    return null;
-  }
-
   async function handleSubmit() {
     if (!selectedOption) {
       setError("Please select a reason.");
@@ -219,22 +190,13 @@ export default function RequestForm({
       return;
     }
 
-    let bankDetails: Record<string, string> | null = null;
+    let bankDetails: Record<string, unknown> | null = null;
     if (activeType === "RETURN") {
-      const bankError = validateReturnBankDetails();
-      if (bankError) {
-        setError(bankError);
+      if (!refundMethod) {
+        setError("Please select or add a bank account / UPI ID to receive your refund.");
         return;
       }
-      bankDetails = {
-        accountHolder: accountHolder.trim(),
-        accountNumber: accountNumber.trim(),
-        confirmAccountNumber: confirmAccountNumber.trim(),
-        bankName: bankName.trim(),
-        branchName: branchName.trim(),
-        ifsc: ifsc.trim().toUpperCase(),
-        upiId: upiId.trim().toLowerCase() || "",
-      };
+      bankDetails = refundMethodToBankDetails(refundMethod);
     }
 
     setError("");
@@ -406,6 +368,27 @@ export default function RequestForm({
           </div>
         )}
 
+        {/* Refund method (bank or UPI) — required for returns */}
+        {activeType === "RETURN" && (
+          <div
+            className="mb-4 border p-4"
+            style={{
+              borderRadius: "var(--t-radius-card)",
+              borderColor: "var(--t-border-card)",
+              background: "var(--t-bg-card-nested)",
+            }}
+          >
+            <p className="text-sm font-bold" style={{ color: "var(--t-text-heading)" }}>
+              Where should we send your refund?
+            </p>
+            <p className="mb-3 text-xs" style={{ color: "var(--t-text-muted-1)" }}>
+              Choose a saved bank account or UPI ID, or add a new one. It will be saved to your
+              profile for faster refunds next time.
+            </p>
+            <RefundMethodPicker value={refundMethod} onChange={setRefundMethod} />
+          </div>
+        )}
+
         {/* Reason options */}
         <div className="mb-4">
           <label className="mb-2 block text-sm font-semibold" style={{ color: "var(--t-text-muted-2)" }}>
@@ -510,127 +493,6 @@ export default function RequestForm({
             </p>
           )}
         </div>
-
-        {/* Refund bank details (required for returns) */}
-        {activeType === "RETURN" && (
-          <div
-            className="mb-4 border p-4"
-            style={{
-              borderRadius: "var(--t-radius-card)",
-              borderColor: "var(--t-border-card)",
-              background: "var(--t-bg-card-nested)",
-            }}
-          >
-            <p className="text-sm font-bold" style={{ color: "var(--t-text-heading)" }}>
-              Refund Bank Details
-            </p>
-            <p className="mb-3 text-xs" style={{ color: "var(--t-text-muted-1)" }}>
-              Your refund will be credited here. Fields marked <span style={{ color: "var(--t-danger)" }}>*</span> are required.
-            </p>
-
-            <div className="space-y-3">
-              <div>
-                <label className="mb-1 block text-xs font-bold uppercase tracking-wider" style={{ color: "var(--t-text-muted-1)" }}>
-                  Account Holder Name *
-                </label>
-                <input
-                  value={accountHolder}
-                  onChange={(e) => setAccountHolder(e.target.value)}
-                  placeholder="Name on the bank account"
-                  className={bankInputCls}
-                  style={bankInputStyle}
-                />
-              </div>
-
-              <div>
-                <label className="mb-1 block text-xs font-bold uppercase tracking-wider" style={{ color: "var(--t-text-muted-1)" }}>
-                  Account Number *
-                </label>
-                <input
-                  value={accountNumber}
-                  onChange={(e) => setAccountNumber(e.target.value)}
-                  placeholder="Bank account number"
-                  inputMode="numeric"
-                  autoComplete="off"
-                  className={bankInputCls}
-                  style={bankInputStyle}
-                />
-              </div>
-
-              <div>
-                <label className="mb-1 block text-xs font-bold uppercase tracking-wider" style={{ color: "var(--t-text-muted-1)" }}>
-                  Confirm Account Number *
-                </label>
-                <input
-                  value={confirmAccountNumber}
-                  onChange={(e) => setConfirmAccountNumber(e.target.value)}
-                  placeholder="Re-enter the account number"
-                  inputMode="numeric"
-                  autoComplete="off"
-                  className={bankInputCls}
-                  style={bankInputStyle}
-                />
-              </div>
-
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div>
-                  <label className="mb-1 block text-xs font-bold uppercase tracking-wider" style={{ color: "var(--t-text-muted-1)" }}>
-                    Bank Name *
-                  </label>
-                  <input
-                    value={bankName}
-                    onChange={(e) => setBankName(e.target.value)}
-                    placeholder="e.g. HDFC Bank"
-                    className={bankInputCls}
-                    style={bankInputStyle}
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs font-bold uppercase tracking-wider" style={{ color: "var(--t-text-muted-1)" }}>
-                    Branch Name *
-                  </label>
-                  <input
-                    value={branchName}
-                    onChange={(e) => setBranchName(e.target.value)}
-                    placeholder="e.g. Connaught Place"
-                    className={bankInputCls}
-                    style={bankInputStyle}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="mb-1 block text-xs font-bold uppercase tracking-wider" style={{ color: "var(--t-text-muted-1)" }}>
-                  IFSC Code *
-                </label>
-                <input
-                  value={ifsc}
-                  onChange={(e) => setIfsc(e.target.value.toUpperCase())}
-                  placeholder="e.g. HDFC0001234"
-                  maxLength={11}
-                  className={bankInputCls}
-                  style={bankInputStyle}
-                />
-              </div>
-
-              <div>
-                <label className="mb-1 block text-xs font-bold uppercase tracking-wider" style={{ color: "var(--t-text-muted-1)" }}>
-                  UPI ID <span style={{ fontWeight: 400 }}>(optional)</span>
-                </label>
-                <input
-                  value={upiId}
-                  onChange={(e) => setUpiId(e.target.value.toLowerCase())}
-                  placeholder="e.g. name@upi"
-                  className={bankInputCls}
-                  style={bankInputStyle}
-                />
-                <p className="mt-1 text-xs" style={{ color: "var(--t-text-muted-2)" }}>
-                  Optional — add a valid UPI ID to receive your refund there instead.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
 
         {error && <p className="mb-3 text-sm" style={{ color: "var(--t-danger)" }}>{error}</p>}
 

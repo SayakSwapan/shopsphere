@@ -14,6 +14,7 @@ import {
   Clock,
   CheckCircle,
   RotateCcw,
+  Landmark,
 } from "lucide-react";
 
 export default async function AccountPage() {
@@ -188,6 +189,11 @@ export default async function AccountPage() {
                     label: "My Returns & Replacements",
                     href: "/account/requests",
                     icon: RotateCcw,
+                  },
+                  {
+                    label: "Refund Methods",
+                    href: "/account/profile#refund-methods",
+                    icon: Landmark,
                   },
                 ].map((link) => (
                   <Link

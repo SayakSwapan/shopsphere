@@ -552,8 +552,8 @@ export default async function RequestDetailPage({ params }: Props) {
                 ) : isRefundableStatus(req.status) ? (
                   <div>
                     <p className="mb-3 text-sm" style={{ color: "var(--t-text-muted-1)" }}>
-                      Add your bank details so we can transfer your refund. Enter the account
-                      number twice to confirm it.
+                      Review your bank details — we&apos;ll use these to transfer your refund.
+                      Enter the account number twice to confirm any change.
                     </p>
                     <BankDetailsForm
                       requestId={req.id}
@@ -563,7 +563,7 @@ export default async function RequestDetailPage({ params }: Props) {
                   </div>
                 ) : (
                   <p className="text-sm" style={{ color: "var(--t-text-muted-1)" }}>
-                    Bank details will be collected once your return is approved.
+                    Your refund will be credited to the bank details you submitted with the return request.
                   </p>
                 )}
               </div>

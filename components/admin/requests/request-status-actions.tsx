@@ -227,6 +227,9 @@ export default function RequestStatusActions({
                 <p className="mt-0.5 font-mono text-xs text-slate-400">
                   {maskAccountNumber(bankDetails.accountNumber)} · {bankDetails.ifsc}
                 </p>
+                {bankDetails.upiId && (
+                  <p className="mt-0.5 font-mono text-xs text-slate-400">UPI: {bankDetails.upiId}</p>
+                )}
               </div>
             ) : (
               <div className="rounded-lg border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-300">

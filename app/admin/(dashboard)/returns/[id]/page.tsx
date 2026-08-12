@@ -395,6 +395,12 @@ export default async function AdminReturnDetailPage({ params }: Props) {
                   <dt className="text-slate-500">IFSC</dt>
                   <dd className="font-mono text-xs text-slate-300">{bankDetails.ifsc}</dd>
                 </div>
+                {bankDetails.upiId && (
+                  <div className="flex justify-between gap-4">
+                    <dt className="text-slate-500">UPI ID</dt>
+                    <dd className="font-mono text-xs text-slate-300">{bankDetails.upiId}</dd>
+                  </div>
+                )}
               </dl>
             ) : (
               <p className="text-sm text-slate-500">

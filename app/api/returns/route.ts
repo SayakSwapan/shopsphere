@@ -10,6 +10,7 @@ import {
   appendTimeline,
   parseImages,
 } from "@/lib/return-replacement";
+import { validateBankDetails } from "@/lib/refund";
 
 export async function POST(req: Request) {
   try {
@@ -27,10 +28,22 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, message: "User not found" }, { status: 404 });
     }
 
-    const { orderId, reason, reasonOption, customText, description, images } = await req.json();
+    const { orderId, reason, reasonOption, customText, description, images, bankDetails } = await req.json();
 
     if (!orderId || !reason) {
       return NextResponse.json({ success: false, message: "Order ID and reason are required" }, { status: 400 });
+    }
+
+    if (!bankDetails || typeof bankDetails !== "object") {
+      return NextResponse.json(
+        { success: false, message: "Bank details are required to submit a return request" },
+        { status: 400 }
+      );
+    }
+
+    const bankValidation = validateBankDetails(bankDetails);
+    if (!bankValidation.ok) {
+      return NextResponse.json({ success: false, message: bankValidation.error }, { status: 400 });
     }
 
     const order = await prisma.order.findFirst({
@@ -112,6 +125,7 @@ export async function POST(req: Request) {
         customText: customText || null,
         description: description?.trim() || null,
         images: uploadedImages.length > 0 ? uploadedImages : undefined,
+        bankDetails: bankValidation.data as unknown as Prisma.InputJsonValue,
         timeline: appendTimeline(null, "PENDING", damage ? "Request submitted with damage proof" : undefined) as unknown as Prisma.InputJsonValue,
       },
     });

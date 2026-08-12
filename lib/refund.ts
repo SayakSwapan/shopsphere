@@ -4,9 +4,12 @@ export interface BankDetails {
   bankName: string;
   branchName: string;
   ifsc: string;
+  upiId?: string | null;
 }
 
 export const IFSC_PATTERN = /^[A-Z]{4}0[A-Z0-9]{6}$/;
+
+export const UPI_PATTERN = /^[\w.\-]{2,}@[A-Za-z]{2,}$/;
 
 export interface BankDetailsInput {
   accountHolder?: string;
@@ -15,6 +18,7 @@ export interface BankDetailsInput {
   bankName?: string;
   branchName?: string;
   ifsc?: string;
+  upiId?: string | null;
 }
 
 export type BankDetailsResult =
@@ -28,6 +32,7 @@ export function validateBankDetails(input: BankDetailsInput): BankDetailsResult 
   const bankName = input.bankName?.trim() ?? "";
   const branchName = input.branchName?.trim() ?? "";
   const ifsc = input.ifsc?.trim().toUpperCase() ?? "";
+  const upiId = input.upiId?.trim().toLowerCase() ?? "";
 
   if (!accountHolder) {
     return { ok: false, error: "Account holder name is required" };
@@ -47,10 +52,13 @@ export function validateBankDetails(input: BankDetailsInput): BankDetailsResult 
   if (!IFSC_PATTERN.test(ifsc)) {
     return { ok: false, error: "Enter a valid IFSC code (e.g. HDFC0001234)" };
   }
+  if (upiId && !UPI_PATTERN.test(upiId)) {
+    return { ok: false, error: "Enter a valid UPI ID (e.g. name@bank)" };
+  }
 
   return {
     ok: true,
-    data: { accountHolder, accountNumber, bankName, branchName, ifsc },
+    data: { accountHolder, accountNumber, bankName, branchName, ifsc, upiId: upiId || null },
   };
 }
 

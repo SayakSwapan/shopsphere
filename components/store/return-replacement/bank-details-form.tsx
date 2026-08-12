@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useTheme } from "@/lib/themes/theme-provider";
 import type { RequestType } from "@/lib/return-replacement";
-import { maskAccountNumber, IFSC_PATTERN, type BankDetails } from "@/lib/refund";
+import { maskAccountNumber, IFSC_PATTERN, UPI_PATTERN, type BankDetails } from "@/lib/refund";
 
 interface Props {
   requestId: string;
@@ -24,6 +24,7 @@ export default function BankDetailsForm({ requestId, requestType, initial, readO
   const [bankName, setBankName] = useState(initial?.bankName ?? "");
   const [branchName, setBranchName] = useState(initial?.branchName ?? "");
   const [ifsc, setIfsc] = useState(initial?.ifsc ?? "");
+  const [upiId, setUpiId] = useState(initial?.upiId ?? "");
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(initial != null);
   const [saving, setSaving] = useState(false);
@@ -40,6 +41,8 @@ export default function BankDetailsForm({ requestId, requestType, initial, readO
     if (!bankName.trim()) return setError("Please enter the bank name");
     if (!branchName.trim()) return setError("Please enter the branch name");
     if (!IFSC_PATTERN.test(ifsc.trim().toUpperCase())) return setError("Enter a valid IFSC code (e.g. HDFC0001234)");
+    const upiTrimmed = upiId.trim().toLowerCase();
+    if (upiTrimmed && !UPI_PATTERN.test(upiTrimmed)) return setError("Enter a valid UPI ID (e.g. name@bank)");
 
     setSaving(true);
     try {
@@ -54,6 +57,7 @@ export default function BankDetailsForm({ requestId, requestType, initial, readO
           bankName: bankName.trim(),
           branchName: branchName.trim(),
           ifsc: ifsc.trim().toUpperCase(),
+          upiId: upiTrimmed || null,
         }),
       });
       const data = await res.json();
@@ -91,6 +95,7 @@ export default function BankDetailsForm({ requestId, requestType, initial, readO
           </p>
           <p className="font-mono text-xs">{maskAccountNumber(initial.accountNumber)}</p>
           <p className="font-mono text-xs">{initial.ifsc}</p>
+          {initial.upiId && <p className="font-mono text-xs">{initial.upiId}</p>}
         </div>
       </div>
     );
@@ -206,6 +211,26 @@ export default function BankDetailsForm({ requestId, requestType, initial, readO
         />
         <p className="mt-1 text-xs" style={{ color: "var(--t-text-muted-2)" }}>
           Found on your cheque book or passbook.
+        </p>
+      </div>
+
+      <div>
+        <label className="mb-1 block text-xs font-bold uppercase tracking-wider" style={{ color: "var(--t-text-muted-1)" }}>
+          UPI ID <span style={{ fontWeight: 400 }}>(optional)</span>
+        </label>
+        <input
+          value={upiId}
+          onChange={(e) => { setUpiId(e.target.value.toLowerCase()); setSaved(false); }}
+          placeholder="e.g. name@upi"
+          className={inputCls}
+          style={{
+            borderColor: "var(--t-border-card)",
+            color: "var(--t-text-body)",
+            background: "var(--t-bg-card-nested)",
+          }}
+        />
+        <p className="mt-1 text-xs" style={{ color: "var(--t-text-muted-2)" }}>
+          Add a UPI ID if you would like to receive your refund there instead.
         </p>
       </div>
 

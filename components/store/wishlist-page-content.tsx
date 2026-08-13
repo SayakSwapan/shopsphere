@@ -21,6 +21,10 @@ interface Product {
     id: string;
     url: string;
   }[];
+  productvariant?: {
+    stock: number;
+    size: { sizeName: string } | null;
+  }[];
 }
 
 interface Props {

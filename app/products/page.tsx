@@ -45,6 +45,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
         productvariant: {
           include: {
             gender: true,
+            size: true,
           },
         },
       },

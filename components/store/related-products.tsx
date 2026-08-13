@@ -20,6 +20,10 @@ export default async function RelatedProducts({
     },
     include: {
       productimage: { take: 1 },
+      productvariant: {
+        where: { stock: { gt: 0 } },
+        include: { size: true },
+      },
     },
     orderBy: [{ isTrending: "desc" }, { totalSold: "desc" }, { createdAt: "desc" }],
     take: 8,
@@ -35,6 +39,10 @@ export default async function RelatedProducts({
       },
       include: {
         productimage: { take: 1 },
+        productvariant: {
+          where: { stock: { gt: 0 } },
+          include: { size: true },
+        },
       },
       orderBy: [{ isTrending: "desc" }, { totalSold: "desc" }, { createdAt: "desc" }],
       take: 8,
@@ -90,6 +98,7 @@ export default async function RelatedProducts({
               productimage: product.productimage.map((img) => ({
                 url: img.url,
               })),
+              productvariant: product.productvariant,
             }}
           />
         ))}

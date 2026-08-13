@@ -18,6 +18,10 @@ export async function GET() {
             product: {
               include: {
                 productimage: true,
+                productvariant: {
+                  where: { stock: { gt: 0 } },
+                  include: { size: true },
+                },
               },
             },
           },

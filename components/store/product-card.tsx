@@ -19,6 +19,10 @@ interface Props {
     productimage: {
       url: string;
     }[];
+    productvariant?: {
+      stock: number;
+      size: { sizeName: string } | null;
+    }[];
   };
 }
 
@@ -47,6 +51,15 @@ export default function ProductCard({ product }: Props) {
     discountValue > 0 &&
     (isPercentDiscount(discountType) ||
       isFlatDiscount(discountType));
+
+  const availableSizes = Array.from(
+    new Set(
+      (product.productvariant ?? [])
+        .filter((variant) => variant.stock > 0)
+        .map((variant) => variant.size?.sizeName)
+        .filter(Boolean) as string[]
+    )
+  );
 
   let discountLabel = "";
 
@@ -126,6 +139,24 @@ export default function ProductCard({ product }: Props) {
             {product.name}
           </h3>
         </Link>
+
+        {/* Sizes */}
+        {availableSizes.length > 0 && (
+          <div className="mt-3 flex flex-wrap items-center gap-1.5">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted-2">
+              Sizes
+            </span>
+            {availableSizes.map((size) => (
+              <span
+                key={size}
+                className="inline-flex items-center justify-center border border-border-card bg-bg-card-nested px-2 py-0.5 text-[10px] font-bold text-text-muted-1"
+                style={{ borderRadius: "var(--t-radius-badge)" }}
+              >
+                {size}
+              </span>
+            ))}
+          </div>
+        )}
 
         {/* Price */}
         <div className="mt-5">

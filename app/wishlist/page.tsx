@@ -22,6 +22,10 @@ export default async function WishlistPage() {
           product: {
             include: {
               productimage: true,
+              productvariant: {
+                where: { stock: { gt: 0 } },
+                include: { size: true },
+              },
             },
           },
         },

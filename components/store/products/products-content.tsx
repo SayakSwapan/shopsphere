@@ -76,6 +76,7 @@ export default function ProductsContent({ products, categories, genders }: Props
                   isFeatured: product.isFeatured,
                   isTrending: product.isTrending,
                   productimage: product.productimage.map((img: { url: string }) => ({ url: img.url })),
+                  productvariant: product.productvariant,
                 }}
               />
             ))}

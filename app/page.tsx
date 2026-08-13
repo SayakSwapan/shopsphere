@@ -51,7 +51,13 @@ async function fetchHomeData() {
         status: true,
         productvariant: { some: { stock: { gt: 0 } } },
       },
-      include: { productimage: { take: 1 } },
+      include: {
+        productimage: { take: 1 },
+        productvariant: {
+          where: { stock: { gt: 0 } },
+          include: { size: true },
+        },
+      },
       take: 8,
     }),
     prisma.product.findMany({
@@ -60,7 +66,13 @@ async function fetchHomeData() {
         status: true,
         productvariant: { some: { stock: { gt: 0 } } },
       },
-      include: { productimage: { take: 1 } },
+      include: {
+        productimage: { take: 1 },
+        productvariant: {
+          where: { stock: { gt: 0 } },
+          include: { size: true },
+        },
+      },
       take: 8,
     }),
     prisma.banner.findMany({
@@ -246,6 +258,7 @@ export default async function HomePage(props: { searchParams?: Promise<{ preview
                   isFeatured: product.isFeatured,
                   isTrending: product.isTrending,
                   productimage: product.productimage,
+                  productvariant: product.productvariant,
                 }}
               />
             ))}
@@ -302,6 +315,7 @@ export default async function HomePage(props: { searchParams?: Promise<{ preview
                   isFeatured: product.isFeatured,
                   isTrending: product.isTrending,
                   productimage: product.productimage,
+                  productvariant: product.productvariant,
                 }}
               />
             ))}

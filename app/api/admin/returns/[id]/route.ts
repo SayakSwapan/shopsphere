@@ -115,9 +115,18 @@ export async function PATCH(req: Request, { params }: Props) {
     const bankDetails = (existing.bankDetails as Record<string, string> | null) ?? null;
 
     if (status === "REFUND_INITIATED") {
-      if (!bankDetails || !bankDetails.accountHolder || !bankDetails.accountNumber || !bankDetails.bankName || !bankDetails.branchName || !bankDetails.ifsc) {
+      const hasBank =
+        Boolean(bankDetails) &&
+        Boolean(bankDetails?.accountHolder) &&
+        Boolean(bankDetails?.accountNumber) &&
+        Boolean(bankDetails?.bankName) &&
+        Boolean(bankDetails?.branchName) &&
+        Boolean(bankDetails?.ifsc);
+      const hasUpi = Boolean(bankDetails?.upiId);
+
+      if (!bankDetails || (!hasBank && !hasUpi)) {
         return NextResponse.json(
-          { success: false, message: "Customer bank details are required before the refund can be initiated" },
+          { success: false, message: "Customer bank or UPI details are required before the refund can be initiated" },
           { status: 400 }
         );
       }
@@ -156,11 +165,12 @@ export async function PATCH(req: Request, { params }: Props) {
             userId: existing.userId,
             amount,
             method,
-            accountHolder: bankDetails.accountHolder,
-            bankName: bankDetails.bankName,
-            branchName: bankDetails.branchName,
-            accountNumber: bankDetails.accountNumber,
-            ifsc: bankDetails.ifsc,
+            accountHolder: bankDetails.accountHolder || null,
+            bankName: bankDetails.bankName || null,
+            branchName: bankDetails.branchName || null,
+            accountNumber: bankDetails.accountNumber || null,
+            ifsc: bankDetails.ifsc || null,
+            upiId: bankDetails.upiId || null,
             initiatedBy: adminBy,
             status: "INITIATED",
           },
@@ -190,6 +200,22 @@ export async function PATCH(req: Request, { params }: Props) {
             where: { id: item.productId },
             data: { stock: { increment: item.quantity } },
           });
+
+          // Restore the exact variant (matched by the unique productId + sku
+          // snapshot taken at checkout) so variant stock stays in sync with
+          // product stock. Skipped for non-variant orders (no sku captured).
+          if (item.variantSku) {
+            const variant = await tx.productvariant.findFirst({
+              where: { productId: item.productId, sku: item.variantSku },
+              select: { id: true },
+            });
+            if (variant) {
+              await tx.productvariant.update({
+                where: { id: variant.id },
+                data: { stock: { increment: item.quantity } },
+              });
+            }
+          }
 
           await tx.stockmovement.create({
             data: {

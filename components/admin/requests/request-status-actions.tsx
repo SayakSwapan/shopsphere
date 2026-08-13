@@ -219,21 +219,29 @@ export default function RequestStatusActions({
             (bankDetails ? (
               <div className="rounded-lg border border-slate-700 bg-[#0F172A] p-3">
                 <p className="mb-1 text-xs font-bold uppercase tracking-wider text-emerald-400">
-                  Customer bank details on file
+                  Customer refund details on file
                 </p>
-                <p className="text-sm leading-relaxed text-slate-300">
-                  {bankDetails.accountHolder} · {bankDetails.bankName} ({bankDetails.branchName})
-                </p>
-                <p className="mt-0.5 font-mono text-xs text-slate-400">
-                  {maskAccountNumber(bankDetails.accountNumber)} · {bankDetails.ifsc}
-                </p>
-                {bankDetails.upiId && (
-                  <p className="mt-0.5 font-mono text-xs text-slate-400">UPI: {bankDetails.upiId}</p>
+                {bankDetails.type === "UPI" || (!bankDetails.accountHolder && bankDetails.upiId) ? (
+                  <p className="text-sm leading-relaxed text-slate-300">
+                    UPI: <span className="font-mono">{bankDetails.upiId}</span>
+                  </p>
+                ) : (
+                  <>
+                    <p className="text-sm leading-relaxed text-slate-300">
+                      {bankDetails.accountHolder} · {bankDetails.bankName} ({bankDetails.branchName})
+                    </p>
+                    <p className="mt-0.5 font-mono text-xs text-slate-400">
+                      {maskAccountNumber(bankDetails.accountNumber)} · {bankDetails.ifsc}
+                    </p>
+                    {bankDetails.upiId && (
+                      <p className="mt-0.5 font-mono text-xs text-slate-400">UPI: {bankDetails.upiId}</p>
+                    )}
+                  </>
                 )}
               </div>
             ) : (
               <div className="rounded-lg border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-300">
-                Customer has not submitted bank details yet. Ask them to add bank details from
+                Customer has not submitted bank/UPI details yet. Ask them to add refund details from
                 their request page before initiating the refund.
               </div>
             ))}

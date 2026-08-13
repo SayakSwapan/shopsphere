@@ -21,6 +21,7 @@ import { RETURN_FLOW_GUIDE } from "@/lib/flow-guides";
 
 import PageContainer from "@/components/admin/common/page-container";
 import ReturnStatusActions from "@/components/admin/returns/return-status-actions";
+import MarkRefundPaidButton from "@/components/admin/returns/mark-refund-paid-button";
 import FlowGuide from "@/components/admin/guides/flow-guide";
 
 interface Props {
@@ -57,6 +58,11 @@ export default async function AdminReturnDetailPage({ params }: Props) {
   });
 
   if (!req) return notFound();
+
+  const refundRecord = await prisma.refund.findFirst({
+    where: { requestId: id, requestType: "RETURN" },
+    select: { id: true, amount: true, status: true, completedAt: true },
+  });
 
   const order = req.order;
   const totalItems = order.orderitem.reduce((sum, i) => sum + i.quantity, 0);
@@ -352,6 +358,20 @@ export default async function AdminReturnDetailPage({ params }: Props) {
                   <dd className="text-slate-300">{req.refundMethod.replace(/_/g, " ")}</dd>
                 </div>
               )}
+              {refundRecord && (
+                <div className="flex justify-between gap-4">
+                  <dt className="text-slate-500">Refund status</dt>
+                  <dd
+                    className={`font-bold ${
+                      refundRecord.status === "COMPLETED" ? "text-emerald-400" : "text-amber-400"
+                    }`}
+                  >
+                    {refundRecord.status === "COMPLETED"
+                      ? "Paid"
+                      : "Initiated (awaiting payment)"}
+                  </dd>
+                </div>
+              )}
               {req.resolvedAt && (
                 <div className="flex justify-between gap-4 border-t border-slate-700 pt-2">
                   <dt className="text-slate-400">Resolved</dt>
@@ -365,6 +385,23 @@ export default async function AdminReturnDetailPage({ params }: Props) {
                 </div>
               )}
             </dl>
+
+            {req.status === "REFUND_INITIATED" &&
+              refundRecord &&
+              refundRecord.status !== "COMPLETED" && (
+                <div className="mt-4 border-t border-slate-700 pt-4">
+                  <MarkRefundPaidButton
+                    requestId={req.id}
+                    orderNumber={order.orderNumber}
+                    refundAmount={Number(req.refundAmount ?? refundRecord.amount ?? 0)}
+                  />
+                  <p className="mt-2 text-xs text-slate-500">
+                    Click only after the refund has actually been transferred to the customer.
+                    This finalises the refund, restores product &amp; variant stock, and updates
+                    finance/dashboard figures.
+                  </p>
+                </div>
+              )}
           </div>
 
           {/* Bank details */}

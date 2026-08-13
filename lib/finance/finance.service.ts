@@ -161,15 +161,23 @@ export async function getDashboardWidgets() {
   const yearStart = new Date(now.getFullYear(), 0, 1);
 
   const [todayOrders, monthOrders, yearOrders, allProducts, todayExpenses, pendingTx] = await Promise.all([
-    prisma.order.findMany({ where: { createdAt: { gte: todayStart }, status: { notIn: ["CANCELLED"] } }, select: { totalAmount: true, transactionFee: true, gst: true, paymentStatus: true } }),
-    prisma.order.findMany({ where: { createdAt: { gte: monthStart }, status: { notIn: ["CANCELLED"] } }, select: { totalAmount: true, transactionFee: true, gst: true, paymentStatus: true, orderitem: { select: { quantity: true, costPriceSnapshot: true, product: { select: { costPrice: true } } } } } }),
+    prisma.order.findMany({ where: { createdAt: { gte: todayStart }, status: { notIn: ["CANCELLED"] } }, select: { id: true, totalAmount: true, transactionFee: true, gst: true, paymentStatus: true } }),
+    prisma.order.findMany({ where: { createdAt: { gte: monthStart }, status: { notIn: ["CANCELLED"] } }, select: { id: true, totalAmount: true, transactionFee: true, gst: true, paymentStatus: true, orderitem: { select: { quantity: true, costPriceSnapshot: true, product: { select: { costPrice: true } } } } } }),
     prisma.order.findMany({ where: { createdAt: { gte: yearStart }, status: { notIn: ["CANCELLED"] } }, select: { id: true, totalAmount: true, transactionFee: true, gst: true, paymentStatus: true } }),
     prisma.product.findMany({ select: { costPrice: true, stock: true } }),
     prisma.expense.findMany({ where: { date: { gte: todayStart } }, select: { amount: true } }),
     prisma.paymentTransaction.findMany({ where: { settlementStatus: "PENDING" }, select: { grossAmount: true, netSettlement: true, gatewayFee: true, gatewayGST: true } }),
   ]);
 
+  const [todayRefundMap, monthRefundMap, yearRefundMap] = await Promise.all([
+    getCompletedRefundMap(todayOrders.map((o) => o.id)),
+    getCompletedRefundMap(monthOrders.map((o) => o.id)),
+    getCompletedRefundMap(yearOrders.map((o) => o.id)),
+  ]);
+
   const todayRevenue = todayOrders.reduce((s, o) => s + Number(o.totalAmount), 0);
+  const todayRefunds = todayOrders.reduce((s, o) => s + refundForOrder(o, todayRefundMap), 0);
+  const todayNetRevenue = todayRevenue - todayRefunds;
   const todayTxFees = todayOrders.reduce((s, o) => s + (o.transactionFee ? Number(o.transactionFee) : 0), 0);
   const todayGST = todayOrders.reduce((s, o) => s + Number(o.gst ?? 0), 0);
   const todayExpensesTotal = todayExpenses.reduce((s, e) => s + Number(e.amount), 0);
@@ -177,6 +185,7 @@ export async function getDashboardWidgets() {
   const { totalCOGS: monthCOGS } = await (async () => {
     let cogs = 0;
     for (const o of monthOrders) {
+      if (monthRefundMap.has(o.id)) continue;
       for (const item of o.orderitem) {
         const cp = item.costPriceSnapshot ? Number(item.costPriceSnapshot) : Number(item.product.costPrice);
         cogs += item.quantity * cp;
@@ -186,23 +195,25 @@ export async function getDashboardWidgets() {
   })();
 
   const monthRevenue = monthOrders.reduce((s, o) => s + Number(o.totalAmount), 0);
+  const monthRefunds = monthOrders.reduce((s, o) => s + refundForOrder(o, monthRefundMap), 0);
+  const monthNetRevenue = monthRevenue - monthRefunds;
   const monthExpensesTotal = (await prisma.expense.findMany({ where: { date: { gte: monthStart } }, select: { amount: true } })).reduce((s, e) => s + Number(e.amount), 0);
 
   const yearRevenue = yearOrders.reduce((s, o) => s + Number(o.totalAmount), 0);
+  const yearRefunds = yearOrders.reduce((s, o) => s + refundForOrder(o, yearRefundMap), 0);
+  const yearNetRevenue = yearRevenue - yearRefunds;
 
   const totalInvestment = await calculateInventoryValue(allProducts);
   const pendingSettlements = pendingTx.reduce((s, t) => s + Number(t.netSettlement ?? t.grossAmount), 0);
-  const refundLedger = await getCompletedRefundMap(yearOrders.map((o) => o.id));
-  const refundAmount = yearOrders.reduce((s, o) => s + refundForOrder(o, refundLedger), 0);
   const pendingFees = pendingTx.reduce((s, t) => s + Number(t.gatewayFee ?? 0) + Number(t.gatewayGST ?? 0), 0);
 
   return {
-    today: { revenue: Math.round(todayRevenue), profit: Math.round(todayRevenue - todayExpensesTotal), expenses: Math.round(todayExpensesTotal), gatewayCharges: Math.round(todayTxFees), gst: Math.round(todayGST) },
-    month: { revenue: Math.round(monthRevenue), profit: Math.round(monthRevenue - monthCOGS - monthExpensesTotal), expenses: Math.round(monthExpensesTotal) },
-    year: { revenue: Math.round(yearRevenue) },
+    today: { revenue: Math.round(todayNetRevenue), profit: Math.round(todayNetRevenue - todayExpensesTotal), expenses: Math.round(todayExpensesTotal), gatewayCharges: Math.round(todayTxFees), gst: Math.round(todayGST) },
+    month: { revenue: Math.round(monthNetRevenue), profit: Math.round(monthNetRevenue - monthCOGS - monthExpensesTotal), expenses: Math.round(monthExpensesTotal) },
+    year: { revenue: Math.round(yearNetRevenue) },
     inventoryInvestment: Math.round(totalInvestment),
     pendingSettlements: Math.round(pendingSettlements),
     pendingFees: Math.round(pendingFees),
-    refundAmount: Math.round(refundAmount),
+    refundAmount: Math.round(yearRefunds),
   };
 }

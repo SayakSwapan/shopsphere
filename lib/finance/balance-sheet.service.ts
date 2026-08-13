@@ -45,7 +45,7 @@ function parseFY(fy: string): { startYear: number; endYear: number } {
   if (parts.length === 2) {
     const s = parseInt(parts[0], 10);
     const e = parseInt(parts[1], 10);
-    if (!isNaN(s) && !isNaN(e)) return { startYear: s, endYear: s < 100 ? 2000 + s : s };
+    if (!isNaN(s) && !isNaN(e)) return { startYear: s, endYear: e < 100 ? 2000 + e : e };
   }
   const now = new Date();
   return {

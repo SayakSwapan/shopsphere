@@ -29,6 +29,7 @@ export default function BalanceSheetPage() {
   const [fy, setFy] = useState(getCurrentFY);
   const [data, setData] = useState<BalanceSheetData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [downloading, setDownloading] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const mountedRef = useRef(true);
@@ -61,6 +62,12 @@ export default function BalanceSheetPage() {
 
     return () => { ctrl.abort(); };
   }, [fy]);
+
+  const handleDownloadPDF = () => {
+    if (!data) return;
+    setDownloading(true);
+    void downloadPDF(data).finally(() => setDownloading(false));
+  };
 
   if (loading) {
     return (
@@ -106,8 +113,13 @@ export default function BalanceSheetPage() {
             <button onClick={() => downloadCSV(data)} className="flex items-center gap-2 rounded-xl border border-white/10 bg-[#111827] px-4 py-2 text-sm font-bold text-slate-300 hover:bg-white/5 hover:text-white transition">
               <Download size={16} /> CSV
             </button>
-            <button onClick={() => downloadPDF(data)} className="flex items-center gap-2 rounded-xl bg-amber-500 px-4 py-2 text-sm font-bold text-black hover:bg-amber-400 transition">
-              <FileText size={16} /> PDF
+            <button
+              onClick={handleDownloadPDF}
+              disabled={downloading}
+              className="flex items-center gap-2 rounded-xl bg-amber-500 px-4 py-2 text-sm font-bold text-black hover:bg-amber-400 transition disabled:cursor-wait disabled:opacity-70"
+            >
+              {downloading ? <Loader2 size={16} className="animate-spin" /> : <FileText size={16} />}
+              {downloading ? "Preparing..." : "PDF"}
             </button>
             <Link href="/admin/refunds" className="flex items-center gap-2 rounded-xl border border-white/10 bg-[#111827] px-4 py-2 text-sm font-bold text-slate-300 hover:bg-white/5 hover:text-white transition">
               <Banknote size={16} /> Refunds Ledger

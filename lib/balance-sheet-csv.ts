@@ -1,5 +1,6 @@
 export interface BalanceSheetData {
   fy: string;
+  storeName: string;
   summary: {
     grossRevenue: number;
     refunds: number;
@@ -37,7 +38,7 @@ function csvEscape(val: string | number): string {
 export function generateBalanceSheetCSV(data: BalanceSheetData): Blob {
   const rows: string[] = [];
 
-  rows.push(["Balance Sheet — FY " + data.fy].join(","));
+  rows.push([`Balance Sheet — ${data.storeName} · FY ${data.fy}`].join(","));
   rows.push(["Generated", new Date().toLocaleDateString("en-IN")].map(csvEscape).join(","));
   rows.push("");
 

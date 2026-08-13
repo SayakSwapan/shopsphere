@@ -1,5 +1,6 @@
 import { getAdminSession } from "@/lib/admin-auth";
 import { generateBalanceSheet } from "@/lib/finance/balance-sheet.service";
+import { fetchSiteName } from "@/lib/site-settings";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
@@ -12,11 +13,12 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const fyParam = searchParams.get("fy") || "";
 
-    const data = await generateBalanceSheet(fyParam);
+    const [data, storeName] = await Promise.all([generateBalanceSheet(fyParam), fetchSiteName()]);
 
     return NextResponse.json({
       success: true,
       fy: data.fy,
+      storeName,
       summary: data.summary,
       monthly: data.monthly,
       expenseBreakdown: data.expenseBreakdown,

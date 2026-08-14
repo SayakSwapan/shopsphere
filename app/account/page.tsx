@@ -21,7 +21,7 @@ export default async function AccountPage() {
   const session = await auth();
 
   if (!session?.user?.email) {
-    redirect("/login");
+    redirect("/login?redirectTo=/account");
   }
 
   const user = await prisma.user.findUnique({
@@ -37,7 +37,7 @@ export default async function AccountPage() {
   });
 
   if (!user) {
-    redirect("/login");
+    redirect("/login?redirectTo=/account");
   }
 
   const [totalOrders, pendingOrders, deliveredOrders, wishlistCount] =

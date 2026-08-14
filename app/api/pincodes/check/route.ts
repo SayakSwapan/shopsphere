@@ -30,8 +30,37 @@ export async function GET(request: NextRequest) {
         estimatedDays: 0,
         allowCod: false,
         allowOnline: false,
+        restrictedProducts: [],
         message: "Pincode not found. Delivery not available.",
       });
+    }
+
+    // Optional: per-product deliverability. When productIds is supplied, we
+    // report which of those products are explicitly restricted from this
+    // pincode (e.g. the checkout cart or the product-page checker).
+    const productIdsParam = searchParams.get("productIds");
+    const productIds = productIdsParam
+      ? productIdsParam
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean)
+      : [];
+
+    let restrictedProducts: { productId: string; productName: string }[] = [];
+
+    if (productIds.length > 0 && record.isDeliverable) {
+      const products = await prisma.product.findMany({
+        where: { id: { in: productIds } },
+        select: {
+          id: true,
+          name: true,
+          restrictedPincodes: true,
+        },
+      });
+
+      restrictedProducts = products
+        .filter((p) => p.restrictedPincodes.includes(pincode))
+        .map((p) => ({ productId: p.id, productName: p.name }));
     }
 
     return NextResponse.json({
@@ -40,8 +69,11 @@ export async function GET(request: NextRequest) {
       estimatedDays: record.estimatedDays,
       allowCod: record.allowCod,
       allowOnline: record.allowOnline,
+      restrictedProducts,
       message: record.isDeliverable
-        ? `Delivery in ${record.estimatedDays} business day${record.estimatedDays > 1 ? "s" : ""}`
+        ? restrictedProducts.length > 0
+          ? "Some products are not deliverable to this pincode."
+          : `Delivery in ${record.estimatedDays} business day${record.estimatedDays > 1 ? "s" : ""}`
         : "Delivery not available for this pincode.",
     });
   } catch (error) {

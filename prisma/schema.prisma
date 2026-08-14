@@ -244,6 +244,9 @@ model product {
   customPrintImage   Boolean @default(false)
   customPrintPrice Float @default(0) // extra charge per customised item, pre-GST
 
+  // Pincodes where this product cannot be delivered. Empty = deliverable everywhere.
+  restrictedPincodes String[] @default([])
+
   cartitem       cartitem[]
   orderitem      orderitem[]
   category       category         @relation(fields: [categoryId], references: [id], map: "Product_categoryId_fkey")

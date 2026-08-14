@@ -11,7 +11,7 @@ export default async function WishlistPage() {
   const session = await auth();
 
   if (!session?.user?.id) {
-    redirect("/login");
+    redirect("/login?redirectTo=/wishlist");
   }
 
   const wishlist = await prisma.wishlist.findUnique({

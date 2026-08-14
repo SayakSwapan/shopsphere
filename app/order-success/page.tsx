@@ -19,12 +19,12 @@ export default async function OrderSuccessPage({
   searchParams,
 }: Props) {
   const session = await auth();
+  const params = await searchParams;
 
   if (!session?.user?.id) {
-    redirect("/login");
+    const redirectTo = `/order-success${params.id ? `?id=${params.id}` : ""}`;
+    redirect(`/login?redirectTo=${encodeURIComponent(redirectTo)}`);
   }
-
-  const params = await searchParams;
 
   if (!params.id) {
     redirect("/");

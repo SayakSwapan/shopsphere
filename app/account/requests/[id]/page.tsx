@@ -35,15 +35,15 @@ interface Props {
 
 export default async function RequestDetailPage({ params }: Props) {
   const session = await auth();
-  if (!session?.user?.email) redirect("/login");
+  const { id } = await params;
+
+  if (!session?.user?.email) redirect(`/login?redirectTo=/account/requests/${id}`);
 
   const user = await prisma.user.findUnique({
     where: { email: session.user.email },
     select: { id: true },
   });
-  if (!user) redirect("/login");
-
-  const { id } = await params;
+  if (!user) redirect(`/login?redirectTo=/account/requests/${id}`);
 
   const [returnReq, replacementReq] = await Promise.all([
     prisma.return_request.findFirst({

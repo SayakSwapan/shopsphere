@@ -16,7 +16,7 @@ export default async function CartPage() {
   const session = await auth();
 
   if (!session?.user?.email) {
-    redirect("/login");
+    redirect("/login?redirectTo=/cart");
   }
 
   const user = await prisma.user.findUnique({
@@ -24,7 +24,7 @@ export default async function CartPage() {
   });
 
   if (!user) {
-    redirect("/login");
+    redirect("/login?redirectTo=/cart");
   }
 
   const cart = await prisma.cart.findUnique({

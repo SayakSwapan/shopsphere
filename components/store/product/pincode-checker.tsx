@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Truck, X, Calendar, CreditCard, Banknote } from "lucide-react";
+import { Truck, X, Calendar, CreditCard, Banknote, TriangleAlert } from "lucide-react";
 
-export default function PincodeChecker() {
+export default function PincodeChecker({ productId }: { productId?: string }) {
   const [pincode, setPincode] = useState("");
   const [result, setResult] = useState<{
     deliverable: boolean;
@@ -11,6 +11,7 @@ export default function PincodeChecker() {
     allowCod: boolean;
     allowOnline: boolean;
     message: string;
+    restrictedProducts?: { productId: string; productName: string }[];
   } | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -21,7 +22,8 @@ export default function PincodeChecker() {
     setResult(null);
 
     try {
-      const res = await fetch(`/api/pincodes/check?pincode=${pincode}`);
+      const productIds = productId ? `&productIds=${productId}` : "";
+      const res = await fetch(`/api/pincodes/check?pincode=${pincode}${productIds}`);
       const data = await res.json();
       setResult({
         deliverable: data.deliverable,
@@ -29,6 +31,7 @@ export default function PincodeChecker() {
         allowCod: data.allowCod ?? false,
         allowOnline: data.allowOnline ?? false,
         message: data.message,
+        restrictedProducts: data.restrictedProducts ?? [],
       });
     } catch {
       setResult({
@@ -145,6 +148,31 @@ export default function PincodeChecker() {
                 </p>
               </div>
             </div>
+
+            {result.deliverable && result.restrictedProducts && result.restrictedProducts.length > 0 && (
+              <div
+                className="flex items-center gap-3 px-4 py-2.5"
+                style={{
+                  borderRadius: "var(--t-radius-input)",
+                  background: "color-mix(in srgb, var(--t-danger) 8%, transparent)",
+                  border: "1px solid color-mix(in srgb, var(--t-danger) 20%, transparent)",
+                }}
+              >
+                <TriangleAlert size={16} style={{ color: "var(--t-danger)", flexShrink: 0 }} />
+                <div>
+                  <p
+                    className="text-xs font-black uppercase tracking-widest"
+                    style={{ color: "var(--t-danger)" }}
+                  >
+                    Not Deliverable To This Pincode
+                  </p>
+                  <p className="mt-0.5 text-[11px]" style={{ color: "var(--t-text-muted-1)" }}>
+                    {result.restrictedProducts.map((p) => p.productName).join(", ")} cannot be
+                    delivered to pincode {pincode}.
+                  </p>
+                </div>
+              </div>
+            )}
 
             {result.deliverable && result.estimatedDays > 0 && (
               <div

@@ -11,10 +11,10 @@ export const dynamic = "force-dynamic";
 
 export default async function MyRequestsPage() {
   const session = await auth();
-  if (!session?.user?.email) redirect("/login");
+  if (!session?.user?.email) redirect("/login?redirectTo=/account/requests");
 
   const user = await prisma.user.findUnique({ where: { email: session.user.email }, select: { id: true } });
-  if (!user) redirect("/login");
+  if (!user) redirect("/login?redirectTo=/account/requests");
 
   const [returns, replacements] = await Promise.all([
     prisma.return_request.findMany({

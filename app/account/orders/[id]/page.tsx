@@ -60,12 +60,11 @@ function getStatusLabel(status: string) {
 
 export default async function OrderDetailPage({ params }: Props) {
   const session = await auth();
+  const { id } = await params;
 
   if (!session?.user?.email) {
-    redirect("/login");
+    redirect(`/login?redirectTo=/account/orders/${id}`);
   }
-
-  const { id } = await params;
 
   const user = await prisma.user.findUnique({
     where: { email: session.user.email },
@@ -73,7 +72,7 @@ export default async function OrderDetailPage({ params }: Props) {
   });
 
   if (!user) {
-    redirect("/login");
+    redirect(`/login?redirectTo=/account/orders/${id}`);
   }
 
   const rawOrder = await prisma.order.findFirst({

@@ -19,6 +19,7 @@ import ReturnPolicySection from "./return-policy-section";
 import CustomPrintSection, {
   PrintTypeOption,
 } from "./custom-print-section";
+import DeliverySection from "./delivery-section";
 import RichTextEditor from "@/components/admin/ui/rich-text-editor";
 import SizeChartSection from "./size-chart-section";
 import ProductGuide from "./product-guide";
@@ -80,6 +81,7 @@ export interface ProductData {
   customPrintName?: boolean;
   customPrintNumber?: boolean;
   customPrintImage?: boolean;
+  restrictedPincodes?: string[];
   printTypes?: {
     id: string;
     name: string;
@@ -177,6 +179,7 @@ export default function ProductForm({
       customPrintNumber: false,
       customPrintImage: false,
       customPrintTypeIds: [],
+      restrictedPincodes: [],
 
       metaTitle: "",
 
@@ -304,6 +307,7 @@ export default function ProductForm({
       customPrintNumber: (product as { customPrintNumber?: boolean }).customPrintNumber ?? false,
       customPrintImage: (product as { customPrintImage?: boolean }).customPrintImage ?? false,
       customPrintTypeIds: (product as { printTypes?: { id: string }[] }).printTypes?.map((pt) => pt.id) ?? [],
+      restrictedPincodes: (product as { restrictedPincodes?: string[] }).restrictedPincodes ?? [],
 
       stock: product.stock,
       lowStockAlert: product.lowStockAlert,
@@ -496,6 +500,8 @@ export default function ProductForm({
             setValue={setValue}
             printTypes={printTypes}
           />
+
+          <DeliverySection watch={watch} setValue={setValue} />
 
           <ReturnPolicySection
             register={register}

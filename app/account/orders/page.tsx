@@ -12,7 +12,7 @@ export default async function OrdersPage() {
   const session = await auth();
 
   if (!session?.user?.email) {
-    redirect("/login");
+    redirect("/login?redirectTo=/account/orders");
   }
 
   const user = await prisma.user.findUnique({
@@ -21,7 +21,7 @@ export default async function OrdersPage() {
   });
 
   if (!user) {
-    redirect("/login");
+    redirect("/login?redirectTo=/account/orders");
   }
 
   const rawOrders = await prisma.order.findMany({

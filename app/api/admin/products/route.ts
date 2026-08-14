@@ -144,6 +144,11 @@ export async function POST(req: Request) {
           customPrintNumber: body.customPrintNumber ?? false,
           customPrintImage: body.customPrintImage ?? false,
 
+          restrictedPincodes: (body.restrictedPincodes ?? []).filter(
+            (pincode: unknown): pincode is string =>
+              typeof pincode === "string" && /^\d{6}$/.test(pincode)
+          ),
+
           status: body.status,
           isFeatured: body.isFeatured,
           isTrending: body.isTrending,

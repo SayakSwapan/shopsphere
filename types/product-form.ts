@@ -74,4 +74,7 @@ export interface ProductFormValues {
   // Print styles the customer can pick from for this product.
   // Empty / undefined means "any active print type".
   customPrintTypeIds: string[];
+
+  // Pincodes where this product is NOT deliverable. Empty = deliverable everywhere.
+  restrictedPincodes: string[];
 }

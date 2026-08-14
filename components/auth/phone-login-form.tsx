@@ -5,9 +5,12 @@ import { signIn } from "next-auth/react";
 import { Loader2, ArrowLeft, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { getLoginRedirect } from "@/lib/login-redirect";
+import { useOptionalAuthModal } from "./auth-context";
 
 export default function PhoneLoginForm({ onBack }: { onBack: () => void }) {
   const router = useRouter();
+  const authModal = useOptionalAuthModal();
 
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
@@ -86,8 +89,18 @@ export default function PhoneLoginForm({ onBack }: { onBack: () => void }) {
       }
 
       toast.success("Welcome back!");
-      router.push(data.redirectTo || "/");
-      router.refresh();
+
+      const redirectTo = getLoginRedirect("/");
+      const currentUrl = window.location.pathname + window.location.search;
+
+      authModal?.closeAuth();
+
+      if (redirectTo === currentUrl) {
+        router.refresh();
+      } else {
+        router.push(redirectTo);
+        router.refresh();
+      }
     } catch {
       setLoading(false);
       toast.error("Something went wrong");

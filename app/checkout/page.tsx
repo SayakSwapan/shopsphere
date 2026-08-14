@@ -6,6 +6,7 @@ import { getEffectivePrice, getGstBreakdown } from "@/lib/pricing";
 import { calculateShipping, getPincodeInfo } from "@/lib/shipping";
 import { customizationLetterCharge, customizationUnitPrice } from "@/lib/print-pricing";
 import { getProductPrintAvailabilityMap } from "@/lib/product-print-availability";
+import { getRestrictedCartItems } from "@/lib/product-deliverability";
 
 import NavbarWrapper from "@/components/store/layout/navbar-wrapper";
 import Footer from "@/components/store/layout/footer";
@@ -16,7 +17,7 @@ export default async function CheckoutPage() {
   const session = await auth();
 
   if (!session?.user?.email) {
-    redirect("/login");
+    redirect("/login?redirectTo=/checkout");
   }
 
   const user = await prisma.user.findUnique({
@@ -25,7 +26,7 @@ export default async function CheckoutPage() {
   });
 
   if (!user) {
-    redirect("/login");
+    redirect("/login?redirectTo=/checkout");
   }
 
   const cart = await prisma.cart.findUnique({
@@ -79,6 +80,10 @@ export default async function CheckoutPage() {
 
   const defaultAddress = user.addresses.find((a) => a.isDefault) ?? user.addresses[0];
   const pincodeInfo = defaultAddress ? await getPincodeInfo(defaultAddress.pincode) : null;
+
+  const restrictedItems = defaultAddress
+    ? await getRestrictedCartItems(cart.cartitem, defaultAddress.pincode)
+    : [];
 
   const total = subtotal + shippingResult.shipping + gst;
 
@@ -134,6 +139,7 @@ export default async function CheckoutPage() {
         gst={gst}
         total={total}
         pincodeInfo={pincodeInfo}
+        restrictedItems={restrictedItems}
         totalWeightGrams={shippingResult.weightGrams}
       />
 

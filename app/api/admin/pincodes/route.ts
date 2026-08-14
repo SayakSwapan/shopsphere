@@ -2,6 +2,38 @@ import { getAdminSession } from "@/lib/admin-auth";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
+export async function GET() {
+  try {
+    const session = await getAdminSession();
+
+    if (!session || session.user.role !== "ADMIN") {
+      return NextResponse.json(
+        { success: false, message: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
+    const pincodes = await prisma.pincode.findMany({
+      where: { isDeliverable: true },
+      select: {
+        id: true,
+        pincode: true,
+        isDeliverable: true,
+        estimatedDays: true,
+      },
+      orderBy: { pincode: "asc" },
+    });
+
+    return NextResponse.json({ success: true, pincodes });
+  } catch (error) {
+    console.error(error);
+    return NextResponse.json({
+      success: false,
+      message: "Something went wrong.",
+    });
+  }
+}
+
 export async function POST(req: Request) {
   try {
     const session = await getAdminSession();

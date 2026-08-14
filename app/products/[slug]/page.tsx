@@ -362,7 +362,7 @@ export default async function ProductPage({ params }: Props) {
 
               {/* Pincode checker */}
               <div className="pd-card overflow-hidden">
-                <PincodeChecker />
+                <PincodeChecker productId={product.id} />
               </div>
             </div>
           </div>

@@ -11,6 +11,7 @@ import {
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { useOptionalAuthModal } from "./auth-context";
+import { getLoginRedirect } from "@/lib/login-redirect";
 
 export default function RegisterForm() {
   const router = useRouter();
@@ -78,7 +79,8 @@ export default function RegisterForm() {
   }
 
   async function handleGoogleLogin() {
-    await signIn("google", { callbackUrl: "/" });
+    const redirectTo = getLoginRedirect("/");
+    await signIn("google", { callbackUrl: redirectTo });
   }
 
   return (

@@ -7,9 +7,12 @@ import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import ForgotPasswordForm from "./forgot-password-form";
 import PhoneLoginForm from "./phone-login-form";
+import { getLoginRedirect } from "@/lib/login-redirect";
+import { useOptionalAuthModal } from "./auth-context";
 
 export default function LoginForm() {
   const router = useRouter();
+  const authModal = useOptionalAuthModal();
 
   const [loginMethod, setLoginMethod] = useState<"email" | "phone">("email");
   const [email, setEmail] = useState("");
@@ -38,8 +41,18 @@ export default function LoginForm() {
       }
 
       toast.success("Welcome back!");
-      router.push("/");
-      router.refresh();
+
+      const redirectTo = getLoginRedirect("/");
+      const currentUrl = window.location.pathname + window.location.search;
+
+      authModal?.closeAuth();
+
+      if (redirectTo === currentUrl) {
+        router.refresh();
+      } else {
+        router.push(redirectTo);
+        router.refresh();
+      }
     } catch {
       setLoading(false);
       toast.error("Something went wrong");
@@ -49,7 +62,8 @@ export default function LoginForm() {
   async function handleGoogleLogin() {
     try {
       setGoogleLoading(true);
-      await signIn("google", { callbackUrl: "/" });
+      const redirectTo = getLoginRedirect("/");
+      await signIn("google", { callbackUrl: redirectTo });
     } catch {
       toast.error("Google sign-in is not configured yet.");
     } finally {

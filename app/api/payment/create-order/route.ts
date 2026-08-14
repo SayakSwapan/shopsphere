@@ -8,6 +8,7 @@ import { getGstBreakdown } from "@/lib/pricing";
 import { calculateShipping } from "@/lib/shipping";
 import { calcTransactionFee } from "@/lib/finance/transaction-charge.service";
 import { customizationLetterCharge, customizationUnitPrice } from "@/lib/print-pricing";
+import { getRestrictedCartItems } from "@/lib/product-deliverability";
 
 export async function POST(req: Request) {
   try {
@@ -41,6 +42,19 @@ export async function POST(req: Request) {
 
     const address = await prisma.address.findUnique({ where: { id: addressId } });
     if (!address) return NextResponse.json({ success: false, message: "Address not found." }, { status: 404 });
+
+    // Never trust the client — block any product that is explicitly restricted
+    // from being delivered to this pincode.
+    const restrictedItems = await getRestrictedCartItems(user.cart.cartitem, address.pincode);
+    if (restrictedItems.length > 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: `These products are not deliverable to pincode ${address.pincode}: ${restrictedItems.map((r) => r.productName).join(", ")}.`,
+        },
+        { status: 400 }
+      );
+    }
 
     let subtotal = 0;
     let gst = 0;

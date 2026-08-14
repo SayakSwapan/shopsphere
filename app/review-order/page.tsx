@@ -14,7 +14,7 @@ export default async function ReviewOrderPage() {
     const session = await auth();
 
     if (!session?.user?.email) {
-        redirect("/login");
+        redirect("/login?redirectTo=/review-order");
     }
 
     const user = await prisma.user.findUnique({
@@ -27,7 +27,7 @@ export default async function ReviewOrderPage() {
     });
 
     if (!user) {
-        redirect("/login");
+        redirect("/login?redirectTo=/review-order");
     }
 
     const defaultAddress =

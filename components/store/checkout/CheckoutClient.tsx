@@ -3,10 +3,11 @@
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { MapPin, CreditCard, Truck, Tag, ShieldCheck, BadgeCheck, Package, Minus, Plus, Trash2, Pencil, ChevronDown, Loader2 } from "lucide-react";
+import { MapPin, CreditCard, Truck, Tag, ShieldCheck, BadgeCheck, Package, Minus, Plus, Trash2, Pencil, ChevronDown, Loader2, TriangleAlert } from "lucide-react";
 import { useSiteName } from "@/components/store/site-settings-provider";
 import { customizationUnitPrice, customizationUnitPriceWithGst } from "@/lib/print-pricing";
 import type { CustomPrintData } from "@/types/custom-print";
+import Modal from "@/components/common/modal";
 
 import AddressSection from "./addressSection";
 import CouponSelector from "./CouponSelector";
@@ -18,6 +19,11 @@ interface PincodeInfo {
   estimatedDays: number;
   allowCod: boolean;
   allowOnline: boolean;
+}
+
+interface RestrictedItem {
+  productId: string;
+  productName: string;
 }
 
 interface Address {
@@ -81,6 +87,7 @@ interface Props {
   gst: number;
   total: number;
   pincodeInfo: PincodeInfo | null;
+  restrictedItems?: RestrictedItem[];
   totalWeightGrams: number;
 }
 
@@ -91,12 +98,17 @@ export default function CheckoutClient({
   shipping: initialShipping,
   gst,
   pincodeInfo: initialPincodeInfo,
+  restrictedItems: initialRestrictedItems = [],
 }: Props) {
   const router = useRouter();
   const siteName = useSiteName();
 
   const [selectedCoupon, setSelectedCoupon] = useState<Coupon | null>(null);
   const [pincodeInfo, setPincodeInfo] = useState<PincodeInfo | null>(initialPincodeInfo);
+  const [restrictedItems, setRestrictedItems] = useState<RestrictedItem[]>(initialRestrictedItems);
+  // Pop the warning immediately when the server already found restricted
+  // products for the default address (customer skipped the pincode check).
+  const [showRestrictedPopup, setShowRestrictedPopup] = useState(initialRestrictedItems.length > 0);
   const [method, setMethod] = useState<"COD" | "ONLINE">("ONLINE");
   const [loading, setLoading] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
@@ -200,12 +212,20 @@ export default function CheckoutClient({
   const codAvailable = (pincodeInfo?.allowCod ?? true) && !hasCustomisation;
   const onlineAvailable = pincodeInfo?.allowOnline ?? true;
 
+  const cartProductIds = useMemo(
+    () => items.map((i) => i.product.id).join(","),
+    [items]
+  );
+
+  const hasRestrictedItems = restrictedItems.length > 0;
+  const deliveryBlocked = hasRestrictedItems || !pincodeInfo?.deliverable;
+
   async function handleAddressChange(id: string) {
     setSelectedAddressId(id);
     const addr = addresses.find((a) => a.id === id);
     if (addr) {
       try {
-        const res = await fetch(`/api/pincodes/check?pincode=${addr.pincode}`);
+        const res = await fetch(`/api/pincodes/check?pincode=${addr.pincode}&productIds=${cartProductIds}`);
         const data = await res.json();
         if (data.success) {
           setPincodeInfo({
@@ -214,6 +234,9 @@ export default function CheckoutClient({
             allowCod: data.allowCod,
             allowOnline: data.allowOnline,
           });
+          const restricted = data.restrictedProducts ?? [];
+          setRestrictedItems(restricted);
+          setShowRestrictedPopup(restricted.length > 0);
           if (!data.allowCod && method === "COD") setMethod("ONLINE");
           if (!data.allowOnline && method === "ONLINE") setMethod("COD");
         }
@@ -384,6 +407,17 @@ export default function CheckoutClient({
   async function placeOrder() {
     if (!selectedAddressId) {
       toast.error("Please select an address.");
+      return;
+    }
+
+    if (hasRestrictedItems) {
+      toast.error("Some products in your cart are not deliverable to the selected pincode.");
+      setShowRestrictedPopup(true);
+      return;
+    }
+
+    if (!pincodeInfo?.deliverable) {
+      toast.error("Delivery is not available to the selected pincode.");
       return;
     }
 
@@ -773,6 +807,22 @@ export default function CheckoutClient({
                 </p>
               )}
 
+              {selectedAddress && hasRestrictedItems && (
+                <div
+                  className="px-4 py-3 text-sm text-danger"
+                  style={{ borderRadius: "var(--t-radius-input)", background: "color-mix(in srgb, var(--t-danger) 10%, transparent)" }}
+                >
+                  <p className="font-bold">
+                    Delivery not available for pincode {selectedAddress.pincode}
+                  </p>
+                  <p className="mt-1">
+                    These products are not deliverable to your pincode:{" "}
+                    <strong>{restrictedItems.map((r) => r.productName).join(", ")}</strong>.
+                    Please select a different delivery address or remove these items.
+                  </p>
+                </div>
+              )}
+
               <div
                 className="mt-4 px-5 py-4 bg-bg-card-nested"
                 style={{ borderRadius: "var(--t-radius-card)" }}
@@ -785,7 +835,7 @@ export default function CheckoutClient({
 
               <button
                 onClick={placeOrder}
-                disabled={loading || !pincodeInfo?.deliverable}
+                disabled={loading || deliveryBlocked}
                 className="w-full py-4 text-lg font-black uppercase tracking-wider transition-colors bg-primary hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                 style={{ borderRadius: "var(--t-radius-button)", color: "var(--t-bg-page)", fontFamily: "var(--t-font-heading)" }}
               >
@@ -963,6 +1013,82 @@ export default function CheckoutClient({
           </div>
         </div>
       </div>
+
+      {/* Popup when a product in the cart is not deliverable to the selected pincode */}
+      <Modal
+        open={showRestrictedPopup}
+        onClose={() => setShowRestrictedPopup(false)}
+        maxWidth="max-w-lg"
+      >
+        <div className="p-6 sm:p-8">
+          <div
+            className="mb-4 flex items-center gap-3"
+          >
+            <div
+              className="flex h-11 w-11 shrink-0 items-center justify-center"
+              style={{
+                borderRadius: "var(--t-radius-card)",
+                background: "color-mix(in srgb, var(--t-danger) 15%, transparent)",
+              }}
+            >
+              <TriangleAlert size={22} className="text-danger" />
+            </div>
+            <div>
+              <h3 className="text-lg font-black text-text-heading">
+                Delivery Not Available
+              </h3>
+              <p className="text-xs text-text-muted-1">
+                Pincode {selectedAddress?.pincode ?? "—"}
+              </p>
+            </div>
+          </div>
+
+          <p className="text-sm text-text-body">
+            The following {restrictedItems.length === 1 ? "product is" : "products are"}{" "}
+            not deliverable to your pincode:
+          </p>
+
+          <ul className="mt-3 space-y-2">
+            {restrictedItems.map((item) => (
+              <li
+                key={item.productId}
+                className="flex items-start gap-2 rounded-xl px-3 py-2.5"
+                style={{
+                  borderRadius: "var(--t-radius-input)",
+                  background: "color-mix(in srgb, var(--t-danger) 8%, transparent)",
+                  border: "1px solid color-mix(in srgb, var(--t-danger) 20%, transparent)",
+                }}
+              >
+                <span
+                  className="mt-1 h-2 w-2 shrink-0 rounded-full"
+                  style={{ background: "var(--t-danger)" }}
+                />
+                <span className="text-sm font-semibold text-text-heading">
+                  {item.productName}
+                </span>
+              </li>
+            ))}
+          </ul>
+
+          <p className="mt-4 text-xs text-text-muted-1">
+            Please choose a different delivery address, or remove these items from
+            your cart to continue.
+          </p>
+
+          <button
+            onClick={() => setShowRestrictedPopup(false)}
+            className="mt-6 w-full py-3.5 text-sm font-black uppercase tracking-wider transition"
+            style={{
+              background: "var(--t-primary)",
+              color: "var(--t-bg-page)",
+              borderRadius: "var(--t-radius-button)",
+              fontFamily: "var(--t-font-heading)",
+            }}
+          >
+            Got It
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 }

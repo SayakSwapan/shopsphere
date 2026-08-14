@@ -110,6 +110,11 @@ export async function PUT(
           customPrintNumber: body.customPrintNumber ?? false,
           customPrintImage: body.customPrintImage ?? false,
 
+          restrictedPincodes: (body.restrictedPincodes ?? []).filter(
+            (pincode: unknown): pincode is string =>
+              typeof pincode === "string" && /^\d{6}$/.test(pincode)
+          ),
+
           categoryId: body.categoryId,
 
           sizeChartId: body.sizeChartId || null,

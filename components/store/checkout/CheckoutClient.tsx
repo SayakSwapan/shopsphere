@@ -3,7 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { MapPin, CreditCard, Truck, Tag, ShieldCheck, BadgeCheck, Package, Minus, Plus, Trash2, Pencil, ChevronDown, Loader2, TriangleAlert } from "lucide-react";
+import { MapPin, CreditCard, Truck, Tag, ShieldCheck, BadgeCheck, Package, Minus, Plus, Trash2, Pencil, ChevronDown, Loader2, TriangleAlert, PartyPopper } from "lucide-react";
 import { useSiteName } from "@/components/store/site-settings-provider";
 import { customizationUnitPrice, customizationUnitPriceWithGst } from "@/lib/print-pricing";
 import type { CustomPrintData } from "@/types/custom-print";
@@ -89,6 +89,8 @@ interface Props {
   pincodeInfo: PincodeInfo | null;
   restrictedItems?: RestrictedItem[];
   totalWeightGrams: number;
+  freeShippingThreshold: number | null;
+  amountNeeded: number;
 }
 
 export default function CheckoutClient({
@@ -99,6 +101,9 @@ export default function CheckoutClient({
   gst,
   pincodeInfo: initialPincodeInfo,
   restrictedItems: initialRestrictedItems = [],
+  totalWeightGrams,
+  freeShippingThreshold,
+  amountNeeded,
 }: Props) {
   const router = useRouter();
   const siteName = useSiteName();
@@ -959,6 +964,49 @@ export default function CheckoutClient({
                   {effectiveShipping === 0 ? "FREE" : `₹${effectiveShipping}`}
                 </span>
               </div>
+
+              {effectiveShipping === 0 && (
+                <div
+                  className="flex items-center gap-2.5 px-4 py-3 -mx-1"
+                  style={{
+                    borderRadius: "var(--t-radius-card)",
+                    background: "color-mix(in srgb, var(--t-success) 10%, transparent)",
+                    border: "1px solid color-mix(in srgb, var(--t-success) 20%, transparent)",
+                  }}
+                >
+                  <PartyPopper size={16} style={{ color: "var(--t-success)", flexShrink: 0 }} />
+                  <p className="text-xs font-semibold" style={{ color: "var(--t-success)" }}>
+                    Yay! You&apos;ve got free shipping on this order.
+                  </p>
+                </div>
+              )}
+
+              {!selectedCoupon?.freeShipping && effectiveShipping > 0 && freeShippingThreshold !== null && amountNeeded > 0 && (
+                <div
+                  className="-mx-1 px-4 py-3"
+                  style={{
+                    borderRadius: "var(--t-radius-card)",
+                    background: "color-mix(in srgb, var(--t-primary) 8%, transparent)",
+                    border: "1px solid color-mix(in srgb, var(--t-primary) 18%, transparent)",
+                  }}
+                >
+                  <div className="flex items-center gap-2">
+                    <Truck size={15} className="text-primary" style={{ flexShrink: 0 }} />
+                    <p className="text-xs font-semibold text-text-heading">
+                      Add <span className="font-black text-primary">₹{amountNeeded.toLocaleString("en-IN")}</span> more to get free shipping!
+                    </p>
+                  </div>
+                  <div className="mt-2.5 h-1.5 w-full overflow-hidden rounded-full bg-bg-card-nested">
+                    <div
+                      className="h-full rounded-full transition-all duration-500"
+                      style={{
+                        width: `${Math.min(100, Math.max(2, (subtotal / freeShippingThreshold) * 100))}%`,
+                        background: "var(--t-primary)",
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
 
             </div>
 

@@ -6,6 +6,10 @@ export interface ShippingResult {
   weightGrams: number;
   freeShipping: boolean;
   freeReason: string | null;
+  /** The minimum order subtotal required for free shipping (null if none). */
+  freeShippingThreshold: number | null;
+  /** How much more the customer needs to spend to qualify (0 if already qualified). */
+  amountNeeded: number;
 }
 
 export async function calculateShipping(
@@ -41,6 +45,8 @@ export async function calculateShipping(
       weightGrams: totalWeightGrams,
       freeShipping: true,
       freeReason: "Coupon removes shipping",
+      freeShippingThreshold: null,
+      amountNeeded: 0,
     };
   }
 
@@ -55,6 +61,8 @@ export async function calculateShipping(
       weightGrams: totalWeightGrams,
       freeShipping: true,
       freeReason: "Free shipping on orders above ₹" + storeSetting.freeShippingMinimum,
+      freeShippingThreshold: null,
+      amountNeeded: 0,
     };
   }
 
@@ -74,6 +82,8 @@ export async function calculateShipping(
       weightGrams: totalWeightGrams,
       freeShipping: true,
       freeReason: null,
+      freeShippingThreshold: null,
+      amountNeeded: 0,
     };
   }
 
@@ -87,8 +97,14 @@ export async function calculateShipping(
       weightGrams: totalWeightGrams,
       freeShipping: true,
       freeReason: "Free shipping on orders above ₹" + rule.freeShippingAmount,
+      freeShippingThreshold: null,
+      amountNeeded: 0,
     };
   }
+
+  // Not yet qualified — tell callers how much more is needed.
+  const threshold = rule.freeShippingEnabled ? Number(rule.freeShippingAmount) : null;
+  const needed = threshold !== null ? Math.max(0, Math.round((threshold - subtotal) * 100) / 100) : 0;
 
   return {
     shipping: Number(rule.shippingCharge),
@@ -96,6 +112,8 @@ export async function calculateShipping(
     weightGrams: totalWeightGrams,
     freeShipping: false,
     freeReason: null,
+    freeShippingThreshold: threshold,
+    amountNeeded: needed,
   };
 }
 

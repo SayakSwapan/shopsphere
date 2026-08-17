@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Package, ShieldCheck, RotateCcw, Truck } from "lucide-react";
+import { Package, ShieldCheck, RotateCcw, Truck, PartyPopper } from "lucide-react";
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -257,6 +257,52 @@ export default async function CartPage() {
                     </span>
                   </div>
                 </div>
+
+                {/* Free shipping banner */}
+                {shippingResult.freeShipping && shippingResult.freeReason && (
+                  <div
+                    className="mx-4 sm:mx-6 mt-3 flex items-center gap-2.5 px-4 py-3"
+                    style={{
+                      borderRadius: "var(--t-radius-card)",
+                      background: "color-mix(in srgb, var(--t-success) 10%, transparent)",
+                      border: "1px solid color-mix(in srgb, var(--t-success) 20%, transparent)",
+                    }}
+                  >
+                    <PartyPopper size={16} style={{ color: "var(--t-success)", flexShrink: 0 }} />
+                    <p className="text-xs font-semibold" style={{ color: "var(--t-success)" }}>
+                      Yay! You&apos;ve got free shipping on this order.
+                    </p>
+                  </div>
+                )}
+
+                {!shippingResult.freeShipping && shippingResult.freeShippingThreshold !== null && shippingResult.amountNeeded > 0 && (
+                  <div className="px-4 sm:px-6 mt-3">
+                    <div
+                      className="px-4 py-3"
+                      style={{
+                        borderRadius: "var(--t-radius-card)",
+                        background: "color-mix(in srgb, var(--t-primary) 8%, transparent)",
+                        border: "1px solid color-mix(in srgb, var(--t-primary) 18%, transparent)",
+                      }}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Truck size={15} className="text-primary" style={{ flexShrink: 0 }} />
+                        <p className="text-xs font-semibold text-text-heading">
+                          Add <span className="font-black text-primary">₹{shippingResult.amountNeeded.toLocaleString("en-IN")}</span> more to get free shipping!
+                        </p>
+                      </div>
+                      <div className="mt-2.5 h-1.5 w-full overflow-hidden rounded-full bg-bg-card-nested">
+                        <div
+                          className="h-full rounded-full transition-all duration-500"
+                          style={{
+                            width: `${Math.min(100, Math.max(2, (totalSelling / shippingResult.freeShippingThreshold!) * 100))}%`,
+                            background: "var(--t-primary)",
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Total */}
                 <div className="border-t border-border-subtle px-4 sm:px-6 py-5">

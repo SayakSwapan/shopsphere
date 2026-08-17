@@ -143,6 +143,8 @@ export default async function CheckoutPage() {
         pincodeInfo={pincodeInfo}
         restrictedItems={restrictedItems}
         totalWeightGrams={shippingResult.weightGrams}
+        freeShippingThreshold={shippingResult.freeShippingThreshold}
+        amountNeeded={shippingResult.amountNeeded}
       />
 
       <Footer />

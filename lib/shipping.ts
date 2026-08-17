@@ -13,7 +13,8 @@ export async function calculateShipping(
     quantity: number;
     product: { weight?: number; salePrice?: number; sellingPrice: number };
   }[],
-  couponFreeShipping = false
+  couponFreeShipping = false,
+  subtotalOverride?: number
 ): Promise<ShippingResult> {
   let totalWeightGrams = 0;
   let subtotal = 0;
@@ -25,6 +26,13 @@ export async function calculateShipping(
   }
 
   subtotal = Math.round(subtotal * 100) / 100;
+
+  // Use the caller-provided subtotal (which includes print charges etc.)
+  // when available, so the free-shipping threshold matches what the
+  // customer actually sees on the cart / checkout page.
+  if (subtotalOverride !== undefined) {
+    subtotal = subtotalOverride;
+  }
 
   if (couponFreeShipping) {
     return {

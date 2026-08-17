@@ -120,7 +120,8 @@ export async function POST(req: Request) {
           sellingPrice: Number(item.product.sellingPrice),
         },
       })),
-      couponFreeShipping
+      couponFreeShipping,
+      subtotal
     );
     shipping = shippingResult.shipping;
 

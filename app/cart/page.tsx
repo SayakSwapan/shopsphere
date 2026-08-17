@@ -82,7 +82,9 @@ export default async function CartPage() {
         salePrice: item.product.salePrice ? Number(item.product.salePrice) : undefined,
         sellingPrice: Number(item.product.sellingPrice),
       },
-    }))
+    })),
+    false,
+    totalSelling
   );
 
   const shippingCost = shippingResult.shipping;

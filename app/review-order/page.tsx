@@ -94,7 +94,9 @@ export default async function ReviewOrderPage() {
                 salePrice: item.product.salePrice ? Number(item.product.salePrice) : undefined,
                 sellingPrice: Number(item.product.sellingPrice),
             },
-        }))
+        })),
+        false,
+        subtotal
     );
 
     const shipping = shippingResult.shipping;

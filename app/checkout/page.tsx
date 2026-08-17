@@ -75,7 +75,9 @@ export default async function CheckoutPage() {
         salePrice: Number(item.product.salePrice || 0),
         sellingPrice: Number(item.product.sellingPrice),
       },
-    }))
+    })),
+    false,
+    subtotal
   );
 
   const defaultAddress = user.addresses.find((a) => a.isDefault) ?? user.addresses[0];

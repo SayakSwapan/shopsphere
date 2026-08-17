@@ -26,6 +26,7 @@ export async function POST(req: Request) {
         minWeight: body.minWeight,
         maxWeight: body.maxWeight,
         shippingCharge: body.shippingCharge,
+        freeShippingEnabled: body.freeShippingEnabled,
         freeShippingAmount: body.freeShippingAmount,
         priority: body.priority,
         isActive: body.isActive,

@@ -10,6 +10,7 @@ interface ShippingRule {
   minWeight: number;
   maxWeight: number;
   shippingCharge: number;
+  freeShippingEnabled: boolean;
   freeShippingAmount: number;
   priority: number;
   isActive: boolean;
@@ -31,6 +32,7 @@ export default function ShippingForm({
     minWeight: shipping?.minWeight ?? 0,
     maxWeight: shipping?.maxWeight ?? 500,
     shippingCharge: shipping?.shippingCharge ?? 50,
+    freeShippingEnabled: shipping?.freeShippingEnabled ?? true,
     freeShippingAmount:
       shipping?.freeShippingAmount ?? 999,
     priority: shipping?.priority ?? 1,
@@ -290,12 +292,50 @@ export default function ShippingForm({
                       Number(e.target.value)
                     )
                   }
-                  className="h-12 w-full rounded-xl border border-slate-700 bg-[#0B1624] pl-8 pr-4 text-white outline-none transition focus:border-amber-500"
+                  disabled={!form.freeShippingEnabled}
+                  className="h-12 w-full rounded-xl border border-slate-700 bg-[#0B1624] pl-8 pr-4 text-white outline-none transition focus:border-amber-500 disabled:opacity-40 disabled:cursor-not-allowed"
                 />
 
               </div>
 
             </div>
+
+          </div>
+
+          <div className="flex items-center justify-between px-8 pb-8">
+
+            <div>
+
+              <p className="font-semibold text-white">
+                Enable Free Shipping Threshold
+              </p>
+
+              <p className="text-sm text-slate-400">
+                When enabled, orders above this amount get free shipping.
+              </p>
+
+            </div>
+
+            <button
+              type="button"
+              onClick={() =>
+                updateField(
+                  "freeShippingEnabled",
+                  !form.freeShippingEnabled
+                )
+              }
+              className={`relative h-8 w-16 rounded-full transition ${form.freeShippingEnabled
+                ? "bg-green-500"
+                : "bg-slate-700"
+                }`}
+            >
+              <span
+                className={`absolute top-1 h-6 w-6 rounded-full bg-white transition ${form.freeShippingEnabled
+                  ? "left-9"
+                  : "left-1"
+                  }`}
+              />
+            </button>
 
           </div>
 

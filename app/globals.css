@@ -506,9 +506,30 @@ PRINT — INVOICE ONLY
 
 /*
 ============================================================
-CART MINI LIST — Per-theme styling
+CART MINI LIST — Base + Per-theme styling
 ============================================================
 */
+.cart-mini-item {
+  padding: 4px 0;
+}
+.cart-mini-name {
+  color: var(--t-text-heading);
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.4;
+}
+.cart-mini-meta {
+  color: var(--t-text-muted-1);
+  font-family: inherit;
+  line-height: 1.4;
+}
+.cart-mini-price {
+  color: var(--t-text-heading);
+  font-family: inherit;
+  font-weight: 700;
+}
+
 [data-theme="sports"] .cart-mini-item {
   border-left: 3px solid var(--t-primary);
   padding-left: 12px;
@@ -565,9 +586,30 @@ CART MINI LIST — Per-theme styling
 
 /*
 ============================================================
-CHECKOUT MINI LIST — Per-theme styling
+CHECKOUT MINI LIST — Base + Per-theme styling
 ============================================================
 */
+.checkout-mini-item {
+  padding: 4px 0;
+}
+.checkout-mini-name {
+  color: var(--t-text-heading);
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.4;
+}
+.checkout-mini-meta {
+  color: var(--t-text-muted-1);
+  font-family: inherit;
+  line-height: 1.4;
+}
+.checkout-mini-price {
+  color: var(--t-text-heading);
+  font-family: inherit;
+  font-weight: 700;
+}
+
 [data-theme="sports"] .checkout-mini-item {
   border-left: 3px solid var(--t-primary);
   padding-left: 12px;

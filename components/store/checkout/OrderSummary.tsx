@@ -78,7 +78,7 @@ export default function OrderSummary({
   const { themeId } = useTheme();
   return (
     <aside
-      className="sticky top-24 overflow-hidden border border-border-card bg-bg-card p-4 sm:p-6 shadow-2xl"
+      className="lg:sticky lg:top-24 overflow-hidden border border-border-card bg-bg-card p-4 sm:p-6 shadow-2xl"
       style={{ borderRadius: "var(--t-radius-card)" }}
     >
       <div className="mb-6">

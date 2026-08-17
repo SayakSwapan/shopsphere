@@ -138,7 +138,7 @@ export default async function CartPage() {
             </Link>
           </div>
         ) : (
-          <div className="grid gap-8 lg:grid-cols-5">
+          <div className="grid gap-6 sm:gap-8 lg:grid-cols-5">
             {/* ── LEFT: CART ITEMS ── */}
             <div className="space-y-4 lg:col-span-3">
               {items.map((item) => (
@@ -179,11 +179,11 @@ export default async function CartPage() {
             {/* ── RIGHT: ORDER SUMMARY ── */}
             <div className="lg:col-span-2">
               <div
-                className="sticky top-24 overflow-hidden border border-border-card bg-bg-card"
+                className="lg:sticky lg:top-24 overflow-hidden border border-border-card bg-bg-card"
                 style={{ borderRadius: "var(--t-radius-card)" }}
               >
                 {/* Summary header */}
-                <div className="px-6 pb-5 pt-6">
+                <div className="px-4 sm:px-6 pb-5 pt-5 sm:pt-6">
                   <h2
                     className="text-lg font-black uppercase tracking-wider text-text-heading"
                     style={{ fontFamily: "var(--t-font-heading)" }}
@@ -193,7 +193,7 @@ export default async function CartPage() {
                 </div>
 
                 {/* Mini product list */}
-                <div className="border-t border-border-subtle px-6 py-4">
+                <div className="border-t border-border-subtle px-4 sm:px-6 py-4">
                   <div className="space-y-3 cart-mini-list">
                     {items.map((item) => {
                       const unit = getEffectivePrice(item.product.salePrice, undefined, item.product.sellingPrice);
@@ -240,7 +240,7 @@ export default async function CartPage() {
                 </div>
 
                 {/* Price breakdown */}
-                <div className="border-t border-border-subtle px-6 py-5 space-y-3">
+                <div className="border-t border-border-subtle px-4 sm:px-6 py-5 space-y-3">
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-text-muted-1">Item Total</span>
                     <span className="font-medium text-text-body">
@@ -257,7 +257,7 @@ export default async function CartPage() {
                 </div>
 
                 {/* Total */}
-                <div className="border-t border-border-subtle px-6 py-5">
+                <div className="border-t border-border-subtle px-4 sm:px-6 py-5">
                   <div className="flex items-center justify-between">
                     <span
                       className="text-sm font-bold uppercase tracking-wider text-text-muted-1"
@@ -266,7 +266,7 @@ export default async function CartPage() {
                       Total
                     </span>
                     <span
-                      className="text-2xl font-black text-text-heading"
+                      className="text-xl sm:text-2xl font-black text-text-heading"
                       style={{ fontFamily: "var(--t-font-heading)" }}
                     >
                       ₹{grandTotal.toLocaleString("en-IN")}
@@ -275,7 +275,7 @@ export default async function CartPage() {
                 </div>
 
                 {/* CTA */}
-                <div className="px-6 pb-6">
+                <div className="px-4 sm:px-6 pb-5 sm:pb-6">
                   <Link
                     href="/checkout"
                     className="block w-full py-4 text-center text-sm font-black uppercase tracking-wider transition-colors bg-primary hover:opacity-90"
@@ -294,10 +294,10 @@ export default async function CartPage() {
                   ].map(({ icon: Icon, label }) => (
                     <div
                       key={label}
-                      className="flex flex-col items-center gap-2 py-4"
+                      className="flex flex-col items-center gap-1.5 sm:gap-2 py-3 sm:py-4"
                     >
                       <Icon size={16} className="text-text-muted-2" />
-                      <span className="text-[11px] font-medium text-text-muted-2">
+                      <span className="text-[10px] sm:text-[11px] font-medium text-text-muted-2">
                         {label}
                       </span>
                     </div>

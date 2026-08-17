@@ -509,7 +509,7 @@ export default function CheckoutClient({
         <p className="mt-2 text-sm text-text-muted-1">{items.length} item{items.length > 1 ? "s" : ""} in your order</p>
       </div>
 
-      <div className="grid gap-8 lg:grid-cols-5">
+      <div className="grid gap-6 sm:gap-8 lg:grid-cols-5">
         <div className="space-y-6 lg:col-span-3">
           {/* Address */}
           <section
@@ -851,7 +851,7 @@ export default function CheckoutClient({
             className="lg:sticky lg:top-24 overflow-hidden border border-border-card bg-bg-card"
             style={{ borderRadius: "var(--t-radius-card)" }}
           >
-            <div className="px-6 pb-5 pt-6">
+            <div className="px-4 sm:px-6 pb-5 pt-5 sm:pt-6">
               <h2
                 className="text-lg font-black uppercase tracking-wider text-text-heading"
                 style={{ fontFamily: "var(--t-font-heading)" }}
@@ -860,7 +860,7 @@ export default function CheckoutClient({
               </h2>
             </div>
 
-            <div className="border-t border-border-subtle px-6 py-4">
+            <div className="border-t border-border-subtle px-4 sm:px-6 py-4">
               <div className={`space-y-3 checkout-mini-list`}>
                 {items.map((item) => {
                   const unitIncl = inclPrice(item);
@@ -900,11 +900,11 @@ export default function CheckoutClient({
                               aria-label="Decrease quantity"
                               disabled={isUpdating || item.quantity <= 1}
                               onClick={() => changeQuantity(item, item.quantity - 1)}
-                              className="flex h-7 w-7 items-center justify-center text-text-heading transition hover:bg-bg-card-alt disabled:cursor-not-allowed disabled:opacity-30"
+                              className="flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center text-text-heading transition hover:bg-bg-card-alt disabled:cursor-not-allowed disabled:opacity-30"
                             >
-                              <Minus size={13} />
+                              <Minus size={12} />
                             </button>
-                            <span className="w-7 text-center text-xs font-black text-text-heading">
+                            <span className="w-6 sm:w-7 text-center text-[11px] sm:text-xs font-black text-text-heading">
                               {item.quantity}
                             </span>
                             <button
@@ -912,12 +912,12 @@ export default function CheckoutClient({
                               aria-label="Increase quantity"
                               disabled={isUpdating || atMax}
                               onClick={() => changeQuantity(item, item.quantity + 1)}
-                              className="flex h-7 w-7 items-center justify-center text-text-heading transition hover:bg-bg-card-alt disabled:cursor-not-allowed disabled:opacity-30"
+                              className="flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center text-text-heading transition hover:bg-bg-card-alt disabled:cursor-not-allowed disabled:opacity-30"
                             >
                               {atMax ? (
-                                <span className="text-[9px] font-black uppercase tracking-wider">Max</span>
+                                <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-wider">Max</span>
                               ) : (
-                                <Plus size={13} />
+                                <Plus size={12} />
                               )}
                             </button>
                           </div>
@@ -927,9 +927,9 @@ export default function CheckoutClient({
                             aria-label="Remove item"
                             disabled={isUpdating}
                             onClick={() => removeItem(item)}
-                            className="flex h-7 w-7 items-center justify-center text-text-muted-2 transition hover:text-[var(--t-danger)] disabled:cursor-not-allowed disabled:opacity-30"
+                            className="flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center text-text-muted-2 transition hover:text-[var(--t-danger)] disabled:cursor-not-allowed disabled:opacity-30"
                           >
-                            <Trash2 size={14} />
+                            <Trash2 size={13} />
                           </button>
                         </div>
                       </div>
@@ -940,7 +940,7 @@ export default function CheckoutClient({
               </div>
             </div>
 
-            <div className="border-t border-border-subtle px-6 py-5 space-y-3">
+            <div className="border-t border-border-subtle px-4 sm:px-6 py-5 space-y-3">
               <div className="flex justify-between text-sm">
                 <span className="text-text-muted-1">Item Total</span>
                 <span className="font-medium text-text-body">₹{itemTotalInclGst.toLocaleString("en-IN")}</span>
@@ -962,7 +962,7 @@ export default function CheckoutClient({
 
             </div>
 
-            <div className="border-t border-border-subtle px-6 py-5">
+            <div className="border-t border-border-subtle px-4 sm:px-6 py-5">
               <div className="flex items-center justify-between">
                 <span
                   className="text-sm font-bold uppercase tracking-wider text-text-muted-1"
@@ -971,7 +971,7 @@ export default function CheckoutClient({
                   Total
                 </span>
                 <span
-                  className="text-2xl font-black text-text-heading"
+                  className="text-xl sm:text-2xl font-black text-text-heading"
                   style={{ fontFamily: "var(--t-font-heading)" }}
                 >
                   ₹{finalTotal.toLocaleString("en-IN")}
@@ -1004,9 +1004,9 @@ export default function CheckoutClient({
                 { icon: BadgeCheck, label: "Genuine" },
                 { icon: Package, label: "Authentic" },
               ].map(({ icon: Icon, label }) => (
-                <div key={label} className="flex flex-col items-center gap-2 py-4">
+                <div key={label} className="flex flex-col items-center gap-1.5 sm:gap-2 py-3 sm:py-4">
                   <Icon size={16} className="text-text-muted-2" />
-                  <span className="text-[11px] font-medium text-text-muted-2">{label}</span>
+                  <span className="text-[10px] sm:text-[11px] font-medium text-text-muted-2">{label}</span>
                 </div>
               ))}
             </div>

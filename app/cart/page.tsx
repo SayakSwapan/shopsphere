@@ -288,7 +288,8 @@ export default async function CartPage() {
                       <div className="flex items-center gap-2">
                         <Truck size={15} className="text-primary" style={{ flexShrink: 0 }} />
                         <p className="text-xs font-semibold text-text-heading">
-                          Add <span className="font-black text-primary">₹{shippingResult.amountNeeded.toLocaleString("en-IN")}</span> more to get free shipping!
+                          Add <span className="font-black text-primary">₹{shippingResult.amountNeeded.toLocaleString("en-IN")}</span> more to get free shipping!{" "}
+                          <span className="font-normal text-text-muted-2">(Free above ₹{shippingResult.freeShippingThreshold!.toLocaleString("en-IN")})</span>
                         </p>
                       </div>
                       <div className="mt-2.5 h-1.5 w-full overflow-hidden rounded-full bg-bg-card-nested">

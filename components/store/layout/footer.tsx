@@ -10,11 +10,55 @@ import {
 } from "lucide-react";
 import { getSiteSettings } from "@/lib/site-settings";
 import { getActiveTheme } from "@/lib/themes/config";
+import { prisma } from "@/lib/prisma";
 import SiteBrand from "@/components/brand/site-brand";
 import SportsFooter from "@/components/store/layout/sports-footer";
 
+async function getFooterLinks() {
+  try {
+    const links = await prisma.footerLink.findMany({
+      where: { isActive: true },
+      orderBy: { sortOrder: "asc" },
+    });
+    const grouped: Record<string, typeof links> = {};
+    for (const link of links) {
+      if (!grouped[link.group]) grouped[link.group] = [];
+      grouped[link.group].push(link);
+    }
+    return grouped;
+  } catch {
+    return {};
+  }
+}
+
+const FALLBACK_SHOP = [
+  { label: "All Products", href: "/products" },
+  { label: "New Arrivals", href: "/products?category=new-arrivals" },
+  { label: "Trending", href: "/products?category=trending" },
+  { label: "Featured", href: "/products?category=featured" },
+];
+
+const FALLBACK_CUSTOMER = [
+  { label: "My Account", href: "/account" },
+  { label: "Orders", href: "/account/orders" },
+  { label: "Wishlist", href: "/wishlist" },
+  { label: "Cart", href: "/cart" },
+];
+
+const FALLBACK_SUPPORT = [
+  { label: "About Us", href: "/about" },
+  { label: "FAQs", href: "/faqs" },
+  { label: "Contact Us", href: "/contact" },
+  { label: "Privacy Policy", href: "/privacy" },
+  { label: "Terms & Conditions", href: "/terms" },
+];
+
 export default async function Footer() {
-  const [s, activeTheme] = await Promise.all([getSiteSettings(), getActiveTheme()]);
+  const [s, activeTheme, groupedLinks] = await Promise.all([
+    getSiteSettings(),
+    getActiveTheme(),
+    getFooterLinks(),
+  ]);
 
   if (activeTheme === "sports") {
     return <SportsFooter />;
@@ -29,6 +73,10 @@ export default async function Footer() {
     { key: "social_twitter", icon: ExternalLink, label: "Twitter" },
     { key: "social_youtube", icon: Play, label: "YouTube" },
   ].filter((l) => s[l.key]);
+
+  const shopLinks = groupedLinks["Shop"]?.map((l) => ({ label: l.label, href: l.url })) || FALLBACK_SHOP;
+  const customerLinks = groupedLinks["Customer"]?.map((l) => ({ label: l.label, href: l.url })) || FALLBACK_CUSTOMER;
+  const supportLinks = groupedLinks["Support"]?.map((l) => ({ label: l.label, href: l.url })) || FALLBACK_SUPPORT;
 
   return (
     <footer className="border-t border-border-subtle" style={{ background: "var(--t-bg-card)" }}>
@@ -122,12 +170,7 @@ export default async function Footer() {
               Shop
             </h3>
             <ul className="space-y-3">
-              {[
-                { label: "All Products", href: "/products" },
-                { label: "New Arrivals", href: "/products" },
-                { label: "Trending", href: "/products" },
-                { label: "Featured", href: "/products" },
-              ].map((link) => (
+              {shopLinks.map((link) => (
                 <li key={link.label}>
                   <Link href={link.href} className="text-sm text-text-muted-1 hover:text-primary transition-colors">{link.label}</Link>
                 </li>
@@ -144,12 +187,7 @@ export default async function Footer() {
               Customer
             </h3>
             <ul className="space-y-3">
-              {[
-                { label: "My Account", href: "/account" },
-                { label: "Orders", href: "/account/orders" },
-                { label: "Wishlist", href: "/wishlist" },
-                { label: "Cart", href: "/cart" },
-              ].map((link) => (
+              {customerLinks.map((link) => (
                 <li key={link.label}>
                   <Link href={link.href} className="text-sm text-text-muted-1 hover:text-primary transition-colors">{link.label}</Link>
                 </li>
@@ -166,13 +204,7 @@ export default async function Footer() {
               Support
             </h3>
             <ul className="space-y-3">
-              {[
-                { label: "About Us", href: "/about" },
-                { label: "FAQs", href: "/faqs" },
-                { label: "Contact Us", href: "/contact" },
-                { label: "Privacy Policy", href: "/privacy" },
-                { label: "Terms & Conditions", href: "/terms" },
-              ].map((link) => (
+              {supportLinks.map((link) => (
                 <li key={link.label}>
                   <Link href={link.href} className="text-sm text-text-muted-1 hover:text-primary transition-colors">{link.label}</Link>
                 </li>

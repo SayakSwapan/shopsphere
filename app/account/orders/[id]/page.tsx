@@ -30,6 +30,7 @@ import {
   Mail,
   Phone,
   MessageCircle,
+  ExternalLink,
 } from "lucide-react";
 import ReturnReplaceButtons from "@/components/store/return-replacement/return-replace-buttons";
 import PrintInvoiceButton from "@/components/store/orders/print-invoice-button";
@@ -521,6 +522,35 @@ export default async function OrderDetailPage({ params }: Props) {
                 )}
               </div>
             </div>
+
+            {/* Delivery Tracking */}
+            {order.trackingUrl && (
+              <div className="od-card overflow-hidden">
+                <div className="border-b border-border-subtle px-4 sm:px-6 py-3 sm:py-4 flex items-center gap-3">
+                  <Truck size={18} className="text-primary" />
+                  <h2
+                    className="text-base sm:text-lg font-bold text-text-heading"
+                    style={{ fontFamily: "var(--t-font-heading)" }}
+                  >
+                    Track Your Order
+                  </h2>
+                </div>
+                <div className="p-4 sm:p-6 text-sm">
+                  <a
+                    href={order.trackingUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-white transition hover:opacity-90"
+                  >
+                    <ExternalLink size={16} />
+                    Open Tracking Link
+                  </a>
+                  <p className="mt-2 truncate text-xs text-text-muted-2">
+                    {order.trackingUrl}
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* Help */}
             <div className="od-card p-4 sm:p-6">

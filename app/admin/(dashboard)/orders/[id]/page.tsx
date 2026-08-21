@@ -17,6 +17,9 @@ import {
 
 import PageContainer from "@/components/admin/common/page-container";
 import OrderStatusSelect from "@/components/admin/orders/order-status-select";
+import OrderTrackingUrl from "@/components/admin/orders/order-tracking-url";
+import ShippingLabelButton from "@/components/admin/orders/shipping-label-button";
+import type { ShippingLabelData } from "@/lib/shipping-label-pdf";
 import InvoiceDocument from "@/components/invoice/invoice-document";
 import PrintInvoiceButton from "@/components/admin/orders/print-invoice-button";
 import FlowGuide from "@/components/admin/guides/flow-guide";
@@ -55,6 +58,7 @@ export default async function OrderDetailsPage({
           product: {
             select: {
               name: true,
+              slug: true,
               gstPercentage: true,
               isReturnable: true,
               isReplaceable: true,
@@ -118,6 +122,48 @@ export default async function OrderDetailsPage({
     })),
   };
 
+  const shippingLabelData: Omit<ShippingLabelData, "items"> & {
+    items: Array<
+      Omit<ShippingLabelData["items"][number], "productUrl"> & {
+        slug: string;
+      }
+    >;
+  } = {
+    orderNumber: order.orderNumber,
+    orderDate: formatDateTime(order.createdAt),
+    paymentType: order.paymentMethod === "COD" ? "COD" : "PREPAID",
+    paymentStatus: order.paymentStatus,
+    amount: order.totalAmount,
+    customer: {
+      name: order.fullName,
+      phone: order.phone,
+      addressLines: [
+        order.addressLine1,
+        order.addressLine2 ?? "",
+        `${order.city}, ${order.state}`,
+        order.country,
+      ].filter(Boolean),
+      pincode: order.pincode,
+    },
+    items: order.orderitem.map((item) => ({
+      name: item.product.name,
+      variant:
+        [item.variantGender, item.variantSize && `Size: ${item.variantSize}`]
+          .filter(Boolean)
+          .join(" · ") || null,
+      sku: item.variantSku,
+      quantity: item.quantity,
+      slug: item.product.slug,
+    })),
+    soldBy: {
+      name: business.name,
+      address: business.address,
+      phone: business.phone,
+      email: business.email,
+      gstin: business.gstin,
+    },
+  };
+
   return (
     <PageContainer>
 
@@ -144,6 +190,7 @@ export default async function OrderDetailsPage({
             orderId={order.id}
             currentStatus={order.status as OrderStatus}
           />
+          <ShippingLabelButton data={shippingLabelData} />
           <PrintInvoiceButton />
         </div>
       </div>
@@ -496,6 +543,11 @@ export default async function OrderDetailsPage({
               <p className="pt-1 text-slate-400">{order.phone}</p>
             </address>
           </div>
+
+          <OrderTrackingUrl
+            orderId={order.id}
+            currentTrackingUrl={order.trackingUrl}
+          />
 
         </div>
       </div>

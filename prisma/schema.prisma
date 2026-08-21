@@ -116,6 +116,8 @@ model order {
 
   paidAt DateTime?
 
+  trackingUrl String?
+
   subtotal Decimal? @db.Decimal(10,2)
   gst      Decimal? @db.Decimal(10,2)
   shipping Decimal? @db.Decimal(10,2)

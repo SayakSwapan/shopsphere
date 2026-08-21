@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { ChevronRight, Download } from "lucide-react";
+import { ChevronRight, Download, Truck } from "lucide-react";
 
 import {
   ORDER_STATUS_STYLES,
@@ -61,6 +61,7 @@ interface Order {
   shipping: number;
   discount: number;
   coupon?: { code: string } | null;
+  trackingUrl?: string | null;
   orderitem: OrderItem[];
 }
 
@@ -212,13 +213,27 @@ export default function OrderCard({ order }: Props) {
         </div>
 
         <div className="flex items-center justify-between">
-          <Link
-            href={`/account/orders/${order.id}`}
-            className="text-xs font-bold transition hover:opacity-80 print:hidden"
-            style={{ color: "var(--t-primary)" }}
-          >
-            View Full Details
-          </Link>
+          <div className="flex items-center gap-3">
+            {order.trackingUrl && (
+              <a
+                href={order.trackingUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold transition hover:opacity-80 print:hidden"
+                style={{ borderRadius: "var(--t-radius-badge)", background: "color-mix(in srgb, var(--t-primary) 15%, transparent)", color: "var(--t-primary)" }}
+              >
+                <Truck size={12} />
+                Track
+              </a>
+            )}
+            <Link
+              href={`/account/orders/${order.id}`}
+              className="text-xs font-bold transition hover:opacity-80 print:hidden"
+              style={{ color: "var(--t-primary)" }}
+            >
+              View Full Details
+            </Link>
+          </div>
           <div className="text-right">
             <p className="text-[10px] text-text-muted-2">Total</p>
             <p className="text-lg sm:text-xl font-black text-text-heading">

@@ -147,6 +147,26 @@ SPORTS THEME
   }
 }
 
+/* Announcement bar marquee */
+@keyframes announcement-marquee {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.announcement-marquee-track {
+  display: flex;
+  width: max-content;
+  animation: announcement-marquee 25s linear infinite;
+}
+
+.announcement-marquee-track:hover {
+  animation-play-state: paused;
+}
+
 /* Sports: floating hero chips */
 @keyframes sports-float {
   0%,

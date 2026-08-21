@@ -32,7 +32,7 @@ export interface SportsCategory {
 const QUICK_LINKS = [
   { href: "/", label: "Home" },
   { href: "/products", label: "Shop All" },
-  { href: "/products?category=sale", label: "Sale" },
+  // { href: "/products?category=sale", label: "Sale" },
 ];
 
 function splitSegments(name: string): string[] {
@@ -108,17 +108,36 @@ export default function SportsNavbar({
     <>
       {/* ── ANNOUNCEMENT BAR ── */}
       {announcement && (
-        <div style={{ background: "var(--sports-volt)" }}>
-          <div className="mx-auto flex h-9 max-w-7xl items-center justify-center px-4">
-            <p
-              className="overflow-hidden truncate text-[11px] font-black uppercase tracking-[0.25em]"
-              style={{
-                color: "var(--sports-ink)",
-                fontFamily: "'Anton', sans-serif",
-              }}
-            >
-              {announcement}
-            </p>
+        <div style={{ background: "var(--sports-volt)", overflow: "hidden" }}>
+          <div className="mx-auto flex h-10 max-w-7xl items-center overflow-hidden px-4">
+            <div className="announcement-marquee-track">
+              {[...Array(6)].map((_, i) => (
+                <span
+                  key={i}
+                  className="inline-flex items-center shrink-0 px-6"
+                  style={{
+                    fontSize: 13,
+                    fontWeight: 700,
+                    letterSpacing: "0.06em",
+                    textTransform: "uppercase",
+                    fontFamily: "var(--t-font-body)",
+                    color: "var(--sports-ink)",
+                  }}
+                >
+                  <Zap
+                    size={11}
+                    fill="var(--sports-ink)"
+                    className="inline-block mr-3 opacity-60"
+                  />
+                  {announcement}
+                  <Zap
+                    size={11}
+                    fill="var(--sports-ink)"
+                    className="inline-block ml-3 opacity-60"
+                  />
+                </span>
+              ))}
+            </div>
           </div>
         </div>
       )}

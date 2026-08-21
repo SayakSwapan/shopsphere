@@ -51,18 +51,62 @@ export default function Navbar({ session, announcement, categories = [] }: Navba
     <>
       {/* ── ANNOUNCEMENT BAR ── */}
       {announcement && (
-        <div className="bg-primary text-bg-page">
-          <div className="max-w-7xl mx-auto px-4 h-9 flex items-center justify-center">
-            <p
-              className="uppercase tracking-[0.25em] overflow-hidden whitespace-nowrap text-ellipsis"
-              style={{
-                fontSize: 11,
-                fontWeight: 900,
-                fontFamily: "var(--t-font-heading)",
-              }}
-            >
-              {announcement}
-            </p>
+        <div
+          className="bg-primary overflow-hidden"
+          style={{
+            background: themeId === "ethnic"
+              ? "linear-gradient(90deg, #6E1F27, #8B2E38, #6E1F27)"
+              : themeId === "fashion"
+              ? "linear-gradient(90deg, #C9A96E, #D4B87A, #C9A96E)"
+              : "linear-gradient(90deg, var(--t-primary), color-mix(in srgb, var(--t-primary) 85%, #000), var(--t-primary))",
+          }}
+        >
+          <div
+            className="max-w-7xl mx-auto px-4 h-10 flex items-center overflow-hidden"
+            style={{ cursor: "default" }}
+          >
+            <div className="announcement-marquee-track">
+              {[...Array(6)].map((_, i) => (
+                <span
+                  key={i}
+                  className="inline-flex items-center shrink-0 px-6"
+                  style={{
+                    fontSize: 13,
+                    fontWeight: 700,
+                    letterSpacing: "0.06em",
+                    textTransform: "uppercase",
+                    fontFamily: "var(--t-font-body)",
+                    color: themeId === "ethnic"
+                      ? "#FBF3E6"
+                      : themeId === "fashion"
+                      ? "#1A1A1A"
+                      : "#FFFFFF",
+                  }}
+                >
+                  <span
+                    className="inline-block mr-3"
+                    style={{
+                      fontSize: 8,
+                      opacity: 0.6,
+                      color: themeId === "ethnic" ? "#D4AF37" : themeId === "fashion" ? "#1A1A1A" : "#FFFFFF",
+                    }}
+                  >
+                    ✦
+                  </span>
+                  {announcement}
+                  <span
+                    className="inline-block ml-3"
+                    style={{
+                      fontSize: 8,
+                      opacity: 0.6,
+                      color: themeId === "ethnic" ? "#D4AF37" : themeId === "fashion" ? "#1A1A1A" : "#FFFFFF",
+                    }}
+                  >
+                    ✦
+                  </span>
+                </span>
+              ))}
+            </div>
           </div>
         </div>
       )}

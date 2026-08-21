@@ -162,10 +162,10 @@ export default async function SportsFeaturedProducts() {
                 key={product.id}
                 className="group overflow-hidden transition-all duration-500 hover:-translate-y-2"
                 style={{
-                  background: "var(--t-bg-card)",
-                  border: "1px solid var(--t-border-card)",
+                  background: "#0E1319",
+                  border: "1px solid rgba(203,255,62,0.12)",
                   borderRadius: "var(--t-radius-card)",
-                  boxShadow: "var(--t-shadow-card)",
+                  boxShadow: "0 4px 20px rgba(0,0,0,0.4)",
                 }}
               >
                 {/* image */}
@@ -181,16 +181,17 @@ export default async function SportsFeaturedProducts() {
                       className="w-full h-52 sm:h-64 md:h-72 object-cover transition-transform duration-700 group-hover:scale-110"
                     />
 
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                   </Link>
 
                   {/* featured badge */}
                   <span
                     className="absolute top-3 left-3 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider"
                     style={{
-                      background: "var(--t-accent)",
-                      color: "#0A0F1E",
+                      background: "var(--sports-volt)",
+                      color: "#0A0E13",
                       borderRadius: "var(--t-radius-badge)",
+                      fontFamily: "var(--t-font-body)",
                     }}
                   >
                     Featured
@@ -201,9 +202,10 @@ export default async function SportsFeaturedProducts() {
                     <span
                       className="absolute top-3 right-3 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider"
                       style={{
-                        background: "var(--t-primary)",
-                        color: "var(--t-button-text, #0A0E13)",
+                        background: "#FF6A2B",
+                        color: "#FFFFFF",
                         borderRadius: "var(--t-radius-badge)",
+                        fontFamily: "var(--t-font-body)",
                       }}
                     >
                       {isFlatDiscount(discountType)
@@ -223,7 +225,7 @@ export default async function SportsFeaturedProducts() {
                   {product.category && (
                     <p
                       className="text-[10px] font-bold uppercase tracking-wider mb-2"
-                      style={{ color: "var(--t-primary)", fontFamily: "var(--t-font-heading)" }}
+                      style={{ color: "var(--sports-volt)", fontFamily: "var(--t-font-body)" }}
                     >
                       {product.category.name}
                     </p>
@@ -231,8 +233,8 @@ export default async function SportsFeaturedProducts() {
 
                   <Link href={`/products/${product.slug}`}>
                     <h3
-                      className="text-sm md:text-base font-bold leading-5 mb-2 line-clamp-2 transition-colors duration-300"
-                      style={{ color: "var(--t-text-heading)" }}
+                      className="text-sm md:text-base font-bold leading-5 mb-2 line-clamp-2 transition-colors duration-300 group-hover:text-[var(--sports-volt)]"
+                      style={{ color: "#F4F3EE", fontFamily: "var(--t-font-body)" }}
                     >
                       {product.name}
                     </h3>
@@ -244,14 +246,14 @@ export default async function SportsFeaturedProducts() {
                       <Star
                         key={i}
                         size={12}
-                        fill={i < Math.round(avgRating) ? "var(--t-accent)" : "transparent"}
-                        color={i < Math.round(avgRating) ? "var(--t-accent)" : "var(--t-text-muted-3)"}
+                        fill={i < Math.round(avgRating) ? "#FF6A2B" : "transparent"}
+                        color={i < Math.round(avgRating) ? "#FF6A2B" : "#4A5159"}
                         strokeWidth={1.5}
                       />
                     ))}
                     <span
                       className="text-[10px] ml-1"
-                      style={{ color: "var(--t-text-muted-2)" }}
+                      style={{ color: "#7A8289" }}
                     >
                       {avgRating > 0 ? avgRating.toFixed(1) : ""}
                     </span>
@@ -261,14 +263,14 @@ export default async function SportsFeaturedProducts() {
                   <div className="flex items-end gap-2 mb-4">
                     <span
                       className="text-lg md:text-xl font-black"
-                      style={{ color: "var(--t-text-heading)" }}
+                      style={{ color: "#F4F3EE", fontFamily: "var(--t-font-body)" }}
                     >
                       ₹{displayPrice.toLocaleString("en-IN")}
                     </span>
                     {displayPrice < originalPrice && originalPrice > 0 && (
                       <span
                         className="text-xs line-through pb-0.5"
-                        style={{ color: "var(--t-text-muted-3)" }}
+                        style={{ color: "#4A5159" }}
                       >
                         ₹{originalPrice.toLocaleString("en-IN")}
                       </span>

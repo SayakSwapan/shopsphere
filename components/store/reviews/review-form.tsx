@@ -48,12 +48,17 @@ export default function ReviewForm({
         const formData = new FormData();
         formData.append("file", file);
 
-        const res = await fetch("/api/upload", {
+        const res = await fetch("/api/upload/custom", {
           method: "POST",
           body: formData,
         });
 
         const data = await res.json();
+
+        if (!res.ok || !data.success) {
+          toast.error(data.message || "Image upload failed.");
+          continue;
+        }
 
         if (data?.url) {
           uploaded.push(data.url);

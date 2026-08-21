@@ -42,18 +42,22 @@ export default async function TrustBar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16">
         {/* stat counters */}
         {stats.length > 0 && (
-          <div             className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 mb-6 sm:mb-16">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-y-8 gap-x-4 md:gap-x-6 mb-10 md:mb-16">
             {stats.map((stat) => (
-              <div key={stat.id} className="text-center">
+              <div key={stat.id} className="text-center px-2">
                 <p
-                  className="text-2xl md:text-4xl font-black"
-                  style={{ color: "var(--t-primary)", fontFamily: "var(--t-font-heading)" }}
+                  className="text-3xl md:text-5xl font-black leading-none tracking-tight"
+                  style={{
+                    color: "var(--t-primary)",
+                    fontFamily: "var(--t-font-heading)",
+                    textShadow: "0 1px 2px rgba(0,0,0,0.15)",
+                  }}
                 >
                   {stat.value}
                 </p>
                 <p
-                  className="text-xs font-bold uppercase tracking-wider mt-2"
-                  style={{ color: "var(--t-text-muted-2)", fontFamily: "var(--t-font-heading)" }}
+                  className="text-xs sm:text-sm font-semibold uppercase tracking-[0.12em] mt-2 md:mt-3"
+                  style={{ color: "var(--t-text-body)" }}
                 >
                   {stat.label}
                 </p>
@@ -73,28 +77,28 @@ export default async function TrustBar() {
               return (
                 <div
                   key={item.id}
-                  className="flex flex-col items-center text-center gap-4 p-5 md:p-6"
+                  className="flex flex-col items-center text-center gap-3 md:gap-4 p-4 md:p-6"
                 >
                   <div
-                    className="w-14 h-14 flex items-center justify-center"
+                    className="w-14 h-14 md:w-16 md:h-16 flex items-center justify-center shrink-0"
                     style={{
-                      background: "color-mix(in srgb, var(--t-primary) 12%, transparent)",
+                      background: "color-mix(in srgb, var(--t-primary) 14%, transparent)",
                       borderRadius: "50%",
                     }}
                   >
-                    <Icon size={24} style={{ color: "var(--t-primary)" }} />
+                    <Icon size={26} style={{ color: "var(--t-primary)" }} />
                   </div>
                   <div>
                     <h4
-                      className="text-xs font-black uppercase tracking-wider mb-1"
+                      className="text-sm md:text-base font-bold uppercase tracking-wide mb-1.5"
                       style={{ color: "var(--t-text-heading)", fontFamily: "var(--t-font-heading)" }}
                     >
                       {item.title}
                     </h4>
                     {item.subtitle && (
                       <p
-                        className="text-xs leading-relaxed"
-                        style={{ color: "var(--t-text-muted-2)" }}
+                        className="text-xs sm:text-sm leading-relaxed"
+                        style={{ color: "var(--t-text-muted-1)" }}
                       >
                         {item.subtitle}
                       </p>

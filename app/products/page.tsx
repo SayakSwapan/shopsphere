@@ -20,7 +20,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
   const selectedPrice = params.price || "";
   const searchQuery = params.q || "";
 
-  const [rawProducts, categories, genders] = await Promise.all([
+  const [rawProducts, categories, genders, perPageSetting] = await Promise.all([
     prisma.product.findMany({
       where: {
         status: true,
@@ -58,9 +58,11 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
     }),
     prisma.category.findMany(),
     prisma.gender.findMany({ where: { isActive: true } }),
+    prisma.siteSetting.findUnique({ where: { key: "products_per_page" } }),
   ]);
 
   const products = JSON.parse(JSON.stringify(rawProducts)) as typeof rawProducts;
+  const perPage = perPageSetting ? parseInt(perPageSetting.value, 10) : 12;
 
   return (
     <div className="min-h-screen bg-bg-page">
@@ -100,7 +102,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
 
       {/* Main content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
-        <ProductsContent products={products} categories={categories} genders={genders} />
+        <ProductsContent products={products} categories={categories} genders={genders} perPage={perPage} />
       </div>
 
       <Footer />

@@ -67,8 +67,8 @@ export default function ReturnReplaceButtons({
             onClick={() => setOpenType("RETURN")}
             className="flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold transition hover:opacity-80"
             style={{
-              background: "color-mix(in srgb, var(--t-primary) 12%, transparent)",
-              color: "var(--t-primary)",
+              background: "var(--t-primary)",
+              color: "var(--t-button-text, #ffffff)",
             }}
           >
             <RotateCcw size={16} /> Request Return
@@ -79,8 +79,8 @@ export default function ReturnReplaceButtons({
             onClick={() => setOpenType("REPLACEMENT")}
             className="flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold transition hover:opacity-80"
             style={{
-              background: "color-mix(in srgb, var(--t-primary) 12%, transparent)",
-              color: "var(--t-primary)",
+              background: "var(--t-primary)",
+              color: "var(--t-button-text, #ffffff)",
             }}
           >
             <RefreshCw size={16} /> Request Replacement

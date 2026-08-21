@@ -973,7 +973,7 @@ ORDER DETAILS — THEMED DECORATIONS
   justify-content: center;
   gap: 8px;
   background: var(--t-primary);
-  color: #ffffff;
+  color: var(--t-button-text, #ffffff);
   font-weight: 700;
   border-radius: var(--t-radius-button);
   box-shadow: var(--t-shadow-button);
@@ -984,18 +984,21 @@ ORDER DETAILS — THEMED DECORATIONS
   opacity: 0.9;
 }
 [data-theme="luxury"] .od-btn-primary {
-  background: linear-gradient(135deg, #d4af37, #9c7c1e);
-  color: #ffffff;
+  background: linear-gradient(135deg, #e3c65a, #cfa42e);
+  color: #1a1a1a;
 }
 [data-theme="sports"] .od-btn-primary {
   background: var(--t-primary);
+  color: #0a0e13;
 }
 [data-theme="ethnic"] .od-btn-primary {
   background: var(--t-primary);
+  color: #ffffff;
   border-radius: 2px;
 }
 [data-theme="fashion"] .od-btn-primary {
-  background: linear-gradient(135deg, #c9a96e, #8c7a4f);
+  background: linear-gradient(135deg, #d8bc85, #c9a96e);
+  color: #1a1a1a;
   border-radius: 999px;
 }
 
@@ -1042,7 +1045,7 @@ ORDER DETAILS — THEMED DECORATIONS
 .od-msg-admin {
   align-self: flex-end;
   background: var(--t-primary);
-  color: #ffffff;
+  color: var(--t-button-text, #ffffff);
   border-top-right-radius: 2px;
 }
 [data-theme="fashion"] .od-msg-customer,
@@ -1061,7 +1064,8 @@ ORDER DETAILS — THEMED DECORATIONS
   border-radius: 2px;
 }
 [data-theme="luxury"] .od-msg-admin {
-  background: linear-gradient(135deg, #d4af37, #9c7c1e);
+  background: linear-gradient(135deg, #e3c65a, #cfa42e);
+  color: #1a1a1a;
 }
 
 /*

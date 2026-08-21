@@ -47,7 +47,7 @@ export default function OrderStatusTimeline({ currentStatus }: Props) {
       {/* ── Mobile: compact progress ── */}
       <div className="sm:hidden">
         <div className="flex items-center justify-between mb-3">
-          <p className="text-xs font-bold" style={{ color: "var(--t-primary)" }}>
+          <p className="text-xs font-bold" style={{ color: "var(--t-text-heading)" }}>
             {ORDER_STATUS_LABELS[STATUS_STEPS[currentIndex]] || currentStatus}
           </p>
           <p className="text-[10px]" style={{ color: "var(--t-text-muted-2)" }}>
@@ -72,7 +72,7 @@ export default function OrderStatusTimeline({ currentStatus }: Props) {
               {i > 0 && <span style={{ color: "var(--t-text-muted-3)" }}>→</span>}
               <span
                 style={{
-                  color: i === currentIndex ? "var(--t-primary)" : "var(--t-text-muted-3)",
+                  color: i === currentIndex ? "var(--t-text-heading)" : "var(--t-text-muted-3)",
                   fontWeight: i === currentIndex ? 700 : 400,
                 }}
               >
@@ -99,7 +99,9 @@ export default function OrderStatusTimeline({ currentStatus }: Props) {
                     background: isCompleted
                       ? "var(--t-primary)"
                       : "var(--t-bg-card-nested)",
-                    color: isCompleted ? "var(--t-bg-page)" : "var(--t-text-muted-2)",
+                    color: isCompleted
+                      ? "var(--t-button-text, #ffffff)"
+                      : "var(--t-text-muted-2)",
                     border: isCurrent
                       ? `2px solid var(--t-primary)`
                       : isCompleted
@@ -115,7 +117,14 @@ export default function OrderStatusTimeline({ currentStatus }: Props) {
                 <p
                   className="mt-2 text-[10px] font-bold uppercase text-center max-w-[70px] leading-tight"
                   style={{
-                    color: isCompleted ? "var(--t-primary)" : "var(--t-text-muted-2)",
+                    color:
+                      isCompleted || isCurrent
+                        ? "var(--t-text-heading)"
+                        : "var(--t-text-muted-2)",
+                    borderBottom: isCurrent
+                      ? "2px solid var(--t-primary)"
+                      : "none",
+                    paddingBottom: isCurrent ? "2px" : "0",
                   }}
                 >
                   {ORDER_STATUS_LABELS[step]}

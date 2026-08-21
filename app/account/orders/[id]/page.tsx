@@ -6,6 +6,7 @@ import Image from "next/image";
 
 import NavbarWrapper from "@/components/store/layout/navbar-wrapper";
 import Footer from "@/components/store/layout/footer";
+import OrderStatusTimeline from "@/components/store/orders/order-status-timeline";
 import OrderProductHelp from "@/components/store/orders/order-product-help";
 import InvoiceDocument from "@/components/invoice/invoice-document";
 import { formatCurrency, formatDateTime } from "@/lib/format";
@@ -16,6 +17,11 @@ import {
 } from "@/lib/print-pricing";
 import { getSiteSettings, getInvoiceBusiness } from "@/lib/site-settings";
 import {
+  ORDER_STATUS_LABELS,
+  ORDER_STATUS_STYLES,
+  isOrderStatus,
+} from "@/lib/constants/order-status";
+import {
   ArrowLeft,
   MapPin,
   CreditCard,
@@ -25,11 +31,6 @@ import {
   Phone,
   MessageCircle,
   ExternalLink,
-  CircleCheck,
-  CircleDashed,
-  ReceiptText,
-  Wallet,
-  Copy,
 } from "lucide-react";
 import ReturnReplaceButtons from "@/components/store/return-replacement/return-replace-buttons";
 import PrintInvoiceButton from "@/components/store/orders/print-invoice-button";
@@ -40,29 +41,22 @@ interface Props {
   }>;
 }
 
-const STATUS_CHIP: Record<string, { bg: string; text: string; border: string }> =
-  {
-    PENDING: { bg: "#FEF3C7", text: "#92400E", border: "#FCD34D" },
-    CONFIRMED: { bg: "#DBEAFE", text: "#1E40AF", border: "#93C5FD" },
-    PAID: { bg: "#D1FAE5", text: "#065F46", border: "#6EE7B7" },
-    PACKED: { bg: "#E0E7FF", text: "#3730A3", border: "#A5B4FC" },
-    SHIPPED: { bg: "#EDE9FE", text: "#5B21B6", border: "#C4B5FD" },
-    OUT_FOR_DELIVERY: { bg: "#FFEDD5", text: "#9A3412", border: "#FDBA74" },
-    DELIVERED: { bg: "#D1FAE5", text: "#065F46", border: "#6EE7B7" },
-    CANCELLED: { bg: "#FEE2E2", text: "#991B1B", border: "#FCA5A5" },
-  };
+const STATUS_DOT_COLOR: Record<string, string> = {
+  PENDING: "#ca8a04",
+  CONFIRMED: "#1d4ed8",
+  PAID: "#1d4ed8",
+  PACKED: "#4338ca",
+  SHIPPED: "#7e22ce",
+  OUT_FOR_DELIVERY: "#7e22ce",
+  DELIVERED: "#15803d",
+  CANCELLED: "#b91c1c",
+};
 
-const MILESTONES = [
-  { key: "PLACED", label: "Placed", statuses: ["PENDING"] },
-  { key: "CONFIRMED", label: "Confirmed", statuses: ["CONFIRMED", "PAID", "PACKED"] },
-  { key: "SHIPPED", label: "Shipped", statuses: ["SHIPPED"] },
-  { key: "OUT_FOR_DELIVERY", label: "Out for Delivery", statuses: ["OUT_FOR_DELIVERY"] },
-  { key: "DELIVERED", label: "Delivered", statuses: ["DELIVERED"] },
-];
-
-function milestoneIndex(status: string) {
-  const idx = MILESTONES.findIndex((m) => m.statuses.includes(status));
-  return idx;
+function getStatusLabel(status: string) {
+  if (isOrderStatus(status)) {
+    return ORDER_STATUS_LABELS[status];
+  }
+  return status;
 }
 
 export default async function OrderDetailPage({ params }: Props) {
@@ -204,158 +198,79 @@ export default async function OrderDetailPage({ params }: Props) {
   const supportEmail = settings.contact_email || business.email || "";
   const supportPhone = settings.contact_phone || business.phone || "";
 
-  const chip = STATUS_CHIP[order.status] ?? {
-    bg: "#E2E8F0",
-    text: "#334155",
-    border: "#CBD5E1",
-  };
-  const isCancelled = order.status === "CANCELLED";
-  const currentMilestone = milestoneIndex(order.status);
-  const paymentChip =
-    order.paymentStatus === "PAID"
-      ? { bg: "#D1FAE5", text: "#065F46", border: "#6EE7B7" }
-      : order.paymentStatus === "FAILED"
-        ? { bg: "#FEE2E2", text: "#991B1B", border: "#FCA5A5" }
-        : { bg: "#FEF3C7", text: "#92400E", border: "#FCD34D" };
+  const statusDotColor = STATUS_DOT_COLOR[order.status] ?? "#64748b";
 
   return (
-    <div className="min-h-screen bg-[#F6F5F1] font-sans text-slate-900">
+    <div className="min-h-screen bg-bg-page">
       <NavbarWrapper />
 
       {/* Hero */}
-      <section className="relative overflow-hidden bg-slate-950 text-white">
-        <div
-          className="pointer-events-none absolute inset-0 opacity-[0.35]"
-          style={{
-            backgroundImage:
-              "repeating-linear-gradient(135deg, rgba(255,255,255,0.05) 0px, rgba(255,255,255,0.05) 1px, transparent 1px, transparent 12px)",
-          }}
-        />
-        <div className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-orange-600/20 blur-3xl" />
-        <div className="relative mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-12">
+      <section className="relative overflow-hidden border-b border-border-subtle">
+        <div className="od-hero-deco" />
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
           <Link
             href="/account/orders"
-            className="inline-flex items-center gap-2 text-sm font-semibold text-slate-300 transition hover:text-white"
+            className="inline-flex items-center gap-2 text-sm text-text-muted-1 transition hover:text-primary mb-4"
           >
             <ArrowLeft size={16} />
-            All Orders
+            Back to Orders
           </Link>
-
-          <div className="mt-5 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <p className="text-[11px] font-black uppercase tracking-[0.35em] text-orange-400">
-                Order Dossier
+              <p className="uppercase tracking-[0.3em] text-xs text-primary font-bold">
+                Order Details
               </p>
-              <div className="mt-2 flex flex-wrap items-center gap-3">
-                <h1 className="font-mono text-3xl font-bold tracking-tight text-white sm:text-4xl">
-                  {order.orderNumber}
-                </h1>
-              </div>
-              <p className="mt-2 text-sm text-slate-400">
-                Placed on{" "}
-                <span className="font-semibold text-slate-200">
-                  {formatDateTime(order.createdAt)}
-                </span>
-                {" · "}
-                <span className="font-semibold text-slate-200">
-                  {totalItems} item{totalItems !== 1 ? "s" : ""}
-                </span>
+              <h1
+                className="mt-2 text-2xl sm:text-3xl lg:text-4xl font-black text-text-heading"
+                style={{ fontFamily: "var(--t-font-heading)" }}
+              >
+                {order.orderNumber}
+              </h1>
+              <p className="mt-1 text-sm text-text-muted-1">
+                Placed on {formatDateTime(order.createdAt)}
               </p>
             </div>
-
             <div className="flex flex-wrap items-center gap-3">
               <span
-                className="inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-xs font-black uppercase tracking-wider"
+                className={`od-pill ${
+                  isOrderStatus(order.status)
+                    ? ORDER_STATUS_STYLES[order.status]
+                    : ""
+                }`}
                 style={{
-                  background: chip.bg,
-                  color: chip.text,
-                  borderColor: chip.border,
+                  color: statusDotColor,
+                  borderColor: `color-mix(in srgb, ${statusDotColor} 40%, transparent)`,
                 }}
               >
                 <span
                   className="h-2 w-2 rounded-full"
-                  style={{ background: chip.text }}
+                  style={{ background: "currentColor" }}
                 />
-                {order.status.replace(/_/g, " ")}
+                {getStatusLabel(order.status)}
               </span>
-              {canDownloadInvoice && <PrintInvoiceButton tone="dark" />}
+              {canDownloadInvoice && <PrintInvoiceButton />}
             </div>
           </div>
         </div>
       </section>
 
-      {/* Journey rail */}
-      {!isCancelled && currentMilestone >= 0 && (
-        <div className="mx-auto max-w-7xl px-4 sm:px-6">
-          <div className="-mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_10px_30px_-15px_rgba(15,23,42,0.25)] sm:p-6">
-            <div className="flex items-center justify-between">
-              {MILESTONES.map((m, i) => {
-                const done = i < currentMilestone;
-                const active = i === currentMilestone;
-                return (
-                  <div key={m.key} className="flex flex-1 items-center last:flex-none">
-                    <div className="flex w-16 flex-col items-center gap-1.5 sm:w-20">
-                      <span
-                        className={`flex h-9 w-9 items-center justify-center rounded-full border-2 transition ${
-                          done
-                            ? "border-emerald-600 bg-emerald-600 text-white"
-                            : active
-                              ? "border-orange-500 bg-orange-50 text-orange-600"
-                              : "border-slate-200 bg-slate-50 text-slate-400"
-                        }`}
-                      >
-                        {done ? (
-                          <CircleCheck size={18} strokeWidth={2.5} />
-                        ) : (
-                          <CircleDashed size={18} strokeWidth={2.5} />
-                        )}
-                      </span>
-                      <span
-                        className={`text-center text-[10px] font-bold uppercase leading-tight tracking-wide sm:text-[11px] ${
-                          done
-                            ? "text-emerald-700"
-                            : active
-                              ? "text-orange-600"
-                              : "text-slate-400"
-                        }`}
-                      >
-                        {m.label}
-                      </span>
-                    </div>
-                    {i < MILESTONES.length - 1 && (
-                      <div
-                        className={`mx-1 h-1 flex-1 rounded-full sm:mx-2 ${
-                          i < currentMilestone ? "bg-emerald-500" : "bg-slate-200"
-                        } -translate-y-4`}
-                      />
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {isCancelled && (
-        <div className="mx-auto max-w-7xl px-4 pt-6 sm:px-6">
-          <div className="rounded-2xl border-2 border-dashed border-red-300 bg-red-50 px-5 py-4">
-            <p className="text-sm font-black uppercase tracking-wide text-red-700">
-              Order Cancelled
-            </p>
-            <p className="mt-1 text-sm text-red-600">
-              This order was cancelled. No shipment will be dispatched.
-            </p>
-          </div>
-        </div>
-      )}
-
       {/* Content */}
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10">
-        <div className="grid gap-6 lg:grid-cols-3 lg:gap-8">
-          {/* Main */}
-          <div className="space-y-6 lg:col-span-2">
-            {/* Return / Replacement */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
+        <div className="grid gap-6 lg:gap-8 lg:grid-cols-3">
+          {/* Main — 2 cols */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Status Timeline */}
+            <div className="od-card p-4 sm:p-6">
+              <h2
+                className="od-title-bar mb-5 text-base sm:text-lg font-bold text-text-heading"
+                style={{ fontFamily: "var(--t-font-heading)" }}
+              >
+                Order Status
+              </h2>
+              <OrderStatusTimeline currentStatus={order.status} />
+            </div>
+
+            {/* Return / Replacement Buttons */}
             {order.status === "DELIVERED" && (
               <ReturnReplaceButtons
                 orderId={order.id}
@@ -368,32 +283,26 @@ export default async function OrderDetailPage({ params }: Props) {
               />
             )}
 
-            {/* Items */}
-            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_10px_30px_-15px_rgba(15,23,42,0.25)]">
-              <div className="flex items-center justify-between border-b-2 border-slate-900 px-4 py-4 sm:px-6">
+            {/* Items — e-commerce style summary */}
+            <div className="od-card overflow-hidden">
+              <div className="border-b border-border-subtle px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-950 text-white">
-                    <Package size={17} />
-                  </span>
-                  <div>
-                    <h2 className="text-base font-black uppercase tracking-wide text-slate-900 sm:text-lg">
-                      In This Parcel
-                    </h2>
-                    <p className="text-xs font-medium text-slate-500">
-                      {totalItems} unit{totalItems !== 1 ? "s" : ""} ·{" "}
-                      {order.orderitem.length} product
-                      {order.orderitem.length !== 1 ? "s" : ""}
-                    </p>
-                  </div>
+                  <Package size={18} className="text-primary" />
+                  <h2
+                    className="od-title-bar text-base sm:text-lg font-bold text-text-heading"
+                    style={{ fontFamily: "var(--t-font-heading)" }}
+                  >
+                    {totalItems} Item{totalItems !== 1 ? "s" : ""}
+                  </h2>
                 </div>
                 {order.coupon?.code && (
-                  <span className="rounded-md border border-emerald-300 bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700">
-                    {order.coupon.code}
+                  <span className="od-chip rounded-full px-3 py-1 text-[10px] sm:text-xs">
+                    Coupon: {order.coupon.code}
                   </span>
                 )}
               </div>
 
-              <div className="divide-y divide-dashed divide-slate-200">
+              <div className="divide-y divide-border-subtle">
                 {order.orderitem.map((item) => {
                   const slug = item.product.slug;
                   const gstRate = Number(item.product.gstPercentage) || 0;
@@ -417,12 +326,15 @@ export default async function OrderDetailPage({ params }: Props) {
                     .join(" · ");
 
                   return (
-                    <div key={item.id} className="px-4 py-5 sm:px-6">
+                    <div
+                      key={item.id}
+                      className="px-4 sm:px-6 py-4 sm:py-5"
+                    >
                       <Link
                         href={`/products/${slug}`}
-                        className="group flex items-start gap-4"
+                        className="flex items-start gap-3 sm:gap-5 transition hover:opacity-80"
                       >
-                        <div className="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-50 sm:h-24 sm:w-24">
+                        <div className="relative h-16 w-16 sm:h-20 sm:w-20 flex-shrink-0 overflow-hidden rounded-xl bg-bg-card-nested">
                           <Image
                             src={
                               item.product.productimage?.[0]?.url ||
@@ -430,25 +342,25 @@ export default async function OrderDetailPage({ params }: Props) {
                             }
                             alt={item.product.name}
                             fill
-                            className="object-cover transition duration-300 group-hover:scale-105"
+                            className="object-cover"
                           />
                         </div>
 
-                        <div className="min-w-0 flex-1">
-                          <h4 className="font-bold leading-snug text-slate-900 group-hover:text-orange-600">
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-bold text-text-heading text-sm sm:text-base line-clamp-2">
                             {item.product.name}
                           </h4>
                           {variant && (
-                            <span className="mt-1.5 inline-block rounded-md bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600">
+                            <p className="mt-1 text-xs text-text-muted-2">
                               {variant}
-                            </span>
+                            </p>
                           )}
                           {item.customization &&
                             (item.customization.name ||
                               item.customization.number ||
                               item.customization.imageUrl) && (
-                              <p className="mt-1.5 text-xs font-semibold text-slate-600">
-                                Custom print:{" "}
+                              <p className="mt-1 text-xs font-semibold text-text-muted-1">
+                                Print:{" "}
                                 {[
                                   item.customization.printTypeName,
                                   item.customization.name &&
@@ -458,7 +370,8 @@ export default async function OrderDetailPage({ params }: Props) {
                                   item.customization.imageUrl &&
                                     "Design image",
                                   printIncl > 0 &&
-                                    (pricePerLetter > 0 && billedLetters > 0
+                                    (pricePerLetter > 0 &&
+                                    billedLetters > 0
                                       ? `${billedLetters} × ₹${pricePerLetter}/char${designCharge > 0 ? ` + ${formatCurrency(designCharge)} design` : ""} = ${formatCurrency(printIncl)}`
                                       : `+${formatCurrency(printIncl)}/pc`),
                                 ]
@@ -466,19 +379,23 @@ export default async function OrderDetailPage({ params }: Props) {
                                   .join(" · ")}
                               </p>
                             )}
-                          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-medium text-slate-500">
-                            <span>Qty {item.quantity}</span>
-                            <span aria-hidden>·</span>
-                            <span>{formatCurrency(item.price)} each</span>
+                          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs sm:text-sm">
+                            <span className="text-text-muted-1">
+                              Qty: {item.quantity}
+                            </span>
+                            <span className="text-text-muted-3">|</span>
+                            <span className="text-text-muted-1">
+                              {formatCurrency(item.price)} each
+                            </span>
                           </div>
                         </div>
 
-                        <div className="flex-shrink-0 text-right">
-                          <p className="font-mono text-base font-bold text-slate-900">
+                        <div className="text-right flex-shrink-0">
+                          <p className="font-bold text-text-heading text-sm sm:text-base">
                             {formatCurrency(item.total)}
                           </p>
                           {item.quantity > 1 && (
-                            <p className="mt-0.5 font-mono text-[11px] text-slate-400">
+                            <p className="mt-0.5 text-[10px] sm:text-xs text-text-muted-2">
                               {item.quantity} × {formatCurrency(item.price)}
                             </p>
                           )}
@@ -488,129 +405,117 @@ export default async function OrderDetailPage({ params }: Props) {
                   );
                 })}
               </div>
+            </div>
 
-              {/* Receipt-style summary */}
-              <div className="border-t-2 border-dashed border-slate-300 bg-[#FBFAF7] px-4 py-5 sm:px-6">
-                <div className="mb-3 flex items-center gap-2">
-                  <ReceiptText size={15} className="text-slate-500" />
-                  <h3 className="text-xs font-black uppercase tracking-[0.2em] text-slate-500">
-                    Bill Summary
-                  </h3>
-                </div>
-                <div className="max-w-sm space-y-2 font-mono text-sm">
-                  {order.coupon?.code ? (
-                    <>
-                      <SummaryRow
-                        label="Selling Price"
-                        value={formatCurrency(order.subtotal + order.gst)}
-                      />
-                      {order.discount > 0 && (
-                        <SummaryRow
-                          label={`Coupon ${order.coupon.code}`}
-                          value={`-${formatCurrency(order.discount)}`}
-                          accent
-                        />
-                      )}
-                      <div className="!mt-4 flex items-center justify-between border-t-2 border-slate-900 pt-3">
-                        <span className="font-sans text-sm font-black uppercase tracking-wide text-slate-900">
+            {/* Price Summary — e-commerce grade */}
+            <div className="od-card p-4 sm:p-6">
+              <h2
+                className="od-title-bar mb-4 text-base sm:text-lg font-bold text-text-heading"
+                style={{ fontFamily: "var(--t-font-heading)" }}
+              >
+                Price Summary
+              </h2>
+              <div className="space-y-2.5 text-sm">
+                {order.coupon?.code ? (
+                  <>
+                    <Row label="Selling Price">
+                      {formatCurrency(order.subtotal + order.gst)}
+                    </Row>
+                    {order.discount > 0 && (
+                      <Row label={`Coupon (${order.coupon.code})`} green>
+                        -{formatCurrency(order.discount)}
+                      </Row>
+                    )}
+                    <div className="!mt-4 border-t border-border-subtle pt-4">
+                      <div className="flex items-center justify-between">
+                        <span className="text-base font-black text-text-heading">
                           Total Paid
                         </span>
-                        <span className="text-xl font-bold text-slate-900">
+                        <span className="text-lg sm:text-xl font-black text-primary">
                           {formatCurrency(order.totalAmount)}
                         </span>
                       </div>
-                    </>
-                  ) : (
-                    <div className="flex items-center justify-between border-t-2 border-slate-900 pt-3">
-                      <span className="font-sans text-sm font-black uppercase tracking-wide text-slate-900">
-                        Total Paid
-                      </span>
-                      <span className="text-xl font-bold text-slate-900">
-                        {formatCurrency(order.totalAmount)}
-                      </span>
                     </div>
-                  )}
-                </div>
+                  </>
+                ) : (
+                  <div className="flex items-center justify-between">
+                    <span className="text-base font-black text-text-heading">
+                      Total Paid
+                    </span>
+                    <span className="text-lg sm:text-xl font-black text-primary">
+                      {formatCurrency(order.totalAmount)}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           </div>
 
-          {/* Sidebar */}
+          {/* Sidebar — 1 col */}
           <div className="space-y-6">
-            {/* Tracking */}
-            {order.trackingUrl && (
-              <div className="overflow-hidden rounded-2xl bg-slate-950 text-white shadow-[0_10px_30px_-15px_rgba(15,23,42,0.5)]">
-                <div className="border-b border-white/10 px-5 py-4">
-                  <div className="flex items-center gap-3">
-                    <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-orange-600 text-white">
-                      <Truck size={17} />
-                    </span>
-                    <div>
-                      <h2 className="text-sm font-black uppercase tracking-wider text-white">
-                        Track Your Order
-                      </h2>
-                      <p className="text-xs text-slate-400">
-                        Live courier updates
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                <div className="px-5 py-5">
-                  <a
-                    href={order.trackingUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-orange-600 px-4 py-3 text-sm font-black uppercase tracking-wide text-white transition hover:bg-orange-500"
-                  >
-                    <ExternalLink size={16} />
-                    Open Tracking Link
-                  </a>
-                  <p className="mt-3 truncate font-mono text-[11px] text-slate-400">
-                    {order.trackingUrl}
-                  </p>
-                </div>
+            {/* Delivery Address */}
+            <div className="od-card overflow-hidden">
+              <div className="border-b border-border-subtle px-4 sm:px-6 py-3 sm:py-4 flex items-center gap-3">
+                <MapPin size={18} className="text-primary" />
+                <h2
+                  className="text-base sm:text-lg font-bold text-text-heading"
+                  style={{ fontFamily: "var(--t-font-heading)" }}
+                >
+                  Delivery Address
+                </h2>
               </div>
-            )}
+              <div className="p-4 sm:p-6 text-sm space-y-1">
+                <p className="font-bold text-text-heading">{order.fullName}</p>
+                <p className="text-text-muted-1">{order.addressLine1}</p>
+                {order.addressLine2 && (
+                  <p className="text-text-muted-1">{order.addressLine2}</p>
+                )}
+                <p className="text-text-muted-1">
+                  {order.city}, {order.state} {order.pincode}
+                </p>
+                <p className="text-text-muted-1">{order.country}</p>
+                <p className="pt-2 text-text-muted-2">Phone: {order.phone}</p>
+              </div>
+            </div>
 
-            {/* Payment */}
-            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_10px_30px_-15px_rgba(15,23,42,0.25)]">
-              <div className="flex items-center gap-3 border-b border-slate-200 px-5 py-4">
-                <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 text-slate-700">
-                  <CreditCard size={17} />
-                </span>
-                <h2 className="text-sm font-black uppercase tracking-wider text-slate-900">
+            {/* Payment Info */}
+            <div className="od-card overflow-hidden">
+              <div className="border-b border-border-subtle px-4 sm:px-6 py-3 sm:py-4 flex items-center gap-3">
+                <CreditCard size={18} className="text-primary" />
+                <h2
+                  className="text-base sm:text-lg font-bold text-text-heading"
+                  style={{ fontFamily: "var(--t-font-heading)" }}
+                >
                   Payment
                 </h2>
               </div>
-              <div className="space-y-3 px-5 py-5 text-sm">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="font-medium text-slate-500">Method</span>
-                  <span className="inline-flex items-center gap-1.5 font-bold text-slate-900">
-                    <Wallet size={14} className="text-slate-400" />
+              <div className="p-4 sm:p-6 text-sm space-y-3">
+                <div className="flex justify-between text-text-muted-1">
+                  <span>Method</span>
+                  <span className="text-text-heading font-medium">
                     {order.paymentMethod === "COD"
                       ? "Cash on Delivery"
                       : "Online Payment"}
                   </span>
                 </div>
-                <div className="flex items-center justify-between gap-3">
-                  <span className="font-medium text-slate-500">Status</span>
+                <div className="flex justify-between text-text-muted-1">
+                  <span>Status</span>
                   <span
-                    className="rounded-md border px-2.5 py-1 text-xs font-black uppercase tracking-wide"
-                    style={{
-                      background: paymentChip.bg,
-                      color: paymentChip.text,
-                      borderColor: paymentChip.border,
-                    }}
+                    className={`font-bold ${
+                      order.paymentStatus === "PAID"
+                        ? "text-emerald-500"
+                        : order.paymentStatus === "FAILED"
+                        ? "text-red-500"
+                        : "text-primary"
+                    }`}
                   >
                     {order.paymentStatus}
                   </span>
                 </div>
                 {order.razorpayPaymentId && (
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="shrink-0 font-medium text-slate-500">
-                      Transaction
-                    </span>
-                    <span className="truncate rounded-md bg-slate-100 px-2 py-1 font-mono text-[11px] text-slate-700">
+                  <div className="flex justify-between text-text-muted-1">
+                    <span>Transaction ID</span>
+                    <span className="text-text-heading font-mono text-xs">
                       {order.razorpayPaymentId}
                     </span>
                   </div>
@@ -618,73 +523,73 @@ export default async function OrderDetailPage({ params }: Props) {
               </div>
             </div>
 
-            {/* Address */}
-            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_10px_30px_-15px_rgba(15,23,42,0.25)]">
-              <div className="flex items-center gap-3 border-b border-slate-200 px-5 py-4">
-                <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 text-slate-700">
-                  <MapPin size={17} />
-                </span>
-                <h2 className="text-sm font-black uppercase tracking-wider text-slate-900">
-                  Delivery Address
-                </h2>
+            {/* Delivery Tracking */}
+            {order.trackingUrl && (
+              <div className="od-card overflow-hidden">
+                <div className="border-b border-border-subtle px-4 sm:px-6 py-3 sm:py-4 flex items-center gap-3">
+                  <Truck size={18} className="text-primary" />
+                  <h2
+                    className="text-base sm:text-lg font-bold text-text-heading"
+                    style={{ fontFamily: "var(--t-font-heading)" }}
+                  >
+                    Track Your Order
+                  </h2>
+                </div>
+                <div className="p-4 sm:p-6 text-sm">
+                  <a
+                    href={order.trackingUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-button-text transition hover:opacity-90"
+                  >
+                    <ExternalLink size={16} />
+                    Open Tracking Link
+                  </a>
+                  <p className="mt-2 truncate text-xs text-text-muted-2">
+                    {order.trackingUrl}
+                  </p>
+                </div>
               </div>
-              <div className="space-y-1 px-5 py-5 text-sm">
-                <p className="font-bold text-slate-900">{order.fullName}</p>
-                <p className="text-slate-600">{order.addressLine1}</p>
-                {order.addressLine2 && (
-                  <p className="text-slate-600">{order.addressLine2}</p>
-                )}
-                <p className="text-slate-600">
-                  {order.city}, {order.state}{" "}
-                  <span className="font-mono font-bold text-slate-900">
-                    {order.pincode}
-                  </span>
-                </p>
-                <p className="text-slate-600">{order.country}</p>
-                <p className="pt-2 font-medium text-slate-500">
-                  Phone:{" "}
-                  <span className="font-mono text-slate-900">
-                    {order.phone}
-                  </span>
-                </p>
-              </div>
-            </div>
+            )}
 
             {/* Help */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_10px_30px_-15px_rgba(15,23,42,0.25)]">
+            <div className="od-card p-4 sm:p-6">
               <div className="flex items-center gap-3">
-                <MessageCircle size={17} className="text-orange-600" />
-                <h3 className="text-sm font-black uppercase tracking-wider text-slate-900">
+                <Truck size={18} className="text-primary" />
+                <h3
+                  className="text-sm font-bold text-text-heading"
+                  style={{ fontFamily: "var(--t-font-heading)" }}
+                >
                   Need Help?
                 </h3>
               </div>
-              <p className="mt-2 text-xs leading-relaxed text-slate-600">
-                Questions about a product?{" "}
+              <p className="mt-2 text-xs text-text-muted-2">
+                Product questions?{" "}
                 <a
                   href="#product-help"
-                  className="font-bold text-orange-600 underline decoration-orange-300 underline-offset-2 hover:text-orange-700"
+                  className="font-bold text-primary hover:underline"
                 >
                   Start a conversation
                 </a>{" "}
                 with our support team right from this page.
               </p>
-              <div className="mt-3 space-y-2 border-t border-dashed border-slate-200 pt-3 text-xs">
+              <div className="mt-3 space-y-2 border-t border-border-subtle pt-3 text-xs">
                 {supportEmail && (
                   <a
                     href={`mailto:${supportEmail}`}
-                    className="flex items-center gap-2 font-semibold text-slate-600 transition hover:text-orange-600"
+                    className="flex items-center gap-2 text-text-muted-2 hover:text-primary"
                   >
-                    <Mail size={13} className="text-slate-400" />
+                    <Mail size={13} className="text-primary" />
                     {supportEmail}
                   </a>
                 )}
                 {supportPhone && (
                   <a
                     href={`tel:${supportPhone.replace(/\s+/g, "")}`}
-                    className="flex items-center gap-2 font-semibold text-slate-600 transition hover:text-orange-600"
+                    className="flex items-center gap-2 text-text-muted-2 hover:text-primary"
                   >
-                    <Phone size={13} className="text-slate-400" />
-                    <span className="font-mono">{supportPhone}</span>
+                    <Phone size={13} className="text-primary" />
+                    {supportPhone}
                   </a>
                 )}
               </div>
@@ -692,8 +597,8 @@ export default async function OrderDetailPage({ params }: Props) {
           </div>
         </div>
 
-        {/* Product Help */}
-        <div id="product-help" className="mt-8 scroll-mt-24">
+        {/* Product Help — full width */}
+        <div id="product-help" className="mt-6 lg:mt-8 scroll-mt-24">
           <OrderProductHelp
             orderId={order.id}
             initialQueries={order.productQueries}
@@ -701,14 +606,13 @@ export default async function OrderDetailPage({ params }: Props) {
           />
         </div>
 
-        <div className="mt-8 flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs font-medium text-slate-500">
-          <Copy size={14} className="text-slate-400" />
-          Keep <span className="mx-1 font-mono font-bold text-slate-900">{order.orderNumber}</span>{" "}
-          handy — quote it in any support conversation.
+        <div className="mt-6 lg:mt-8 flex items-center gap-2 od-chip px-4 py-3 text-xs">
+          <MessageCircle size={14} className="text-primary" />
+          Questions are answered by our support team — usually within 24 hours.
         </div>
       </div>
 
-      {/* Print-only invoice */}
+      {/* Print-only invoice — hidden on screen, shown only when printing */}
       {canDownloadInvoice && (
         <div className="invoice-print hidden bg-white p-6 text-black print:block">
           <InvoiceDocument order={order} business={business} />
@@ -722,24 +626,24 @@ export default async function OrderDetailPage({ params }: Props) {
   );
 }
 
-function SummaryRow({
+function Row({
   label,
-  value,
-  accent,
+  children,
+  green,
 }: {
   label: string;
-  value: string;
-  accent?: boolean;
+  children: React.ReactNode;
+  green?: boolean;
 }) {
   return (
-    <div className="flex items-center justify-between">
-      <span className="text-slate-500">{label}</span>
+    <div className="flex justify-between">
+      <span className="text-text-muted-1">{label}</span>
       <span
         className={
-          accent ? "font-bold text-emerald-600" : "font-semibold text-slate-900"
+          green ? "text-emerald-500 font-medium" : "text-text-heading"
         }
       >
-        {value}
+        {children}
       </span>
     </div>
   );

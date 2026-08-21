@@ -761,6 +761,24 @@ model ActivityLog {
   createdAt DateTime @default(now())
 }
 
+model LoginAttempt {
+  id        String   @id @default(cuid())
+
+  email     String
+
+  success   Boolean
+
+  ipAddress String?
+
+  userAgent String?
+
+  createdAt DateTime @default(now())
+
+  @@index([email, createdAt])
+
+  @@index([createdAt])
+}
+
 model return_request {
   id                String           @id @default(cuid())
   orderId           String

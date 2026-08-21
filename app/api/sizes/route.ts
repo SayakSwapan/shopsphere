@@ -5,6 +5,7 @@ import {
 
 import { prisma } from "@/lib/prisma";
 import { randomUUID } from "crypto";
+import { getAdminSession } from "@/lib/admin-auth";
 
 export async function GET() {
   try {
@@ -43,6 +44,15 @@ export async function POST(
   req: NextRequest
 ) {
   try {
+    const session = await getAdminSession();
+
+    if (!session) {
+      return NextResponse.json(
+        { success: false, message: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
     const body =
       await req.json();
 

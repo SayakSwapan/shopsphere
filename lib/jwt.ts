@@ -1,13 +1,26 @@
 import jwt from "jsonwebtoken";
 import { AuthUser } from "@/types/auth";
 
-const JWT_SECRET =
-  process.env.JWT_SECRET!;
+/**
+ * Fail closed: without a strong secret, tokens would be forgeable
+ * (jsonwebtoken would silently sign with the literal string "undefined").
+ */
+function getSecret(): string {
+  const value = process.env.JWT_SECRET;
+
+  if (!value || value.length < 32) {
+    throw new Error(
+      "JWT_SECRET is missing or too weak (must be at least 32 characters)."
+    );
+  }
+
+  return value;
+}
 
 export const generateToken = (
   payload: AuthUser
 ) => {
-  return jwt.sign(payload, JWT_SECRET, {
+  return jwt.sign(payload, getSecret(), {
     expiresIn: "7d",
   });
 };
@@ -17,6 +30,6 @@ export const verifyToken = (
 ) => {
   return jwt.verify(
     token,
-    JWT_SECRET
+    getSecret()
   ) as AuthUser;
 };

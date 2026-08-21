@@ -1,8 +1,20 @@
 import { SignJWT, jwtVerify } from "jose";
 
-const secret = new TextEncoder().encode(
-  process.env.JWT_SECRET!
-);
+/**
+ * Fail closed: without a strong secret, admin tokens would be forgeable
+ * (jose would silently sign with the literal string "undefined").
+ */
+function getSecret(): Uint8Array {
+  const value = process.env.JWT_SECRET;
+
+  if (!value || value.length < 32) {
+    throw new Error(
+      "JWT_SECRET is missing or too weak (must be at least 32 characters)."
+    );
+  }
+
+  return new TextEncoder().encode(value);
+}
 
 export async function createAdminToken(
   id: string
@@ -15,7 +27,7 @@ export async function createAdminToken(
       alg: "HS256",
     })
     .setExpirationTime("7d")
-    .sign(secret);
+    .sign(getSecret());
 }
 
 export async function verifyAdminToken(
@@ -24,7 +36,7 @@ export async function verifyAdminToken(
   try {
     const result = await jwtVerify(
       token,
-      secret
+      getSecret()
     );
 
     return result.payload;

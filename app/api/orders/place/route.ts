@@ -41,7 +41,8 @@ export async function POST(req: Request) {
     if (!user) return NextResponse.json({ success: false, message: "User not found" }, { status: 404 });
     if (!user.cart || user.cart.cartitem.length === 0) return NextResponse.json({ success: false, message: "Cart is empty" }, { status: 400 });
 
-    const address = await prisma.address.findUnique({ where: { id: addressId } });
+    // Ownership check: the shipping address must belong to the caller.
+    const address = await prisma.address.findFirst({ where: { id: addressId, userId: user.id } });
     if (!address) return NextResponse.json({ success: false, message: "Address not found" }, { status: 404 });
 
     // Never trust the client — block any product that is explicitly restricted

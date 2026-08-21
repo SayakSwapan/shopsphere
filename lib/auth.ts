@@ -57,38 +57,48 @@ export const {
             credentials.phoneOtpToken as string
           );
 
-          if (!tokenPayload || tokenPayload.email !== user.email) {
-            return null;
-          }
-
-          return {
-            id: user.id,
-            email: user.email,
-            name: user.name,
-            role: user.role,
-          };
-        }
-
-        if (!credentials?.password) {
+        if (!tokenPayload || tokenPayload.email !== user.email) {
           return null;
         }
 
-        if (!user.password) {
+        // Partners must use their own portal, not customer login.
+        if (user.role === "PARTNER") {
           return null;
         }
 
-        const isValid = await bcrypt.compare(
-          credentials.password as string,
-          user.password
-        );
+        return {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+        };
+      }
 
-        if (!isValid) {
-          return null;
-        }
+      if (!credentials?.password) {
+        return null;
+      }
 
-        if (user.role === "CUSTOMER" && !user.emailVerified) {
-          return null;
-        }
+      if (!user.password) {
+        return null;
+      }
+
+      const isValid = await bcrypt.compare(
+        credentials.password as string,
+        user.password
+      );
+
+      if (!isValid) {
+        return null;
+      }
+
+      // Partners must use their own portal, not customer login.
+      if (user.role === "PARTNER") {
+        return null;
+      }
+
+      if (user.role === "CUSTOMER" && !user.emailVerified) {
+        return null;
+      }
 
         return {
           id: user.id,
@@ -123,6 +133,11 @@ export const {
           });
         } else {
           if (!existingUser.isActive) {
+            return false;
+          }
+
+          // Partners must use their own portal, not customer login.
+          if (existingUser.role === "PARTNER") {
             return false;
           }
 

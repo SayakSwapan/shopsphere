@@ -119,9 +119,11 @@ export async function PATCH(req: Request) {
       });
     }
 
-    await prisma.address.update({
+    // Ownership check: only update addresses belonging to the caller.
+    const updated = await prisma.address.updateMany({
       where: {
         id: body.id,
+        userId: user.id,
       },
       data: {
         fullName: body.fullName,
@@ -136,6 +138,13 @@ export async function PATCH(req: Request) {
         updatedAt: new Date(),
       },
     });
+
+    if (updated.count === 0) {
+      return NextResponse.json(
+        { message: "Address not found" },
+        { status: 404 }
+      );
+    }
 
     return NextResponse.json({
       success: true,
@@ -171,11 +180,38 @@ export async function DELETE(req: Request) {
 
     const { id } = await req.json();
 
-    await prisma.address.delete({
+    const user = await prisma.user.findUnique({
+      where: {
+        email: session.user.email,
+      },
+      select: { id: true },
+    });
+
+    if (!user) {
+      return NextResponse.json(
+        {
+          message: "User not found",
+        },
+        {
+          status: 404,
+        }
+      );
+    }
+
+    // Ownership check: only delete addresses belonging to the caller.
+    const deleted = await prisma.address.deleteMany({
       where: {
         id,
+        userId: user.id,
       },
     });
+
+    if (deleted.count === 0) {
+      return NextResponse.json(
+        { message: "Address not found" },
+        { status: 404 }
+      );
+    }
 
     return NextResponse.json({
       success: true,

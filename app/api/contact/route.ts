@@ -1,9 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createAdminNotification } from "@/lib/notifications";
+import { getAdminSession } from "@/lib/admin-auth";
+import { getClientIp, rateLimit } from "@/lib/security";
 
 export async function POST(request: NextRequest) {
   try {
+    const limit = rateLimit(`contact:${getClientIp(request)}`, 5, 10 * 60 * 1000);
+    if (!limit.ok) {
+      return NextResponse.json(
+        { success: false, message: "Too many messages sent. Please try again later." },
+        { status: 429, headers: { "Retry-After": String(limit.retryAfterSec) } }
+      );
+    }
+
     const body = await request.json();
     const { name, email, phone, subject, message } = body;
 
@@ -84,6 +94,15 @@ export async function POST(request: NextRequest) {
 
 export async function GET() {
   try {
+    const session = await getAdminSession();
+
+    if (!session) {
+      return NextResponse.json(
+        { success: false, message: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
     const messages = await prisma.contactMessage.findMany({
       orderBy: { createdAt: "desc" },
     });

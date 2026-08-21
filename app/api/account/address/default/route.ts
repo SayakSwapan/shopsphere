@@ -36,15 +36,24 @@ export async function PUT(req: NextRequest) {
     },
   });
 
-  await prisma.address.update({
+  // Ownership check: only mark the caller's own address as default.
+  const updated = await prisma.address.updateMany({
     where: {
       id,
+      userId: user.id,
     },
     data: {
       isDefault: true,
       updatedAt: new Date(),
     },
   });
+
+  if (updated.count === 0) {
+    return NextResponse.json(
+      { success: false, message: "Address not found" },
+      { status: 404 }
+    );
+  }
 
   return NextResponse.json({
     success: true,

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { sendPasswordResetSuccessEmail } from "@/lib/mail";
+import { rateLimit, safeCompare } from "@/lib/security";
 
 export async function POST(req: Request) {
   try {
@@ -24,8 +25,23 @@ export async function POST(req: Request) {
       );
     }
 
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // Cap verification attempts per OTP window so a 6-digit code
+    // can't be brute-forced.
+    const limit = rateLimit(`otp-verify:${normalizedEmail}`, 5, 10 * 60 * 1000);
+    if (!limit.ok) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Too many attempts. Please request a new OTP.",
+        },
+        { status: 429 }
+      );
+    }
+
     const user = await prisma.user.findUnique({
-      where: { email: email.toLowerCase().trim() },
+      where: { email: normalizedEmail },
       select: {
         id: true,
         name: true,
@@ -51,7 +67,8 @@ export async function POST(req: Request) {
       );
     }
 
-    if (user.emailOtp !== otp) {
+    // Timing-safe comparison (replaces !==).
+    if (!safeCompare(user.emailOtp, String(otp))) {
       return NextResponse.json(
         { success: false, message: "Invalid OTP." },
         { status: 400 }

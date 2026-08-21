@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { getAdminSession } from "@/lib/admin-auth";
 
 interface Params {
   params: Promise<{
@@ -12,6 +13,15 @@ export async function PUT(
   { params }: Params
 ) {
   try {
+    const session = await getAdminSession();
+
+    if (!session) {
+      return NextResponse.json(
+        { success: false, message: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
     const { id } = await params;
 
     const body = await req.json();
@@ -86,6 +96,15 @@ export async function DELETE(
   { params }: Params
 ) {
   try {
+    const session = await getAdminSession();
+
+    if (!session) {
+      return NextResponse.json(
+        { success: false, message: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
     const { id } = await params;
 
     await prisma.coupon.delete({

@@ -17,6 +17,7 @@ export async function PATCH(req: Request) {
       where: {
         email: session.user.email,
       },
+      select: { id: true },
     });
 
     if (!user) {
@@ -36,8 +37,14 @@ export async function PATCH(req: Request) {
       );
     }
 
-    const cartItem = await prisma.cartitem.findUnique({
-      where: { id: cartItemId },
+    // Ownership check: the item must belong to the caller's cart.
+    const cartItem = await prisma.cartitem.findFirst({
+      where: {
+        id: cartItemId,
+        cart: {
+          userId: user.id,
+        },
+      },
       select: {
         productvariant: {
           select: { stock: true },
@@ -45,7 +52,14 @@ export async function PATCH(req: Request) {
       },
     });
 
-    if (cartItem?.productvariant && quantity > cartItem.productvariant.stock) {
+    if (!cartItem) {
+      return NextResponse.json(
+        { success: false, message: "Item not found in your cart." },
+        { status: 404 }
+      );
+    }
+
+    if (cartItem.productvariant && quantity > cartItem.productvariant.stock) {
       return NextResponse.json(
         {
           success: false,

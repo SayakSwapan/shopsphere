@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendOtpEmail } from "@/lib/mail";
+import { generateOtp, getClientIp, rateLimit } from "@/lib/security";
 
 export async function POST(req: Request) {
   try {
@@ -14,6 +15,14 @@ export async function POST(req: Request) {
     }
 
     const normalizedEmail = email.toLowerCase().trim();
+
+    const limit = rateLimit(`admin-otp:${normalizedEmail}:${getClientIp(req)}`, 5, 15 * 60 * 1000);
+    if (!limit.ok) {
+      return NextResponse.json(
+        { success: false, message: "Too many OTP requests. Please try again later." },
+        { status: 429, headers: { "Retry-After": String(limit.retryAfterSec) } }
+      );
+    }
 
     const adminCount = await prisma.user.count({
       where: { role: "ADMIN" },
@@ -47,7 +56,8 @@ export async function POST(req: Request) {
       );
     }
 
-    const otp = String(Math.floor(100000 + Math.random() * 900000));
+    // Cryptographically secure OTP (replaces Math.random).
+    const otp = generateOtp(6);
     const expiry = new Date(Date.now() + 10 * 60 * 1000);
 
     await prisma.user.update({

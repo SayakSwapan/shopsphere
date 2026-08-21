@@ -1,37 +1,53 @@
 import { NextResponse } from "next/server";
-import otpGenerator from "otp-generator";
 import { prisma } from "@/lib/prisma";
 import { sendTemplatedEmail } from "@/lib/email-service";
+import { generateOtp, getClientIp, rateLimit } from "@/lib/security";
 
 export async function POST(req: Request) {
   try {
     const { email } = await req.json();
 
-    if (!email) {
+    if (!email || typeof email !== "string") {
       return NextResponse.json(
         { success: false, message: "Email required" },
         { status: 400 }
       );
     }
 
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // Anti-bombing / anti-enumeration-cost throttles.
+    const perEmail = rateLimit(`otp-email:${normalizedEmail}`, 3, 10 * 60 * 1000);
+    if (!perEmail.ok) {
+      return NextResponse.json(
+        { success: false, message: "Too many OTP requests. Please wait before retrying." },
+        { status: 429, headers: { "Retry-After": String(perEmail.retryAfterSec) } }
+      );
+    }
+
+    const perIp = rateLimit(`otp-ip:${getClientIp(req)}`, 10, 60 * 60 * 1000);
+    if (!perIp.ok) {
+      return NextResponse.json(
+        { success: false, message: "Too many OTP requests. Please try again later." },
+        { status: 429, headers: { "Retry-After": String(perIp.retryAfterSec) } }
+      );
+    }
+
     const user = await prisma.user.findUnique({
-      where: { email },
+      where: { email: normalizedEmail },
       select: { name: true },
     });
 
-    const otp = otpGenerator.generate(6, {
-      upperCaseAlphabets: false,
-      specialChars: false,
-      lowerCaseAlphabets: false,
-    });
+    // Cryptographically secure OTP (replaces otp-generator).
+    const otp = generateOtp(6);
 
     const expiry = new Date(Date.now() + 10 * 60 * 1000);
 
     await prisma.user.upsert({
-      where: { email },
+      where: { email: normalizedEmail },
       update: { emailOtp: otp, emailOtpExpiry: expiry },
       create: {
-        email,
+        email: normalizedEmail,
         emailOtp: otp,
         emailOtpExpiry: expiry,
       },
@@ -41,11 +57,11 @@ export async function POST(req: Request) {
     const templateKey = isVerification ? "email_verification" : "login_otp";
 
     await sendTemplatedEmail({
-      to: email,
+      to: normalizedEmail,
       templateKey,
       placeholders: {
         otp,
-        email,
+        email: normalizedEmail,
         customerName: user?.name || "Customer",
         expiryMinutes: "10",
         year: String(new Date().getFullYear()),

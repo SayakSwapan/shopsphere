@@ -13,6 +13,7 @@ import {
   CalendarClock,
   Mail,
   Settings,
+  ShieldCheck,
 } from "lucide-react";
 
 import type { WorkflowDiagramData } from "@/components/admin/guides/workflow-diagram";
@@ -1266,6 +1267,128 @@ export const guideSections: GuideSection[] = [
             detail:
               "Visit the storefront to confirm branding, links, and checkout badges all render correctly.",
             phase: "Verified",
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: "security",
+    icon: ShieldCheck,
+    title: "Security & Access",
+    description:
+      "How the store protects admin accounts, customer data, OTPs and payments — and what to do when something looks wrong.",
+    steps: [
+      {
+        title: "Understand the two login systems",
+        detail:
+          "Customers sign in through the storefront (NextAuth). Admins sign in at /admin/login with a separate, hardened system. The two are never interchangeable — an admin cookie cannot open customer APIs and vice versa.",
+      },
+      {
+        title: "Know the brute-force protection",
+        detail:
+          "After 5 failed admin logins within 15 minutes, that email is locked for 15 minutes. Every attempt (success or failure) is recorded with IP address — review them anytime under Security in the sidebar.",
+      },
+      {
+        title: "Watch the Security page",
+        detail:
+          "Security → shows failed/successful logins of the last 24h, currently locked accounts, and a configuration checklist (JWT secret, Razorpay webhook secret, API keys). Check it weekly, or right after any suspicious email.",
+      },
+      {
+        title: "OTP safety (password resets & verification)",
+        detail:
+          "OTPs are cryptographically random, expire after 10 minutes, allow max 5 verification attempts, and sending is rate-limited. OTPs are single-use — they clear on success. Never share an OTP over phone/chat; customers never need to give you one.",
+      },
+      {
+        title: "Payment verification flow",
+        detail:
+          "Every online payment is verified server-side against Razorpay's HMAC signature before an order is marked PAID. The webhook endpoint double-confirms payments from Razorpay's servers once RAZORPAY_WEBHOOK_SECRET is configured. Duplicate confirmations are ignored automatically.",
+      },
+      {
+        title: "Customer data isolation",
+        detail:
+          "Every customer API (cart, addresses, orders, returns) verifies the session and only touches that user's own rows. One customer can never read or modify another customer's cart, addresses or orders.",
+      },
+      {
+        title: "Uploads are restricted",
+        detail:
+          "Admin uploads accept only images (JPEG/PNG/WebP/GIF/AVIF) up to 10 MB. Customer uploads are limited to profile/print images with the same rules.",
+      },
+    ],
+    tips: [
+      "If you get locked out, wait 15 minutes — lockouts clear automatically. Repeated attempts while locked extend nothing but do get logged.",
+      "Use a long unique admin password; password resets go through the OTP email flow.",
+      "If the Security page shows a red MISSING item, fix the environment variable in Vercel → Settings → Environment Variables, then redeploy.",
+      "A burst of failed logins for one email usually means someone is guessing — the lockout stops them, but consider changing that password.",
+      "Never paste admin tokens or secrets into chat, tickets, or code files.",
+    ],
+    diagram: [
+      {
+        title: "Admin Login Security Flow",
+        nodes: [
+          {
+            type: "start",
+            title: "Admin enters credentials",
+            detail: "At /admin/login. Requests are throttled per IP to slow credential stuffing.",
+          },
+          {
+            type: "decision",
+            title: "Account locked?",
+            detail: "5+ failures for this email in the last 15 minutes?",
+            branches: [
+              { label: "Yes", outcome: "Rejected with 'temporarily locked' — no password check runs.", tone: "red" },
+              { label: "No", outcome: "Continue to credential check.", tone: "slate" },
+            ],
+          },
+          {
+            type: "decision",
+            title: "Credentials valid?",
+            detail: "bcrypt comparison against the stored hash; role must be ADMIN.",
+            branches: [
+              { label: "No", outcome: "Failure recorded (email + IP + user agent). Counts toward lockout.", tone: "red" },
+              { label: "Yes", outcome: "Success recorded, then a signed 7-day JWT is set as an httpOnly cookie.", tone: "green" },
+            ],
+          },
+          {
+            type: "end",
+            title: "Session active",
+            detail: "Every admin API re-verifies the token AND the ADMIN role in the database on each request.",
+            phase: "Protected",
+          },
+        ],
+      },
+      {
+        title: "Online Payment Confirmation Flow",
+        nodes: [
+          {
+            type: "start",
+            title: "Customer pays via Razorpay",
+            detail: "Order amount is always computed server-side from the database cart — never trusted from the browser.",
+          },
+          {
+            type: "action",
+            title: "Client callback verify",
+            detail: "/api/payment/verify recomputes the HMAC signature server-side before anything happens.",
+          },
+          {
+            type: "action",
+            title: "Webhook double-check",
+            detail: "Razorpay also calls /api/payment/webhook, verified with its own secret (when configured).",
+          },
+          {
+            type: "decision",
+            title: "Already processed?",
+            detail: "An atomic PENDING→PAID claim means only the first confirmation triggers side effects.",
+            branches: [
+              { label: "Yes", outcome: "Duplicate is safely ignored.", tone: "amber" },
+              { label: "No", outcome: "Stock decremented, coupon consumed, cart cleared, admins notified.", tone: "green" },
+            ],
+          },
+          {
+            type: "end",
+            title: "Order marked PAID exactly once",
+            detail: "Idempotent under retries, refreshes and concurrent calls.",
+            phase: "Settled",
           },
         ],
       },

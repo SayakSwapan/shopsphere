@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import otpGenerator from "otp-generator";
 import { prisma } from "@/lib/prisma";
 import { sendPasswordResetEmail } from "@/lib/mail";
+import { generateOtp, getClientIp, rateLimit } from "@/lib/security";
 
 export async function POST(req: Request) {
   try {
@@ -14,8 +14,27 @@ export async function POST(req: Request) {
       );
     }
 
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // Anti email-bombing throttle.
+    const perEmail = rateLimit(`forgot:${normalizedEmail}`, 3, 10 * 60 * 1000);
+    if (!perEmail.ok) {
+      return NextResponse.json(
+        { success: false, message: "Too many requests. Please wait before retrying." },
+        { status: 429, headers: { "Retry-After": String(perEmail.retryAfterSec) } }
+      );
+    }
+
+    const perIp = rateLimit(`forgot-ip:${getClientIp(req)}`, 10, 60 * 60 * 1000);
+    if (!perIp.ok) {
+      return NextResponse.json(
+        { success: false, message: "Too many requests. Please try again later." },
+        { status: 429, headers: { "Retry-After": String(perIp.retryAfterSec) } }
+      );
+    }
+
     const user = await prisma.user.findUnique({
-      where: { email: email.toLowerCase().trim() },
+      where: { email: normalizedEmail },
       select: { id: true, name: true },
     });
 
@@ -28,11 +47,8 @@ export async function POST(req: Request) {
       });
     }
 
-    const otp = otpGenerator.generate(6, {
-      upperCaseAlphabets: false,
-      specialChars: false,
-      lowerCaseAlphabets: false,
-    });
+    // Cryptographically secure OTP (replaces otp-generator).
+    const otp = generateOtp(6);
 
     const expiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
@@ -44,7 +60,7 @@ export async function POST(req: Request) {
       },
     });
 
-    await sendPasswordResetEmail(email, otp, user.name);
+    await sendPasswordResetEmail(normalizedEmail, otp, user.name);
 
     return NextResponse.json({
       success: true,

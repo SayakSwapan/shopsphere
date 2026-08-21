@@ -6,6 +6,9 @@ import { createAdminToken, verifyAdminToken } from "./admin-jwt";
 
 import { getAdminCookie, setAdminCookie } from "./admin-cookie";
 
+const LOCKOUT_WINDOW_MS = 15 * 60 * 1000;
+const MAX_FAILED_ATTEMPTS = 5;
+
 export async function getAdminSession() {
   const token = await getAdminCookie();
 
@@ -27,29 +30,52 @@ export async function getAdminSession() {
 
 export async function adminLogin(
   email: string,
-  password: string
+  password: string,
+  meta?: { ip?: string; userAgent?: string }
 ) {
+  const normalizedEmail = email.toLowerCase().trim();
+
+  // Brute-force protection: lock the account after too many recent failures.
+  const recentFailed = await prisma.loginAttempt.count({
+    where: {
+      email: normalizedEmail,
+      success: false,
+      createdAt: { gte: new Date(Date.now() - LOCKOUT_WINDOW_MS) },
+    },
+  });
+
+  if (recentFailed >= MAX_FAILED_ATTEMPTS) {
+    return {
+      success: false,
+      locked: true,
+    };
+  }
+
+  const recordFailure = () =>
+    prisma.loginAttempt
+      .create({
+        data: {
+          email: normalizedEmail,
+          success: false,
+          ipAddress: meta?.ip ?? null,
+          userAgent: meta?.userAgent ?? null,
+        },
+      })
+      .catch(() => {});
+
   const admin =
     await prisma.user.findUnique({
       where: {
-        email,
+        email: normalizedEmail,
       },
     });
 
-  if (!admin)
+  if (!admin || admin.role !== "ADMIN" || !admin.password) {
+    await recordFailure();
     return {
       success: false,
     };
-
-  if (admin.role !== "ADMIN")
-    return {
-      success: false,
-    };
-
-  if (!admin.password)
-    return {
-      success: false,
-    };
+  }
 
   const valid =
     await bcrypt.compare(
@@ -57,10 +83,23 @@ export async function adminLogin(
       admin.password
     );
 
-  if (!valid)
+  if (!valid) {
+    await recordFailure();
     return {
       success: false,
     };
+  }
+
+  await prisma.loginAttempt
+    .create({
+      data: {
+        email: normalizedEmail,
+        success: true,
+        ipAddress: meta?.ip ?? null,
+        userAgent: meta?.userAgent ?? null,
+      },
+    })
+    .catch(() => {});
 
   const token =
     await createAdminToken(

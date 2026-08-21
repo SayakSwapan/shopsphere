@@ -35,6 +35,7 @@ import {
   Printer,
   Zap,
   Archive,
+  ShieldCheck,
   type LucideIcon,
 } from "lucide-react";
 
@@ -66,6 +67,10 @@ export const navItems: NavEntry[] = [
   {
     type: "item",
     item: { title: "Guide", href: "/admin/guide", icon: BookOpen },
+  },
+  {
+    type: "item",
+    item: { title: "Security", href: "/admin/security", icon: ShieldCheck },
   },
   {
     type: "section",

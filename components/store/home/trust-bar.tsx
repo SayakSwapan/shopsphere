@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { Shield, Truck, RotateCcw, Headphones } from "lucide-react";
+import AnimatedStat from "@/components/store/home/animated-stat";
 
 export const dynamic = "force-dynamic";
 
@@ -43,25 +44,13 @@ export default async function TrustBar() {
         {/* stat counters */}
         {stats.length > 0 && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-y-8 gap-x-4 md:gap-x-6 mb-10 md:mb-16">
-            {stats.map((stat) => (
-              <div key={stat.id} className="text-center px-2">
-                <p
-                  className="text-3xl md:text-5xl font-black leading-none tracking-tight"
-                  style={{
-                    color: "var(--t-primary)",
-                    fontFamily: "var(--t-font-heading)",
-                    textShadow: "0 1px 2px rgba(0,0,0,0.15)",
-                  }}
-                >
-                  {stat.value}
-                </p>
-                <p
-                  className="text-xs sm:text-sm font-semibold uppercase tracking-[0.12em] mt-2 md:mt-3"
-                  style={{ color: "var(--t-text-body)" }}
-                >
-                  {stat.label}
-                </p>
-              </div>
+            {stats.map((stat, index) => (
+              <AnimatedStat
+                key={stat.id}
+                value={stat.value}
+                label={stat.label}
+                index={index}
+              />
             ))}
           </div>
         )}

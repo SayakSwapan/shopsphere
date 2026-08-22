@@ -167,6 +167,35 @@ SPORTS THEME
   animation-play-state: paused;
 }
 
+/* Stat counter: rise + de-blur pop when scrolled into view */
+@keyframes stat-pop {
+  0% {
+    opacity: 0;
+    transform: translateY(16px) scale(0.94);
+    filter: blur(8px);
+  }
+  60% {
+    filter: blur(0);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+.stat-pop {
+  display: inline-block;
+  animation: stat-pop 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: var(--pop-delay, 0ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stat-pop {
+    animation: none;
+  }
+}
+
 /* Sports: floating hero chips */
 @keyframes sports-float {
   0%,

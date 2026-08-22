@@ -74,7 +74,7 @@ function SportsHero({
   return (
     <div
       className="relative w-full overflow-hidden"
-      style={{ minHeight: "clamp(340px, 70vw, 560px)", background: "#0A0E13" }}
+      style={{ minHeight: "clamp(340px, 62vw, min(88vh, 680px))", background: "#0A0E13" }}
     >
       {/* Full-width background image */}
       {slide.imageUrl ? (
@@ -152,7 +152,7 @@ function SportsHero({
         PRO
       </span>
 
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 flex items-center" style={{ minHeight: "clamp(340px, 70vw, 560px)" }}>
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 flex items-center" style={{ minHeight: "clamp(340px, 62vw, min(88vh, 680px))" }}>
         <div className="max-w-3xl py-10 sm:py-20">
           {/* Live season badge */}
           <div
@@ -325,7 +325,7 @@ function FashionHero({
   setCurrent: (n: number) => void; prev: () => void; next: () => void;
 }) {
   return (
-    <div className="relative w-full overflow-hidden" style={{ minHeight: "clamp(420px, 85vw, 600px)" }}>
+    <div className="relative w-full overflow-hidden" style={{ minHeight: "clamp(420px, 72vw, min(90vh, 720px))" }}>
       {slide.imageUrl ? (
         <div
           key={slide.id}
@@ -345,7 +345,7 @@ function FashionHero({
         style={{ background: "linear-gradient(180deg, rgba(250,250,250,0.88) 0%, rgba(250,250,250,0.50) 100%)" }}
       />
 
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 flex items-end" style={{ minHeight: "clamp(340px, 70vw, 600px)" }}>
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 flex items-end" style={{ minHeight: "clamp(420px, 72vw, min(90vh, 720px))" }}>
         <div className="max-w-3xl py-10 sm:py-20">
           <span className="text-[11px] font-semibold uppercase tracking-[0.4em] text-text-muted-1 block mb-4">
             ✦ New Collection
@@ -413,9 +413,9 @@ function EthnicHero({
   setCurrent: (n: number) => void; prev: () => void; next: () => void;
 }) {
   return (
-    <div className="relative w-full overflow-hidden" style={{ minHeight: "clamp(360px, 75vw, 640px)", background: "#FBF3E6" }}>
+    <div className="relative w-full overflow-hidden"       style={{ minHeight: "clamp(360px, 66vw, min(88vh, 700px))", background: "#FBF3E6" }}>
       {/* 50/50 Grid Layout */}
-      <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2" style={{ minHeight: "clamp(360px, 75vw, 640px)" }}>
+      <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2" style={{ minHeight: "clamp(360px, 66vw, min(88vh, 700px))" }}>
         {/* LEFT: Text Content */}
         <div className="relative flex flex-col justify-center px-5 sm:px-12 lg:px-16 py-10 sm:py-14 lg:py-0">
           {/* Gold accent line at top */}
@@ -542,7 +542,7 @@ function LuxuryHero({
   setCurrent: (n: number) => void; prev: () => void; next: () => void;
 }) {
   return (
-    <div className="relative w-full overflow-hidden" style={{ minHeight: "clamp(340px, 70vw, 600px)" }}>
+    <div className="relative w-full overflow-hidden" style={{ minHeight: "clamp(340px, 62vw, min(88vh, 680px))" }}>
       {slide.imageUrl ? (
         <div
           key={slide.id}
@@ -565,7 +565,7 @@ function LuxuryHero({
       {/* Subtle gold accent lines */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1px] h-24 bg-primary opacity-20" />
 
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 flex items-center" style={{ minHeight: "clamp(340px, 70vw, 600px)" }}>
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 flex items-center" style={{ minHeight: "clamp(340px, 62vw, min(88vh, 680px))" }}>
         <div className="max-w-3xl py-10 sm:py-20 mx-auto text-center">
           <span
             className="text-[10px] font-medium uppercase tracking-[0.5em] text-text-muted-2 block mb-6"

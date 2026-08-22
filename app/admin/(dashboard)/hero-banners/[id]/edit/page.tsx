@@ -5,6 +5,8 @@ import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
 import { ArrowLeft, Upload, Loader2 } from "lucide-react";
+import BannerImageGuide, { inspectBannerImage } from "@/components/admin/common/banner-image-guide";
+import LinkUrlPicker from "@/components/admin/common/link-url-picker";
 
 export default function EditHeroBannerPage() {
   const router = useRouter();
@@ -66,28 +68,16 @@ export default function EditHeroBannerPage() {
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 5 * 1024 * 1024) {
       toast.error("Image must be under 5MB");
       return;
     }
-    const url = URL.createObjectURL(file);
-    const img = new Image();
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      if (img.width < img.height) {
-        toast.warning(
-          `Image is portrait (${img.width}×${img.height}). Use a wide landscape image — recommended 1920×800.`
-        );
-      } else if (img.width / img.height < 1.5) {
-        toast.warning(
-          `Image is near-square (${img.width}×${img.height}). A wide landscape image (1920×800) fills the banner best.`
-        );
-      }
-    };
-    img.src = url;
+    for (const warning of await inspectBannerImage(file)) {
+      toast.warning(warning);
+    }
     handleUpload(file);
   };
 
@@ -166,14 +156,7 @@ export default function EditHeroBannerPage() {
 
         <div>
           <label className="block text-sm font-medium text-slate-300 mb-1.5">Image *</label>
-          <div className="mb-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2.5">
-            <p className="text-xs font-semibold text-amber-300">
-              Recommended size: 1920 × 800 px (wide landscape)
-            </p>
-            <p className="mt-0.5 text-[11px] text-slate-400">
-              Shown full-width on the home page. Use a wide landscape image (width wider than height) so it fills the banner without awkward cropping.
-            </p>
-          </div>
+          <BannerImageGuide />
           <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
           {form.imageUrl ? (
             <div className="relative rounded-xl overflow-hidden border border-[#1E293B]">
@@ -196,26 +179,21 @@ export default function EditHeroBannerPage() {
           )}
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">CTA Text</label>
-            <input
-              type="text"
-              value={form.ctaText}
-              onChange={(e) => setForm({ ...form, ctaText: e.target.value })}
-              className="w-full bg-[#0A0F1E] border border-[#1E293B] text-white rounded-lg px-4 py-2.5 text-sm focus:border-amber-500/50 outline-none"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">CTA Link</label>
-            <input
-              type="text"
-              value={form.ctaLink}
-              onChange={(e) => setForm({ ...form, ctaLink: e.target.value })}
-              className="w-full bg-[#0A0F1E] border border-[#1E293B] text-white rounded-lg px-4 py-2.5 text-sm focus:border-amber-500/50 outline-none"
-            />
-          </div>
+        <div>
+          <label className="block text-sm font-medium text-slate-300 mb-1.5">CTA Text</label>
+          <input
+            type="text"
+            value={form.ctaText}
+            onChange={(e) => setForm({ ...form, ctaText: e.target.value })}
+            className="w-full bg-[#0A0F1E] border border-[#1E293B] text-white rounded-lg px-4 py-2.5 text-sm focus:border-amber-500/50 outline-none"
+          />
         </div>
+
+        <LinkUrlPicker
+          label="CTA Link"
+          value={form.ctaLink}
+          onChange={(ctaLink) => setForm({ ...form, ctaLink })}
+        />
 
         <div className="grid grid-cols-2 gap-4">
           <div>

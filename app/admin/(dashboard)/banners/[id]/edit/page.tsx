@@ -5,6 +5,8 @@ import { useRouter, useParams } from "next/navigation";
 import { toast } from "sonner";
 import { Save, ArrowLeft, Upload, Loader2 } from "lucide-react";
 import Link from "next/link";
+import BannerImageGuide, { inspectBannerImage } from "@/components/admin/common/banner-image-guide";
+import LinkUrlPicker from "@/components/admin/common/link-url-picker";
 
 export default function EditBannerPage() {
   const router = useRouter();
@@ -60,12 +62,15 @@ export default function EditBannerPage() {
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 5 * 1024 * 1024) {
       toast.error("Image must be under 5MB");
       return;
+    }
+    for (const warning of await inspectBannerImage(file)) {
+      toast.warning(warning);
     }
     handleUpload(file);
   };
@@ -138,6 +143,7 @@ export default function EditBannerPage() {
         {/* Image Upload */}
         <div>
           <label className="block text-sm font-medium text-slate-300 mb-1.5">Banner Image *</label>
+          <BannerImageGuide />
           <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
 
           {form.imageUrl ? (
@@ -184,23 +190,10 @@ export default function EditBannerPage() {
         </div>
 
         {/* Link URL */}
-        <div className="bg-[#111827] border border-[#1E293B] rounded-xl p-4">
-          <label className="block text-sm font-medium text-slate-300 mb-1.5">
-            Button Link URL <span className="text-slate-500 font-normal">(optional)</span>
-          </label>
-          <input
-            type="text"
-            value={form.linkUrl}
-            onChange={(e) => setForm({ ...form, linkUrl: e.target.value })}
-            className="w-full bg-[#0A0F1E] border border-[#1E293B] text-white rounded-lg px-4 py-2.5 text-sm focus:border-amber-500/50 outline-none"
-            placeholder="/products?category=Panjabi"
-          />
-          <p className="mt-2 text-xs text-slate-500">
-            When customers click this banner, they go to this URL. Use query params to filter products,
-            e.g. <code className="text-amber-400/80">/products?category=Panjabi</code> or <code className="text-amber-400/80">/products?gender=Female</code>.
-            Leave empty to make the banner non-clickable.
-          </p>
-        </div>
+        <LinkUrlPicker
+          value={form.linkUrl}
+          onChange={(linkUrl) => setForm({ ...form, linkUrl })}
+        />
 
         {/* Button Text */}
         <div>

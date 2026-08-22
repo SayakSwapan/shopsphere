@@ -215,16 +215,14 @@ export default function OrderCard({ order }: Props) {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             {order.trackingUrl && (
-              <a
-                href={order.trackingUrl}
-                target="_blank"
-                rel="noopener noreferrer"
+              <Link
+                href={`/track?order=${order.id}`}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold transition hover:opacity-80 print:hidden"
                 style={{ borderRadius: "var(--t-radius-badge)", background: "color-mix(in srgb, var(--t-primary) 15%, transparent)", color: "var(--t-primary)" }}
               >
                 <Truck size={12} />
                 Track
-              </a>
+              </Link>
             )}
             <Link
               href={`/account/orders/${order.id}`}

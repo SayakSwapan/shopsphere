@@ -30,7 +30,6 @@ import {
   Mail,
   Phone,
   MessageCircle,
-  ExternalLink,
 } from "lucide-react";
 import ReturnReplaceButtons from "@/components/store/return-replacement/return-replace-buttons";
 import PrintInvoiceButton from "@/components/store/orders/print-invoice-button";
@@ -536,17 +535,15 @@ export default async function OrderDetailPage({ params }: Props) {
                   </h2>
                 </div>
                 <div className="p-4 sm:p-6 text-sm">
-                  <a
-                    href={order.trackingUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <Link
+                    href={`/track?order=${order.id}`}
                     className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-button-text transition hover:opacity-90"
                   >
-                    <ExternalLink size={16} />
-                    Open Tracking Link
-                  </a>
+                    <Truck size={16} />
+                    Track Shipment
+                  </Link>
                   <p className="mt-2 truncate text-xs text-text-muted-2">
-                    {order.trackingUrl}
+                    Courier: {order.trackingUrl}
                   </p>
                 </div>
               </div>

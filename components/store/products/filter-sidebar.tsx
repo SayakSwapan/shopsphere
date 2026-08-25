@@ -158,12 +158,15 @@ export default function FilterSidebar({ categories, genders }: Props) {
       {/* Categories */}
       {categories.length > 0 && (
         <div className="px-5 py-5" style={{ borderBottom: "1px solid var(--t-border-card)" }}>
-          <p
-            className="text-[11px] tracking-[0.25em] uppercase font-bold mb-3"
-            style={{ color: "var(--t-primary)", fontFamily: "var(--t-font-body)" }}
-          >
-            Category
-          </p>
+          <div className="flex items-center gap-2 mb-3">
+            <span className="w-1 h-3.5 rounded-sm" style={{ background: "var(--t-primary)" }} />
+            <p
+              className="text-xs font-semibold tracking-wide uppercase"
+              style={{ color: "var(--t-text-heading)", fontFamily: "var(--t-font-body)" }}
+            >
+              Category
+            </p>
+          </div>
           <div className="space-y-0.5">
             {categories.map((cat) => (
               <OptionRow
@@ -184,12 +187,15 @@ export default function FilterSidebar({ categories, genders }: Props) {
       {/* Gender */}
       {genders.length > 0 && (
         <div className="px-5 py-5" style={{ borderBottom: "1px solid var(--t-border-card)" }}>
-          <p
-            className="text-[11px] tracking-[0.25em] uppercase font-bold mb-3"
-            style={{ color: "var(--t-primary)", fontFamily: "var(--t-font-body)" }}
-          >
-            Gender
-          </p>
+          <div className="flex items-center gap-2 mb-3">
+            <span className="w-1 h-3.5 rounded-sm" style={{ background: "var(--t-primary)" }} />
+            <p
+              className="text-xs font-semibold tracking-wide uppercase"
+              style={{ color: "var(--t-text-heading)", fontFamily: "var(--t-font-body)" }}
+            >
+              Gender
+            </p>
+          </div>
           <div className="space-y-0.5">
             {genders.map((g) => (
               <OptionRow
@@ -209,12 +215,15 @@ export default function FilterSidebar({ categories, genders }: Props) {
 
       {/* Price Sort */}
       <div className="px-5 py-5">
-        <p
-          className="text-[11px] tracking-[0.25em] uppercase font-bold mb-3"
-          style={{ color: "var(--t-primary)", fontFamily: "var(--t-font-body)" }}
-        >
-          Sort by Price
-        </p>
+        <div className="flex items-center gap-2 mb-3">
+          <span className="w-1 h-3.5 rounded-sm" style={{ background: "var(--t-primary)" }} />
+          <p
+            className="text-xs font-semibold tracking-wide uppercase"
+            style={{ color: "var(--t-text-heading)", fontFamily: "var(--t-font-body)" }}
+          >
+            Sort by Price
+          </p>
+        </div>
         <div className="space-y-0.5">
           {[{ value: "low-high", label: "Low to High" }, { value: "high-low", label: "High to Low" }].map(({ value, label }) => (
             <OptionRow

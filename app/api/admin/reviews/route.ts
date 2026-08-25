@@ -51,6 +51,7 @@ export async function GET() {
         comment: r.comment,
         images: Array.isArray(r.images) ? (r.images as string[]) : [],
         verified: r.verified,
+        isBot: r.isBot,
         createdAt: r.createdAt,
         userName: r.user?.name || "Customer",
         userEmail: r.user?.email || "",

@@ -50,6 +50,10 @@ export default function ProductsLoading() {
               </div>
             </div>
             <div className="px-5 py-5 space-y-3" style={{ borderBottom: "1px solid var(--t-border-card)" }}>
+              <div className="flex items-center gap-2 mb-3">
+                <SkeletonBlock className="w-1 h-3.5" radius="2px" />
+                <SkeletonBlock className="h-3 w-16" />
+              </div>
               {[0, 1, 2, 3].map((i) => (
                 <div key={i} className="flex items-center gap-3">
                   <SkeletonBlock className="w-4 h-4" radius="2px" />
@@ -58,6 +62,10 @@ export default function ProductsLoading() {
               ))}
             </div>
             <div className="px-5 py-5 space-y-3" style={{ borderBottom: "1px solid var(--t-border-card)" }}>
+              <div className="flex items-center gap-2 mb-3">
+                <SkeletonBlock className="w-1 h-3.5" radius="2px" />
+                <SkeletonBlock className="h-3 w-14" />
+              </div>
               {[0, 1].map((i) => (
                 <div key={i} className="flex items-center gap-3">
                   <SkeletonBlock className="w-4 h-4" radius="50%" />

@@ -36,6 +36,7 @@ import {
   Zap,
   Archive,
   ShieldCheck,
+  Bot,
   type LucideIcon,
 } from "lucide-react";
 
@@ -142,6 +143,7 @@ export const navItems: NavEntry[] = [
     icon: Mail,
     children: [
       { title: "Reviews", href: "/admin/reviews", icon: Star },
+      { title: "Generate Reviews", href: "/admin/reviews/generate", icon: Bot },
       { title: "Messages", href: "/admin/messages", icon: Mail },
       { title: "Callbacks", href: "/admin/callbacks", icon: PhoneCall },
       { title: "Email Templates", href: "/admin/email-templates", icon: MailPlus },

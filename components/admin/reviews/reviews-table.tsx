@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
-import { Star, Trash2, BadgeCheck, ShieldOff, Loader2, Search } from "lucide-react";
+import { Star, Trash2, BadgeCheck, ShieldOff, Loader2, Search, Bot, User } from "lucide-react";
 import { toast } from "sonner";
 
 export interface AdminReview {
@@ -11,6 +11,7 @@ export interface AdminReview {
   comment: string;
   images: string[];
   verified: boolean;
+  isBot: boolean;
   createdAt: string;
   userName: string;
   userEmail: string;
@@ -141,6 +142,18 @@ export default function ReviewsTable({ initialReviews }: Props) {
                 <span className="text-xs text-slate-500">
                   {review.userEmail}
                 </span>
+                {review.isBot && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-400">
+                    <Bot size={11} />
+                    BOT
+                  </span>
+                )}
+                {!review.isBot && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-blue-500/15 px-2 py-0.5 text-[10px] font-bold text-blue-400">
+                    <User size={11} />
+                    Customer
+                  </span>
+                )}
                 {review.verified && (
                   <span className="inline-flex items-center gap-1 rounded-full bg-green-500/15 px-2 py-0.5 text-[10px] font-bold text-green-400">
                     <BadgeCheck size={11} />

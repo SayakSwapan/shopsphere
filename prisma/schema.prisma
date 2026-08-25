@@ -470,6 +470,7 @@ model review {
   comment   String   @db.Text
   images    Json?
   verified  Boolean  @default(false)
+  isBot     Boolean  @default(false)
   createdAt DateTime @default(now())
   product   product  @relation(fields: [productId], references: [id], onDelete: Cascade, map: "Review_productId_fkey")
   user      user     @relation(fields: [userId], references: [id], onDelete: Cascade, map: "Review_userId_fkey")

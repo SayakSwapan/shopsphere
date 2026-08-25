@@ -46,7 +46,7 @@ export default async function AdminReviewsPage() {
     verified: r.verified,
     isBot: r.isBot,
     createdAt: r.createdAt.toISOString(),
-    userName: r.user?.name || "Customer",
+    userName: r.displayName || r.user?.name || "Customer",
     userEmail: r.user?.email || "",
     productName: r.product?.name || "Deleted product",
     productSlug: r.product?.slug || "",

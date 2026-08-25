@@ -53,7 +53,7 @@ export async function GET() {
         verified: r.verified,
         isBot: r.isBot,
         createdAt: r.createdAt,
-        userName: r.user?.name || "Customer",
+        userName: r.displayName || r.user?.name || "Customer",
         userEmail: r.user?.email || "",
         productName: r.product?.name || "Deleted product",
         productSlug: r.product?.slug || "",

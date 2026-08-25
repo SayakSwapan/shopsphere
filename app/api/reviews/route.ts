@@ -78,7 +78,7 @@ export async function GET(req: Request) {
         images: Array.isArray(r.images) ? (r.images as string[]) : [],
         verified: r.verified,
         createdAt: r.createdAt,
-        userName: r.user?.name || "Customer",
+        userName: r.displayName || r.user?.name || "Customer",
       })),
     });
   } catch (error) {

@@ -463,17 +463,18 @@ model policy {
 }
 
 model review {
-  id        String   @id @default(cuid())
-  productId String
-  userId    String
-  rating    Int
-  comment   String   @db.Text
-  images    Json?
-  verified  Boolean  @default(false)
-  isBot     Boolean  @default(false)
-  createdAt DateTime @default(now())
-  product   product  @relation(fields: [productId], references: [id], onDelete: Cascade, map: "Review_productId_fkey")
-  user      user     @relation(fields: [userId], references: [id], onDelete: Cascade, map: "Review_userId_fkey")
+  id          String   @id @default(cuid())
+  productId   String
+  userId      String
+  rating      Int
+  comment     String   @db.Text
+  images      Json?
+  verified    Boolean  @default(false)
+  isBot       Boolean  @default(false)
+  displayName String?  @db.VarChar(100)
+  createdAt   DateTime @default(now())
+  product     product  @relation(fields: [productId], references: [id], onDelete: Cascade, map: "Review_productId_fkey")
+  user        user     @relation(fields: [userId], references: [id], onDelete: Cascade, map: "Review_userId_fkey")
 
   @@index([productId])
   @@index([userId])

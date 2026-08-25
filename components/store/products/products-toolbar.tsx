@@ -1,5 +1,6 @@
 "use client";
 
+import { useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowUpDown } from "lucide-react";
 
@@ -17,13 +18,16 @@ const SORT_OPTIONS = [
 export default function ProductsToolbar({ totalProducts }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [isPending, startTransition] = useTransition();
   const currentSort = searchParams.get("price") || "";
 
   const handleSort = (value: string) => {
     const params = new URLSearchParams(searchParams.toString());
     if (value) params.set("price", value);
     else params.delete("price");
-    router.push(`/products?${params.toString()}`);
+    startTransition(() => {
+      router.push(`/products?${params.toString()}`);
+    });
   };
 
   return (
@@ -37,13 +41,15 @@ export default function ProductsToolbar({ totalProducts }: Props) {
         <select
           value={currentSort}
           onChange={(e) => handleSort(e.target.value)}
-          className="text-sm cursor-pointer appearance-none outline-none"
+          disabled={isPending}
+          className="text-sm cursor-pointer appearance-none outline-none disabled:opacity-50"
           style={{
             background: "var(--t-bg-card)",
             border: "1px solid var(--t-border-card)",
             color: "var(--t-text-body)",
             borderRadius: "var(--t-radius-button)",
             padding: "8px 12px",
+            fontFamily: "var(--t-font-body)",
           }}
         >
           {SORT_OPTIONS.map((opt) => (

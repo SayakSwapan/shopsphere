@@ -27,7 +27,7 @@ export default function MobileFilterDrawer({ open, onClose, children }: Props) {
         >
           <h2
             className="text-base font-semibold"
-            style={{ color: "var(--t-text-heading)", fontFamily: "var(--t-font-heading)" }}
+            style={{ color: "var(--t-text-heading)", fontFamily: "var(--t-font-body)" }}
           >
             Filters
           </h2>

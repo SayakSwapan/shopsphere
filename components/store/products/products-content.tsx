@@ -1,17 +1,39 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo, useCallback } from "react";
 import FilterSidebar from "./filter-sidebar";
 import MobileFilterDrawer from "./mobile-filter-drawer";
 import MobileFilterButton from "./mobile-filter-button";
 import ProductsToolbar from "./products-toolbar";
 import AppliedFilters from "./applied-filters";
 import ProductCard from "@/components/store/product-card";
-import { Package, ChevronDown, Loader2 } from "lucide-react";
+import { Package, ChevronDown } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 
+interface ProductVariant {
+  stock: number;
+  size: { sizeName: string } | null;
+  gender: { name: string } | null;
+}
+
+interface Product {
+  id: string;
+  name: string;
+  slug: string;
+  sellingPrice: string;
+  salePrice: string | null;
+  finalPrice: string | null;
+  discountType: string | null;
+  discountValue: string | null;
+  gstPercentage: string | null;
+  isFeatured: boolean;
+  isTrending: boolean;
+  productimage: { url: string }[];
+  productvariant: ProductVariant[];
+}
+
 interface Props {
-  products: any[]; // eslint-disable-line @typescript-eslint/no-explicit-any
+  products: Product[];
   categories: { id: string; name: string }[];
   genders: { id: string; name: string }[];
   perPage?: number;
@@ -23,7 +45,6 @@ export default function ProductsContent({ products, categories, genders, perPage
   const [mobileOpen, setMobileOpen] = useState(false);
   const itemsPerPage = perPage && perPage > 0 ? perPage : DEFAULT_PER_PAGE;
   const [visibleCount, setVisibleCount] = useState(itemsPerPage);
-  const [loading, setLoading] = useState(false);
   const searchParams = useSearchParams();
   const searchQuery = searchParams.get("q") || "";
 
@@ -32,19 +53,17 @@ export default function ProductsContent({ products, categories, genders, perPage
     (searchParams.get("gender")?.split(",").filter(Boolean).length || 0) +
     (searchParams.get("price") ? 1 : 0);
 
-  const filterSidebar = <FilterSidebar categories={categories} genders={genders} />;
+  const filterSidebar = useMemo(
+    () => <FilterSidebar categories={categories} genders={genders} />,
+    [categories, genders]
+  );
 
-  const visibleProducts = products.slice(0, visibleCount);
+  const visibleProducts = useMemo(() => products.slice(0, visibleCount), [products, visibleCount]);
   const hasMore = visibleCount < products.length;
 
-  const loadMore = () => {
-    setLoading(true);
-    // Simulate a brief loading for smooth UX
-    setTimeout(() => {
-      setVisibleCount((prev) => prev + itemsPerPage);
-      setLoading(false);
-    }, 400);
-  };
+  const loadMore = useCallback(() => {
+    setVisibleCount((prev) => prev + itemsPerPage);
+  }, [itemsPerPage]);
 
   return (
     <div className="flex flex-col lg:flex-row gap-6">
@@ -89,12 +108,12 @@ export default function ProductsContent({ products, categories, genders, perPage
                     sellingPrice: Number(product.sellingPrice),
                     salePrice: Number(product.salePrice),
                     finalPrice: Number(product.finalPrice),
-                    discountType: product.discountType,
+                    discountType: product.discountType ?? undefined,
                     discountValue: Number(product.discountValue),
                     gstPercentage: Number(product.gstPercentage),
                     isFeatured: product.isFeatured,
                     isTrending: product.isTrending,
-                    productimage: product.productimage.map((img: { url: string }) => ({ url: img.url })),
+                    productimage: product.productimage.map((img) => ({ url: img.url })),
                     productvariant: product.productvariant,
                   }}
                 />
@@ -106,8 +125,7 @@ export default function ProductsContent({ products, categories, genders, perPage
               <div className="flex flex-col items-center mt-10 gap-2">
                 <button
                   onClick={loadMore}
-                  disabled={loading}
-                  className="group flex items-center gap-2 px-8 py-3.5 font-bold text-sm uppercase tracking-wider transition-all duration-300 hover:scale-105 disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="group flex items-center gap-2 px-8 py-3.5 font-bold text-sm uppercase tracking-wider transition-all duration-300 hover:scale-105"
                   style={{
                     background: "var(--t-primary)",
                     color: "var(--t-button-text, #FFFFFF)",
@@ -116,20 +134,11 @@ export default function ProductsContent({ products, categories, genders, perPage
                     boxShadow: "0 4px 14px color-mix(in srgb, var(--t-primary) 30%, transparent)",
                   }}
                 >
-                  {loading ? (
-                    <>
-                      <Loader2 size={16} className="animate-spin" />
-                      Loading...
-                    </>
-                  ) : (
-                    <>
-                      View More
-                      <ChevronDown size={16} strokeWidth={2.5} className="transition-transform group-hover:translate-y-0.5" />
-                    </>
-                  )}
+                  View More
+                  <ChevronDown size={16} strokeWidth={2.5} className="transition-transform group-hover:translate-y-0.5" />
                 </button>
                 <p className="text-xs" style={{ color: "var(--t-text-muted-2)" }}>
-                  Showing {visibleCount} of {products.length} products
+                  Showing {Math.min(visibleCount, products.length)} of {products.length} products
                 </p>
               </div>
             )}

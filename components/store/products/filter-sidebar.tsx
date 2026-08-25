@@ -66,7 +66,7 @@ function OptionRow({
         className={`text-sm flex-1 transition-colors ${
           checked ? "font-semibold" : "font-medium group-hover:font-semibold"
         }`}
-        style={{ color: checked ? "var(--t-text-heading)" : "var(--t-text-body)" }}
+        style={{ color: checked ? "var(--t-text-heading)" : "var(--t-text-body)", fontFamily: "var(--t-font-body)" }}
       >
         {label}
       </span>
@@ -126,7 +126,7 @@ export default function FilterSidebar({ categories, genders }: Props) {
           <Filter size={16} style={{ color: "var(--t-primary)" }} />
           <span
             className="text-sm font-bold tracking-wide"
-            style={{ color: "var(--t-text-heading)", fontFamily: "var(--t-font-heading)" }}
+            style={{ color: "var(--t-text-heading)", fontFamily: "var(--t-font-body)" }}
           >
             Filters
           </span>
@@ -160,7 +160,7 @@ export default function FilterSidebar({ categories, genders }: Props) {
         <div className="px-5 py-5" style={{ borderBottom: "1px solid var(--t-border-card)" }}>
           <p
             className="text-[11px] tracking-[0.25em] uppercase font-bold mb-3"
-            style={{ color: "var(--t-primary)", fontFamily: "var(--t-font-heading)" }}
+            style={{ color: "var(--t-primary)", fontFamily: "var(--t-font-body)" }}
           >
             Category
           </p>
@@ -186,7 +186,7 @@ export default function FilterSidebar({ categories, genders }: Props) {
         <div className="px-5 py-5" style={{ borderBottom: "1px solid var(--t-border-card)" }}>
           <p
             className="text-[11px] tracking-[0.25em] uppercase font-bold mb-3"
-            style={{ color: "var(--t-primary)", fontFamily: "var(--t-font-heading)" }}
+            style={{ color: "var(--t-primary)", fontFamily: "var(--t-font-body)" }}
           >
             Gender
           </p>
@@ -211,7 +211,7 @@ export default function FilterSidebar({ categories, genders }: Props) {
       <div className="px-5 py-5">
         <p
           className="text-[11px] tracking-[0.25em] uppercase font-bold mb-3"
-          style={{ color: "var(--t-primary)", fontFamily: "var(--t-font-heading)" }}
+          style={{ color: "var(--t-primary)", fontFamily: "var(--t-font-body)" }}
         >
           Sort by Price
         </p>

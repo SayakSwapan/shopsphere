@@ -39,13 +39,24 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
           productvariant: { some: { gender: { name: { in: selectedGenders } } } },
         }),
       },
-      include: {
-        productimage: true,
-        category: true,
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        sellingPrice: true,
+        salePrice: true,
+        finalPrice: true,
+        discountType: true,
+        discountValue: true,
+        gstPercentage: true,
+        isFeatured: true,
+        isTrending: true,
+        productimage: { select: { url: true }, take: 1 },
         productvariant: {
-          include: {
-            gender: true,
-            size: true,
+          select: {
+            stock: true,
+            size: { select: { sizeName: true } },
+            gender: { select: { name: true } },
           },
         },
       },
@@ -56,12 +67,19 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
             ? { sellingPrice: "desc" }
             : { createdAt: "desc" },
     }),
-    prisma.category.findMany(),
-    prisma.gender.findMany({ where: { isActive: true } }),
-    prisma.siteSetting.findUnique({ where: { key: "products_per_page" } }),
+    prisma.category.findMany({ select: { id: true, name: true } }),
+    prisma.gender.findMany({ where: { isActive: true }, select: { id: true, name: true } }),
+    prisma.siteSetting.findUnique({ where: { key: "products_per_page" }, select: { value: true } }),
   ]);
 
-  const products = JSON.parse(JSON.stringify(rawProducts)) as typeof rawProducts;
+  const products = rawProducts.map((p) => ({
+    ...p,
+    sellingPrice: p.sellingPrice.toString(),
+    salePrice: p.salePrice?.toString() ?? null,
+    finalPrice: p.finalPrice?.toString() ?? null,
+    discountValue: p.discountValue?.toString() ?? null,
+    gstPercentage: p.gstPercentage?.toString() ?? null,
+  }));
   const perPage = perPageSetting ? parseInt(perPageSetting.value, 10) : 12;
 
   return (

@@ -10,6 +10,9 @@ interface Props {
     salePrice?: number;
     finalPrice?: number;
     gstPercentage: number;
+    discountValue?: number;
+    offerStart?: Date | string | null;
+    offerEnd?: Date | string | null;
     isFeatured: boolean;
     isTrending: boolean;
     productimage: {
@@ -27,6 +30,14 @@ export default function ProductCardV2({
     gstRate
   );
   const originalPrice = priceWithGst(Number(product.sellingPrice || 0), gstRate);
+
+  const now = new Date();
+  const offerActive =
+    (product.discountValue ?? 0) > 0 &&
+    (!product.offerStart || now >= new Date(product.offerStart)) &&
+    (!product.offerEnd || now <= new Date(product.offerEnd));
+
+  const hasDiscount = offerActive && displayPrice < originalPrice && originalPrice > 0;
 
   return (
     <Link
@@ -76,7 +87,7 @@ export default function ProductCardV2({
               <span className="text-2xl font-black">
                 ₹{displayPrice.toLocaleString("en-IN")}
               </span>
-              {displayPrice < originalPrice && originalPrice > 0 && (
+              {hasDiscount && (
                 <span className="text-sm text-slate-400 line-through pb-0.5">
                   ₹{originalPrice.toLocaleString("en-IN")}
                 </span>

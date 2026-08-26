@@ -17,6 +17,8 @@ interface ProductRow {
   salePrice: unknown;
   finalPrice: unknown;
   gstPercentage: unknown;
+  offerStart?: Date | string | null;
+  offerEnd?: Date | string | null;
   isTrending: boolean;
   isFeatured: boolean;
   productimage: { url: string }[];
@@ -153,7 +155,13 @@ export default async function SportsFeaturedProducts() {
                 : 0;
 
             const discountType = String(product.discountType || "").toUpperCase();
+            const now = new Date();
+            const offerActive =
+              Number(product.discountValue || 0) > 0 &&
+              (!product.offerStart || now >= new Date(product.offerStart)) &&
+              (!product.offerEnd || now <= new Date(product.offerEnd));
             const hasDiscount =
+              offerActive &&
               Number(product.discountValue || 0) > 0 &&
               (isPercentDiscount(discountType) || isFlatDiscount(discountType));
 
@@ -267,7 +275,7 @@ export default async function SportsFeaturedProducts() {
                     >
                       ₹{displayPrice.toLocaleString("en-IN")}
                     </span>
-                    {displayPrice < originalPrice && originalPrice > 0 && (
+                    {hasDiscount && (
                       <span
                         className="text-xs line-through pb-0.5"
                         style={{ color: "#4A5159" }}

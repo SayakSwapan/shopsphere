@@ -15,6 +15,8 @@ interface Product {
   discountType?: string;
   discountValue?: number;
   gstPercentage?: number;
+  offerStart?: Date | string | null;
+  offerEnd?: Date | string | null;
   isFeatured: boolean;
   isTrending: boolean;
   productimage: {

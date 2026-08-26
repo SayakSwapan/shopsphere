@@ -14,6 +14,8 @@ interface Props {
     salePrice?: number;
     finalPrice?: number;
     gstPercentage?: number;
+    offerStart?: Date | string | null;
+    offerEnd?: Date | string | null;
     isFeatured: boolean;
     isTrending: boolean;
     productimage: {
@@ -47,7 +49,14 @@ export default function ProductCard({ product }: Props) {
     product.discountValue || 0
   );
 
+  const now = new Date();
+  const offerActive =
+    discountValue > 0 &&
+    (!product.offerStart || now >= new Date(product.offerStart)) &&
+    (!product.offerEnd || now <= new Date(product.offerEnd));
+
   const hasDiscount =
+    offerActive &&
     discountValue > 0 &&
     (isPercentDiscount(discountType) ||
       isFlatDiscount(discountType));
@@ -165,10 +174,7 @@ export default function ProductCard({ product }: Props) {
               ₹{displayPrice.toLocaleString("en-IN")}
             </span>
 
-            {displayPrice <
-              originalPrice &&
-              originalPrice >
-                0 && (
+            {hasDiscount && (
                 <span className="pb-1 text-sm text-text-muted-2 line-through">
                   ₹
                   {originalPrice.toLocaleString(

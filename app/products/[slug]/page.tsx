@@ -125,8 +125,20 @@ export default async function ProductPage({ params }: Props) {
   const originalPrice = priceWithGst(baseOriginal, gstRate);
   const displayPrice = priceWithGst(baseDisplay, gstRate);
 
+  // Server-side offer window gating: the discount only applies when the
+  // current time falls within the offerStart → offerEnd window (or the
+  // window is open-ended).
+  const now = new Date();
+  const offerActive =
+    product.discountValue > 0 &&
+    (!product.offerStart || now >= new Date(product.offerStart)) &&
+    (!product.offerEnd || now <= new Date(product.offerEnd));
+
   const hasDiscount =
-    baseOriginal > baseDisplay && baseDisplay > 0 && displayPrice < originalPrice;
+    offerActive &&
+    baseOriginal > baseDisplay &&
+    baseDisplay > 0 &&
+    displayPrice < originalPrice;
 
   const savings = hasDiscount ? originalPrice - displayPrice : 0;
   const percentOff =
@@ -328,6 +340,9 @@ export default async function ProductPage({ params }: Props) {
                 hasDiscount={hasDiscount}
                 discountLabel={discountLabel}
                 showPrice={true}
+                offerEnd={hasDiscount && product.offerEnd ? product.offerEnd.toISOString() : null}
+                reviewAverage={reviewAverage}
+                reviewCount={reviewCount}
               />
 
               {/* Size info + chart */}

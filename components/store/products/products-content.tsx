@@ -26,6 +26,8 @@ interface Product {
   discountType: string | null;
   discountValue: string | null;
   gstPercentage: string | null;
+  offerStart?: Date | string | null;
+  offerEnd?: Date | string | null;
   isFeatured: boolean;
   isTrending: boolean;
   productimage: { url: string }[];
@@ -111,6 +113,8 @@ export default function ProductsContent({ products, categories, genders, perPage
                     discountType: product.discountType ?? undefined,
                     discountValue: Number(product.discountValue),
                     gstPercentage: Number(product.gstPercentage),
+                    offerStart: product.offerStart,
+                    offerEnd: product.offerEnd,
                     isFeatured: product.isFeatured,
                     isTrending: product.isTrending,
                     productimage: product.productimage.map((img) => ({ url: img.url })),

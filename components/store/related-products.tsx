@@ -93,6 +93,8 @@ export default async function RelatedProducts({
               discountType: product.discountType,
               discountValue: Number(product.discountValue),
               gstPercentage: Number(product.gstPercentage),
+              offerStart: product.offerStart,
+              offerEnd: product.offerEnd,
               isFeatured: product.isFeatured,
               isTrending: product.isTrending,
               productimage: product.productimage.map((img) => ({

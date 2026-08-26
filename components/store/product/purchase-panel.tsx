@@ -14,6 +14,8 @@ import {
 } from "lucide-react";
 import AddToCartButton from "@/components/store/add-to-cart-button";
 import WishlistButton from "@/components/store/wishlist-button";
+import OfferCountdown from "@/components/store/product/offer-countdown";
+import ReviewHighlights from "@/components/store/product/review-highlights";
 
 interface VariantSize {
   sizeName?: string | null;
@@ -39,6 +41,9 @@ interface Props {
   hasDiscount: boolean;
   discountLabel: string;
   showPrice?: boolean;
+  offerEnd?: string | null;
+  reviewAverage?: number;
+  reviewCount?: number;
 }
 
 export default function ProductPurchasePanel({
@@ -53,6 +58,8 @@ export default function ProductPurchasePanel({
   hasDiscount,
   discountLabel,
   showPrice = true,
+  offerEnd,
+  reviewCount,
 }: Props) {
   const router = useRouter();
   const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
@@ -162,7 +169,16 @@ export default function ProductPurchasePanel({
               You save ₹{(originalPrice - displayPrice).toLocaleString("en-IN")}
             </p>
           )}
+
+          {hasDiscount && offerEnd && (
+            <OfferCountdown offerEnd={offerEnd} />
+          )}
         </div>
+      )}
+
+      {/* Review highlights */}
+      {reviewCount && reviewCount > 0 && (
+        <ReviewHighlights productId={productId} />
       )}
 
       {/* Purchase card */}

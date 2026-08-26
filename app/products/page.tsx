@@ -49,6 +49,8 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
         discountType: true,
         discountValue: true,
         gstPercentage: true,
+        offerStart: true,
+        offerEnd: true,
         isFeatured: true,
         isTrending: true,
         productimage: { select: { url: true }, take: 1 },

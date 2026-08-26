@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import Link from "next/link";
-import { Bell, ShoppingBag, RotateCcw, RefreshCw, X, MessageCircle, Mail, PhoneCall } from "lucide-react";
+import { Bell, ShoppingBag, RotateCcw, RefreshCw, X, MessageCircle, Mail, PhoneCall, Share } from "lucide-react";
 
 interface NotificationItem {
   id: string;
@@ -247,6 +247,18 @@ export default function NotificationBell() {
                         {timeAgo(item.createdAt)}
                       </p>
                     </div>
+                    <button
+                      type="button"
+                      title="Forward to WhatsApp"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const text = `*${item.title}*\n\n${item.message}`;
+                        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+                      }}
+                      className="mt-1 shrink-0 p-1.5 rounded-lg hover:bg-emerald-500/10 text-emerald-400 hover:text-emerald-300 transition-colors"
+                    >
+                      <Share size={12} />
+                    </button>
                   </div>
                 );
 

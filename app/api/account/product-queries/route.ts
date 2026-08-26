@@ -92,6 +92,7 @@ export async function POST(request: Request) {
         type: "INFO",
         entityType: "PRODUCT_QUERY",
         entityId: query.id,
+        notifyKey: "notify_on_query",
       });
     } catch (e) {
       console.error("Failed to notify admins about product query:", e);

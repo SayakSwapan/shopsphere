@@ -1,7 +1,15 @@
 import { prisma } from "@/lib/prisma";
 import { sendWhatsAppText, isWhatsAppConfigured, formatPhoneForWhatsApp } from "@/lib/whatsapp-service";
 
-const ADMIN_PHONE = process.env.ADMIN_PHONE;
+async function getAdminPhone(): Promise<string | null> {
+  const row = await prisma.siteSetting.findUnique({ where: { key: "admin_phone" } });
+  return row?.value?.trim() || null;
+}
+
+async function isNotifyEnabled(key: string): Promise<boolean> {
+  const row = await prisma.siteSetting.findUnique({ where: { key } });
+  return row?.value !== "false";
+}
 
 interface CreateNotificationParams {
   title: string;
@@ -10,6 +18,7 @@ interface CreateNotificationParams {
   entityType?: string;
   entityId?: string;
   createdById?: string;
+  notifyKey?: string;
 }
 
 export async function createAdminNotification(params: CreateNotificationParams) {
@@ -38,8 +47,10 @@ export async function createAdminNotification(params: CreateNotificationParams) 
     })),
   });
 
-  if (ADMIN_PHONE && isWhatsAppConfigured()) {
-    sendWhatsAppText(formatPhoneForWhatsApp(ADMIN_PHONE), `🔔 *${params.title}*\n\n${params.message}`).catch(() => {});
+  const notifyKey = params.notifyKey ?? "notify_on_order";
+  const [adminPhone, notifyEnabled] = await Promise.all([getAdminPhone(), isNotifyEnabled(notifyKey)]);
+  if (adminPhone && notifyEnabled && isWhatsAppConfigured()) {
+    sendWhatsAppText(formatPhoneForWhatsApp(adminPhone), `🔔 *${params.title}*\n\n${params.message}`).catch(() => {});
   }
 
   return notification;

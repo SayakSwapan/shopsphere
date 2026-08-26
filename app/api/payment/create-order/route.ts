@@ -219,6 +219,7 @@ export async function POST(req: Request) {
       entityType: "ORDER",
       entityId: order.id,
       createdById: user.id,
+      notifyKey: "notify_on_order",
     }).catch(console.error);
 
     return NextResponse.json({

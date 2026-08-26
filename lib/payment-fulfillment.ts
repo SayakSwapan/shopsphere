@@ -155,6 +155,7 @@ export async function markOrderPaid(
     type: "PAYMENT",
     entityType: "ORDER",
     entityId: order.id,
+    notifyKey: "notify_on_order",
   }).catch(console.error);
 
   return { processed: true };

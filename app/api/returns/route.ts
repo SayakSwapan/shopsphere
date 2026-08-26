@@ -137,6 +137,7 @@ export async function POST(req: Request) {
       entityType: "RETURN",
       entityId: returnRequest.id,
       createdById: user.id,
+      notifyKey: "notify_on_order",
     }).catch(console.error);
 
     return NextResponse.json({ success: true, id: returnRequest.id });

@@ -79,6 +79,7 @@ export async function POST(request: NextRequest) {
         type: "INFO",
         entityType: "CALLBACK_REQUEST",
         entityId: callback.id,
+        notifyKey: "notify_on_contact",
       });
     } catch (e) {
       console.error("Failed to notify admins about callback request:", e);

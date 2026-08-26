@@ -19,6 +19,8 @@ import {
   Trash2,
   GripVertical,
   Link2,
+  Bell,
+  MessageCircle,
 } from "lucide-react";
 import dynamic from "next/dynamic";
 
@@ -173,6 +175,20 @@ function FieldInput({
           rows={3}
           placeholder={field.placeholder}
         />
+      ) : field.type === "toggle" ? (
+        <label className="flex items-center gap-3 cursor-pointer">
+          <div className="relative">
+            <input
+              type="checkbox"
+              checked={value !== "false"}
+              onChange={(e) => onChange(e.target.checked ? "true" : "false")}
+              className="sr-only peer"
+            />
+            <div className="w-10 h-5 rounded-full bg-[#1E293B] peer-checked:bg-amber-500 transition-colors" />
+            <div className="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform peer-checked:translate-x-5" />
+          </div>
+          <span className="text-sm text-slate-300">{value !== "false" ? "Enabled" : "Disabled"}</span>
+        </label>
       ) : (
         <input
           type="text"
@@ -788,6 +804,42 @@ const SECTIONS: Array<{
       },
     ],
   },
+  {
+    id: "admin_notifications",
+    icon: Bell,
+    title: "Admin Notifications",
+    description: "Get notified on WhatsApp when customers place orders or send queries",
+    badge: "Alerts",
+    fields: [
+      {
+        key: "admin_phone",
+        label: "Admin WhatsApp / Phone Number",
+        placeholder: "919876543210",
+        hint: "Include country code without + (e.g. 919876543210 for India). This number receives WhatsApp alerts for every new order, product query, contact message, and callback request.",
+      },
+      {
+        key: "notify_on_order",
+        label: "New Order Alerts",
+        placeholder: "true",
+        type: "toggle" as const,
+        hint: "Receive WhatsApp notification when a customer places a new order (COD or Online).",
+      },
+      {
+        key: "notify_on_query",
+        label: "Product Query Alerts",
+        placeholder: "true",
+        type: "toggle" as const,
+        hint: "Receive WhatsApp notification when a customer asks a product question.",
+      },
+      {
+        key: "notify_on_contact",
+        label: "Contact / Callback Alerts",
+        placeholder: "true",
+        type: "toggle" as const,
+        hint: "Receive WhatsApp notification on contact form submissions and callback requests.",
+      },
+    ],
+  },
 ];
 
 export default function SiteSettingsPage() {
@@ -867,6 +919,49 @@ export default function SiteSettingsPage() {
               />
             ) : section.id === "footer_links" ? (
               <FooterLinksEditor />
+            ) : section.id === "admin_notifications" ? (
+              <div>
+                {/* Workflow guide */}
+                <div className="mb-6 rounded-xl border border-amber-500/20 bg-amber-500/5 p-5">
+                  <div className="flex items-center gap-2 mb-3">
+                    <MessageCircle size={16} className="text-amber-400" />
+                    <h4 className="text-sm font-bold text-amber-400">How Admin Notifications Work</h4>
+                  </div>
+                  <div className="space-y-2 text-[13px] text-slate-400 leading-relaxed">
+                    <p>When a customer performs any of the actions below, you&apos;ll receive an <strong className="text-slate-300">instant WhatsApp message</strong> on the phone number above — even if you&apos;re not at your computer.</p>
+                    <div className="mt-3 space-y-1.5">
+                      <div className="flex items-start gap-2">
+                        <span className="mt-1 h-1.5 w-1.5 rounded-full bg-amber-400 shrink-0" />
+                        <span><strong className="text-slate-300">New Order</strong> — You&apos;ll get order number, customer name, amount, and payment method (COD/Online).</span>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="mt-1 h-1.5 w-1.5 rounded-full bg-amber-400 shrink-0" />
+                        <span><strong className="text-slate-300">Product Query</strong> — Customer asks a question about a product. You can reply from Admin &gt; Product Queries.</span>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="mt-1 h-1.5 w-1.5 rounded-full bg-amber-400 shrink-0" />
+                        <span><strong className="text-slate-300">Contact / Callback</strong> — Customer submits a contact form or requests a callback.</span>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="mt-1 h-1.5 w-1.5 rounded-full bg-amber-400 shrink-0" />
+                        <span><strong className="text-slate-300">Returns &amp; Replacements</strong> — When a customer requests a return or replacement.</span>
+                      </div>
+                    </div>
+                    <p className="mt-3 text-xs text-slate-500">Requires WhatsApp Business API credentials (<code className="text-amber-400/70">WHATSAPP_API_TOKEN</code> and <code className="text-amber-400/70">WHATSAPP_PHONE_NUMBER_ID</code>) in your environment variables. If not configured, in-app notifications still work via the bell icon above.</p>
+                  </div>
+                </div>
+
+                <div className="space-y-5">
+                  {section.fields!.map((field) => (
+                    <FieldInput
+                      key={field.key}
+                      field={field}
+                      value={settings[field.key] || ""}
+                      onChange={(val) => updateField(field.key, val)}
+                    />
+                  ))}
+                </div>
+              </div>
             ) : "fields" in section ? (
               <div className="space-y-5">
                 {section.fields!.map((field) => (

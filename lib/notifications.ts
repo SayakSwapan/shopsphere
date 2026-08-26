@@ -1,4 +1,7 @@
 import { prisma } from "@/lib/prisma";
+import { sendWhatsAppText, isWhatsAppConfigured, formatPhoneForWhatsApp } from "@/lib/whatsapp-service";
+
+const ADMIN_PHONE = process.env.ADMIN_PHONE;
 
 interface CreateNotificationParams {
   title: string;
@@ -34,6 +37,10 @@ export async function createAdminNotification(params: CreateNotificationParams) 
       userId: admin.id,
     })),
   });
+
+  if (ADMIN_PHONE && isWhatsAppConfigured()) {
+    sendWhatsAppText(formatPhoneForWhatsApp(ADMIN_PHONE), `🔔 *${params.title}*\n\n${params.message}`).catch(() => {});
+  }
 
   return notification;
 }

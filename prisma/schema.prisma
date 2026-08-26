@@ -1169,6 +1169,8 @@ model Banner {
   id        String   @id @default(cuid())
   title     String
   subtitle  String?  @db.Text
+  badge     String?  @db.Text
+  eyebrow   String?  @db.Text
   imageUrl  String
   linkUrl   String?
   linkText  String?

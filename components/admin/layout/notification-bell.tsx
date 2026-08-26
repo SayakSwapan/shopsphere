@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, useTransition } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import Link from "next/link";
 import { Bell, ShoppingBag, RotateCcw, RefreshCw, X, MessageCircle, Mail, PhoneCall } from "lucide-react";
 
@@ -70,25 +70,72 @@ function timeAgo(dateStr: string) {
   return `${days}d ago`;
 }
 
+let notifAudio: HTMLAudioElement | null = null;
+function playNotifSound() {
+  try {
+    if (!notifAudio) {
+      notifAudio = new Audio("data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVggoKIeGBAO2aQp6+AXTo3ZYaJh3NZQDxpkKqyhmA7OGaGh4dwWkE+a5Wst4VgOzhlhIaEcFpCPm2Zr7iCXTo2ZIOEgnBbRD9vm7K6hF06N2OCgYBwXEc/cZy0vIVdOjdjgX9+cF1JP3OetL2GXTk2Yn99e29eS0B2oLe/h105NWJ+e3puX01BeaK5wYhdODRhe3l4bV9OQnqkusOJXTczX3l2dWxgUEJ7pbnFil02MV52c3JrYVFDfaa8x4tdNC9ccnFwaGJVRYCpvcqOXTMtWW9ubWVYV0eCq77MkF0xK1Zra2hjWVhJha7BzpJdLylSa2diXlxaS4exw9GUXTAnUGZkX2FiX02JtcXTll4tJU1hYGBhYF9LjLjI1ZheKiJJXl5gYF9eSo26ytiaXyoiRFpbXl5eXUiPvczbnmAoIEBXWltdXVxGkcDP3aBhJh0=",
+      );
+      notifAudio.volume = 0.5;
+    }
+    notifAudio.currentTime = 0;
+    notifAudio.play().catch(() => {});
+  } catch {}
+}
+
+function requestBrowserNotificationPermission() {
+  if ("Notification" in window && Notification.permission === "default") {
+    Notification.requestPermission();
+  }
+}
+
+function showBrowserNotification(title: string, body: string) {
+  if ("Notification" in window && Notification.permission === "granted") {
+    try {
+      new Notification(title, { body, icon: "/favicon.ico", tag: "admin-notif" });
+    } catch {}
+  }
+}
+
 export default function NotificationBell() {
   const [open, setOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [items, setItems] = useState<NotificationItem[]>([]);
   const ref = useRef<HTMLDivElement>(null);
-  const [, startTransition] = useTransition();
+  const prevUnreadRef = useRef(0);
 
-  async function fetchNotifications() {
+  const fetchNotifications = useCallback(async () => {
     try {
       const res = await fetch("/api/admin/notifications");
       const data = await res.json();
       if (data.success) {
-        setUnreadCount(data.unreadCount);
+        const newCount = data.unreadCount as number;
         setItems(data.items);
+        if (newCount > prevUnreadRef.current && prevUnreadRef.current > 0) {
+          playNotifSound();
+          const newest = data.items.find((i: NotificationItem) => !i.isRead);
+          if (newest) showBrowserNotification(newest.title, newest.message);
+        }
+        prevUnreadRef.current = newCount;
+        setUnreadCount(newCount);
       }
-    } catch (e) {
-      console.error("Failed to fetch notifications:", e);
-    }
-  }
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    requestBrowserNotificationPermission();
+    const id = requestAnimationFrame(() => fetchNotifications());
+    const interval = setInterval(() => {
+      if (!document.hidden) fetchNotifications();
+    }, 15000);
+    const onVis = () => { if (!document.hidden) fetchNotifications(); };
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      cancelAnimationFrame(id);
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, [fetchNotifications]);
 
   async function markAllRead() {
     try {
@@ -99,9 +146,7 @@ export default function NotificationBell() {
       });
       setUnreadCount(0);
       setItems((prev) => prev.map((i) => ({ ...i, isRead: true })));
-    } catch (e) {
-      console.error("Failed to mark read:", e);
-    }
+    } catch {}
   }
 
   async function markRead(id: string) {
@@ -115,38 +160,8 @@ export default function NotificationBell() {
       setItems((prev) =>
         prev.map((i) => (i.id === id ? { ...i, isRead: true } : i))
       );
-    } catch (e) {
-      console.error("Failed to mark notification read:", e);
-    }
+    } catch {}
   }
-
-  useEffect(() => {
-    if (!open || document.hidden) return;
-
-    startTransition(() => {
-      fetchNotifications();
-    });
-    const interval = setInterval(() => {
-      if (document.hidden) return;
-      startTransition(() => {
-        fetchNotifications();
-      });
-    }, 30000);
-    return () => clearInterval(interval);
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-    function onVisibilityChange() {
-      if (!document.hidden) {
-        startTransition(() => {
-          fetchNotifications();
-        });
-      }
-    }
-    document.addEventListener("visibilitychange", onVisibilityChange);
-    return () => document.removeEventListener("visibilitychange", onVisibilityChange);
-  }, [open]);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -167,7 +182,7 @@ export default function NotificationBell() {
       >
         <Bell color="white" size={18} />
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-black text-white">
+          <span className="absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-black text-white animate-pulse">
             {unreadCount > 99 ? "99+" : unreadCount}
           </span>
         )}
@@ -178,7 +193,6 @@ export default function NotificationBell() {
           className="absolute right-0 top-full mt-2 w-[calc(100vw-2rem)] max-w-96 max-h-[28rem] overflow-hidden rounded-2xl border border-white/10 shadow-2xl z-50"
           style={{ background: "#111827" }}
         >
-          {/* Header */}
           <div className="flex items-center justify-between border-b border-white/10 px-5 py-3">
             <h3 className="text-sm font-bold text-white">Notifications</h3>
             <div className="flex items-center gap-2">
@@ -199,7 +213,6 @@ export default function NotificationBell() {
             </div>
           </div>
 
-          {/* List */}
           <div className="overflow-y-auto max-h-[22rem]">
             {items.length === 0 ? (
               <div className="p-8 text-center">
@@ -264,7 +277,6 @@ export default function NotificationBell() {
             )}
           </div>
 
-          {/* Footer */}
           {items.length > 0 && (
             <div className="border-t border-white/10 px-5 py-2.5">
               <button

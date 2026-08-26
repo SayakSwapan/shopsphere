@@ -9,6 +9,7 @@ import { calculateShipping } from "@/lib/shipping";
 import { calcTransactionFee } from "@/lib/finance/transaction-charge.service";
 import { customizationLetterCharge, customizationUnitPrice } from "@/lib/print-pricing";
 import { getRestrictedCartItems } from "@/lib/product-deliverability";
+import { createAdminNotification } from "@/lib/notifications";
 
 export async function POST(req: Request) {
   try {
@@ -210,6 +211,15 @@ export async function POST(req: Request) {
     });
 
     await prisma.order.update({ where: { id: order.id }, data: { razorpayOrderId: razorpayOrder.id } });
+
+    createAdminNotification({
+      title: "New Online Order",
+      message: `Order ${order.orderNumber} placed by ${address.fullName} — ₹${total.toFixed(2)} (Online Payment)`,
+      type: "ORDER",
+      entityType: "ORDER",
+      entityId: order.id,
+      createdById: user.id,
+    }).catch(console.error);
 
     return NextResponse.json({
       success: true,

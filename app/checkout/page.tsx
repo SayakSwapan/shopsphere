@@ -52,7 +52,6 @@ export default async function CheckoutPage() {
     const unitBase = getEffectivePrice(item.product.salePrice, undefined, item.product.sellingPrice);
     const { gstAmount } = getGstBreakdown(unitBase, Number(item.product.gstPercentage) || 0);
 
-    // Custom print charge (pre-GST) is billed per piece, so multiply by qty.
     const printUnit = customizationUnitPrice(
       item.customization as import("@/types/custom-print").CustomPrintData | null
     );
@@ -67,31 +66,27 @@ export default async function CheckoutPage() {
   subtotal = Math.round(subtotal * 100) / 100;
   gst = Math.round(gst * 100) / 100;
 
-  const shippingResult = await calculateShipping(
-    cart.cartitem.map((item) => ({
-      quantity: item.quantity,
-      product: {
-        weight: item.product.weight,
-        salePrice: Number(item.product.salePrice || 0),
-        sellingPrice: Number(item.product.sellingPrice),
-      },
-    })),
-    false,
-    subtotal
-  );
-
   const defaultAddress = user.addresses.find((a) => a.isDefault) ?? user.addresses[0];
-  const pincodeInfo = defaultAddress ? await getPincodeInfo(defaultAddress.pincode) : null;
 
-  const restrictedItems = defaultAddress
-    ? await getRestrictedCartItems(cart.cartitem, defaultAddress.pincode)
-    : [];
+  const [shippingResult, pincodeInfo, restrictedItems, printAvailability] = await Promise.all([
+    calculateShipping(
+      cart.cartitem.map((item) => ({
+        quantity: item.quantity,
+        product: {
+          weight: item.product.weight,
+          salePrice: Number(item.product.salePrice || 0),
+          sellingPrice: Number(item.product.sellingPrice),
+        },
+      })),
+      false,
+      subtotal
+    ),
+    defaultAddress ? getPincodeInfo(defaultAddress.pincode) : Promise.resolve(null),
+    defaultAddress ? getRestrictedCartItems(cart.cartitem, defaultAddress.pincode) : Promise.resolve([]),
+    getProductPrintAvailabilityMap(cart.cartitem.map((item) => item.productId)),
+  ]);
 
   const total = subtotal + shippingResult.shipping + gst;
-
-  const printAvailability = await getProductPrintAvailabilityMap(
-    cart.cartitem.map((item) => item.productId)
-  );
 
   return (
     <div className="min-h-screen bg-bg-page">

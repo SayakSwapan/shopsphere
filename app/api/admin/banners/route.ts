@@ -45,6 +45,8 @@ export async function POST(req: Request) {
       data: {
         title: body.title,
         subtitle: body.subtitle || null,
+        badge: body.badge || null,
+        eyebrow: body.eyebrow || null,
         imageUrl: body.imageUrl,
         linkUrl: body.linkUrl || null,
         linkText: body.linkText || null,

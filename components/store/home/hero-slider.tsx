@@ -9,6 +9,8 @@ interface Banner {
   id: string;
   title: string;
   subtitle: string | null;
+  badge: string | null;
+  eyebrow: string | null;
   imageUrl: string;
   linkUrl: string | null;
   linkText: string | null;
@@ -22,6 +24,8 @@ const DUMMY_BANNER = {
   id: "dummy",
   title: "Discover Your Style",
   subtitle: "Premium fashion, footwear and lifestyle — curated for you.",
+  badge: null,
+  eyebrow: null,
   imageUrl: "",
   linkUrl: "/products",
   linkText: "Shop Now",
@@ -154,6 +158,28 @@ function SportsHero({
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 flex items-center" style={{ minHeight: "clamp(340px, 62vw, min(88vh, 680px))" }}>
         <div className="max-w-3xl py-10 sm:py-20">
+          {slide.badge && (
+            <div
+              className="mb-5 inline-flex items-center gap-2 px-3 py-1.5"
+              style={{
+                border: "1px solid rgba(203,255,62,0.35)",
+                background: "rgba(203,255,62,0.08)",
+                borderRadius: "var(--t-radius-badge)",
+              }}
+            >
+              <span
+                className="h-2 w-2 rounded-full"
+                style={{ background: "#CBFF3E", animation: "sports-pulse-dot 1.6s ease-in-out infinite" }}
+              />
+              <span
+                className="text-[10px] font-black uppercase tracking-[0.3em]"
+                style={{ color: "#CBFF3E", fontFamily: "var(--t-font-body)" }}
+              >
+                {slide.badge}
+              </span>
+            </div>
+          )}
+
           <h1
             className="leading-[0.92] mb-6"
             style={{
@@ -385,6 +411,15 @@ function EthnicHero({
         <div className="relative flex flex-col justify-center px-5 sm:px-12 lg:px-16 py-10 sm:py-14 lg:py-0">
           {/* Gold accent line at top */}
           <div className="absolute top-8 left-5 sm:left-12 lg:left-16 w-14 h-[2px]" style={{ background: "#C9972F" }} />
+
+          {slide.eyebrow && (
+            <span
+              className="mt-4 mb-4 text-[11px] font-semibold uppercase tracking-[0.35em]"
+              style={{ color: "#6E1F27", fontFamily: "var(--t-font-heading)" }}
+            >
+              {slide.eyebrow}
+            </span>
+          )}
 
           <h1
             className="leading-[1.05] mb-6"

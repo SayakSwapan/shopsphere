@@ -19,6 +19,8 @@ export default function EditBannerPage() {
   const [form, setForm] = useState({
     title: "",
     subtitle: "",
+    badge: "",
+    eyebrow: "",
     imageUrl: "",
     linkUrl: "",
     linkText: "",
@@ -33,6 +35,8 @@ export default function EditBannerPage() {
         setForm({
           title: data.title || "",
           subtitle: data.subtitle || "",
+          badge: data.badge || "",
+          eyebrow: data.eyebrow || "",
           imageUrl: data.imageUrl || "",
           linkUrl: data.linkUrl || "",
           linkText: data.linkText || "",
@@ -138,6 +142,32 @@ export default function EditBannerPage() {
             className="w-full bg-[#0A0F1E] border border-[#1E293B] text-white rounded-lg px-4 py-2.5 text-sm focus:border-amber-500/50 outline-none resize-none"
             rows={2}
           />
+        </div>
+
+        {/* Badge (Sports theme) */}
+        <div>
+          <label className="block text-sm font-medium text-slate-300 mb-1.5">Badge Text</label>
+          <input
+            type="text"
+            value={form.badge}
+            onChange={(e) => setForm({ ...form, badge: e.target.value })}
+            className="w-full bg-[#0A0F1E] border border-[#1E293B] text-white rounded-lg px-4 py-2.5 text-sm focus:border-amber-500/50 outline-none"
+            placeholder="e.g., Live · Season 2026 (shown as pulsing badge in sports theme)"
+          />
+          <p className="mt-1 text-xs text-slate-500">Optional — displays as a pulsing badge above the title in sports theme. Leave empty to hide.</p>
+        </div>
+
+        {/* Eyebrow (Ethnic theme) */}
+        <div>
+          <label className="block text-sm font-medium text-slate-300 mb-1.5">Eyebrow Text</label>
+          <input
+            type="text"
+            value={form.eyebrow}
+            onChange={(e) => setForm({ ...form, eyebrow: e.target.value })}
+            className="w-full bg-[#0A0F1E] border border-[#1E293B] text-white rounded-lg px-4 py-2.5 text-sm focus:border-amber-500/50 outline-none"
+            placeholder="e.g., Festive Edit 2026 (shown above title in ethnic theme)"
+          />
+          <p className="mt-1 text-xs text-slate-500">Optional — displays as small uppercase text above the title in ethnic theme. Leave empty to hide.</p>
         </div>
 
         {/* Image Upload */}

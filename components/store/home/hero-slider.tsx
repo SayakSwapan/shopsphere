@@ -154,34 +154,6 @@ function SportsHero({
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 flex items-center" style={{ minHeight: "clamp(340px, 62vw, min(88vh, 680px))" }}>
         <div className="max-w-3xl py-10 sm:py-20">
-          {/* Live season badge */}
-          <div
-            className="mb-5 inline-flex items-center gap-2 px-3 py-1.5"
-            style={{
-              border: "1px solid rgba(203,255,62,0.35)",
-              background: "rgba(203,255,62,0.08)",
-              borderRadius: "var(--t-radius-badge)",
-            }}
-          >
-            <span
-              className="h-2 w-2 rounded-full"
-              style={{ background: "#CBFF3E", animation: "sports-pulse-dot 1.6s ease-in-out infinite" }}
-            />
-            <span
-              className="text-[10px] font-black uppercase tracking-[0.3em]"
-              style={{ color: "#CBFF3E", fontFamily: "var(--t-font-body)" }}
-            >
-              Live · Season 2026
-            </span>
-          </div>
-
-          <p
-            className="mb-4 text-[13px] font-extrabold uppercase"
-            style={{ color: "#CBFF3E", letterSpacing: "3px", fontFamily: "var(--t-font-body)" }}
-          >
-            2026 Performance Line
-          </p>
-
           <h1
             className="leading-[0.92] mb-6"
             style={{
@@ -222,19 +194,12 @@ function SportsHero({
             )}
           </h1>
 
-          {slide.subtitle ? (
+          {slide.subtitle && (
             <p
-              className="text-base leading-relaxed mb-8 max-w-md"
-              style={{ color: "rgba(255,255,255,0.75)", fontFamily: "var(--t-font-body)" }}
+              className="text-sm sm:text-base leading-relaxed mb-8 max-w-md"
+              style={{ color: "rgba(255,255,255,0.70)", fontFamily: "var(--t-font-body)", fontWeight: 300, letterSpacing: "0.02em" }}
             >
               {slide.subtitle}
-            </p>
-          ) : (
-            <p
-              className="text-base leading-relaxed mb-8 max-w-md"
-              style={{ color: "rgba(255,255,255,0.75)", fontFamily: "var(--t-font-body)" }}
-            >
-              Engineered footwear and kit built for split-second decisions. Built for the ones who show up before sunrise.
             </p>
           )}
 
@@ -369,7 +334,7 @@ function FashionHero({
           </h1>
 
           {slide.subtitle && (
-            <p className="mt-6 text-base leading-relaxed max-w-lg" style={{ color: "var(--t-text-muted-1)", fontFamily: "var(--t-font-body)" }}>
+            <p className="mt-6 text-sm sm:text-base leading-relaxed max-w-lg" style={{ color: "var(--t-text-muted-1)", fontFamily: "var(--t-font-body)", fontWeight: 300, letterSpacing: "0.02em" }}>
               {slide.subtitle}
             </p>
           )}
@@ -421,13 +386,6 @@ function EthnicHero({
           {/* Gold accent line at top */}
           <div className="absolute top-8 left-5 sm:left-12 lg:left-16 w-14 h-[2px]" style={{ background: "#C9972F" }} />
 
-          <span
-            className="mt-4 mb-4 text-[11px] font-semibold uppercase tracking-[0.35em]"
-            style={{ color: "#6E1F27", fontFamily: "var(--t-font-heading)" }}
-          >
-            Festive Edit 2026
-          </span>
-
           <h1
             className="leading-[1.05] mb-6"
             style={{
@@ -456,19 +414,10 @@ function EthnicHero({
 
           {slide.subtitle && (
             <p
-              className="text-[15px] leading-[1.75] mb-8 max-w-md"
-              style={{ color: "#5A4E42", fontFamily: "var(--t-font-body)" }}
+              className="text-[14px] sm:text-[15px] leading-[1.75] mb-8 max-w-md"
+              style={{ color: "#5A4E42", fontFamily: "var(--t-font-body)", fontWeight: 300, letterSpacing: "0.01em" }}
             >
               {slide.subtitle}
-            </p>
-          )}
-
-          {!slide.subtitle && (
-            <p
-              className="text-[15px] leading-[1.75] mb-8 max-w-md"
-              style={{ color: "#5A4E42", fontFamily: "var(--t-font-body)" }}
-            >
-              Handcrafted sarees and bridal wear from artisan clusters across India — each piece carries the mark of the hand that made it.
             </p>
           )}
 
@@ -592,7 +541,7 @@ function LuxuryHero({
           </h1>
 
           {slide.subtitle && (
-            <p className="mt-6 text-sm sm:text-base leading-relaxed max-w-md mx-auto" style={{ color: "var(--t-text-muted-1)", fontFamily: "var(--t-font-body)", fontWeight: 300 }}>
+            <p className="mt-6 text-sm sm:text-base leading-relaxed max-w-md mx-auto" style={{ color: "var(--t-text-muted-1)", fontFamily: "var(--t-font-body)", fontWeight: 300, letterSpacing: "0.02em" }}>
               {slide.subtitle}
             </p>
           )}

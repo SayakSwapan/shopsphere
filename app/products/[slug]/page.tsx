@@ -100,17 +100,32 @@ export default async function ProductPage({ params }: Props) {
 
   if (!product) return notFound();
 
-  const [reviewAgg, session] = await Promise.all([
+  const [reviewAgg, session, reviews] = await Promise.all([
     prisma.review.aggregate({
       where: { productId: product.id },
       _avg: { rating: true },
       _count: { rating: true },
     }),
     auth(),
+    prisma.review.findMany({
+      where: { productId: product.id },
+      include: { user: { select: { name: true } } },
+      orderBy: { createdAt: "desc" },
+    }),
   ]);
 
   const reviewAverage = Number((reviewAgg._avg.rating || 0).toFixed(1));
   const reviewCount = reviewAgg._count.rating;
+
+  const serializedReviews = reviews.map((r) => ({
+    id: r.id,
+    rating: r.rating,
+    comment: r.comment,
+    images: Array.isArray(r.images) ? (r.images as string[]) : [],
+    verified: r.verified,
+    createdAt: r.createdAt.toISOString(),
+    userName: r.displayName || r.user?.name || "Customer",
+  }));
 
   const gstRate = Number(product.gstPercentage || 0);
   const baseOriginal = Number(product.sellingPrice || 0);
@@ -343,6 +358,7 @@ export default async function ProductPage({ params }: Props) {
                 offerEnd={hasDiscount && product.offerEnd ? product.offerEnd.toISOString() : null}
                 reviewAverage={reviewAverage}
                 reviewCount={reviewCount}
+                reviews={serializedReviews}
               />
 
               {/* Size info + chart */}
@@ -536,6 +552,7 @@ export default async function ProductPage({ params }: Props) {
             productId={product.id}
             isLoggedIn={Boolean(session?.user)}
             currentUserName={session?.user?.name ?? null}
+            initialReviews={serializedReviews}
           />
         </div>
       </section>

@@ -29,6 +29,16 @@ interface ProductVariant {
   size?: VariantSize | null;
 }
 
+interface ReviewItem {
+  id: string;
+  rating: number;
+  comment: string;
+  images: string[];
+  verified: boolean;
+  createdAt: string;
+  userName: string;
+}
+
 interface Props {
   productId: string;
   variants: ProductVariant[];
@@ -44,6 +54,7 @@ interface Props {
   offerEnd?: string | null;
   reviewAverage?: number;
   reviewCount?: number;
+  reviews?: ReviewItem[];
 }
 
 export default function ProductPurchasePanel({
@@ -60,6 +71,7 @@ export default function ProductPurchasePanel({
   showPrice = true,
   offerEnd,
   reviewCount,
+  reviews,
 }: Props) {
   const router = useRouter();
   const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
@@ -178,7 +190,7 @@ export default function ProductPurchasePanel({
 
       {/* Review highlights */}
       {reviewCount && reviewCount > 0 && (
-        <ReviewHighlights productId={productId} />
+        <ReviewHighlights productId={productId} initialReviews={reviews} />
       )}
 
       {/* Purchase card */}

@@ -1520,13 +1520,6 @@ PRODUCT DETAILS — THEMED DECORATIONS (pd-*)
 [data-theme="fashion"] .pd-timer-box { border-radius: 999px; }
 
 /* Review highlights carousel */
-.pd-review-wrapper {
-  padding: 16px;
-  border-radius: var(--t-radius-card);
-  background: var(--t-bg-card);
-  border: 1px solid var(--t-border-card);
-  box-shadow: var(--t-shadow-card);
-}
 .pd-review-header {
   display: flex;
   align-items: center;
@@ -1674,19 +1667,6 @@ PRODUCT DETAILS — THEMED DECORATIONS (pd-*)
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-[data-theme="luxury"] .pd-review-card {
-  border: 1px solid rgba(212, 175, 55, 0.2);
-}
-[data-theme="luxury"] .pd-review-card:hover {
-  border-color: rgba(212, 175, 55, 0.4);
-  box-shadow: 0 2px 12px rgba(212, 175, 55, 0.1);
-}
-[data-theme="sports"] .pd-review-wrapper { border-radius: 999px; padding: 16px 20px; }
-[data-theme="sports"] .pd-review-card { border-radius: 14px; }
-[data-theme="ethnic"] .pd-review-wrapper { border-radius: 2px; border-left: 3px solid var(--t-primary); }
-[data-theme="ethnic"] .pd-review-card { border-radius: 2px; }
-[data-theme="fashion"] .pd-review-wrapper { border: 1px dashed rgba(201, 169, 110, 0.5); border-radius: 20px; }
-[data-theme="fashion"] .pd-review-card { border-radius: 14px; }
 
 /* Gallery thumbnails (themed) */
 .pd-thumb {

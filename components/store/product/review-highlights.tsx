@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CheckCircle2, MessageSquareText } from "lucide-react";
 import Stars from "@/components/store/reviews/stars";
 
@@ -14,65 +14,30 @@ interface ReviewItem {
   userName: string;
 }
 
-const CACHE_PREFIX = "review_cache_";
-
-export function cacheReviews(productId: string, reviews: ReviewItem[]) {
-  try {
-    sessionStorage.setItem(
-      CACHE_PREFIX + productId,
-      JSON.stringify(reviews)
-    );
-  } catch {}
-}
-
-export function getCachedReviews(productId: string): ReviewItem[] | null {
-  try {
-    const raw = sessionStorage.getItem(CACHE_PREFIX + productId);
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
-}
-
 interface Props {
   productId: string;
+  initialReviews?: ReviewItem[];
 }
 
-export default function ReviewHighlights({ productId }: Props) {
-  const [reviews, setReviews] = useState<ReviewItem[]>([]);
-  const [loading, setLoading] = useState(true);
+export default function ReviewHighlights({ productId, initialReviews }: Props) {
+  const [reviews, setReviews] = useState<ReviewItem[]>(initialReviews ?? []);
   const [hovered, setHovered] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const load = useCallback(async () => {
-    try {
-      const cached = getCachedReviews(productId);
-      if (cached && cached.length > 0) {
-        setReviews(cached);
-        setLoading(false);
-        return;
-      }
-
-      const res = await fetch(
-        `/api/reviews?productId=${productId}`,
-        { cache: "no-store" }
-      );
-      const data = await res.json();
-      if (data.success && data.reviews?.length > 0) {
-        setReviews(data.reviews);
-        cacheReviews(productId, data.reviews);
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, [productId]);
-
   useEffect(() => {
-    load();
-  }, [load]);
+    if (initialReviews && initialReviews.length > 0) return;
 
-  // Auto-scroll
+    fetch(`/api/reviews?productId=${productId}`, { cache: "no-store" })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success && data.reviews?.length > 0) {
+          setReviews(data.reviews);
+        }
+      })
+      .catch(() => {});
+  }, [productId, initialReviews]);
+
   useEffect(() => {
     if (reviews.length < 2 || hovered) return;
 
@@ -93,14 +58,14 @@ export default function ReviewHighlights({ productId }: Props) {
     };
   }, [reviews.length, hovered]);
 
-  if (loading || reviews.length === 0) return null;
+  if (reviews.length === 0) return null;
 
   const average =
     reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length;
 
   return (
     <div
-      className="pd-review-wrapper"
+      className="pd-card px-5 py-4"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       onTouchStart={() => setHovered(true)}
@@ -145,9 +110,7 @@ export default function ReviewHighlights({ productId }: Props) {
             </div>
             <p className="pd-review-comment">&ldquo;{review.comment}&rdquo;</p>
             <div className="pd-review-author">
-              <div
-                className="pd-review-avatar"
-              >
+              <div className="pd-review-avatar">
                 {review.userName.charAt(0).toUpperCase()}
               </div>
               <span className="pd-review-name">{review.userName}</span>

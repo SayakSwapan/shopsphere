@@ -7,7 +7,6 @@ import { format } from "date-fns";
 import { useAuthModal } from "@/components/auth/auth-context";
 import Stars from "./stars";
 import ReviewForm from "./review-form";
-import { getCachedReviews, cacheReviews } from "@/components/store/product/review-highlights";
 
 interface ReviewItem {
   id: string;
@@ -29,39 +28,32 @@ interface Props {
   productId: string;
   isLoggedIn: boolean;
   currentUserName?: string | null;
+  initialReviews?: ReviewItem[];
 }
 
 export default function ProductReviews({
   productId,
   isLoggedIn,
   currentUserName,
+  initialReviews,
 }: Props) {
   const { openAuth } = useAuthModal();
 
-  const [summary, setSummary] = useState<Summary>({
-    average: 0,
-    count: 0,
-    distribution: { "1": 0, "2": 0, "3": 0, "4": 0, "5": 0 },
+  const [summary, setSummary] = useState<Summary>(() => {
+    if (initialReviews && initialReviews.length > 0) {
+      const dist: Record<string, number> = { "1": 0, "2": 0, "3": 0, "4": 0, "5": 0 };
+      for (const r of initialReviews) dist[String(r.rating)] += 1;
+      const avg = initialReviews.reduce((s, r) => s + r.rating, 0) / initialReviews.length;
+      return { average: Number(avg.toFixed(2)), count: initialReviews.length, distribution: dist };
+    }
+    return { average: 0, count: 0, distribution: { "1": 0, "2": 0, "3": 0, "4": 0, "5": 0 } };
   });
-  const [reviews, setReviews] = useState<ReviewItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [reviews, setReviews] = useState<ReviewItem[]>(initialReviews ?? []);
+  const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
 
   const load = useCallback(async () => {
     try {
-      const cached = getCachedReviews(productId);
-      if (cached && cached.length > 0) {
-        const distribution: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
-        for (const r of cached) {
-          if (distribution[r.rating] !== undefined) distribution[r.rating] += 1;
-        }
-        const avg = cached.reduce((s, r) => s + r.rating, 0) / cached.length;
-        setSummary({ average: Number(avg.toFixed(2)), count: cached.length, distribution });
-        setReviews(cached);
-        setLoading(false);
-        return;
-      }
-
       const res = await fetch(
         `/api/reviews?productId=${productId}`,
         { cache: "no-store" }
@@ -71,7 +63,6 @@ export default function ProductReviews({
       if (data.success) {
         setSummary(data.summary);
         setReviews(data.reviews);
-        cacheReviews(productId, data.reviews);
       }
     } finally {
       setLoading(false);
@@ -79,8 +70,9 @@ export default function ProductReviews({
   }, [productId]);
 
   useEffect(() => {
+    if (initialReviews && initialReviews.length > 0) return;
     load();
-  }, [load]);
+  }, [initialReviews, load]);
 
   const myReview =
     isLoggedIn && currentUserName

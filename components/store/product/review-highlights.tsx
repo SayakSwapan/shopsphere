@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, MessageSquareText } from "lucide-react";
 import Stars from "@/components/store/reviews/stars";
 
 interface ReviewItem {
@@ -12,6 +12,26 @@ interface ReviewItem {
   verified: boolean;
   createdAt: string;
   userName: string;
+}
+
+const CACHE_PREFIX = "review_cache_";
+
+export function cacheReviews(productId: string, reviews: ReviewItem[]) {
+  try {
+    sessionStorage.setItem(
+      CACHE_PREFIX + productId,
+      JSON.stringify(reviews)
+    );
+  } catch {}
+}
+
+export function getCachedReviews(productId: string): ReviewItem[] | null {
+  try {
+    const raw = sessionStorage.getItem(CACHE_PREFIX + productId);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
 }
 
 interface Props {
@@ -27,6 +47,13 @@ export default function ReviewHighlights({ productId }: Props) {
 
   const load = useCallback(async () => {
     try {
+      const cached = getCachedReviews(productId);
+      if (cached && cached.length > 0) {
+        setReviews(cached);
+        setLoading(false);
+        return;
+      }
+
       const res = await fetch(
         `/api/reviews?productId=${productId}`,
         { cache: "no-store" }
@@ -34,6 +61,7 @@ export default function ReviewHighlights({ productId }: Props) {
       const data = await res.json();
       if (data.success && data.reviews?.length > 0) {
         setReviews(data.reviews);
+        cacheReviews(productId, data.reviews);
       }
     } finally {
       setLoading(false);
@@ -44,7 +72,7 @@ export default function ReviewHighlights({ productId }: Props) {
     load();
   }, [load]);
 
-  // Auto-scroll logic
+  // Auto-scroll
   useEffect(() => {
     if (reviews.length < 2 || hovered) return;
 
@@ -56,7 +84,7 @@ export default function ReviewHighlights({ productId }: Props) {
       if (el.scrollLeft >= maxScroll - 2) {
         el.scrollTo({ left: 0, behavior: "smooth" });
       } else {
-        el.scrollBy({ left: 260, behavior: "smooth" });
+        el.scrollBy({ left: 240, behavior: "smooth" });
       }
     }, 3000);
 
@@ -78,31 +106,51 @@ export default function ReviewHighlights({ productId }: Props) {
       onTouchStart={() => setHovered(true)}
       onTouchEnd={() => setHovered(false)}
     >
-      {/* Summary row */}
-      <div className="pd-review-summary">
-        <div className="pd-review-summary-left">
-          <Stars value={average} size={14} />
-          <span className="pd-review-avg">{average.toFixed(1)}</span>
-          <span className="pd-review-count">
-            ({reviews.length} {reviews.length === 1 ? "review" : "reviews"})
-          </span>
+      {/* Header */}
+      <div className="pd-review-header">
+        <div className="pd-review-header-left">
+          <MessageSquareText size={14} className="pd-review-header-icon" />
+          <span className="pd-review-header-title">Customer Reviews</span>
         </div>
         <a href="#reviews" className="pd-review-see-all">
           See all ↓
         </a>
       </div>
 
+      <div className="pd-review-divider" />
+
+      {/* Summary row */}
+      <div className="pd-review-summary">
+        <div className="pd-review-summary-left">
+          <span className="pd-review-avg">{average.toFixed(1)}</span>
+          <Stars value={average} size={14} />
+        </div>
+        <span className="pd-review-count">
+          {reviews.length} {reviews.length === 1 ? "review" : "reviews"}
+        </span>
+      </div>
+
       {/* Carousel */}
       <div className="pd-review-scroll" ref={scrollRef}>
         {reviews.map((review) => (
           <div key={review.id} className="pd-review-card">
-            <Stars value={review.rating} size={12} gap={1} />
-            <p className="pd-review-comment">{review.comment}</p>
-            <div className="pd-review-author">
-              <span className="pd-review-name">{review.userName}</span>
+            <div className="pd-review-card-top">
+              <Stars value={review.rating} size={12} gap={1} />
               {review.verified && (
-                <CheckCircle2 size={10} className="pd-review-verified-icon" />
+                <span className="pd-review-verified-tag">
+                  <CheckCircle2 size={9} />
+                  Verified
+                </span>
               )}
+            </div>
+            <p className="pd-review-comment">&ldquo;{review.comment}&rdquo;</p>
+            <div className="pd-review-author">
+              <div
+                className="pd-review-avatar"
+              >
+                {review.userName.charAt(0).toUpperCase()}
+              </div>
+              <span className="pd-review-name">{review.userName}</span>
             </div>
           </div>
         ))}

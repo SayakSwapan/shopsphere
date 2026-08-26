@@ -7,6 +7,7 @@ import { format } from "date-fns";
 import { useAuthModal } from "@/components/auth/auth-context";
 import Stars from "./stars";
 import ReviewForm from "./review-form";
+import { getCachedReviews, cacheReviews } from "@/components/store/product/review-highlights";
 
 interface ReviewItem {
   id: string;
@@ -48,6 +49,19 @@ export default function ProductReviews({
 
   const load = useCallback(async () => {
     try {
+      const cached = getCachedReviews(productId);
+      if (cached && cached.length > 0) {
+        const distribution: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+        for (const r of cached) {
+          if (distribution[r.rating] !== undefined) distribution[r.rating] += 1;
+        }
+        const avg = cached.reduce((s, r) => s + r.rating, 0) / cached.length;
+        setSummary({ average: Number(avg.toFixed(2)), count: cached.length, distribution });
+        setReviews(cached);
+        setLoading(false);
+        return;
+      }
+
       const res = await fetch(
         `/api/reviews?productId=${productId}`,
         { cache: "no-store" }
@@ -57,6 +71,7 @@ export default function ProductReviews({
       if (data.success) {
         setSummary(data.summary);
         setReviews(data.reviews);
+        cacheReviews(productId, data.reviews);
       }
     } finally {
       setLoading(false);

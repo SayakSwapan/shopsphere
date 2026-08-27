@@ -4,6 +4,7 @@ import { Star, ChevronRight } from "lucide-react";
 import { getEffectivePrice, isFlatDiscount, isPercentDiscount, priceWithGst } from "@/lib/pricing";
 import QuickAddButton from "@/components/store/quick-add-button";
 import WishlistButton from "@/components/store/wishlist-button";
+import ProductCardCountdown from "@/components/store/product/product-card-countdown";
 
 export const dynamic = "force-dynamic";
 
@@ -268,7 +269,7 @@ export default async function SportsFeaturedProducts() {
                   </div>
 
                   {/* price */}
-                  <div className="flex items-end gap-2 mb-4">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mb-2">
                     <span
                       className="text-lg md:text-xl font-black"
                       style={{ color: "#F4F3EE", fontFamily: "var(--t-font-body)" }}
@@ -277,13 +278,26 @@ export default async function SportsFeaturedProducts() {
                     </span>
                     {hasDiscount && (
                       <span
-                        className="text-xs line-through pb-0.5"
-                        style={{ color: "#4A5159" }}
+                        className="text-[11px] font-bold uppercase tracking-wider"
+                        style={{ color: "#7A8289" }}
                       >
-                        ₹{originalPrice.toLocaleString("en-IN")}
+                        <span className="line-through">
+                          ₹{originalPrice.toLocaleString("en-IN")}
+                        </span>{" "}
+                        <span
+                          style={{ color: "var(--sports-volt)" }}
+                        >
+                          {Math.round(((originalPrice - displayPrice) / originalPrice) * 100)}% off
+                        </span>
                       </span>
                     )}
                   </div>
+
+                  {hasDiscount && product.offerEnd && (
+                    <div className="mb-3">
+                      <ProductCardCountdown offerEnd={new Date(product.offerEnd).toISOString()} />
+                    </div>
+                  )}
 
                   {/* add to cart */}
                   <QuickAddButton

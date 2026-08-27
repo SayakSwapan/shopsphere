@@ -1519,6 +1519,51 @@ PRODUCT DETAILS — THEMED DECORATIONS (pd-*)
 [data-theme="fashion"] .pd-timer-wrapper { border: 1px dashed rgba(201, 169, 110, 0.6); border-radius: 20px; }
 [data-theme="fashion"] .pd-timer-box { border-radius: 999px; }
 
+/* Compact product-card offer countdown strip */
+.pcc-strip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--t-accent, var(--t-primary)) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--t-accent, var(--t-primary)) 22%, transparent);
+}
+.pcc-strip-flame {
+  color: var(--t-accent, var(--t-primary));
+  flex-shrink: 0;
+  animation: pd-timer-pulse 1.5s ease-in-out infinite;
+}
+.pcc-strip-label {
+  font-size: 0.6rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--t-text-muted-2);
+  white-space: nowrap;
+}
+.pcc-strip-time {
+  margin-left: auto;
+  font-size: 0.8rem;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  color: var(--t-accent, var(--t-primary));
+  letter-spacing: 0.02em;
+}
+.pcc-strip--urgent {
+  border-color: color-mix(in srgb, var(--t-accent, var(--t-primary)) 45%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--t-accent, var(--t-primary)) 10%, transparent);
+}
+[data-theme="luxury"] .pcc-strip {
+  border-color: rgba(212, 175, 55, 0.35);
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.07), rgba(212, 175, 55, 0.02));
+}
+[data-theme="luxury"] .pcc-strip-flame,
+[data-theme="luxury"] .pcc-strip-time { color: #d4af37; }
+[data-theme="ethnic"] .pcc-strip { border-radius: 2px; border-left: 3px solid var(--t-primary); }
+[data-theme="fashion"] .pcc-strip { border: 1px dashed rgba(201, 169, 110, 0.6); border-radius: 20px; }
+
 /* Review highlights carousel */
 .pd-review-header {
   display: flex;

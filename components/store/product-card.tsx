@@ -1,6 +1,7 @@
 import Link from "next/link";
 import WishlistButton from "./wishlist-button";
 import CardRating from "./reviews/card-rating";
+import ProductCardCountdown from "./product/product-card-countdown";
 import { getEffectivePrice, isFlatDiscount, isPercentDiscount, priceWithGst } from "@/lib/pricing";
 
 interface Props {
@@ -71,14 +72,18 @@ export default function ProductCard({ product }: Props) {
   );
 
   let discountLabel = "";
+  let offPercent = 0;
 
   if (hasDiscount) {
     if (isPercentDiscount(discountType)) {
       discountLabel = `${discountValue}% OFF`;
     } else {
-      discountLabel = `₹${discountValue.toFixed(
-        0
-      )} OFF`;
+      discountLabel = `₹${discountValue.toFixed(0)} OFF`;
+    }
+
+    // Compute actual saving vs the GST-inclusive MRP (works for both % and flat).
+    if (displayPrice < originalPrice && originalPrice > 0) {
+      offPercent = Math.round(((originalPrice - displayPrice) / originalPrice) * 100);
     }
   }
 
@@ -169,28 +174,44 @@ export default function ProductCard({ product }: Props) {
 
         {/* Price */}
         <div className="mt-5">
-          <div className="flex items-end gap-3">
+          <div className="flex items-end gap-2.5">
             <span className="text-2xl sm:text-3xl font-black text-text-heading">
               ₹{displayPrice.toLocaleString("en-IN")}
             </span>
 
             {hasDiscount && (
-                <span className="pb-1 text-sm text-text-muted-2 line-through">
-                  ₹
-                  {originalPrice.toLocaleString(
-                    "en-IN"
-                  )}
+              <div className="flex flex-col items-start leading-tight pb-0.5">
+                <span className="text-xs font-bold text-text-muted-2 line-through">
+                  ₹{originalPrice.toLocaleString("en-IN")}
                 </span>
-              )}
+                <span className="text-[9px] font-black uppercase tracking-widest text-text-muted-3">
+                  MRP
+                </span>
+              </div>
+            )}
           </div>
 
           {hasDiscount && (
-            <div
-              className="mt-2 inline-flex px-3 py-1 text-xs font-bold text-success"
-              style={{ background: "color-mix(in srgb, var(--t-success) 12%, transparent)", borderRadius: "var(--t-radius-badge)" }}
-            >
-              {discountLabel}
+            <div className="mt-2 flex items-center gap-2">
+              <span
+                className="inline-flex px-2.5 py-1 text-xs font-black text-success"
+                style={{ background: "color-mix(in srgb, var(--t-success) 12%, transparent)", borderRadius: "var(--t-radius-badge)" }}
+              >
+                {discountLabel}
+              </span>
+              {offPercent > 0 && (
+                <span
+                  className="inline-flex px-2.5 py-1 text-xs font-black text-accent"
+                  style={{ background: "color-mix(in srgb, var(--t-accent) 12%, transparent)", borderRadius: "var(--t-radius-badge)" }}
+                >
+                  Save {offPercent}%
+                </span>
+              )}
             </div>
+          )}
+
+          {hasDiscount && product.offerEnd && (
+            <ProductCardCountdown offerEnd={new Date(product.offerEnd).toISOString()} />
           )}
         </div>
 

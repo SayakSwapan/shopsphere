@@ -52,6 +52,8 @@ interface Props {
   discountLabel: string;
   showPrice?: boolean;
   offerEnd?: string | null;
+  /** When set and the offer hasn't started yet, shows an "Offer starts in" countdown. */
+  offerStart?: string | null;
   reviewAverage?: number;
   reviewCount?: number;
   reviews?: ReviewItem[];
@@ -70,6 +72,7 @@ export default function ProductPurchasePanel({
   discountLabel,
   showPrice = true,
   offerEnd,
+  offerStart,
   reviewCount,
   reviews,
 }: Props) {
@@ -229,6 +232,10 @@ export default function ProductPurchasePanel({
 
           {hasDiscount && offerEnd && (
             <OfferCountdown offerEnd={offerEnd} />
+          )}
+
+          {offerStart && (
+            <OfferCountdown offerEnd={offerStart} mode="starts" />
           )}
         </div>
       )}

@@ -1475,6 +1475,19 @@ PRODUCT DETAILS — THEMED DECORATIONS (pd-*)
   border-color: color-mix(in srgb, var(--t-accent, var(--t-primary)) 45%, transparent);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--t-accent, var(--t-primary)) 10%, transparent);
 }
+/* Upcoming / "offer starts soon" countdown — informational, not urgent */
+.cd-timer--starts .cd-timer-inner {
+  background: color-mix(in srgb, var(--t-primary) 9%, transparent);
+  border-color: color-mix(in srgb, var(--t-primary) 26%, transparent);
+  border-style: dashed;
+}
+.cd-timer--starts .cd-timer-flame {
+  color: var(--t-primary);
+  animation: none;
+}
+.cd-timer--starts .cd-timer-value {
+  color: var(--t-primary);
+}
 @keyframes cd-timer-pulse {
   0%, 100% { opacity: 1; transform: scale(1); }
   50% { opacity: 0.55; transform: scale(1.12); }

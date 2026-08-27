@@ -160,6 +160,15 @@ export default async function ProductPage({ params }: Props) {
     baseDisplay > 0 &&
     displayPrice < originalPrice;
 
+  // An offer is "upcoming" when a discount is configured with a future start —
+  // the discounted price isn't live yet, but we surface a countdown so the
+  // customer knows the offer is about to drop.
+  const offerUpcoming =
+    !offerActive &&
+    product.discountValue > 0 &&
+    product.offerStart &&
+    now < new Date(product.offerStart);
+
   const savings = hasDiscount ? originalPrice - displayPrice : 0;
   const percentOff =
     hasDiscount && originalPrice > 0
@@ -368,6 +377,7 @@ export default async function ProductPage({ params }: Props) {
                 discountLabel={discountLabel}
                 showPrice={true}
                 offerEnd={hasDiscount && product.offerEnd ? product.offerEnd.toISOString() : null}
+                offerStart={offerUpcoming && product.offerStart ? product.offerStart.toISOString() : null}
                 reviewAverage={reviewAverage}
                 reviewCount={reviewCount}
                 reviews={serializedReviews}

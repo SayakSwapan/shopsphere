@@ -57,6 +57,17 @@ export default function ProductCard({ product }: Props) {
     (isPercentDiscount(discountType) ||
       isFlatDiscount(discountType));
 
+  // An offer is "upcoming" when a discount is configured with a start time in
+  // the future — the sale price is shown, but we surface a countdown so the
+  // customer knows the offer is about to drop.
+  const offerUpcoming =
+    !offerActive &&
+    discountValue > 0 &&
+    product.offerStart &&
+    now < new Date(product.offerStart) &&
+    (isPercentDiscount(discountType) ||
+      isFlatDiscount(discountType));
+
   // Only show the discounted price when the offer is actually active; a
   // scheduled/expired offer must not surface the sale price as if it were the
   // regular price (inconsistent with the badge/countdown that is hidden).
@@ -217,6 +228,14 @@ export default function ProductCard({ product }: Props) {
 
           {hasDiscount && product.offerEnd && (
             <OfferCountdown offerEnd={new Date(product.offerEnd).toISOString()} variant="card" />
+          )}
+
+          {offerUpcoming && product.offerStart && (
+            <OfferCountdown
+              offerEnd={new Date(product.offerStart).toISOString()}
+              variant="card"
+              mode="starts"
+            />
           )}
         </div>
 

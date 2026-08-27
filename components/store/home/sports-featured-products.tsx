@@ -162,6 +162,15 @@ export default async function SportsFeaturedProducts() {
               Number(product.discountValue || 0) > 0 &&
               (isPercentDiscount(discountType) || isFlatDiscount(discountType));
 
+            // Scheduled offer (starts in the future) — surface a countdown so the
+            // customer knows the discount is coming.
+            const offerUpcoming =
+              !offerActive &&
+              Number(product.discountValue || 0) > 0 &&
+              product.offerStart &&
+              now < new Date(product.offerStart) &&
+              (isPercentDiscount(discountType) || isFlatDiscount(discountType));
+
             // Only show the discounted price when the offer is active.
             const displayPrice = priceWithGst(
               hasDiscount
@@ -300,6 +309,16 @@ export default async function SportsFeaturedProducts() {
                   {hasDiscount && product.offerEnd && (
                     <div className="mb-3">
                       <ProductCardCountdown offerEnd={new Date(product.offerEnd).toISOString()} variant="card" />
+                    </div>
+                  )}
+
+                  {offerUpcoming && product.offerStart && (
+                    <div className="mb-3">
+                      <ProductCardCountdown
+                        offerEnd={new Date(product.offerStart).toISOString()}
+                        variant="card"
+                        mode="starts"
+                      />
                     </div>
                   )}
 

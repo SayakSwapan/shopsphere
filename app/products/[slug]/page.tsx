@@ -129,25 +129,30 @@ export default async function ProductPage({ params }: Props) {
 
   const gstRate = Number(product.gstPercentage || 0);
   const baseOriginal = Number(product.sellingPrice || 0);
-  const baseDisplay = getEffectivePrice(
-    product.salePrice,
-    product.finalPrice,
-    product.sellingPrice
-  );
-
-  // All customer-facing prices are GST-inclusive. The discount is derived from
-  // the real price gap so the "% OFF" badge always matches the rupee savings.
-  const originalPrice = priceWithGst(baseOriginal, gstRate);
-  const displayPrice = priceWithGst(baseDisplay, gstRate);
 
   // Server-side offer window gating: the discount only applies when the
   // current time falls within the offerStart → offerEnd window (or the
-  // window is open-ended).
+  // window is open-ended). When the offer is not active the customer should
+  // see the original selling price — never the sale price masquerading as the
+  // regular price (inconsistent with the hidden badge/countdown).
   const now = new Date();
   const offerActive =
     product.discountValue > 0 &&
     (!product.offerStart || now >= new Date(product.offerStart)) &&
     (!product.offerEnd || now <= new Date(product.offerEnd));
+
+  const baseDisplay = offerActive
+    ? getEffectivePrice(
+        product.salePrice,
+        product.finalPrice,
+        product.sellingPrice
+      )
+    : baseOriginal;
+
+  // All customer-facing prices are GST-inclusive. The discount is derived from
+  // the real price gap so the "% OFF" badge always matches the rupee savings.
+  const originalPrice = priceWithGst(baseOriginal, gstRate);
+  const displayPrice = priceWithGst(baseDisplay, gstRate);
 
   const hasDiscount =
     offerActive &&

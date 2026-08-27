@@ -37,11 +37,6 @@ export default function ProductCard({ product }: Props) {
     gstRate
   );
 
-  const displayPrice = priceWithGst(
-    getEffectivePrice(product.salePrice, product.finalPrice, product.sellingPrice),
-    gstRate
-  );
-
   const discountType = String(
     product.discountType || ""
   ).toUpperCase();
@@ -61,6 +56,16 @@ export default function ProductCard({ product }: Props) {
     discountValue > 0 &&
     (isPercentDiscount(discountType) ||
       isFlatDiscount(discountType));
+
+  // Only show the discounted price when the offer is actually active; a
+  // scheduled/expired offer must not surface the sale price as if it were the
+  // regular price (inconsistent with the badge/countdown that is hidden).
+  const displayPrice = priceWithGst(
+    hasDiscount
+      ? getEffectivePrice(product.salePrice, product.finalPrice, product.sellingPrice)
+      : Number(product.sellingPrice || 0),
+    gstRate
+  );
 
   const availableSizes = Array.from(
     new Set(

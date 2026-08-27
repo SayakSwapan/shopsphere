@@ -234,7 +234,7 @@ export default function ProductPurchasePanel({
       )}
 
       {/* Review highlights */}
-      {reviewCount && reviewCount > 0 && (
+      {typeof reviewCount === "number" && reviewCount > 0 && (
         <ReviewHighlights productId={productId} initialReviews={reviews} />
       )}
 

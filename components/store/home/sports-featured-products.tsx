@@ -144,10 +144,6 @@ export default async function SportsFeaturedProducts() {
           {products.map((product) => {
             const gstRate = Number(product.gstPercentage || 0);
             const originalPrice = priceWithGst(Number(product.sellingPrice || 0), gstRate);
-            const displayPrice = priceWithGst(
-              getEffectivePrice(product.salePrice, product.finalPrice, product.sellingPrice),
-              gstRate
-            );
 
             const reviews = product.review ?? [];
             const avgRating =
@@ -165,6 +161,14 @@ export default async function SportsFeaturedProducts() {
               offerActive &&
               Number(product.discountValue || 0) > 0 &&
               (isPercentDiscount(discountType) || isFlatDiscount(discountType));
+
+            // Only show the discounted price when the offer is active.
+            const displayPrice = priceWithGst(
+              hasDiscount
+                ? getEffectivePrice(product.salePrice, product.finalPrice, product.sellingPrice)
+                : Number(product.sellingPrice || 0),
+              gstRate
+            );
 
             return (
               <div

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import WishlistButton from "./wishlist-button";
 import CardRating from "./reviews/card-rating";
-import ProductCardCountdown from "./product/product-card-countdown";
+import OfferCountdown from "./product/offer-countdown";
 import { getEffectivePrice, isFlatDiscount, isPercentDiscount, priceWithGst } from "@/lib/pricing";
 
 interface Props {
@@ -211,7 +211,7 @@ export default function ProductCard({ product }: Props) {
           )}
 
           {hasDiscount && product.offerEnd && (
-            <ProductCardCountdown offerEnd={new Date(product.offerEnd).toISOString()} />
+            <OfferCountdown offerEnd={new Date(product.offerEnd).toISOString()} variant="card" />
           )}
         </div>
 

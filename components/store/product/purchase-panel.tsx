@@ -86,11 +86,52 @@ export default function ProductPurchasePanel({
     [variants, sizeCategory]
   );
 
+  // A product "has sizes" to pick when at least one of its variants carries a
+  // real size label. Items whose only variants are "Free Size" / "One Size" /
+  // "OS" (or that have a single variant) are treated as sizeless — the size
+  // picker is hidden and the item is added directly using its variant stock.
+  const freeSizeNames = new Set([
+    "freesize",
+    "onesize",
+    "os",
+    "one size",
+    "free size",
+    "standard",
+    "standard size",
+    "n/a",
+    "no size",
+    "none",
+  ]);
+  const isFreeSize = (label?: string | null): boolean => {
+    if (!label) return true;
+    return freeSizeNames.has(label.trim().toLowerCase().replace(/\s+/g, ""));
+  };
+
+  const hasRealSizes = filteredVariants.some(
+    (v) => !isFreeSize(v.size?.sizeName)
+  );
+  const needsSizeSelection = hasRealSizes && filteredVariants.length > 1;
+
   const maxStock = useMemo(() => Math.max(...filteredVariants.map((v) => v.stock), 0), [filteredVariants]);
 
+  // For sizeless products the variant is chosen automatically (first in-stock),
+  // so the customer can add-to-cart / buy-now without picking a size.
+  const autoVariant = useMemo(
+    () =>
+      needsSizeSelection
+        ? null
+        : (filteredVariants.find((v) => v.stock > 0) ??
+          filteredVariants[0] ??
+          null),
+    [needsSizeSelection, filteredVariants]
+  );
+
   const selectedVariant = useMemo(
-    () => filteredVariants.find((v) => v.id === selectedVariantId) ?? null,
-    [filteredVariants, selectedVariantId]
+    () =>
+      needsSizeSelection
+        ? (filteredVariants.find((v) => v.id === selectedVariantId) ?? null)
+        : autoVariant,
+    [needsSizeSelection, filteredVariants, selectedVariantId, autoVariant]
   );
 
   const maxQuantity = selectedVariant ? Math.max(1, selectedVariant.stock) : 1;
@@ -105,7 +146,11 @@ export default function ProductPurchasePanel({
 
   const handleBuyNow = async () => {
     if (!selectedVariant) {
-      toast.error("Please select a size to continue");
+      toast.error(
+        needsSizeSelection
+          ? "Please select a size to continue"
+          : "This item is currently unavailable"
+      );
       return;
     }
     if (selectedVariant.stock <= 0) {
@@ -195,78 +240,137 @@ export default function ProductPurchasePanel({
 
       {/* Purchase card */}
       <div className="pd-card overflow-hidden">
-        {/* Size selector */}
-        <div className="px-5 py-4">
-          <div className="flex items-center justify-between">
-            <p className="text-sm font-bold" style={{ color: "var(--t-text-heading)" }}>
-              Select Size
-            </p>
-            {selectedVariant && (
-              <span className="text-xs font-medium" style={{ color: "var(--t-success)" }}>
-                <Check size={12} className="inline mr-1" />
-                {selectedVariant.stock} in stock
-              </span>
+        {/* Size selector (only when the product actually has sizes to pick) */}
+        {needsSizeSelection && (
+          <>
+            <div className="px-5 py-4">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-bold" style={{ color: "var(--t-text-heading)" }}>
+                  Select Size
+                </p>
+                {selectedVariant && (
+                  <span className="text-xs font-medium" style={{ color: "var(--t-success)" }}>
+                    <Check size={12} className="inline mr-1" />
+                    {selectedVariant.stock} in stock
+                  </span>
+                )}
+              </div>
+              {selectedVariant && (
+                <p className="text-xs mt-1" style={{ color: "var(--t-text-muted-2)" }}>
+                  Size {selectedVariant.size?.sizeName} selected
+                </p>
+              )}
+            </div>
+
+            <div className="px-5 pb-5">
+              <div className="flex flex-wrap gap-2.5">
+                {filteredVariants.map((variant) => {
+                  const isSelected = variant.id === selectedVariantId;
+                  const isOOS = variant.stock < 1;
+                  const isLowStock =
+                    !isOOS && variant.stock <= Math.min(5, maxStock);
+
+                  return (
+                    <button
+                      key={variant.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedVariantId(variant.id);
+                        setQuantity(1);
+                      }}
+                      disabled={isOOS}
+                      data-selected={isSelected ? "true" : "false"}
+                      className="pd-size-btn"
+                    >
+                      <span>{variant.size?.sizeName || "—"}</span>
+                      {isOOS && (
+                        <span className="block text-[10px] font-normal mt-0.5">
+                          Sold out
+                        </span>
+                      )}
+                      {isLowStock && !isSelected && (
+                        <span
+                          className="block text-[10px] font-normal mt-0.5"
+                          style={{ color: "color-mix(in srgb, var(--t-primary) 70%, transparent)" }}
+                        >
+                          Only {variant.stock} left
+                        </span>
+                      )}
+                      {isSelected && (
+                        <Check
+                          size={14}
+                          className="absolute -top-1.5 -right-1.5 rounded-full p-0.5"
+                          style={{ background: "var(--t-primary)", color: "var(--t-button-text, #fff)" }}
+                        />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {!selectedVariant && (
+                <p className="mt-3 text-xs" style={{ color: "var(--t-text-muted-2)" }}>
+                  Please select a size to continue
+                </p>
+              )}
+            </div>
+          </>
+        )}
+
+        {/* Sizeless product: no size picker, show stock count for urgency */}
+        {!needsSizeSelection && (
+          <div className="px-5 py-5">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-bold" style={{ color: "var(--t-text-heading)" }}>
+                {selectedVariant?.size?.sizeName || "Availability"}
+              </p>
+            </div>
+            {selectedVariant ? (
+              selectedVariant.stock > 0 ? (
+                <div
+                  className="mt-3 flex items-center gap-3 px-4 py-3"
+                  style={{
+                    borderRadius: "var(--t-radius-card)",
+                    background:
+                      selectedVariant.stock <= 5
+                        ? "color-mix(in srgb, var(--t-accent) 10%, transparent)"
+                        : "color-mix(in srgb, var(--t-success) 10%, transparent)",
+                    border: `1px solid color-mix(in srgb, ${
+                      selectedVariant.stock <= 5 ? "var(--t-accent)" : "var(--t-success)"
+                    } 24%, transparent)`,
+                  }}
+                >
+                  <span
+                    className="h-2.5 w-2.5 rounded-full shrink-0"
+                    style={{
+                      background: selectedVariant.stock <= 5 ? "var(--t-accent)" : "var(--t-success)",
+                      animation: selectedVariant.stock <= 5 ? "cd-timer-pulse 1.5s ease-in-out infinite" : undefined,
+                    }}
+                  />
+                  <div className="min-w-0">
+                    {selectedVariant.stock <= 5 ? (
+                      <p className="text-sm font-bold" style={{ color: "var(--t-accent)" }}>
+                        Only {selectedVariant.stock} left — hurry, buy now!
+                      </p>
+                    ) : (
+                      <p className="text-sm font-bold" style={{ color: "var(--t-success)" }}>
+                        In stock — {selectedVariant.stock} available
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <p className="mt-3 text-sm font-bold" style={{ color: "var(--t-danger)" }}>
+                  Out of stock
+                </p>
+              )
+            ) : (
+              <p className="mt-3 text-xs" style={{ color: "var(--t-text-muted-2)" }}>
+                This item is currently unavailable.
+              </p>
             )}
           </div>
-          {selectedVariant && (
-            <p className="text-xs mt-1" style={{ color: "var(--t-text-muted-2)" }}>
-              Size {selectedVariant.size?.sizeName} selected
-            </p>
-          )}
-        </div>
-
-        <div className="px-5 pb-5">
-          <div className="flex flex-wrap gap-2.5">
-            {filteredVariants.map((variant) => {
-              const isSelected = variant.id === selectedVariantId;
-              const isOOS = variant.stock < 1;
-              const isLowStock =
-                !isOOS && variant.stock <= Math.min(5, maxStock);
-
-              return (
-                <button
-                  key={variant.id}
-                  type="button"
-                  onClick={() => {
-                    setSelectedVariantId(variant.id);
-                    setQuantity(1);
-                  }}
-                  disabled={isOOS}
-                  data-selected={isSelected ? "true" : "false"}
-                  className="pd-size-btn"
-                >
-                  <span>{variant.size?.sizeName || "—"}</span>
-                  {isOOS && (
-                    <span className="block text-[10px] font-normal mt-0.5">
-                      Sold out
-                    </span>
-                  )}
-                  {isLowStock && !isSelected && (
-                    <span
-                      className="block text-[10px] font-normal mt-0.5"
-                      style={{ color: "color-mix(in srgb, var(--t-primary) 70%, transparent)" }}
-                    >
-                      Only {variant.stock} left
-                    </span>
-                  )}
-                  {isSelected && (
-                    <Check
-                      size={14}
-                      className="absolute -top-1.5 -right-1.5 rounded-full p-0.5"
-                      style={{ background: "var(--t-primary)", color: "var(--t-button-text, #fff)" }}
-                    />
-                  )}
-                </button>
-              );
-            })}
-          </div>
-
-          {!selectedVariant && (
-            <p className="mt-3 text-xs" style={{ color: "var(--t-text-muted-2)" }}>
-              Please select a size to continue
-            </p>
-          )}
-        </div>
+        )}
 
         {/* Quantity selector */}
         <div className="border-t px-5 py-4" style={{ borderColor: "var(--t-border-subtle)" }}>

@@ -185,6 +185,13 @@ export default async function ProductPage({ params }: Props) {
     )
   );
 
+  // Sizes with a "free size" marker are not real choices — a product built from
+  // only these is effectively sizeless, so we hide the size listing.
+  const freeSizeRegex = /^(freesize|onesize|os|one ?size|free ?size|standard ?size|n\/?a|no ?size|none)$/i;
+  const realSizes = uniqueSizes.filter(
+    (s) => !freeSizeRegex.test(String(s).trim())
+  );
+
   return (
     <div className="min-h-screen bg-bg-page font-sans antialiased">
 
@@ -368,8 +375,8 @@ export default async function ProductPage({ params }: Props) {
                   |
                 </span>
                 <span className="text-xs font-medium" style={{ color: "var(--t-text-muted-1)" }}>
-                  {uniqueSizes.length > 0
-                    ? `Available sizes: ${uniqueSizes.join(", ")}`
+                  {realSizes.length > 0
+                    ? `Available sizes: ${realSizes.join(", ")}`
                     : "Standard size"}
                 </span>
               </div>
@@ -459,7 +466,7 @@ export default async function ProductPage({ params }: Props) {
                   <span className="pd-spec-label">Sizes</span>
                   <span className="pd-spec-dots" />
                   <span className="pd-spec-value">
-                    {uniqueSizes.length > 0 ? uniqueSizes.join(", ") : "Standard"}
+                    {realSizes.length > 0 ? realSizes.join(", ") : "Standard"}
                   </span>
                 </div>
 

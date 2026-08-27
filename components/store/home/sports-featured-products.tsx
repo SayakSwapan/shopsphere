@@ -4,7 +4,7 @@ import { Star, ChevronRight } from "lucide-react";
 import { getEffectivePrice, isFlatDiscount, isPercentDiscount, priceWithGst } from "@/lib/pricing";
 import QuickAddButton from "@/components/store/quick-add-button";
 import WishlistButton from "@/components/store/wishlist-button";
-import ProductCardCountdown from "@/components/store/product/product-card-countdown";
+import ProductCardCountdown from "@/components/store/product/offer-countdown";
 
 export const dynamic = "force-dynamic";
 
@@ -295,7 +295,7 @@ export default async function SportsFeaturedProducts() {
 
                   {hasDiscount && product.offerEnd && (
                     <div className="mb-3">
-                      <ProductCardCountdown offerEnd={new Date(product.offerEnd).toISOString()} />
+                      <ProductCardCountdown offerEnd={new Date(product.offerEnd).toISOString()} variant="card" />
                     </div>
                   )}
 

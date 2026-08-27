@@ -1432,110 +1432,29 @@ PRODUCT DETAILS — THEMED DECORATIONS (pd-*)
   border: 1px dashed rgba(201, 169, 110, 0.7);
 }
 
-/* Offer countdown timer */
-.pd-timer-wrapper {
+/* Offer countdown timer (compact, theme-aware, mobile responsive)
+   Used on both the product page (panel) and product cards (card). */
+.cd-timer {
   margin-top: 12px;
-  padding: 14px 16px;
-  border-radius: var(--t-radius-card);
-  background: color-mix(in srgb, var(--t-accent, var(--t-primary)) 7%, transparent);
-  border: 1px solid color-mix(in srgb, var(--t-accent, var(--t-primary)) 18%, transparent);
+  display: inline-flex;
+  max-width: 100%;
 }
-.pd-timer-header {
-  display: flex;
+.cd-timer-inner {
+  display: inline-flex;
   align-items: center;
-  gap: 6px;
-  margin-bottom: 10px;
-}
-.pd-timer-flame {
-  color: var(--t-accent, var(--t-primary));
-  animation: pd-timer-pulse 1.5s ease-in-out infinite;
-}
-.pd-timer-headline {
-  font-size: 0.8rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--t-accent, var(--t-primary));
-}
-.pd-timer-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 6px;
-}
-.pd-timer-segment {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-.pd-timer-box {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 44px;
-  height: 44px;
-  padding: 0 6px;
-  border-radius: 10px;
-  background: var(--t-bg-card-nested, #0F172A);
-  border: 1px solid var(--t-border-card);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-}
-.pd-timer-value {
-  font-size: 1.25rem;
-  font-weight: 900;
-  font-variant-numeric: tabular-nums;
-  color: var(--t-text-heading);
-  line-height: 1;
-}
-.pd-timer-label {
-  font-size: 0.6rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--t-text-muted-2);
-}
-.pd-timer-sep {
-  font-size: 1.1rem;
-  font-weight: 900;
-  color: var(--t-accent, var(--t-primary));
-  padding: 0 1px;
-  line-height: 1;
-  align-self: flex-start;
-  margin-top: 8px;
-}
-@keyframes pd-timer-pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.6; transform: scale(1.15); }
-}
-[data-theme="luxury"] .pd-timer-wrapper {
-  border: 1px solid rgba(212, 175, 55, 0.3);
-  background: linear-gradient(135deg, rgba(212, 175, 55, 0.06), rgba(212, 175, 55, 0.02));
-}
-[data-theme="luxury"] .pd-timer-headline,
-[data-theme="luxury"] .pd-timer-flame { color: #d4af37; }
-[data-theme="sports"] .pd-timer-wrapper { border-radius: 999px; }
-[data-theme="sports"] .pd-timer-box { border-radius: 999px; }
-[data-theme="ethnic"] .pd-timer-wrapper { border-radius: 2px; border-left: 3px solid var(--t-primary); }
-[data-theme="ethnic"] .pd-timer-box { border-radius: 2px; }
-[data-theme="fashion"] .pd-timer-wrapper { border: 1px dashed rgba(201, 169, 110, 0.6); border-radius: 20px; }
-[data-theme="fashion"] .pd-timer-box { border-radius: 999px; }
-
-/* Compact product-card offer countdown strip */
-.pcc-strip {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 12px;
-  padding: 7px 10px;
+  gap: 7px;
+  flex-wrap: wrap;
+  padding: 7px 12px;
   border-radius: 999px;
   background: color-mix(in srgb, var(--t-accent, var(--t-primary)) 10%, transparent);
   border: 1px solid color-mix(in srgb, var(--t-accent, var(--t-primary)) 22%, transparent);
 }
-.pcc-strip-flame {
+.cd-timer-flame {
   color: var(--t-accent, var(--t-primary));
   flex-shrink: 0;
-  animation: pd-timer-pulse 1.5s ease-in-out infinite;
+  animation: cd-timer-pulse 1.5s ease-in-out infinite;
 }
-.pcc-strip-label {
+.cd-timer-label {
   font-size: 0.6rem;
   font-weight: 800;
   text-transform: uppercase;
@@ -1543,26 +1462,49 @@ PRODUCT DETAILS — THEMED DECORATIONS (pd-*)
   color: var(--t-text-muted-2);
   white-space: nowrap;
 }
-.pcc-strip-time {
-  margin-left: auto;
-  font-size: 0.8rem;
+.cd-timer-value {
+  font-size: clamp(0.8rem, 1.2vw + 0.55rem, 0.95rem);
   font-weight: 900;
   font-variant-numeric: tabular-nums;
   color: var(--t-accent, var(--t-primary));
   letter-spacing: 0.02em;
+  line-height: 1;
+  white-space: nowrap;
 }
-.pcc-strip--urgent {
+.cd-timer--urgent .cd-timer-inner {
   border-color: color-mix(in srgb, var(--t-accent, var(--t-primary)) 45%, transparent);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--t-accent, var(--t-primary)) 10%, transparent);
 }
-[data-theme="luxury"] .pcc-strip {
+@keyframes cd-timer-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.55; transform: scale(1.12); }
+}
+/* Product page panel sizing */
+.cd-timer--panel .cd-timer-inner {
+  padding: 9px 16px;
+}
+/* Product card sizing (more compact) */
+.cd-timer--card { margin-top: 10px; }
+.cd-timer--card .cd-timer-inner { padding: 6px 10px; }
+.cd-timer--card .cd-timer-value { font-size: 0.78rem; }
+/* Theme accents */
+[data-theme="luxury"] .cd-timer-inner {
   border-color: rgba(212, 175, 55, 0.35);
   background: linear-gradient(135deg, rgba(212, 175, 55, 0.07), rgba(212, 175, 55, 0.02));
 }
-[data-theme="luxury"] .pcc-strip-flame,
-[data-theme="luxury"] .pcc-strip-time { color: #d4af37; }
-[data-theme="ethnic"] .pcc-strip { border-radius: 2px; border-left: 3px solid var(--t-primary); }
-[data-theme="fashion"] .pcc-strip { border: 1px dashed rgba(201, 169, 110, 0.6); border-radius: 20px; }
+[data-theme="luxury"] .cd-timer-flame,
+[data-theme="luxury"] .cd-timer-value { color: #d4af37; }
+[data-theme="sports"] .cd-timer-inner { border-radius: 8px; background: rgba(203,255,62,0.08); border-color: rgba(203,255,62,0.25); }
+[data-theme="sports"] .cd-timer-flame,
+[data-theme="sports"] .cd-timer-value { color: #CBFF3E; }
+[data-theme="sports"] .cd-timer-label { color: #7A8289; }
+[data-theme="ethnic"] .cd-timer-inner { border-radius: 2px; border-left: 3px solid var(--t-primary); }
+[data-theme="fashion"] .cd-timer-inner { border: 1px dashed rgba(201, 169, 110, 0.6); border-radius: 20px; }
+/* Mobile: keep the strip from overflowing narrow cards */
+@media (max-width: 480px) {
+  .cd-timer--card .cd-timer-inner { padding: 5px 8px; gap: 5px; }
+  .cd-timer--card .cd-timer-label { display: none; }
+}
 
 /* Review highlights carousel */
 .pd-review-header {

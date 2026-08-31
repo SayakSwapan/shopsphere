@@ -26,6 +26,13 @@ export const SITE_DEFAULT_SETTINGS: Record<string, string> = {
   business_phone: "+91 98765 43210",
   business_email: "support@shopsphere.com",
   invoice_notes: "Goods once sold will not be taken back or exchanged unless defective.",
+  // Offline sale (POS) return / refund policy — admin-generated text shown on
+  // invoices for due / part-payment offline sales.
+  offline_no_return_policy:
+    "This is a part-payment / due sale. Since the full amount was not paid at the time of purchase, no returns, exchanges or refunds will be accepted for any item in this invoice.",
+  offline_no_return_policy_enabled: "true",
+  offline_due_header: "NO RETURNS / REFUND",
+  offline_reminder_hours: "24",
 };
 
 export const getSiteSettings = cache(async (): Promise<Record<string, string>> => {
@@ -77,5 +84,27 @@ export function getInvoiceBusiness(
     phone: settings.business_phone || settings.contact_phone || undefined,
     email: settings.business_email || settings.contact_email || undefined,
     notes: settings.invoice_notes || undefined,
+  };
+}
+
+export interface OfflinePolicy {
+  noReturnPolicy: string;
+  noReturnEnabled: boolean;
+  dueHeader: string;
+  reminderHours: number;
+}
+
+/**
+ * Admin-generated offline (POS) policies, editable under
+ * Admin → Site Settings → Offline Sale Policies.
+ */
+export function getOfflinePolicy(settings: Record<string, string>): OfflinePolicy {
+  return {
+    noReturnPolicy:
+      settings.offline_no_return_policy ||
+      SITE_DEFAULT_SETTINGS.offline_no_return_policy,
+    noReturnEnabled: settings.offline_no_return_policy_enabled !== "false",
+    dueHeader: settings.offline_due_header || "NO RETURNS / REFUND",
+    reminderHours: Number(settings.offline_reminder_hours) || 24,
   };
 }

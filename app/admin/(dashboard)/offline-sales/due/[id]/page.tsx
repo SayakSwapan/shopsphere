@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Printer } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 
 import PageContainer from "@/components/admin/common/page-container";
-import OfflineOrderDetail from "@/components/admin/offline-sales/offline-order-detail";
+import DueOrderDetail from "@/components/admin/offline-sales/due-order-detail";
 import { prisma } from "@/lib/prisma";
 import { getSiteSettings, getInvoiceBusiness, getOfflinePolicy } from "@/lib/site-settings";
 
@@ -13,7 +13,7 @@ interface Props {
   params: Promise<{ id: string }>;
 }
 
-export default async function OfflineSaleDetailPage({ params }: Props) {
+export default async function DueSaleDetailPage({ params }: Props) {
   const { id } = await params;
 
   const [order, settings] = await Promise.all([
@@ -27,12 +27,12 @@ export default async function OfflineSaleDetailPage({ params }: Props) {
         orderitem: {
           include: { product: { select: { id: true, name: true, category: { select: { name: true } } } } },
         },
-        stockmovement: {
-          orderBy: { createdAt: "desc" },
-        },
         offlinepayment: {
           orderBy: { createdAt: "desc" },
           include: { recordedBy: { select: { name: true } } },
+        },
+        stockmovement: {
+          orderBy: { createdAt: "desc" },
         },
       },
     }),
@@ -40,21 +40,24 @@ export default async function OfflineSaleDetailPage({ params }: Props) {
   ]);
 
   if (!order || order.orderType !== "OFFLINE") notFound();
+  if (!(Number(order.dueAmount ?? 0) > 0)) notFound();
 
   const business = getInvoiceBusiness(settings);
   const offlinePolicy = getOfflinePolicy(settings);
 
   return (
     <PageContainer>
-      <Link
-        href="/admin/offline-sales"
-        className="inline-flex items-center gap-2 text-sm font-semibold text-slate-400 transition hover:text-white"
-      >
-        <ArrowLeft size={16} />
-        Back to Offline Sales
-      </Link>
+      <div className="flex items-center justify-between">
+        <Link
+          href="/admin/offline-sales/due"
+          className="inline-flex items-center gap-2 text-sm font-semibold text-slate-400 transition hover:text-white"
+        >
+          <ArrowLeft size={16} />
+          Back to Due Collections
+        </Link>
+      </div>
 
-      <OfflineOrderDetail order={order} business={business} offlinePolicy={offlinePolicy} />
+      <DueOrderDetail order={order} business={business} offlinePolicy={offlinePolicy} />
     </PageContainer>
   );
 }

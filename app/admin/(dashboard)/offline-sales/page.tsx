@@ -34,6 +34,9 @@ export default async function OfflineSalesPage() {
       paymentMethodLabel:
         PAYMENT_METHOD_LABELS[o.paymentMethod ?? ""] ?? o.paymentMethod,
       totalAmount: Number(o.totalAmount),
+      paidAmount: Number(o.paidAmount ?? 0),
+      dueAmount: Number(o.dueAmount ?? 0),
+      isPartialPayment: o.isPartialPayment,
       createdAt: o.createdAt.toISOString(),
       isWalkIn: o.isWalkIn,
       user: o.user

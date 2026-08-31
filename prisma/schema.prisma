@@ -130,6 +130,12 @@ model order {
 
   paidAt DateTime?
 
+  // Offline due / partial payment tracking
+  paidAmount          Decimal  @default(0) @db.Decimal(10, 2)
+  dueAmount           Decimal  @default(0) @db.Decimal(10, 2)
+  isPartialPayment    Boolean  @default(false)
+  partialPaymentNoReturnPolicy Boolean @default(false)
+
   trackingUrl String?
 
   subtotal Decimal? @db.Decimal(10,2)
@@ -152,6 +158,7 @@ coupon Coupon? @relation(fields: [couponId], references: [id])
   paymentTransactions PaymentTransaction[]
   productQueries productQuery[]
   stockmovement stockmovement[]
+  offlinepayment offlinepayment[]
   createdBy user? @relation("OrderCreatedBy", fields: [createdById], references: [id])
 
   @@index([userId])
@@ -231,6 +238,22 @@ model PaymentTransaction {
   @@index([gatewayPaymentId])
   @@index([settlementStatus])
   @@index([paymentStatus])
+  @@index([createdAt])
+}
+
+model offlinepayment {
+  id            String   @id @default(cuid())
+  orderId       String
+  amount        Decimal  @db.Decimal(10, 2)
+  paymentMethod String
+  notes         String?
+  recordedById  String?
+  createdAt     DateTime @default(now())
+
+  order      order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  recordedBy user? @relation("OfflinePaymentRecordedBy", fields: [recordedById], references: [id])
+
+  @@index([orderId])
   @@index([createdAt])
 }
 
@@ -626,6 +649,8 @@ model user {
   orders order[]
 
   createdOrders order[] @relation("OrderCreatedBy")
+
+  offlinePaymentsRecorded offlinepayment[] @relation("OfflinePaymentRecordedBy")
 
   review review[]
 

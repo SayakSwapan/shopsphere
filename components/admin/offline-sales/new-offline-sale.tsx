@@ -130,6 +130,8 @@ export default function NewOfflineSale() {
   const [pincode, setPincode] = useState("");
 
   const [paymentMethod, setPaymentMethod] = useState("CASH");
+  const [invoiceMode, setInvoiceMode] = useState<"full" | "partial">("full");
+  const [paidAmountInput, setPaidAmountInput] = useState<string>("");
 
   const [productSearch, setProductSearch] = useState("");
   const [productResults, setProductResults] = useState<ProductOption[]>([]);
@@ -361,11 +363,25 @@ export default function NewOfflineSale() {
       }
     }
 
+    // Validate partial payment amount if the sale is a due/partial-payment sale.
+    const isPartial = invoiceMode === "partial";
+    const total = summary.total;
+    let paidAmount = total;
+    if (isPartial) {
+      paidAmount = Number(paidAmountInput) || 0;
+      if (!(paidAmount > 0) || paidAmount >= total) {
+        toast.error("Paid amount must be less than the total for a due sale.");
+        return;
+      }
+    }
+
     setSubmitting(true);
     try {
       const payload = {
         mode: as,
         paymentMethod,
+        paidAmount,
+        isPartialPayment: isPartial,
         customer:
           mode === "existing"
             ? { kind: "existing", userId: selectedCustomer!.id }
@@ -403,7 +419,9 @@ export default function NewOfflineSale() {
 
       toast.success(
         as === "complete"
-          ? `Offline sale ${data.orderNumber} completed.`
+          ? isPartial
+            ? `Offline due sale ${data.orderNumber} opened — ₹${paidAmount.toFixed(2)} received.`
+            : `Offline sale ${data.orderNumber} completed.`
           : `Offline sale ${data.orderNumber} saved as draft.`
       );
       router.push(`/admin/offline-sales/${data.orderId}`);
@@ -842,6 +860,87 @@ export default function NewOfflineSale() {
                 <option value="BANK_TRANSFER">Bank Transfer</option>
               </select>
             </Field>
+
+            {/* Payment mode: full vs due (partial) */}
+            <div className="mt-3">
+              <label className="mb-1.5 block text-sm font-medium text-slate-300">
+                Payment Type
+              </label>
+              <div className="grid grid-cols-1 gap-2">
+                <label className="flex items-start gap-2 rounded-xl border border-slate-700 bg-[#0F172A] p-3 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="payType"
+                    checked={invoiceMode === "full"}
+                    onChange={() => setInvoiceMode("full")}
+                    className="mt-0.5"
+                  />
+                  <span>
+                    <span className="block font-semibold text-white">Full Payment</span>
+                    <span className="block text-xs text-slate-400">
+                      Customer pays the entire amount now. Final invoice generated immediately.
+                    </span>
+                  </span>
+                </label>
+
+                <label className="flex items-start gap-2 rounded-xl border border-amber-600 bg-amber-500/10 p-3 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="payType"
+                    checked={invoiceMode === "partial"}
+                    onChange={() => setInvoiceMode("partial")}
+                    className="mt-0.5"
+                  />
+                  <span>
+                    <span className="block font-semibold text-white">
+                      Part Payment (Due Sale)
+                    </span>
+                    <span className="block text-xs text-amber-300/80">
+                      Customer pays a part now and the balance later. Tracks due and sends a
+                      24h follow-up reminder until cleared.{" "}
+                      <span className="font-bold text-rose-400">No returns accepted on due sales.</span>
+                    </span>
+                  </span>
+                </label>
+              </div>
+            </div>
+
+            {invoiceMode === "partial" && (
+              <div className="mt-3">
+                <Field label="Paid Amount Now" hint="What the customer pays upfront. The rest becomes the due.">
+                  <input
+                    type="number"
+                    min={0}
+                    max={summary.total}
+                    step="0.01"
+                    value={paidAmountInput}
+                    onChange={(e) => setPaidAmountInput(e.target.value)}
+                    className={inputCls}
+                  />
+                </Field>
+                {(() => {
+                  const paid = Number(paidAmountInput) || 0;
+                  const due = summary.total - paid;
+                  return (
+                    <div className="mt-2 rounded-lg bg-amber-500/10 px-3 py-2 text-sm">
+                      <div className="flex justify-between text-slate-300">
+                        <span>Paid</span>
+                        <span className="font-semibold text-emerald-400">{formatCurrency(Math.max(0, Math.min(paid, summary.total)))}</span>
+                      </div>
+                      <div className="mt-1 flex justify-between text-slate-300">
+                        <span>Due after this</span>
+                        <span className="font-semibold text-amber-400">{formatCurrency(Math.max(0, due))}</span>
+                      </div>
+                      {(paid > 0 && paid < summary.total) && (
+                        <p className="mt-2 text-[11px] font-semibold text-rose-400">
+                          No returns accepted on this due sale. Invoice generated once fully paid.
+                        </p>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
 
             <div className="mt-4 grid grid-cols-2 gap-3 rounded-xl bg-[#0F172A] p-4">
               <div>

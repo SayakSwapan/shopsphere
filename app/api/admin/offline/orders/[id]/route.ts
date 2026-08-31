@@ -1,6 +1,7 @@
 import { getAdminSession } from "@/lib/admin-auth";
 import {
   cancelOfflineOrder,
+  collectOfflineDue,
   completeOfflineOrder,
 } from "@/lib/orders/offline-sale";
 import { NextResponse } from "next/server";
@@ -17,12 +18,32 @@ export async function PATCH(req: Request, { params }: Context) {
     }
 
     const { id } = await params;
-    const body = (await req.json()) as { action?: string; paymentMethod?: string };
+    const body = (await req.json()) as {
+      action?: string;
+      paymentMethod?: string;
+      paidAmount?: number;
+      isPartialPayment?: boolean;
+      notes?: string;
+    };
 
     if (body.action === "complete") {
       const result = await completeOfflineOrder({
         orderId: id,
         paymentMethod: body.paymentMethod || "CASH",
+        isPartialPayment: body.isPartialPayment,
+        paidAmount: body.paidAmount,
+        recordedById: session.user.id,
+      });
+      return NextResponse.json({ success: true, ...result });
+    }
+
+    if (body.action === "collect-due") {
+      const result = await collectOfflineDue({
+        orderId: id,
+        amount: body.paidAmount ?? 0,
+        paymentMethod: body.paymentMethod || "CASH",
+        notes: body.notes,
+        recordedById: session.user.id,
       });
       return NextResponse.json({ success: true, ...result });
     }

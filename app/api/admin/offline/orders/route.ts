@@ -18,6 +18,8 @@ export async function POST(req: Request) {
       paymentMethod?: string;
       items?: OfflineOrderInput["items"];
       notes?: string;
+      paidAmount?: number;
+      isPartialPayment?: boolean;
     };
 
     const input: OfflineOrderInput = {
@@ -26,6 +28,8 @@ export async function POST(req: Request) {
       paymentMethod: body.paymentMethod || "CASH",
       items: Array.isArray(body.items) ? body.items : [],
       notes: body.notes,
+      paidAmount: body.paidAmount,
+      isPartialPayment: body.isPartialPayment,
     };
 
     const result = await createOfflineOrder({

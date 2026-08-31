@@ -50,6 +50,10 @@ export interface OfflineOrderInput {
   paymentMethod: string;
   items: OfflineLineItemInput[];
   notes?: string;
+  /** Amount the customer actually pays upfront (defaults to full total). */
+  paidAmount?: number;
+  /** Whether this is a partial / due payment sale. */
+  isPartialPayment?: boolean;
 }
 
 export class OfflineSaleError extends Error {
@@ -304,6 +308,19 @@ async function createOrderAndItems(opts: {
   const totalProfit = resolved.reduce((s, i) => s + i.pricing.lineProfit, 0);
   const totalAmount = round2(subtotal + gst);
 
+  // Resolve due / partial payment amounts. The stock is fully handed over at
+  // completion; only the cash/UPI flow may be collected later.
+  const isPartial = Boolean(input.isPartialPayment);
+  const paidAmount = isPartial
+    ? round2(Math.min(input.paidAmount ?? 0, totalAmount))
+    : totalAmount;
+  const dueAmount = round2(totalAmount - paidAmount);
+  if (isPartial && !(dueAmount > 0)) {
+    throw new OfflineSaleError(
+      "For a due / partial payment sale the paid amount must be less than the total. Use Complete Sale if fully paid."
+    );
+  }
+
   const shipping = 0;
   const discount = 0;
   const transactionFee = 0;
@@ -345,6 +362,9 @@ async function createOrderAndItems(opts: {
         offlineState: (input.customer.state || "").trim() || null,
         offlinePincode: (input.customer.pincode || "").trim() || null,
         paidAt: isComplete ? new Date() : null,
+        paidAmount,
+        dueAmount,
+        isPartialPayment: isPartial,
         // Marked so the generic order-status fulfilment route never re-decrements.
         inventoryUpdated: isComplete,
         updatedAt: new Date(),
@@ -429,14 +449,28 @@ async function createOrderAndItems(opts: {
         orderId: order.id,
         gateway: "OFFLINE",
         paymentMethod: paymentMethod,
-        grossAmount: totalAmount,
+        grossAmount: paidAmount,
         gatewayFee: 0,
         gatewayGST: 0,
-        netSettlement: totalAmount,
+        netSettlement: paidAmount,
         settlementStatus: isComplete ? "SETTLED" : "PENDING",
         paymentStatus: isComplete ? "PAID" : "PENDING",
       },
     });
+
+    // Record the upfront payment against the offline payment ledger (only for
+    // completed, partial-payment sales where cash was collected).
+    if (isComplete && paidAmount > 0) {
+      await tx.offlinepayment.create({
+        data: {
+          orderId: order.id,
+          amount: paidAmount,
+          paymentMethod,
+          notes: "Upfront payment at sale",
+          recordedById: adminId,
+        },
+      });
+    }
 
     return order;
   });
@@ -448,6 +482,8 @@ async function createOrderAndItems(opts: {
     subtotal: round2(subtotal),
     gst: round2(gst),
     totalProfit: round2(totalProfit),
+    paidAmount,
+    dueAmount,
     applied: isComplete,
   };
 }
@@ -473,10 +509,18 @@ export async function createOfflineOrder(opts: {
 /**
  * Finalizes a previously-saved offline DRAFT: marks it PAID, deducts stock and
  * writes SALE stock movements. Idempotent — safe to call twice.
+ *
+ * When `isPartialPayment` and a `paidAmount` are supplied, the sale is recorded
+ * as a due/partial-payment sale: the order's `paidAmount`/`dueAmount` are
+ * updated and an `offlinepayment` ledger entry is written. The invoice is NOT
+ * auto-generated until the full amount is cleared (see `collectOfflineDue`).
  */
 export async function completeOfflineOrder(opts: {
   orderId: string;
   paymentMethod: string;
+  isPartialPayment?: boolean;
+  paidAmount?: number;
+  recordedById?: string;
 }) {
   const order = await prisma.order.findUnique({
     where: { id: opts.orderId },
@@ -494,6 +538,21 @@ export async function completeOfflineOrder(opts: {
   if (!["CASH", "UPI", "CARD", "BANK_TRANSFER"].includes(opts.paymentMethod)) {
     throw new OfflineSaleError("Invalid offline payment method.");
   }
+
+  const totalAmount = Number(order.totalAmount);
+  const isPartial = Boolean(opts.isPartialPayment);
+  let paidAmount: number;
+  if (isPartial) {
+    paidAmount = round2(Math.min(opts.paidAmount ?? 0, totalAmount));
+    if (!(round2(totalAmount - paidAmount) > 0)) {
+      throw new OfflineSaleError(
+        "For a due / partial payment sale the paid amount must be less than the total. Use Complete Sale if fully paid."
+      );
+    }
+  } else {
+    paidAmount = totalAmount;
+  }
+  const dueAmount = round2(totalAmount - paidAmount);
 
   await prisma.$transaction(async (tx) => {
     // Validate all stock is still available before committing.
@@ -552,9 +611,12 @@ export async function completeOfflineOrder(opts: {
       where: { id: order.id },
       data: {
         status: "PAID",
-        paymentStatus: "PAID",
+        paymentStatus: isPartial ? "PENDING" : "PAID",
         paymentMethod: opts.paymentMethod as "CASH",
         paidAt: new Date(),
+        paidAmount,
+        dueAmount,
+        isPartialPayment: isPartial,
         inventoryUpdated: true,
         updatedAt: new Date(),
       },
@@ -564,23 +626,124 @@ export async function completeOfflineOrder(opts: {
       where: { orderId: order.id },
       data: {
         paymentMethod: opts.paymentMethod,
-        paymentStatus: "PAID",
-        settlementStatus: "SETTLED",
+        paymentStatus: isPartial ? "PENDING" : "PAID",
+        settlementStatus: isPartial ? "PARTIALLY_SETTLED" : "SETTLED",
+        grossAmount: paidAmount,
+        netSettlement: paidAmount,
         settlementDate: new Date(),
+      },
+    });
+
+    // Record the upfront payment into the offline payment ledger.
+    await tx.offlinepayment.create({
+      data: {
+        orderId: order.id,
+        amount: paidAmount,
+        paymentMethod: opts.paymentMethod,
+        notes: isPartial ? "Upfront payment (due sale opened)" : "Full payment at sale",
+        recordedById: opts.recordedById ?? null,
       },
     });
   });
 
   createAdminNotification({
-    title: "Offline Sale Completed",
-    message: `Offline order ${order.orderNumber} — ₹${Number(order.totalAmount).toFixed(2)} (${opts.paymentMethod})`,
+    title: isPartial ? "Offline Due Sale Opened" : "Offline Sale Completed",
+    message: isPartial
+      ? `Offline order ${order.orderNumber} — ₹${round2(paidAmount).toFixed(2)} received, ₹${round2(dueAmount).toFixed(2)} due from customer.`
+      : `Offline order ${order.orderNumber} — ₹${Number(order.totalAmount).toFixed(2)} (${opts.paymentMethod})`,
     type: "ORDER",
     entityType: "ORDER",
     entityId: order.id,
     notifyKey: "notify_on_order",
   }).catch(console.error);
 
-  return { orderId: order.id, already: false };
+  return { orderId: order.id, already: false, paidAmount, dueAmount, isPartial };
+}
+
+/**
+ * Records a subsequent due collection against an offline order that has an
+ * outstanding balance. Appends to the payment ledger, updates paid/due amounts,
+ * and — once cleared — marks the sale fully paid (final invoice now generated).
+ */
+export async function collectOfflineDue(opts: {
+  orderId: string;
+  amount: number;
+  paymentMethod: string;
+  notes?: string;
+  recordedById: string;
+}) {
+  const order = await prisma.order.findUnique({
+    where: { id: opts.orderId },
+  });
+  if (!order) throw new OfflineSaleError("Order not found.", 404);
+  if (order.orderType !== "OFFLINE")
+    throw new OfflineSaleError("Not an offline order.");
+
+  const currentPaid = Number(order.paidAmount ?? 0);
+  const currentDue = Number(order.dueAmount ?? 0);
+  if (!(currentDue > 0)) {
+    throw new OfflineSaleError("This order has no outstanding due amount.");
+  }
+
+  const amount = round2(opts.amount);
+  if (!(amount > 0)) {
+    throw new OfflineSaleError("Payment amount must be greater than 0.");
+  }
+  if (amount > currentDue) {
+    throw new OfflineSaleError(
+      `Payment of ₹${round2(amount).toFixed(2)} exceeds the outstanding due of ₹${round2(currentDue).toFixed(2)}.`
+    );
+  }
+  if (!["CASH", "UPI", "CARD", "BANK_TRANSFER"].includes(opts.paymentMethod)) {
+    throw new OfflineSaleError("Invalid offline payment method.");
+  }
+
+  const newPaid = round2(currentPaid + amount);
+  const newDue = round2(currentDue - amount);
+  const isNowCleared = newDue <= 0;
+
+  await prisma.$transaction(async (tx) => {
+    await tx.offlinepayment.create({
+      data: {
+        orderId: order.id,
+        amount,
+        paymentMethod: opts.paymentMethod,
+        notes: opts.notes,
+        recordedById: opts.recordedById,
+      },
+    });
+
+    await tx.order.update({
+      where: { id: order.id },
+      data: {
+        paidAmount: newPaid,
+        dueAmount: isNowCleared ? 0 : newDue,
+        paymentStatus: isNowCleared ? "PAID" : "PENDING",
+        isPartialPayment: !isNowCleared,
+        paidAt: isNowCleared ? (order.paidAt ?? new Date()) : order.paidAt,
+        updatedAt: new Date(),
+      },
+    });
+
+    await tx.paymentTransaction.updateMany({
+      where: { orderId: order.id },
+      data: {
+        paymentMethod: opts.paymentMethod,
+        paymentStatus: isNowCleared ? "PAID" : "PENDING",
+        settlementStatus: isNowCleared ? "SETTLED" : "PARTIALLY_SETTLED",
+        grossAmount: newPaid,
+        netSettlement: newPaid,
+        settlementDate: new Date(),
+      },
+    });
+  });
+
+  return {
+    orderId: order.id,
+    paidAmount: newPaid,
+    dueAmount: isNowCleared ? 0 : newDue,
+    cleared: isNowCleared,
+  };
 }
 
 /**

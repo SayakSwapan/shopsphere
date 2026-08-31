@@ -1,5 +1,5 @@
 import { formatDate, formatCurrency } from "@/lib/format";
-import type { InvoiceBusiness } from "@/lib/site-settings";
+import type { InvoiceBusiness, OfflinePolicy } from "@/lib/site-settings";
 
 export interface OfflineInvoiceItem {
   id: string;
@@ -35,6 +35,9 @@ export interface OfflineInvoiceOrder {
   totalAmount: number;
   subtotal: number | null;
   gst: number | null;
+  paidAmount?: number;
+  dueAmount?: number;
+  isPartial?: boolean;
   paymentMethod: string | null;
   orderitem: OfflineInvoiceItem[];
   user?: { name?: string | null; email?: string | null } | null;
@@ -136,13 +139,25 @@ function round2(value: number): number {
 export default function OfflineInvoice({
   order,
   business,
+  offlinePolicy,
 }: {
   order: OfflineInvoiceOrder;
   business: InvoiceBusiness;
+  offlinePolicy?: OfflinePolicy;
 }) {
   const subtotal = Number(order.subtotal) || 0;
   const gst = Number(order.gst) || 0;
   const total = Number(order.totalAmount) || 0;
+
+  const showNoReturn =
+    order.isPartial &&
+    (offlinePolicy ? offlinePolicy.noReturnEnabled : true);
+  const noReturnHeader = offlinePolicy
+    ? offlinePolicy.dueHeader
+    : "NO RETURNS / REFUND";
+  const noReturnText = offlinePolicy
+    ? offlinePolicy.noReturnPolicy
+    : "This is a part-payment / due sale. Since the full amount was not paid at the time of purchase, no returns, exchanges or refunds will be accepted for any item in this invoice.";
 
   const billingName = order.user?.name || order.fullName || "Walk-in Customer";
   const billingEmail = order.offlineEmail || order.user?.email;
@@ -369,6 +384,22 @@ export default function OfflineInvoice({
             <span className="text-gray-600">Total GST</span>
             <span className="font-semibold text-gray-800">{formatCurrency(gst)}</span>
           </div>
+          {order.isPartial && (
+            <>
+              <div className="flex items-center justify-between py-1">
+                <span className="text-gray-600">Amount Paid</span>
+                <span className="font-semibold text-emerald-600">
+                  {formatCurrency(Number(order.paidAmount ?? 0))}
+                </span>
+              </div>
+              <div className="flex items-center justify-between py-1">
+                <span className="text-gray-600">Due</span>
+                <span className="font-semibold text-amber-600">
+                  {formatCurrency(Number(order.dueAmount ?? 0))}
+                </span>
+              </div>
+            </>
+          )}
           <div
             className="mt-1.5 rounded-lg px-4 py-2"
             style={{
@@ -384,6 +415,18 @@ export default function OfflineInvoice({
               <span className="font-black text-gray-900">{formatCurrency(total)}</span>
             </div>
           </div>
+          {showNoReturn && (
+            <div
+              className="mt-2 rounded-lg border border-rose-300 bg-rose-50 px-3 py-2"
+            >
+              <p className="text-xs font-black text-rose-700">
+                {noReturnHeader} — ₹{Number(order.dueAmount ?? 0).toFixed(2)} due
+              </p>
+              <p className="mt-1 text-[11px] font-semibold leading-relaxed text-rose-600">
+                {noReturnText}
+              </p>
+            </div>
+          )}
         </div>
       </div>
 

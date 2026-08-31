@@ -17,6 +17,9 @@ export interface OfflineSaleRow {
   paymentMethod: string | null;
   paymentMethodLabel: string;
   totalAmount: number;
+  paidAmount: number;
+  dueAmount: number;
+  isPartialPayment: boolean;
   createdAt: string;
   isWalkIn: boolean;
   user: { name: string; phone: string; email: string } | null;
@@ -63,9 +66,19 @@ function OfflineRow({ order }: { order: OfflineSaleRow }) {
         <span className="text-xs font-semibold text-indigo-300">
           {order.paymentMethodLabel}
         </span>
+        {order.isPartialPayment && order.dueAmount > 0 && (
+          <div className="mt-1 text-[11px] font-bold text-amber-400">
+            Due {formatCurrency(order.dueAmount)}
+          </div>
+        )}
       </td>
       <td className="px-5 py-4">
         <StatusBadge status={order.status} />
+        {order.isPartialPayment && order.dueAmount > 0 && (
+          <span className="ml-1.5 rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-amber-400">
+            Due
+          </span>
+        )}
       </td>
       <td className="px-5 py-4 text-slate-400">{formatDate(order.createdAt)}</td>
       <td className="px-5 py-4">

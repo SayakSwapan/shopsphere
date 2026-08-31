@@ -21,6 +21,7 @@ import {
   Link2,
   Bell,
   MessageCircle,
+  Ban,
 } from "lucide-react";
 import dynamic from "next/dynamic";
 
@@ -837,6 +838,43 @@ const SECTIONS: Array<{
         placeholder: "true",
         type: "toggle" as const,
         hint: "Receive WhatsApp notification on contact form submissions and callback requests.",
+      },
+    ],
+  },
+  {
+    id: "offline_policy",
+    icon: Ban,
+    title: "Offline Sale Policies",
+    description: "No-return policy text & due-sale rules shown on offline (POS) invoices",
+    badge: "Due sales",
+    fields: [
+      {
+        key: "offline_due_header",
+        label: "No-Return Notice Heading",
+        placeholder: "NO RETURNS / REFUND",
+        hint: "Bold heading shown on invoices for due / part-payment offline sales.",
+      },
+      {
+        key: "offline_no_return_policy",
+        label: "No-Return Policy Text",
+        placeholder: "This is a part-payment / due sale. Since the full amount was not paid at the time of purchase, no returns, exchanges or refunds will be accepted for any item in this invoice.",
+        type: "textarea" as const,
+        hint: "Your own wording. This exact text is printed on every due-sale invoice so the customer is clearly informed.",
+      },
+      {
+        key: "offline_no_return_policy_enabled",
+        label: "Show No-Return Notice On Due Invoices",
+        placeholder: "true",
+        type: "toggle" as const,
+        hint: "When enabled, the no-return policy is printed on invoices of due / part-payment offline sales.",
+      },
+      {
+        key: "offline_reminder_hours",
+        label: "Due Follower-up Reminder Interval",
+        placeholder: "24",
+        type: "select" as const,
+        options: ["12", "24", "48", "72"],
+        hint: "After how many hours an unpaid due is flagged as overdue on the Due Collections page, so you remember to call the customer.",
       },
     ],
   },

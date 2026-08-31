@@ -15,6 +15,7 @@ import {
   Package2,
   Sparkles,
   Store,
+  Coins,
   ChevronRight,
 } from "lucide-react";
 
@@ -58,6 +59,11 @@ const menuItems = [
     title: "Offline Sales",
     href: "/admin/offline-sales",
     icon: Store,
+  },
+  {
+    title: "Due Collections",
+    href: "/admin/offline-sales/due",
+    icon: Coins,
   },
   {
     title: "Analytics",

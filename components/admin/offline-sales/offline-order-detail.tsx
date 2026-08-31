@@ -3,7 +3,7 @@ import {
   PAYMENT_METHOD_LABELS,
   ORDER_SOURCE_LABELS,
 } from "@/lib/constants/order-status";
-import type { InvoiceBusiness } from "@/lib/site-settings";
+import type { InvoiceBusiness, OfflinePolicy } from "@/lib/site-settings";
 import OfflineSaleActions from "./offline-sale-actions";
 import OfflineInvoice, {
   OfflineInvoiceOrder,
@@ -37,6 +37,9 @@ type OrderShape = {
   offlineState?: string | null;
   offlinePincode?: string | null;
   paidAt: Date | null;
+  paidAmount: import("@prisma/client").Prisma.Decimal | null;
+  dueAmount: import("@prisma/client").Prisma.Decimal | null;
+  isPartialPayment: boolean;
   user: {
     id: string;
     name: string | null;
@@ -45,6 +48,14 @@ type OrderShape = {
     isWalkIn: boolean;
   } | null;
   createdBy: { name: string | null; email: string | null } | null;
+  offlinepayment: {
+    id: string;
+    amount: import("@prisma/client").Prisma.Decimal;
+    paymentMethod: string;
+    notes: string | null;
+    createdAt: Date;
+    recordedBy: { name: string | null } | null;
+  }[];
   orderitem: {
     id: string;
     productId: string;
@@ -84,6 +95,7 @@ type OrderShape = {
 interface Props {
   order: OrderShape;
   business: InvoiceBusiness;
+  offlinePolicy?: OfflinePolicy;
 }
 
 function StatusChip({ status }: { status: string }) {
@@ -118,12 +130,17 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
   );
 }
 
-export default function OfflineOrderDetail({ order, business }: Props) {
+export default function OfflineOrderDetail({ order, business, offlinePolicy }: Props) {
   const isDraft = isDraftOrder(order);
 
   const isActive =
     order.status !== "CANCELLED" &&
     (order.paymentStatus === "PAID" || order.status === "PAID" || order.status === "COMPLETED");
+
+  const totalAmount = Number(order.totalAmount);
+  const paidAmount = Number(order.paidAmount ?? 0);
+  const dueAmount = Number(order.dueAmount ?? 0);
+  const isPartial = order.isPartialPayment && dueAmount > 0;
 
   const totalCost = order.orderitem.reduce(
     (s, i) => s + (i.costPriceSnapshot != null ? Number(i.costPriceSnapshot) : 0) * i.quantity,
@@ -168,9 +185,12 @@ export default function OfflineOrderDetail({ order, business }: Props) {
     offlineCity: order.offlineCity,
     offlineState: order.offlineState,
     offlinePincode: order.offlinePincode,
-    totalAmount: Number(order.totalAmount),
+    totalAmount: totalAmount,
     subtotal: order.subtotal != null ? Number(order.subtotal) : null,
     gst: order.gst != null ? Number(order.gst) : null,
+    paidAmount,
+    dueAmount,
+    isPartial: order.isPartialPayment,
     paymentMethod: order.paymentMethod,
     orderitem: invoiceItems,
     user: order.user
@@ -191,7 +211,15 @@ export default function OfflineOrderDetail({ order, business }: Props) {
             {order.isWalkIn && <span className="ml-2 rounded bg-slate-700 px-1.5 py-0.5 text-[11px] text-slate-300">Walk-in</span>}
           </p>
         </div>
-        <OfflineSaleActions orderId={order.id} isDraft={isDraftOrder(order)} isActive={isActive} />
+        <OfflineSaleActions
+          orderId={order.id}
+          isDraft={isDraftOrder(order)}
+          isActive={isActive}
+          totalAmount={totalAmount}
+          paidAmount={paidAmount}
+          dueAmount={dueAmount}
+          isPartial={isPartial}
+        />
       </div>
 
       <div className="flex flex-wrap gap-3 text-sm">
@@ -205,9 +233,76 @@ export default function OfflineOrderDetail({ order, business }: Props) {
           {PAYMENT_METHOD_LABELS[order.paymentMethod ?? ""] ?? order.paymentMethod ?? "—"}
         </Label>
         <Label title="Payment Status">
-          <StatusChip status={order.paymentStatus} />
+          {isPartial && !isDraft ? (
+            <span className="rounded bg-amber-500/10 px-2 py-1 text-xs font-semibold text-amber-400">PARTIAL (DUE)</span>
+          ) : (
+            <StatusChip status={order.paymentStatus} />
+          )}
         </Label>
       </div>
+
+      {/* Payment / due summary */}
+      {!isDraft && (
+        <Card title="Payment Summary">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+            <div>
+              <div className="text-xs uppercase tracking-wide text-slate-500">Total Payable</div>
+              <div className="mt-1 text-lg font-bold text-white">{formatCurrency(totalAmount)}</div>
+            </div>
+            <div>
+              <div className="text-xs uppercase tracking-wide text-slate-500">Paid</div>
+              <div className="mt-1 text-lg font-bold text-emerald-400">{formatCurrency(paidAmount)}</div>
+            </div>
+            <div>
+              <div className="text-xs uppercase tracking-wide text-slate-500">Due</div>
+              <div className={`mt-1 text-lg font-bold ${dueAmount > 0 ? "text-amber-400" : "text-emerald-400"}`}>
+                {formatCurrency(dueAmount)}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs uppercase tracking-wide text-slate-500">Return Policy</div>
+              <div className={`mt-1 text-sm font-bold ${order.isPartialPayment ? "text-rose-400" : "text-slate-300"}`}>
+                {order.isPartialPayment ? "No returns on due sales" : "Standard policy"}
+              </div>
+            </div>
+          </div>
+
+          {order.isPartialPayment && (
+            <p className="mt-4 rounded-lg bg-rose-500/10 px-4 py-3 text-xs font-semibold text-rose-300">
+              {offlinePolicy?.noReturnPolicy ||
+                "This was a due / partial payment sale. Since not the full amount was collected at the time of sale, returns are NOT accepted. Once the full due is cleared and the sale is marked fully paid, a final invoice is generated."}
+            </p>
+          )}
+
+          {order.offlinepayment.length > 0 && (
+            <div className="mt-5">
+              <div className="mb-2 text-xs uppercase tracking-wide text-slate-500">
+                Payment Ledger
+              </div>
+              <div className="space-y-2">
+                {order.offlinepayment.map((p) => (
+                  <div
+                    key={p.id}
+                    className="flex items-center justify-between rounded-lg bg-[#0F172A] px-4 py-3 text-sm"
+                  >
+                    <div>
+                      <span className="font-bold text-white">{formatCurrency(Number(p.amount))}</span>
+                      <span className="ml-2 rounded bg-slate-700 px-1.5 py-0.5 text-[10px] uppercase text-slate-300">
+                        {p.paymentMethod}
+                      </span>
+                      <span className="ml-2 text-slate-400">{p.notes}</span>
+                    </div>
+                    <div className="text-xs text-slate-400">
+                      {formatDate(p.createdAt)}
+                      {p.recordedBy?.name && <span className="ml-2">· {p.recordedBy.name}</span>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </Card>
+      )}
 
       {/* Customer details */}
       <Card title="Customer Details">
@@ -359,7 +454,7 @@ export default function OfflineOrderDetail({ order, business }: Props) {
         <p className="mb-4 text-sm text-slate-400">
           This invoice shows customer-facing information only (no internal cost / profit values).
         </p>
-        <OfflineInvoice order={invoiceOrder} business={business} />
+        <OfflineInvoice order={invoiceOrder} business={business} offlinePolicy={offlinePolicy} />
       </Card>
     </div>
   );

@@ -39,3 +39,29 @@ export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
 export function isOrderStatus(value: string): value is OrderStatus {
   return (ORDER_STATUSES as readonly string[]).includes(value);
 }
+
+// Order source / channel discriminators used across the admin UI.
+export const ORDER_SOURCES = ["ONLINE", "OFFLINE"] as const;
+export type OrderSource = (typeof ORDER_SOURCES)[number];
+
+export const ORDER_SOURCE_LABELS: Record<OrderSource, string> = {
+  ONLINE: "Online",
+  OFFLINE: "Offline",
+};
+
+// Payment methods for offline (POS) sales.
+export const OFFLINE_PAYMENT_METHODS = [
+  "CASH",
+  "UPI",
+  "CARD",
+  "BANK_TRANSFER",
+] as const;
+
+export const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  COD: "Cash on Delivery",
+  RAZORPAY: "Online (Razorpay)",
+  CASH: "Cash",
+  UPI: "UPI",
+  CARD: "Card",
+  BANK_TRANSFER: "Bank Transfer",
+};

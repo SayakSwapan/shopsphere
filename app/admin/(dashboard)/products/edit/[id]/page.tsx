@@ -66,6 +66,8 @@ export default async function EditProductPage({
     ...product,
     sellingPrice: Number(product.sellingPrice),
     costPrice: Number(product.costPrice),
+    lastSellingProfitPercentage: product.lastSellingProfitPercentage != null ? Number(product.lastSellingProfitPercentage) : null,
+    lastSellingPrice: product.lastSellingPrice != null ? Number(product.lastSellingPrice) : null,
     salePrice: Number(product.salePrice),
     finalPrice: Number(product.finalPrice),
     discountValue: Number(product.discountValue),

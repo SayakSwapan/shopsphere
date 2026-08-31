@@ -1,10 +1,11 @@
 import Link from "next/link";
-import { DollarSign, Package, ShoppingBag, Shapes, Warehouse, MapPin } from "lucide-react";
+import { DollarSign, Package, ShoppingBag, Shapes, Warehouse, MapPin, Store } from "lucide-react";
 import { ReactNode } from "react";
 
 const actions: { title: string; href: string; icon: ReactNode; accent: string }[] = [
   { title: "Add Product", href: "/admin/products/new", icon: <Package size={20} />, accent: "bg-amber-500 hover:bg-amber-400 text-black" },
   { title: "Manage Orders", href: "/admin/orders", icon: <ShoppingBag size={20} />, accent: "bg-emerald-500 hover:bg-emerald-400 text-black" },
+  { title: "Offline Sale", href: "/admin/offline-sales/new", icon: <Store size={20} />, accent: "bg-indigo-500 hover:bg-indigo-400 text-white" },
   { title: "Finance", href: "/admin/finance", icon: <DollarSign size={20} />, accent: "bg-blue-500 hover:bg-blue-400 text-black" },
   { title: "Pincodes", href: "/admin/pincodes", icon: <MapPin size={20} />, accent: "bg-purple-500 hover:bg-purple-400 text-white" },
   { title: "Categories", href: "/admin/categories", icon: <Shapes size={20} />, accent: "bg-cyan-500 hover:bg-cyan-400 text-black" },

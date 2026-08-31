@@ -17,6 +17,11 @@ export interface ProductFormValues {
   sellingPrice: number;
   costPrice: number;
 
+  // Offline / POS pricing. lastSellingProfitPercentage is admin-editable and
+  // drives the auto-calculated lastSellingPrice (minimum offline selling price).
+  lastSellingProfitPercentage: number;
+  lastSellingPrice: number;
+
   maximumDiscount: number;
 
   gstPercentage: number;

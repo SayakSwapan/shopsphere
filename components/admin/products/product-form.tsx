@@ -56,6 +56,8 @@ export interface ProductData {
   description: string;
   sellingPrice: number;
   costPrice: number;
+  lastSellingProfitPercentage?: number | string | null;
+  lastSellingPrice?: number | string | null;
   discountType: string;
   discountValue: number;
   salePrice: number;
@@ -145,6 +147,9 @@ export default function ProductForm({
 
       sellingPrice: 0,
       costPrice: 0,
+
+      lastSellingProfitPercentage: Number(product?.lastSellingProfitPercentage) || 0,
+      lastSellingPrice: Number(product?.lastSellingPrice) || 0,
 
       maximumDiscount: 0,
 
@@ -275,6 +280,9 @@ export default function ProductForm({
 
       sellingPrice: Number(product.sellingPrice),
       costPrice: Number(product.costPrice),
+
+      lastSellingProfitPercentage: Number(product.lastSellingProfitPercentage) || 0,
+      lastSellingPrice: Number(product.lastSellingPrice) || 0,
 
       discountType: product.discountType,
       discountValue: Number(product.discountValue),

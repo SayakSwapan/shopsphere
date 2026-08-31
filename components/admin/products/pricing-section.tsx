@@ -4,6 +4,7 @@ import { UseFormRegister, UseFormWatch, UseFormSetValue } from "react-hook-form"
 import { useEffect } from "react";
 import { ProductFormValues } from "@/types/product-form";
 import { getDiscountedPrice, getPriceBreakdown, isFlatDiscount } from "@/lib/pricing";
+import { calculateOfflineMinimumPrice } from "@/lib/pricing/offline";
 import FieldHint from "@/components/admin/common/field-hint";
 
 interface Props {
@@ -16,6 +17,10 @@ function inr(value: number): string {
   return `₹ ${value.toFixed(2)}`;
 }
 
+function round2(value: number): number {
+  return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
 export default function PricingSection({
   register,
   watch,
@@ -23,6 +28,7 @@ export default function PricingSection({
 }: Props) {
   const sellingPrice = Number(watch("sellingPrice")) || 0;
   const costPrice = Number(watch("costPrice")) || 0;
+  const lastSellingPrice = Number(watch("lastSellingPrice")) || 0;
 
   const discountType = watch("discountType");
 
@@ -38,6 +44,12 @@ export default function PricingSection({
     gstRate: gstPercentage,
     discountType,
     discountValue,
+  });
+
+  const offlineMinimum = calculateOfflineMinimumPrice({
+    priceInclGst: lastSellingPrice,
+    costPrice,
+    gstRate: gstPercentage,
   });
 
   const discountLabel = isFlatDiscount(discountType)
@@ -56,6 +68,18 @@ export default function PricingSection({
     setValue("salePrice", salePriceBase);
     setValue("finalPrice", salePriceBase);
   }, [sellingPrice, discountType, discountValue, gstPercentage, setValue]);
+
+  // The admin enters the GST-INCLUSIVE minimum offline selling price directly
+  // (`lastSellingPrice`). Derive and persist the implied profit % from it so
+  // both values stay consistent for reports / offline validation.
+  useEffect(() => {
+    const offline = calculateOfflineMinimumPrice({
+      priceInclGst: lastSellingPrice,
+      costPrice,
+      gstRate: gstPercentage,
+    });
+    setValue("lastSellingProfitPercentage", offline.profitPercent);
+  }, [lastSellingPrice, costPrice, gstPercentage, setValue]);
 
   return (
     <div className="rounded-2xl border border-slate-700 bg-[#111827] p-6">
@@ -183,6 +207,80 @@ export default function PricingSection({
           />
 
         </div>
+
+      </div>
+
+      {/* ── Offline / POS minimum selling price ── */}
+      <div className="mt-6 rounded-xl border border-indigo-700/40 bg-indigo-950/20 p-5">
+
+        <div className="mb-4 flex items-center justify-between">
+          <h3 className="text-base font-bold text-white">
+            Offline Sale Pricing
+          </h3>
+          <span className="rounded bg-indigo-500/10 px-2 py-1 text-[11px] font-semibold text-indigo-300">
+            POS minimum price
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+
+          <div>
+            <label className="mb-2 block text-white">
+              Minimum Selling Price (₹, incl. GST)
+              <FieldHint text="The lowest GST-INCLUSIVE amount this product can be sold for at the offline counter. Enter the price the customer would pay — GST is included in it. Costs and profit are derived from this automatically." />
+            </label>
+
+            <input
+              type="number"
+              step="0.01"
+              min={0}
+              {...register("lastSellingPrice", { valueAsNumber: true })}
+              className="h-11 w-full rounded-xl border border-slate-700 bg-[#0F172A] px-4 text-white"
+              placeholder="e.g. 999.00"
+            />
+          </div>
+
+          <div className="rounded-xl bg-[#0F172A] p-4 sm:self-end">
+            <div className="text-xs uppercase tracking-wide text-slate-500">
+              Implied Last-Selling Margin
+            </div>
+            <div className={`mt-1 text-2xl font-black ${offlineMinimum.profitPercent >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+              {offlineMinimum.profitPercent}%
+            </div>
+            {costPrice <= 0 && (
+              <p className="mt-1 text-[11px] text-slate-500">
+                Enter a cost price to see the implied margin.
+              </p>
+            )}
+          </div>
+
+        </div>
+
+        {lastSellingPrice > 0 && costPrice > 0 && (
+          <div className="mt-4 space-y-1.5 rounded-lg bg-[#0F172A] p-4 text-sm">
+            <div className="flex justify-between">
+              <span className="text-slate-400">Minimum (incl. GST)</span>
+              <span className="font-bold text-white">{inr(offlineMinimum.priceInclGst)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-400">GST ({gstPercentage}%) included</span>
+              <span className="text-slate-300">{inr(offlineMinimum.gstAmount)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-400">Taxable Base (pre-GST)</span>
+              <span className="font-bold text-indigo-300">{inr(offlineMinimum.base)}</span>
+            </div>
+            <div className="flex justify-between border-t border-slate-700 pt-2">
+              <span className="text-slate-300">Minimum Profit per unit</span>
+              <span className="font-bold text-emerald-400">
+                {inr(round2(offlineMinimum.base - costPrice))} ({offlineMinimum.profitPercent}%)
+              </span>
+            </div>
+            <p className="text-[11px] text-indigo-300/80">
+              The offline counter cannot sell this product below this GST-inclusive price.
+            </p>
+          </div>
+        )}
 
       </div>
 

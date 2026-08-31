@@ -77,6 +77,14 @@ export async function PUT(
 
           sellingPrice: Number(body.sellingPrice),
           costPrice: Number(body.costPrice),
+          lastSellingProfitPercentage:
+            body.lastSellingProfitPercentage != null && body.lastSellingProfitPercentage !== ""
+              ? Number(body.lastSellingProfitPercentage)
+              : null,
+          lastSellingPrice:
+            body.lastSellingPrice != null && body.lastSellingPrice !== ""
+              ? Number(body.lastSellingPrice)
+              : null,
           metaTitle: body.metaTitle,
           metaDescription: body.metaDescription,
           metaKeywords: body.metaKeywords,

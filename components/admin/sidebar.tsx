@@ -14,6 +14,7 @@ import {
   Ruler,
   Package2,
   Sparkles,
+  Store,
   ChevronRight,
 } from "lucide-react";
 
@@ -52,6 +53,11 @@ const menuItems = [
     title: "Orders",
     href: "/admin/orders",
     icon: ShoppingCart,
+  },
+  {
+    title: "Offline Sales",
+    href: "/admin/offline-sales",
+    icon: Store,
   },
   {
     title: "Analytics",

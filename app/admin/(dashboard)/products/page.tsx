@@ -52,6 +52,12 @@ export default async function ProductsPage() {
         finalPrice,
         customerPrice,
         discountPercent,
+        lastSellingProfitPercentage:
+          product.lastSellingProfitPercentage != null
+            ? Number(product.lastSellingProfitPercentage)
+            : null,
+        lastSellingPrice:
+          product.lastSellingPrice != null ? Number(product.lastSellingPrice) : null,
         offerStart: product.offerStart ? product.offerStart.toISOString() : null,
         offerEnd: product.offerEnd ? product.offerEnd.toISOString() : null,
       };

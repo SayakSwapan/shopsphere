@@ -107,6 +107,20 @@ model order {
   user             user         @relation(fields: [userId], references: [id], map: "Order_userId_fkey")
   orderitem        orderitem[]
 
+  // Notes an offline walk-in sale: an optional admin-typed contact/address.
+  // `orderType` distinguishes online vs offline checkout streams (same order
+  // + inventory system underneath). `createdById` tracks which admin raised
+  // an offline order for audit purposes.
+  orderType       OrderType   @default(ONLINE)
+  createdById     String?
+  isWalkIn        Boolean     @default(false)
+  offlineEmail    String?
+  offlineAddressLine1 String?
+  offlineAddressLine2 String?
+  offlineCity     String?
+  offlineState    String?
+  offlinePincode  String?
+
   paymentMethod   PaymentMethod @default(COD)
   paymentStatus   PaymentStatus @default(PENDING)
 
@@ -137,8 +151,11 @@ coupon Coupon? @relation(fields: [couponId], references: [id])
   callbackRequest callbackRequest[]
   paymentTransactions PaymentTransaction[]
   productQueries productQuery[]
+  stockmovement stockmovement[]
+  createdBy user? @relation("OrderCreatedBy", fields: [createdById], references: [id])
 
   @@index([userId])
+  @@index([orderType])
 }
 
 model orderitem {
@@ -167,6 +184,16 @@ model orderitem {
   costPriceSnapshot    Decimal? @db.Decimal(10, 2)
   gstSnapshot          Decimal? @db.Decimal(10, 2)
   discountSnapshot     Decimal? @db.Decimal(10, 2) @default(0)
+
+  // Offline / POS sale snapshots (populated only for OFFLINE orders). These
+  // preserve the exact financial picture at the moment of the sale so later
+  // product price/cost edits never alter historical records.
+  lastSellingPriceAtSale Decimal? @db.Decimal(10, 2)
+  actualSellingPrice     Decimal? @db.Decimal(10, 2) // customer selling price (pre-GST)
+  gstPercentageAtSale    Float?
+  gstAmountAtSale        Decimal? @db.Decimal(10, 2)
+  profitAmountAtSale     Decimal? @db.Decimal(10, 2)
+  profitPercentAtSale    Decimal? @db.Decimal(10, 2)
 
   order     order   @relation(fields: [orderId], references: [id], onDelete: Cascade, map: "OrderItem_orderId_fkey")
   product   product @relation(fields: [productId], references: [id], map: "OrderItem_productId_fkey")
@@ -214,6 +241,13 @@ model product {
   description    String           @db.Text
   sellingPrice Decimal @db.Decimal(10,2)
   costPrice Decimal @default(0) @db.Decimal(10,2) 
+
+  // Minimum allowed offline (POS) selling price. Derived from costPrice, GST
+  // and lastSellingProfitPercentage via the centralized pricing utility.
+  // NULL until the admin configures offline pricing for the product.
+  lastSellingProfitPercentage Decimal? @db.Decimal(5,2)
+  lastSellingPrice           Decimal? @db.Decimal(10,2)
+
   discountType String @default("PERCENT") 
   discountValue Float @default(0) 
   salePrice Float @default(0) 
@@ -380,6 +414,7 @@ model productvariant {
   product   product  @relation(fields: [productId], references: [id], map: "ProductVariant_productId_fkey")
   size      size     @relation(fields: [sizeId], references: [id], map: "ProductVariant_sizeId_fkey")
   cartitem  cartitem[]
+  stockmovement stockmovement[]
 
   @@index([genderId])
   @@index([productId])
@@ -411,7 +446,22 @@ model stockmovement {
   createdAt DateTime           @default(now())
   product   product            @relation(fields: [productId], references: [id], onDelete: Cascade, map: "StockMovement_productId_fkey")
 
+  // Optional contextual info for SALE / RESTOCK movements.
+  variantId   String?
+  variant     productvariant? @relation(fields: [variantId], references: [id], map: "StockMovement_variantId_fkey")
+  orderId     String?
+  order       order?         @relation(fields: [orderId], references: [id], map: "StockMovement_orderId_fkey")
+  orderType   OrderType?
+  referenceOrder String?
+  // Stock levels before/after this movement (helps SALE history show 10 -> 8).
+  beforeQuantity Int?
+  afterQuantity  Int?
+
   @@index([productId])
+  @@index([variantId])
+  @@index([orderId])
+  @@index([orderType])
+  @@index([createdAt])
 }
 
 model wishlist {
@@ -515,6 +565,10 @@ model user {
   isVerified Boolean @default(false)
   isActive Boolean @default(true)
 
+  // Lightweight walk-in customer created on-the-fly during an offline sale.
+  // Such users carry an auto-generated placeholder email and no password.
+  isWalkIn Boolean @default(false)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -570,6 +624,8 @@ model user {
   cart cart?
 
   orders order[]
+
+  createdOrders order[] @relation("OrderCreatedBy")
 
   review review[]
 
@@ -1055,6 +1111,8 @@ enum stockmovement_type {
   IN
   OUT
   ADJUSTMENT
+  SALE
+  RESTOCK
 }
 
 enum order_status {
@@ -1068,6 +1126,11 @@ enum order_status {
   CANCELLED
 }
 
+enum OrderType {
+  ONLINE
+  OFFLINE
+}
+
 enum user_role {
   ADMIN
   PARTNER
@@ -1077,6 +1140,10 @@ enum user_role {
 enum PaymentMethod {
   COD
   RAZORPAY
+  CASH
+  UPI
+  CARD
+  BANK_TRANSFER
 }
 
 enum PaymentStatus {

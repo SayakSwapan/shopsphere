@@ -114,6 +114,162 @@ async function main() {
 
   console.log(`${RETURN_REASONS.length} return reason sets seeded.`);
 
+  console.log("Seeding FAQs...");
+
+  const DEFAULT_FAQS: {
+    question: string;
+    answer: string;
+    sortOrder: number;
+  }[] = [
+    {
+      sortOrder: 1,
+      question: "How do I place an order?",
+      answer:
+        "Simply browse our collection and add the items you like to your cart by selecting a size and quantity. When you are ready, go to your cart, click Checkout, enter your shipping address, choose a payment method (online payment via Razorpay or Cash on Delivery, where available), and place the order. You will receive an order confirmation with your order number shortly after.",
+    },
+    {
+      sortOrder: 2,
+      question: "What payment methods do you accept?",
+      answer:
+        "We accept online payments securely through Razorpay — including UPI, credit cards, debit cards and net-banking — as well as Cash on Delivery (COD) on serviceable pincodes. The available options are shown at checkout based on your delivery address.",
+    },
+    {
+      sortOrder: 3,
+      question: "Is Cash on Delivery (COD) available?",
+      answer:
+        "Yes, we support Cash on Delivery for most serviceable pincodes. However, some pincodes may only support online payment or only COD. You will see the exact options available for your address at checkout before you confirm the order.",
+    },
+    {
+      sortOrder: 4,
+      question: "How long will my order take to arrive?",
+      answer:
+        "Delivery times depend on your pincode. The estimated delivery days for your area are shown at checkout before you place the order. Most orders within our serviceable network arrive within the time shown, and you can track the status from My Orders.",
+    },
+    {
+      sortOrder: 5,
+      question: "How can I track my order?",
+      answer:
+        "Log in to your account and go to My Orders. Open the order to see its live status as it moves through Confirmed, Packed, Shipped, Out for Delivery, and Delivered. We also share relevant tracking and delivery updates as your order progresses.",
+    },
+    {
+      sortOrder: 6,
+      question: "Do you offer free shipping?",
+      answer:
+        "Yes. Whenever free shipping is enabled, orders that meet the free-shipping threshold get free delivery automatically. Some coupons also include free shipping — once applied, the shipping charge is removed. The final shipping cost (or free-shipping eligibility) is always shown at checkout.",
+    },
+    {
+      sortOrder: 7,
+      question: "What is your return policy?",
+      answer:
+        "Products marked as returnable on the product page can be returned within the return window shown for that product, as long as the order has been delivered. To raise a return, go to My Orders, open the delivered order, and click Request Return. Select your reason, provide your refund details (bank or UPI), and submit. For damaged, broken, defective, or wrong items, please upload 3 to 5 clear photos as proof.",
+    },
+    {
+      sortOrder: 8,
+      question: "How do I request a return?",
+      answer:
+        "Log in to your account and open My Orders. Find the delivered order and click Request Return. Fill in the reason, choose your refund method (bank account details or UPI ID), and upload photos if the issue involves damage or a defective/broken/wrong item. Our team will review the request, and once approved we will schedule a courier pickup from your order's shipping address.",
+    },
+    {
+      sortOrder: 9,
+      question: "Can I exchange or replace my product?",
+      answer:
+        "Products marked as replaceable on the product page can be requested for replacement within the replacement window shown for that product. Open the delivered order in My Orders, click Request Replacement, choose the reason, upload proof photos if needed, and submit. Once approved, the old item is picked up and the replacement is dispatched to your shipping address.",
+    },
+    {
+      sortOrder: 10,
+      question: "When will I get my refund?",
+      answer:
+        "A refund is initiated only after your return is approved and the item has been picked up by the courier. Bank transfers usually reflect within 3–7 working days after initiation, and UPI refunds usually reflect within a few hours to 2 working days. You can follow the refund status (Refund Initiated / Refund Completed) from your return request page.",
+    },
+    {
+      sortOrder: 11,
+      question: "How will my refund be paid out?",
+      answer:
+        "Returns are refunded to the bank account or UPI ID you provide when raising the return request. Please make sure the details are correct — the refund is sent to the exact account or UPI ID you enter.",
+    },
+    {
+      sortOrder: 12,
+      question: "Can I cancel my order?",
+      answer:
+        "You can request to cancel an order before it is shipped or packed. If your order was paid online and is cancelled before shipment, we refund the full amount. Once an order has been shipped it can no longer be cancelled — instead, you can use the Return or Replacement option after delivery, if the product is eligible.",
+    },
+    {
+      sortOrder: 13,
+      question: "Can I personalise or custom-print products?",
+      answer:
+        "Many products offer custom printing at checkout — you can add a name, a number (000–999), or upload your own design for an additional charge, depending on the product. The options available (name, number or design image) are shown on the product page and are reflected in your final order total.",
+    },
+    {
+      sortOrder: 14,
+      question: "How do I choose the right size?",
+      answer:
+        "Each product page shows its available sizes. Where a size chart is provided, we recommend checking your measurements against it before ordering. If you are unsure between two sizes, we suggest sizing up for a more comfortable fit unless the product fit guide says otherwise.",
+    },
+    {
+      sortOrder: 15,
+      question: "Are the products original and authentic?",
+      answer:
+        "Yes. Every product we list is checked for quality before dispatch, and we stand behind the authenticity and quality of the items we sell. If you receive a product that is not as described, you can raise a return or replacement within the applicable window.",
+    },
+    {
+      sortOrder: 16,
+      question: "How do I use a coupon code?",
+      answer:
+        "At checkout, enter your coupon code in the coupon field before completing the order. The discount is applied instantly and shown in your order summary. Each coupon has its own terms — minimum order value, eligible products, usage limits, and validity dates — which apply automatically.",
+    },
+    {
+      sortOrder: 17,
+      question: "My coupon code is not working. What should I do?",
+      answer:
+        "Coupon codes can fail for a few reasons: the order may not meet the minimum value, the coupon may be product- or user-specific, may have exceeded its usage limit, or may have expired. Please check the coupon's terms and validity. If everything looks correct, contact our support team with the coupon code and we will help you.",
+    },
+    {
+      sortOrder: 18,
+      question: "What should I do if I receive a damaged or wrong product?",
+      answer:
+        "Please do not worry — raise a return or replacement request from My Orders for the delivered order within the applicable window. Select the relevant reason (for example, Damaged, Broken, Defective, or Wrong Product) and upload 3 to 5 clear photos as proof. Our team will review the request and either replace the item or process a refund at our discretion.",
+    },
+    {
+      sortOrder: 19,
+      question: "How do I contact customer support?",
+      answer:
+        "You can reach us through the Contact page on our website, or by email at the support address listed in the footer. Please include your order number and a brief description of the issue so we can resolve it as quickly as possible. We typically respond within one working day.",
+    },
+    {
+      sortOrder: 20,
+      question: "Do you deliver to my pincode?",
+      answer:
+        "We deliver only to pincodes marked as serviceable. At checkout, you can check your pincode to see the estimated delivery days and the payment options available for your address. If your pincode is not serviceable, we are sorry for the inconvenience — our serviceable network is growing regularly.",
+    },
+  ];
+
+  for (const faq of DEFAULT_FAQS) {
+    const existing = await prisma.faq.findFirst({
+      where: { question: faq.question },
+    });
+    if (existing) {
+      await prisma.faq.update({
+        where: { id: existing.id },
+        data: {
+          answer: faq.answer,
+          sortOrder: faq.sortOrder,
+          isActive: true,
+        },
+      });
+    } else {
+      await prisma.faq.create({
+        data: {
+          question: faq.question,
+          answer: faq.answer,
+          sortOrder: faq.sortOrder,
+          isActive: true,
+        },
+      });
+    }
+  }
+
+  console.log(`${DEFAULT_FAQS.length} FAQs seeded.`);
+
   console.log("Seeding business policies...");
 
   const DEFAULT_POLICIES: {

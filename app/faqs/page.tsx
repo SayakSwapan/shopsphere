@@ -1,7 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import Footer from "@/components/store/layout/footer";
 import NavbarWrapper from "@/components/store/layout/navbar-wrapper";
-import { HelpCircle, MessageCircle } from "lucide-react";
+import FaqSearchList from "@/components/store/faq/faq-search-list";
+import { MessageCircleQuestion, Headset } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -12,55 +13,143 @@ export default async function FaqsPage() {
   });
 
   return (
-    <div className="min-h-screen bg-[#0A0F1E]">
+    <div
+      className="min-h-screen bg-bg-page"
+      style={{ color: "var(--t-text-heading)" }}
+    >
       <NavbarWrapper />
 
       {/* Hero */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-[#0A0F1E] via-[#0D1424] to-[#111827]">
-        <div className="absolute inset-0 pointer-events-none opacity-[0.03]" style={{ backgroundImage: "repeating-linear-gradient(0deg, #fff 0, transparent 1px, transparent 60px), repeating-linear-gradient(90deg, #fff 0, transparent 1px, transparent 60px)" }} />
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-10 sm:py-24 text-center">
-          <p className="text-xs font-bold uppercase tracking-[0.3em] text-amber-400 mb-3">Help Center</p>
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black uppercase leading-none tracking-tight text-white">
-            Frequently Asked <span className="text-amber-400">Questions</span>
+      <div
+        className="relative overflow-hidden"
+        style={{
+          background:
+            "linear-gradient(180deg, color-mix(in srgb, var(--t-primary) 8%, var(--t-bg-page)) 0%, var(--t-bg-page) 100%)",
+        }}
+      >
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            opacity: 0.04,
+            backgroundImage:
+              "repeating-linear-gradient(0deg, var(--t-text-heading) 0, transparent 1px, transparent 72px), repeating-linear-gradient(90deg, var(--t-text-heading) 0, transparent 1px, transparent 72px)",
+          }}
+        />
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background:
+              "radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--t-primary) 25%, transparent), transparent 55%)",
+          }}
+        />
+        <div className="relative mx-auto max-w-7xl px-4 sm:px-6 py-12 sm:py-20 text-center">
+          <span
+            className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.28em]"
+            style={{
+              borderRadius: "var(--t-radius-badge)",
+              background: "color-mix(in srgb, var(--t-primary) 14%, transparent)",
+              color: "var(--t-primary)",
+            }}
+          >
+            <MessageCircleQuestion size={14} />
+            Help Center
+          </span>
+          <h1
+            className="mt-6 text-4xl font-black uppercase leading-none tracking-tight sm:text-5xl lg:text-6xl"
+            style={{ fontFamily: "var(--t-font-heading)" }}
+          >
+            Frequently Asked{" "}
+            <span style={{ color: "var(--t-primary)" }}>Questions</span>
           </h1>
-          <p className="mt-4 text-sm max-w-md mx-auto leading-relaxed text-slate-400">
-            Find answers to common questions about shopping, orders, returns, and more.
+          <p
+            className="mx-auto mt-5 max-w-xl text-sm leading-relaxed sm:text-base"
+            style={{ color: "var(--t-text-muted-1)" }}
+          >
+            Quick, clear answers to the questions customers ask us most about
+            orders, payments, delivery, returns, refunds, and more.
           </p>
         </div>
-        <div className="h-[3px] bg-gradient-to-r from-amber-500 to-transparent" />
+        <div
+          className="h-[3px] bg-gradient-to-r"
+          style={{ background: "linear-gradient(90deg, var(--t-primary), transparent)" }}
+        />
       </div>
 
-      {/* FAQs */}
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-10 sm:py-16">
+      {/* FAQ list */}
+      <main className="mx-auto max-w-4xl px-4 sm:px-6 py-10 sm:py-14">
         {faqs.length > 0 ? (
-          <div className="space-y-4">
-            {faqs.map((faq) => (
-              <details key={faq.id} className="group rounded-2xl border border-white/[0.06] bg-white/[0.02] overflow-hidden hover:border-amber-500/20 transition-colors">
-                <summary className="flex items-center gap-4 px-6 py-5 cursor-pointer select-none list-none">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/10">
-                    <HelpCircle size={20} className="text-amber-400" />
-                  </div>
-                  <span className="flex-1 text-sm font-bold uppercase tracking-wider text-white">{faq.question}</span>
-                  <span className="text-slate-500 group-open:rotate-45 transition-transform text-xl">+</span>
-                </summary>
-                <div className="px-6 pb-5 pl-12 sm:pl-20">
-                  <p className="text-sm text-slate-400 leading-relaxed whitespace-pre-line">{faq.answer}</p>
-                </div>
-              </details>
-            ))}
-          </div>
+          <FaqSearchList faqs={faqs} />
         ) : (
-          <div className="rounded-4xl border border-slate-700 bg-[#111827] p-8 sm:p-12 text-center">
-            <MessageCircle size={40} className="text-slate-600 mx-auto mb-4" />
-            <p className="text-slate-400">No FAQs available yet. Check back soon!</p>
+          <div
+            className="rounded-xl border p-10 sm:p-14 text-center"
+            style={{
+              borderRadius: "var(--t-radius-card)",
+              borderColor: "var(--t-border-card)",
+              background: "var(--t-bg-card)",
+            }}
+          >
+            <MessageCircleQuestion
+              size={40}
+              className="mx-auto mb-4 text-[var(--t-text-muted-3)]"
+            />
+            <p
+              className="text-base font-semibold"
+              style={{ color: "var(--t-text-heading)" }}
+            >
+              No FAQs available yet
+            </p>
+            <p
+              className="mt-2 text-sm"
+              style={{ color: "var(--t-text-muted-1)" }}
+            >
+              Check back soon, or contact our support team for help.
+            </p>
           </div>
         )}
 
         {/* Contact CTA */}
-        <div className="mt-16 text-center rounded-4xl border border-white/[0.06] bg-white/[0.02] p-6 sm:p-10">
-          <p className="text-xs font-bold uppercase tracking-[0.3em] text-amber-400 mb-2">Still have questions?</p>
-          <h2 className="text-2xl font-black uppercase text-white mb-4">We&apos;re Here to Help</h2>
-          <a href="/contact" className="inline-block rounded-xl bg-amber-500 px-8 py-3 font-bold text-black hover:bg-amber-400 transition-colors">
+        <div
+          className="mt-16 text-center border p-6 sm:p-10"
+          style={{
+            borderRadius: "var(--t-radius-card)",
+            borderColor: "var(--t-border-card)",
+            background: "var(--t-bg-card-nested)",
+            boxShadow: "var(--t-shadow-card)",
+          }}
+        >
+          <span
+            className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.28em]"
+            style={{
+              background: "color-mix(in srgb, var(--t-primary) 14%, transparent)",
+              color: "var(--t-primary)",
+            }}
+          >
+            <Headset size={14} />
+            Still have questions?
+          </span>
+          <h2
+            className="mt-4 text-2xl font-black uppercase sm:text-3xl"
+            style={{ fontFamily: "var(--t-font-heading)" }}
+          >
+            We&apos;re Here to Help
+          </h2>
+          <p
+            className="mx-auto mt-3 max-w-md text-sm leading-relaxed"
+            style={{ color: "var(--t-text-muted-1)" }}
+          >
+            Did not find your answer? Our support team is ready to assist you
+            with anything you need.
+          </p>
+          <a
+            href="/contact"
+            className="mt-6 inline-block rounded-xl px-8 py-3 font-bold transition-opacity hover:opacity-85"
+            style={{
+              borderRadius: "var(--t-radius-button)",
+              background: "var(--t-primary)",
+              color: "var(--t-button-text, #ffffff)",
+              boxShadow: "var(--t-shadow-button)",
+            }}
+          >
             Contact Us
           </a>
         </div>

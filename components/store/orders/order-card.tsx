@@ -61,6 +61,8 @@ interface Order {
   shipping: number;
   discount: number;
   coupon?: { code: string } | null;
+  loyaltyDiscountAmount?: number | null;
+  loyaltyRewardApplied?: boolean | null;
   trackingUrl?: string | null;
   orderitem: OrderItem[];
 }
@@ -244,7 +246,23 @@ export default function OrderCard({ order }: Props) {
       {/* Print-only invoice — hidden on screen, shown only when printing */}
       {canDownloadInvoice && (
         <div className="invoice-print hidden bg-white p-6 text-black print:block">
-          <InvoiceDocument order={order} business={business} />
+          <InvoiceDocument
+            order={{
+              ...order,
+              loyaltyDiscount:
+                order.loyaltyDiscountAmount != null
+                  ? Number(order.loyaltyDiscountAmount)
+                  : null,
+              loyalty: {
+                rewardApplied: Boolean(order.loyaltyRewardApplied),
+                loyaltyDiscount:
+                  order.loyaltyDiscountAmount != null
+                    ? Number(order.loyaltyDiscountAmount)
+                    : null,
+              },
+            }}
+            business={business}
+          />
         </div>
       )}
     </div>

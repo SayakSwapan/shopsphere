@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import NavbarWrapper from "@/components/store/layout/navbar-wrapper";
 import Footer from "@/components/store/layout/footer";
+import { LoyaltyProgressCard } from "@/components/loyalty/loyalty-badge-card";
+import { getLoyaltyProgram, getCustomerLoyaltyStatus } from "@/lib/loyalty";
 import {
   User,
   ShoppingBag,
@@ -15,6 +17,7 @@ import {
   CheckCircle,
   RotateCcw,
   Landmark,
+  Award,
 } from "lucide-react";
 
 export default async function AccountPage() {
@@ -67,6 +70,11 @@ export default async function AccountPage() {
       createdAt: true,
     },
   });
+
+  const [loyaltyProgram, loyaltyStatus] = await Promise.all([
+    getLoyaltyProgram(),
+    getCustomerLoyaltyStatus(user.id),
+  ]);
 
   const statusColors: Record<string, string> = {
     PENDING: "bg-yellow-100 text-yellow-700",
@@ -171,6 +179,11 @@ export default async function AccountPage() {
                     icon: ShoppingBag,
                   },
                   {
+                    label: "My Loyalty Rewards",
+                    href: "/account/loyalty",
+                    icon: Award,
+                  },
+                  {
                     label: "Profile Settings",
                     href: "/account/profile",
                     icon: User,
@@ -223,6 +236,40 @@ export default async function AccountPage() {
 
           {/* Stats + Recent Orders */}
           <div className="lg:col-span-8 space-y-8">
+
+            {/* Loyalty Widget */}
+            {loyaltyProgram.isActive && loyaltyStatus && (
+              <Link
+                href="/account/loyalty"
+                className="group block"
+                style={{ borderRadius: "var(--t-radius-card)" }}
+              >
+                <div className="relative overflow-hidden">
+                  <LoyaltyProgressCard
+                    purchaseCount={loyaltyStatus.currentPurchaseCount}
+                    requiredPurchases={loyaltyStatus.requiredPurchases}
+                    availableReward={loyaltyStatus.hasAvailableReward}
+                    discountLabel={
+                      loyaltyStatus.discountType === "PERCENTAGE"
+                        ? `${loyaltyStatus.discountValue}% discount`
+                        : `₹${loyaltyStatus.discountValue} off`
+                    }
+                    design={{
+                      badgeName: loyaltyStatus.badgeName,
+                      badgeBackgroundColor: loyaltyStatus.badgeBackgroundColor,
+                      badgeTextColor: loyaltyStatus.badgeTextColor,
+                      badgeBorderColor: loyaltyStatus.badgeBorderColor,
+                      badgeIcon: loyaltyStatus.badgeIcon,
+                      badgeImage: loyaltyStatus.badgeImage,
+                      badgeDescription: loyaltyStatus.badgeDescription,
+                    }}
+                  />
+                  <span className="absolute right-4 top-4 text-text-muted-2 group-hover:text-primary transition-colors">
+                    <ChevronRight size={20} />
+                  </span>
+                </div>
+              </Link>
+            )}
 
             {/* Stats Grid */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

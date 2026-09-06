@@ -5,6 +5,7 @@ import { calculateShipping } from "@/lib/shipping";
 import { createAdminNotification } from "@/lib/notifications";
 import { customizationLetterCharge, customizationUnitPrice } from "@/lib/print-pricing";
 import { getRestrictedCartItems } from "@/lib/product-deliverability";
+import { calculateLoyaltyDiscount, redeemLoyaltyReward, getLoyaltyProgram } from "@/lib/loyalty";
 import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 
@@ -16,7 +17,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
     }
 
-    const { paymentMethod, addressId, couponId } = await req.json();
+    const { paymentMethod, addressId, couponId, useLoyaltyReward } = await req.json();
 
     if (paymentMethod !== "COD") {
       return NextResponse.json({ success: false, message: "Online payments must use the payment endpoint." }, { status: 400 });
@@ -129,7 +130,24 @@ export async function POST(req: Request) {
     );
     const shipping = shippingResult.shipping;
 
-    const total = subtotal - discount + shipping + gst;
+    // Loyalty reward discount (backend-calculated, never trusted from client)
+    let loyaltyDiscount = 0;
+    let loyaltyRewardId: string | null = null;
+    const loyaltyProgram = await getLoyaltyProgram();
+
+    if (loyaltyProgram.isActive && useLoyaltyReward !== false) {
+      const orderValueBasis = subtotal + gst + shipping - discount;
+      const loyaltyCalc = await calculateLoyaltyDiscount(user.id, orderValueBasis);
+      if (loyaltyCalc.applicable && loyaltyCalc.discountAmount > 0) {
+        loyaltyDiscount = loyaltyCalc.discountAmount;
+        const loyalty = await prisma.customerLoyalty.findUnique({
+          where: { customerId: user.id },
+        });
+        loyaltyRewardId = loyalty?.id ?? null;
+      }
+    }
+
+    const total = subtotal - discount - loyaltyDiscount + shipping + gst;
 
     const transactionFee = 0;
 
@@ -146,6 +164,10 @@ export async function POST(req: Request) {
         shipping,
         discount,
         couponId: couponId ?? null,
+        loyaltyPurchaseCounted: false,
+        loyaltyRewardApplied: loyaltyDiscount > 0,
+        loyaltyRewardId,
+        loyaltyDiscountAmount: loyaltyDiscount > 0 ? loyaltyDiscount : null,
         status: "PENDING",
         paymentMethod: "COD",
         addressLine1: address.addressLine1,
@@ -218,6 +240,29 @@ export async function POST(req: Request) {
         paymentStatus: "PENDING",
       },
     });
+
+    // Redeem loyalty reward if applied (transaction-safe, idempotent)
+    if (loyaltyDiscount > 0) {
+      const orderValue = subtotal + gst + shipping - discount;
+      const redemption = await prisma.$transaction((tx) =>
+        redeemLoyaltyReward(tx, {
+          customerId: user.id,
+          orderId: order.id,
+          orderAmount: orderValue,
+          source: "ONLINE",
+        })
+      );
+
+      if (redemption) {
+        await prisma.order.update({
+          where: { id: order.id },
+          data: {
+            loyaltyCycleId: redemption.cycleId,
+            loyaltyPurchaseCounted: true,
+          },
+        });
+      }
+    }
 
     createAdminNotification({
       title: "New Order Placed",

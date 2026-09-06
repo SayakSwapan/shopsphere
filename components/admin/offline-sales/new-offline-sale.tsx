@@ -13,6 +13,8 @@ import {
   ShoppingCart,
   ChevronDown,
   ChevronUp,
+  Award,
+  Gift,
 } from "lucide-react";
 
 import { formatCurrency } from "@/lib/format";
@@ -144,6 +146,19 @@ export default function NewOfflineSale() {
   const [items, setItems] = useState<LineItem[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
+  const [useLoyaltyReward, setUseLoyaltyReward] = useState(false);
+  const [loyalty, setLoyalty] = useState<{
+    hasAvailableReward: boolean;
+    currentPurchaseCount: number;
+    requiredPurchases: number;
+    discountValue: number;
+    discountType: "PERCENTAGE" | "FIXED";
+    badgeName: string;
+    availableReward: string;
+  } | null>(null);
+  const [loyaltyLoading, setLoyaltyLoading] = useState(false);
+  const [loyaltyPreviewDiscount, setLoyaltyPreviewDiscount] = useState<number | null>(null);
+
   const productQuery = async (q: string) => {
     setProductSearch(q);
     setSearching(true);
@@ -189,7 +204,6 @@ export default function NewOfflineSale() {
   useEffect(() => {
     const t = setTimeout(() => productQuery(""), 0);
     return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const customerQuery = async (q: string) => {
@@ -209,6 +223,95 @@ export default function NewOfflineSale() {
       setLoadingCustomer(false);
     }
   };
+
+  const selectionPrice = (item: LineItem) => {
+    const p = item.customerPrice;
+    if (!Number.isFinite(p) || p < 0) return 0;
+    return p;
+  };
+
+  const pricingFor = (item: LineItem) => {
+    if (!item.product) return null;
+    return calculateOfflineItemPricing({
+      actualSellingPrice: selectionPrice(item),
+      costPrice: item.product.costPrice,
+      gstPercentage: item.product.gstPercentage,
+      quantity: item.quantity,
+      lastSellingPrice: item.product.lastSellingPrice,
+      onlineSellingPrice: item.product.onlineSellingPrice,
+    });
+  };
+
+  const summary = useMemo(() => {
+    let subtotal = 0;
+    let gst = 0;
+    let totalProfit = 0;
+    let totalQty = 0;
+    let totalCost = 0;
+    for (const it of items) {
+      const p = pricingFor(it);
+      if (!p) continue;
+      subtotal += p.lineSubtotal;
+      gst += p.lineGst;
+      totalProfit += p.lineProfit;
+      totalCost += p.costPrice * it.quantity;
+      totalQty += it.quantity;
+    }
+    return { subtotal, gst, total: subtotal + gst, totalProfit, totalCost, totalQty, itemCount: items.length };
+  }, [items]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Load the selected customer's loyalty status whenever the cart total changes
+  // so the reward availability / discount preview stays fresh.
+  useEffect(() => {
+    if (!selectedCustomer) return;
+    let cancelled = false;
+    Promise.all([
+      fetch(`/api/admin/loyalty/customer-status/${selectedCustomer.id}`).then((r) =>
+        r.json()
+      ),
+      fetch("/api/admin/offline/loyalty-discount", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customerId: selectedCustomer.id,
+          orderAmount: summary.total,
+        }),
+      }).then((r) => r.json()),
+    ])
+      .then(([statusRes, previewRes]) => {
+        if (cancelled) return;
+        const s = statusRes.success ? statusRes.loyalty : null;
+        if (s) {
+          setLoyalty({
+            hasAvailableReward: !!s.hasAvailableReward,
+            currentPurchaseCount: s.currentPurchaseCount,
+            requiredPurchases: s.requiredPurchases,
+            discountValue: s.discountValue,
+            discountType: s.discountType,
+            badgeName: s.badgeName,
+            availableReward: s.availableReward,
+          });
+          if (!s.hasAvailableReward) setUseLoyaltyReward(false);
+        } else {
+          setLoyalty(null);
+          setUseLoyaltyReward(false);
+        }
+        const calc = previewRes.success ? previewRes.calculation : null;
+        setLoyaltyPreviewDiscount(
+          calc && calc.applicable ? calc.discountAmount : null
+        );
+      })
+      .catch(() => {
+        setLoyalty(null);
+        setUseLoyaltyReward(false);
+      })
+      .finally(() => {
+        if (!cancelled) setLoyaltyLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedCustomer, summary.total]);
 
   // When the admin types a phone in the walk-in form, check the DB for a
   // returning customer and auto-fill their details if one exists.
@@ -281,8 +384,6 @@ export default function NewOfflineSale() {
   const onlineIncl = (product: ProductOption) =>
     round2(product.onlineSellingPrice * (1 + (product.gstPercentage || 0) / 100));
 
-  const minIncl = (product: ProductOption) => product.lastSellingPrice ?? 0;
-
   const updateItem = (key: string, patch: Partial<LineItem>) => {
     setItems((prev) => prev.map((it) => (it.key === key ? { ...it, ...patch } : it)));
   };
@@ -299,42 +400,6 @@ export default function NewOfflineSale() {
     }
     return item.product.stock;
   };
-
-  const selectionPrice = (item: LineItem) => {
-    const p = item.customerPrice;
-    if (!Number.isFinite(p) || p < 0) return 0;
-    return p;
-  };
-
-  const pricingFor = (item: LineItem) => {
-    if (!item.product) return null;
-    return calculateOfflineItemPricing({
-      actualSellingPrice: selectionPrice(item),
-      costPrice: item.product.costPrice,
-      gstPercentage: item.product.gstPercentage,
-      quantity: item.quantity,
-      lastSellingPrice: item.product.lastSellingPrice,
-      onlineSellingPrice: item.product.onlineSellingPrice,
-    });
-  };
-
-  const summary = useMemo(() => {
-    let subtotal = 0;
-    let gst = 0;
-    let totalProfit = 0;
-    let totalQty = 0;
-    let totalCost = 0;
-    for (const it of items) {
-      const p = pricingFor(it);
-      if (!p) continue;
-      subtotal += p.lineSubtotal;
-      gst += p.lineGst;
-      totalProfit += p.lineProfit;
-      totalCost += p.costPrice * it.quantity;
-      totalQty += it.quantity;
-    }
-    return { subtotal, gst, total: subtotal + gst, totalProfit, totalCost, totalQty, itemCount: items.length };
-  }, [items]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const validate = (): string | null => {
     if (mode === "existing" && !selectedCustomer) return "Select an existing customer.";
@@ -382,6 +447,7 @@ export default function NewOfflineSale() {
         paymentMethod,
         paidAmount,
         isPartialPayment: isPartial,
+        useLoyaltyReward: useLoyaltyReward,
         customer:
           mode === "existing"
             ? { kind: "existing", userId: selectedCustomer!.id }
@@ -753,6 +819,10 @@ export default function NewOfflineSale() {
                             key={c.id}
                             type="button"
                             onClick={() => {
+                              setLoyalty(null);
+                              setLoyaltyLoading(true);
+                              setUseLoyaltyReward(false);
+                              setLoyaltyPreviewDiscount(null);
                               setSelectedCustomer(c);
                               setCustomerId(c.id);
                               setCustomerSearch(`${c.name ?? "Customer"} • ${c.phone ?? c.email}`);
@@ -843,6 +913,76 @@ export default function NewOfflineSale() {
               )}
             </div>
           </section>
+
+          {/* Loyalty Reward */}
+          {loyalty && selectedCustomer && (
+            <section className="rounded-2xl border border-slate-700 bg-[#111827] p-4 sm:p-6">
+              <SectionHeader
+                icon={<Award size={18} className="text-amber-300" />}
+                title={loyalty.badgeName || "Loyalty Reward"}
+              />
+              {loyaltyLoading ? (
+                <p className="flex items-center gap-2 py-3 text-sm text-slate-400">
+                  <Loader2 size={14} className="animate-spin" /> Checking loyalty…
+                </p>
+              ) : loyalty.hasAvailableReward ? (
+                <div className="space-y-3">
+                  <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3">
+                    <p className="flex items-center gap-1.5 text-sm font-semibold text-amber-300">
+                      <Gift size={15} /> Reward Available
+                    </p>
+                    <p className="mt-1 text-xs text-slate-300">
+                      {loyalty.discountType === "PERCENTAGE"
+                        ? `${loyalty.discountValue}% off`
+                        : `₹${loyalty.discountValue} off`}{" "}
+                      this sale
+                      {loyaltyPreviewDiscount
+                        ? ` — that's ₹${loyaltyPreviewDiscount.toFixed(2)} on the current total`
+                        : ""}
+                      .
+                    </p>
+                  </div>
+                  <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-slate-700 bg-[#0F172A] p-3">
+                    <input
+                      type="checkbox"
+                      checked={useLoyaltyReward}
+                      onChange={(e) => {
+                        setUseLoyaltyReward(e.target.checked);
+                        if (e.target.checked && !loyaltyPreviewDiscount) {
+                          toast.info("Reward will be applied at checkout / completion.");
+                        }
+                      }}
+                      className="mt-0.5"
+                    />
+                    <span>
+                      <span className="block font-semibold text-white">
+                        Apply reward to this sale
+                      </span>
+                      <span className="block text-xs text-slate-400">
+                        Uses the unlocked reward. This purchase won&apos;t count toward a new reward.
+                      </span>
+                    </span>
+                  </label>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between gap-2 rounded-lg border border-slate-700 bg-[#0F172A] p-3">
+                  <div>
+                    <p className="text-sm font-semibold text-white">
+                      Progress {loyalty.currentPurchaseCount}/{loyalty.requiredPurchases}
+                    </p>
+                    <p className="text-xs text-slate-400">
+                      No reward available yet — this sale will count toward progress.
+                    </p>
+                  </div>
+                  {loyalty.availableReward === "REDEED" && (
+                    <span className="shrink-0 rounded bg-blue-500/10 px-2 py-1 text-[11px] font-bold text-blue-400">
+                      Redeemed
+                    </span>
+                  )}
+                </div>
+              )}
+            </section>
+          )}
 
           {/* Payment + Summary */}
           <section className="rounded-2xl border border-slate-700 bg-[#111827] p-4 sm:p-6">

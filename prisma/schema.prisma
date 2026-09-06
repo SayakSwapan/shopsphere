@@ -143,6 +143,13 @@ model order {
   shipping Decimal? @db.Decimal(10,2)
   discount Decimal? @default(0) @db.Decimal(10,2)
 
+  // Loyalty reward fields — snapshot of the loyalty config at time of order
+  loyaltyPurchaseCounted Boolean  @default(false)
+  loyaltyRewardApplied  Boolean  @default(false)
+  loyaltyRewardId       String?
+  loyaltyDiscountAmount Decimal? @default(0) @db.Decimal(10,2)
+  loyaltyCycleId        String?
+
   couponId String?
 
   transactionFee Decimal? @default(0) @db.Decimal(10,2)
@@ -681,6 +688,12 @@ model user {
   refund refund[]
   productQueries productQuery[]
   refundMethods user_refund_method[]
+
+  customerLoyalty   CustomerLoyalty?
+  loyaltyCycles     LoyaltyCycle[]
+  loyaltyPurchases  LoyaltyPurchase[]
+  loyaltyRedemptions LoyaltyRewardRedemption[]
+  loyaltyAuditLogs  LoyaltyAuditLog[]
 }
 
 model PartnerProfile {
@@ -1618,4 +1631,190 @@ model SportsFeaturedProduct {
   @@index([productId])
   @@index([isActive])
   @@index([sortOrder])
+}
+
+// ─── Loyalty / Rewards System ───────────────────────────────────────────────
+
+enum LoyaltyDiscountType {
+  PERCENTAGE
+  FIXED
+}
+
+enum LoyaltyCycleStatus {
+  IN_PROGRESS
+  REWARD_AVAILABLE
+  REDEEMED
+  EXPIRED
+  CANCELLED
+}
+
+enum LoyaltyPurchaseSource {
+  ONLINE
+  OFFLINE
+}
+
+enum LoyaltyRewardStatus {
+  PENDING
+  AVAILABLE
+  REDEED
+  EXPIRED
+  REVOKED
+}
+
+/**
+ * Singleton-style table storing the current admin loyalty program configuration.
+ * Only one row should ever exist (id = "default").
+ */
+model LoyaltyProgram {
+  id                   String   @id @default(cuid())
+  isActive             Boolean  @default(false)
+  requiredPurchases    Int      @default(6)
+  discountType         LoyaltyDiscountType @default(PERCENTAGE)
+  discountValue        Decimal  @db.Decimal(10, 2) @default(30)
+  maxEligibleOrderAmount Decimal? @db.Decimal(10, 2)
+  maxDiscountAmount    Decimal? @db.Decimal(10, 2)
+  minimumOrderAmount   Decimal? @db.Decimal(10, 2)
+  rewardValidityDays   Int?
+
+  // Badge design
+  badgeName            String   @default("Loyal Customer")
+  badgeDescription     String?  @db.Text
+  badgeIcon            String?
+  badgeImage           String?
+  badgeBackgroundColor String   @default("#F59E0B")
+  badgeTextColor       String   @default("#FFFFFF")
+  badgeBorderColor     String   @default("#D97706")
+
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
+/**
+ * Per-customer loyalty status. One row per customer.
+ */
+model CustomerLoyalty {
+  id                   String   @id @default(cuid())
+  customerId           String   @unique
+
+  currentPurchaseCount Int      @default(0)
+  currentCycleNumber   Int      @default(1)
+
+  availableReward      LoyaltyRewardStatus @default(PENDING)
+  rewardEarnedAt       DateTime?
+  rewardExpiresAt      DateTime?
+
+  totalRewardsEarned   Int      @default(0)
+  totalRewardsRedeemed Int      @default(0)
+  totalDiscountReceived Decimal @default(0) @db.Decimal(10, 2)
+
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  customer             user     @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  cycles               LoyaltyCycle[]
+
+  @@index([customerId])
+}
+
+/**
+ * Tracks every loyalty cycle for a customer.
+ */
+model LoyaltyCycle {
+  id                        String   @id @default(cuid())
+  customerId                String
+  customerLoyaltyId         String
+  cycleNumber               Int
+
+  // Snapshot of program config at cycle start
+  requiredPurchasesSnapshot Int
+  discountTypeSnapshot      LoyaltyDiscountType
+  discountValueSnapshot     Decimal  @db.Decimal(10, 2)
+  maxEligibleOrderAmountSnapshot Decimal? @db.Decimal(10, 2)
+  maxDiscountAmountSnapshot Decimal? @db.Decimal(10, 2)
+
+  completedPurchases        Int      @default(0)
+  status                    LoyaltyCycleStatus @default(IN_PROGRESS)
+
+  startedAt                 DateTime @default(now())
+  completedAt               DateTime?
+  rewardEarnedAt            DateTime?
+  rewardRedeemedAt          DateTime?
+  totalDiscountUsed         Decimal  @default(0) @db.Decimal(10, 2)
+
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+
+  customer                  user     @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  customerLoyalty           CustomerLoyalty @relation(fields: [customerLoyaltyId], references: [id], onDelete: Cascade)
+  purchases                 LoyaltyPurchase[]
+  redemptions               LoyaltyRewardRedemption[]
+
+  @@unique([customerId, cycleNumber])
+  @@index([customerId])
+  @@index([customerLoyaltyId])
+  @@index([status])
+}
+
+/**
+ * Tracks every individual purchase that counts toward loyalty.
+ */
+model LoyaltyPurchase {
+  id                String   @id @default(cuid())
+  customerId        String
+  loyaltyCycleId    String
+  orderId           String   @unique
+  source            LoyaltyPurchaseSource
+  purchaseAmount    Decimal  @db.Decimal(10, 2)
+  isEligible        Boolean  @default(true)
+  countedAt         DateTime @default(now())
+
+  createdAt         DateTime @default(now())
+
+  customer          user              @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  loyaltyCycle      LoyaltyCycle      @relation(fields: [loyaltyCycleId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+  @@index([loyaltyCycleId])
+}
+
+/**
+ * Tracks every reward redemption.
+ */
+model LoyaltyRewardRedemption {
+  id                String   @id @default(cuid())
+  customerId        String
+  loyaltyCycleId    String
+  orderId           String   @unique
+  source            LoyaltyPurchaseSource
+  discountAmount    Decimal  @db.Decimal(10, 2)
+  orderAmount       Decimal  @db.Decimal(10, 2)
+  redeemedAt        DateTime @default(now())
+
+  createdAt         DateTime @default(now())
+
+  customer          user              @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  loyaltyCycle      LoyaltyCycle      @relation(fields: [loyaltyCycleId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+  @@index([loyaltyCycleId])
+}
+
+/**
+ * Audit trail for all admin loyalty adjustments.
+ */
+model LoyaltyAuditLog {
+  id                String   @id @default(cuid())
+  customerId        String
+  adminId           String
+  action            String
+  previousValue     String?
+  newValue          String?
+  reason            String?
+  createdAt         DateTime @default(now())
+
+  customer          user              @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+  @@index([adminId])
+  @@index([createdAt])
 }

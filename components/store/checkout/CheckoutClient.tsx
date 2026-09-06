@@ -1,9 +1,9 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { MapPin, CreditCard, Truck, Tag, ShieldCheck, BadgeCheck, Package, Minus, Plus, Trash2, Pencil, ChevronDown, Loader2, TriangleAlert, PartyPopper } from "lucide-react";
+import { MapPin, CreditCard, Truck, Tag, ShieldCheck, BadgeCheck, Package, Minus, Plus, Trash2, Pencil, ChevronDown, Loader2, TriangleAlert, PartyPopper, Gift, Sparkles } from "lucide-react";
 import { useSiteName } from "@/components/store/site-settings-provider";
 import { customizationUnitPrice, customizationUnitPriceWithGst } from "@/lib/print-pricing";
 import type { CustomPrintData } from "@/types/custom-print";
@@ -109,6 +109,19 @@ export default function CheckoutClient({
   const siteName = useSiteName();
 
   const [selectedCoupon, setSelectedCoupon] = useState<Coupon | null>(null);
+  const [loyalty, setLoyalty] = useState<{
+    loyalty: {
+      hasAvailableReward: boolean;
+      currentPurchaseCount: number;
+      requiredPurchases: number;
+      discountValue: number;
+      discountType: "PERCENTAGE" | "FIXED";
+      badgeName: string;
+    } | null;
+    program: { isActive: boolean } | null;
+  } | null>(null);
+  const [useLoyaltyReward, setUseLoyaltyReward] = useState(false);
+  const [loyaltyLoading, setLoyaltyLoading] = useState(true);
   const [pincodeInfo, setPincodeInfo] = useState<PincodeInfo | null>(initialPincodeInfo);
   const [restrictedItems, setRestrictedItems] = useState<RestrictedItem[]>(initialRestrictedItems);
   // Pop the warning immediately when the server already found restricted
@@ -159,6 +172,28 @@ export default function CheckoutClient({
     return Number(d.toFixed(2));
   }, [selectedCoupon, subtotal]);
 
+  // Load the customer's loyalty status once on mount so they can apply their
+  // unlocked reward at checkout.
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/customer/loyalty")
+      .then((r) => r.json())
+      .then((d) => {
+        if (cancelled) return;
+        if (d.success) {
+          setLoyalty({ loyalty: d.loyalty, program: d.program });
+          if (!d.loyalty?.hasAvailableReward) setUseLoyaltyReward(false);
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setLoyaltyLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const effectiveShipping = useMemo(() => {
     if (selectedCoupon?.freeShipping) return 0;
     return initialShipping;
@@ -184,9 +219,30 @@ export default function CheckoutClient({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [subtotal, gst, items, customizationDraft]);
 
+  // Backend-computed loyalty reward discount. Mirrors calculateLoyaltyDiscount.
+  const loyaltyDiscount = useMemo(() => {
+    if (!useLoyaltyReward || !loyalty?.loyalty?.hasAvailableReward) return 0;
+    const amount = itemTotalInclGst - couponDiscount + effectiveShipping;
+    // percent cap / min not exposed here; reuse customer calc defaults.
+    const d =
+      loyalty.loyalty.discountType === "PERCENTAGE"
+        ? (amount * loyalty.loyalty.discountValue) / 100
+        : loyalty.loyalty.discountValue;
+    return Number(Math.min(d, amount).toFixed(2));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [useLoyaltyReward, loyalty, itemTotalInclGst, couponDiscount, effectiveShipping]);
+
   const finalTotal = useMemo(
-    () => Number((itemTotalInclGst - couponDiscount + effectiveShipping).toFixed(2)),
-    [itemTotalInclGst, couponDiscount, effectiveShipping]
+    () =>
+      Number(
+        (
+          itemTotalInclGst -
+          couponDiscount -
+          loyaltyDiscount +
+          effectiveShipping
+        ).toFixed(2)
+      ),
+    [itemTotalInclGst, couponDiscount, loyaltyDiscount, effectiveShipping]
   );
 
   const deliveryDate = useMemo(() => {
@@ -448,6 +504,7 @@ export default function CheckoutClient({
             addressId: selectedAddressId,
             couponId: selectedCoupon?.id ?? null,
             shipping: effectiveShipping,
+            useLoyaltyReward,
           }),
         });
         const data = await res.json();
@@ -463,6 +520,7 @@ export default function CheckoutClient({
           addressId: selectedAddressId,
           couponId: selectedCoupon?.id ?? null,
           shipping: effectiveShipping,
+          useLoyaltyReward,
         }),
       });
       const data = await res.json();
@@ -693,6 +751,127 @@ export default function CheckoutClient({
               )}
             </div>
           </section>
+
+          {/* Loyalty Reward — Use Now / Save for Later */}
+          {loyaltyLoading ? (
+            <section
+              className="overflow-hidden border border-border-card bg-bg-card"
+              style={{ borderRadius: "var(--t-radius-card)" }}
+            >
+              <div className="flex items-center gap-3 border-b border-border-subtle px-4 sm:px-6 py-4 sm:py-5">
+                <div className="flex h-8 w-8 items-center justify-center" style={{ borderRadius: "var(--t-radius-card)", background: "color-mix(in srgb, var(--t-primary) 15%, transparent)" }}>
+                  <Gift size={16} className="text-primary" />
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-wider text-primary" style={{ fontFamily: "var(--t-font-heading)" }}>Loyalty</p>
+                  <h2 className="text-lg font-bold text-text-heading">Checking your reward…</h2>
+                </div>
+              </div>
+            </section>
+          ) : loyalty?.loyalty?.hasAvailableReward ? (
+            <section
+              className="overflow-hidden border border-border-card bg-bg-card"
+              style={{ borderRadius: "var(--t-radius-card)" }}
+            >
+              <div className="flex items-center gap-3 border-b border-border-subtle px-4 sm:px-6 py-4 sm:py-5">
+                <div className="flex h-8 w-8 items-center justify-center" style={{ borderRadius: "var(--t-radius-card)", background: "color-mix(in srgb, var(--t-primary) 15%, transparent)" }}>
+                  <Gift size={16} className="text-primary" />
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-wider text-primary" style={{ fontFamily: "var(--t-font-heading)" }}>Reward Available</p>
+                  <h2 className="text-lg font-bold text-text-heading">
+                    {loyalty.loyalty.badgeName || "Your Loyalty Reward"}
+                  </h2>
+                </div>
+                <span className="ml-auto rounded-full px-3 py-1 text-xs font-bold" style={{ background: "color-mix(in srgb, var(--t-success) 15%, transparent)", color: "var(--t-success)" }}>
+                  Ready to use
+                </span>
+              </div>
+              <div className="p-4 sm:p-6">
+                <p className="text-sm text-text-muted-1">
+                  {loyalty.loyalty.discountType === "PERCENTAGE"
+                    ? `Save ${loyalty.loyalty.discountValue}% on this order`
+                    : `Save ₹${loyalty.loyalty.discountValue} on this order`}
+                  {" "}with your earned reward.
+                </p>
+                <div className="mt-4 space-y-2.5">
+                  <button
+                    onClick={() => setUseLoyaltyReward(true)}
+                    className="w-full px-4 py-3 text-left font-bold transition"
+                    style={{
+                      borderRadius: "var(--t-radius-input)",
+                      border: useLoyaltyReward ? "2px solid var(--t-primary)" : "1px solid var(--t-border-card)",
+                      background: useLoyaltyReward ? "color-mix(in srgb, var(--t-primary) 10%, var(--t-bg-card-nested))" : "var(--t-bg-card-nested)",
+                      color: "var(--t-text-heading)",
+                    }}
+                  >
+                    <span className="flex items-center gap-2">
+                      <RadioDot active={useLoyaltyReward} />
+                      Use Reward Now — save{" "}
+                      <span className="text-primary">
+                        ₹{(loyaltyDiscount || 0).toLocaleString("en-IN")}
+                      </span>
+                    </span>
+                    <span className="mt-0.5 block text-xs font-normal text-text-muted-2">
+                      Applies the discount to this order
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => setUseLoyaltyReward(false)}
+                    className="w-full px-4 py-3 text-left font-bold transition"
+                    style={{
+                      borderRadius: "var(--t-radius-input)",
+                      border: !useLoyaltyReward ? "2px solid var(--t-primary)" : "1px solid var(--t-border-card)",
+                      background: !useLoyaltyReward ? "color-mix(in srgb, var(--t-primary) 10%, var(--t-bg-card-nested))" : "var(--t-bg-card-nested)",
+                      color: "var(--t-text-heading)",
+                    }}
+                  >
+                    <span className="flex items-center gap-2">
+                      <RadioDot active={!useLoyaltyReward} />
+                      Save Reward for Later
+                    </span>
+                    <span className="mt-0.5 block text-xs font-normal text-text-muted-2">
+                      Keep the reward for your next purchase
+                    </span>
+                  </button>
+                </div>
+              </div>
+            </section>
+          ) : (
+            loyalty?.loyalty && (
+              <section
+                className="overflow-hidden border border-border-card bg-bg-card"
+                style={{ borderRadius: "var(--t-radius-card)" }}
+              >
+                <div className="flex items-center gap-3 border-b border-border-subtle px-4 sm:px-6 py-4 sm:py-5">
+                  <div className="flex h-8 w-8 items-center justify-center" style={{ borderRadius: "var(--t-radius-card)", background: "color-mix(in srgb, var(--t-primary) 15%, transparent)" }}>
+                    <Sparkles size={16} className="text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase tracking-wider text-primary" style={{ fontFamily: "var(--t-font-heading)" }}>Loyalty</p>
+                    <h2 className="text-lg font-bold text-text-heading">Earn a Reward</h2>
+                  </div>
+                </div>
+                <div className="p-4 sm:p-6">
+                  <p className="text-sm text-text-muted-1">
+                    {loyalty.loyalty.currentPurchaseCount} of {loyalty.loyalty.requiredPurchases} qualifying purchases collected.{" "}
+                    <span className="font-semibold text-text-heading">
+                      {loyalty.loyalty.requiredPurchases - loyalty.loyalty.currentPurchaseCount} to go!
+                    </span>
+                  </p>
+                  <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-bg-card-nested">
+                    <div
+                      className="h-full rounded-full"
+                      style={{
+                        width: `${Math.min(100, (loyalty.loyalty.currentPurchaseCount / loyalty.loyalty.requiredPurchases) * 100)}%`,
+                        background: "var(--t-primary)",
+                      }}
+                    />
+                  </div>
+                </div>
+              </section>
+            )
+          )}
 
           {/* Payment */}
           <section
@@ -958,6 +1137,17 @@ export default function CheckoutClient({
                 </div>
               )}
 
+              {loyaltyDiscount > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-text-muted-1">
+                    {loyalty?.loyalty?.badgeName
+                      ? `${loyalty.loyalty.badgeName} Reward`
+                      : "Loyalty Reward"}
+                  </span>
+                  <span className="font-medium" style={{ color: "var(--t-success)" }}>-₹{loyaltyDiscount.toLocaleString("en-IN")}</span>
+                </div>
+              )}
+
               <div className="flex justify-between text-sm">
                 <span className="text-text-muted-1">Shipping {selectedCoupon?.freeShipping && <span style={{ color: "var(--t-success)" }}>(Free via coupon)</span>}</span>
                 <span className={`font-medium ${effectiveShipping === 0 ? "" : "text-text-body"}`} style={effectiveShipping === 0 ? { color: "var(--t-success)" } : {}}>
@@ -1139,5 +1329,19 @@ export default function CheckoutClient({
         </div>
       </Modal>
     </div>
+  );
+}
+
+function RadioDot({ active }: { active: boolean }) {
+  return (
+    <span
+      className="inline-block h-5 w-5 flex-shrink-0 border-2"
+      style={{
+        borderRadius: "50%",
+        borderColor: active ? "var(--t-primary)" : "var(--t-text-muted-3)",
+        background: active ? "var(--t-primary)" : "transparent",
+        boxShadow: active ? "inset 0 0 0 3px var(--t-bg-card-nested)" : undefined,
+      }}
+    />
   );
 }

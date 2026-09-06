@@ -19,6 +19,18 @@ export interface OfflineInvoiceItem {
   product: { name: string };
 }
 
+export interface OfflineInvoiceLoyalty {
+  rewardApplied?: boolean;
+  loyaltyDiscount?: number | null;
+  badgeName?: string;
+  badgeIcon?: string | null;
+  badgeImage?: string | null;
+  badgeBackgroundColor?: string;
+  badgeTextColor?: string;
+  badgeBorderColor?: string;
+  badgeDescription?: string | null;
+}
+
 export interface OfflineInvoiceOrder {
   id: string;
   orderNumber: string;
@@ -35,6 +47,9 @@ export interface OfflineInvoiceOrder {
   totalAmount: number;
   subtotal: number | null;
   gst: number | null;
+  loyaltyDiscount?: number | null;
+  loyaltyRewardApplied?: boolean | null;
+  loyalty?: OfflineInvoiceLoyalty;
   paidAmount?: number;
   dueAmount?: number;
   isPartial?: boolean;
@@ -128,6 +143,37 @@ function amountInWords(amount: number): string {
 
 function round2(value: number): number {
   return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
+function LoyaltyBadgeIcon({
+  icon,
+  image,
+  name,
+  size = 18,
+}: {
+  icon?: string | null;
+  image?: string | null;
+  name?: string;
+  size?: number;
+}) {
+  if (image) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return (
+      <img src={image} alt={name ?? "loyalty"} style={{ width: size, height: size, objectFit: "contain" }} />
+    );
+  }
+  switch (icon) {
+    case "crown":
+      return <span style={{ fontSize: size, lineHeight: 1 }}>&#9819;</span>;
+    case "star":
+      return <span style={{ fontSize: size, lineHeight: 1 }}>&#11088;</span>;
+    case "gift":
+      return <span style={{ fontSize: size, lineHeight: 1 }}>&#127873;</span>;
+    case "trending":
+      return <span style={{ fontSize: size, lineHeight: 1 }}>&#128200;</span>;
+    default:
+      return <span style={{ fontSize: size, lineHeight: 1 }}>&#127941;</span>;
+  }
 }
 
 /**
@@ -384,6 +430,14 @@ export default function OfflineInvoice({
             <span className="text-gray-600">Total GST</span>
             <span className="font-semibold text-gray-800">{formatCurrency(gst)}</span>
           </div>
+          {order.loyaltyDiscount ? (
+            <div className="flex items-center justify-between py-1">
+              <span className="text-gray-600">Loyalty Reward</span>
+              <span className="font-semibold text-emerald-600">
+                -{formatCurrency(order.loyaltyDiscount)}
+              </span>
+            </div>
+          ) : null}
           {order.isPartial && (
             <>
               <div className="flex items-center justify-between py-1">
@@ -429,6 +483,57 @@ export default function OfflineInvoice({
           )}
         </div>
       </div>
+
+      {/* Loyalty */}
+      {order.loyalty && order.loyalty.rewardApplied && (
+        <div
+          className="mx-6 mt-4 flex items-center gap-4 rounded-lg border p-3 sm:mx-8"
+          style={{
+            background: PRIMARY_SOFT,
+            borderColor: PRIMARY_BORDER,
+            borderLeft: `3px solid ${PRIMARY}`,
+          }}
+        >
+          {order.loyalty.badgeImage || order.loyalty.badgeIcon ? (
+            <span
+              className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full"
+              style={
+                order.loyalty.badgeBackgroundColor
+                  ? { background: order.loyalty.badgeBackgroundColor }
+                  : undefined
+              }
+            >
+              <LoyaltyBadgeIcon
+                icon={order.loyalty.badgeIcon}
+                image={order.loyalty.badgeImage}
+                name={order.loyalty.badgeName}
+              />
+            </span>
+          ) : null}
+          <div className="flex-1">
+            <p
+              className="text-xs font-black uppercase tracking-wider"
+              style={{ color: PRIMARY_TEXT }}
+            >
+              Loyalty Program
+            </p>
+            <p className="mt-0.5 text-sm text-gray-800">
+              {order.loyalty.badgeName
+                ? `${order.loyalty.badgeName} reward applied — saved `
+                : "Reward applied — saved "}
+              <span className="font-black">
+                {formatCurrency(order.loyalty.loyaltyDiscount ?? 0)}
+              </span>
+              .
+            </p>
+            {order.loyalty.badgeDescription && (
+              <p className="mt-0.5 text-xs text-gray-600">
+                {order.loyalty.badgeDescription}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Footer */}
       <div

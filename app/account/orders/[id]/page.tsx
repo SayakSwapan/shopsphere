@@ -16,6 +16,7 @@ import {
   customizationUnitPriceWithGst,
 } from "@/lib/print-pricing";
 import { getSiteSettings, getInvoiceBusiness } from "@/lib/site-settings";
+import { getLoyaltyProgram } from "@/lib/loyalty";
 import {
   ORDER_STATUS_LABELS,
   ORDER_STATUS_STYLES,
@@ -124,6 +125,7 @@ export default async function OrderDetailPage({ params }: Props) {
 
   const settings = await getSiteSettings();
   const business = getInvoiceBusiness(settings);
+  const program = await getLoyaltyProgram();
 
   const order = {
     ...rawOrder,
@@ -132,6 +134,28 @@ export default async function OrderDetailPage({ params }: Props) {
     gst: rawOrder.gst != null ? Number(rawOrder.gst) : 0,
     shipping: rawOrder.shipping != null ? Number(rawOrder.shipping) : 0,
     discount: rawOrder.discount != null ? Number(rawOrder.discount) : 0,
+    loyaltyDiscount:
+      rawOrder.loyaltyDiscountAmount != null
+        ? Number(rawOrder.loyaltyDiscountAmount)
+        : null,
+    loyaltyRewardApplied: rawOrder.loyaltyRewardApplied,
+    loyalty: {
+      inProgress: program.isActive && !rawOrder.loyaltyRewardApplied,
+      purchaseCount: rawOrder.loyaltyPurchaseCounted ? 1 : 0,
+      requiredPurchases: program.requiredPurchases,
+      rewardApplied: Boolean(rawOrder.loyaltyRewardApplied),
+      loyaltyDiscount:
+        rawOrder.loyaltyDiscountAmount != null
+          ? Number(rawOrder.loyaltyDiscountAmount)
+          : null,
+      badgeName: program.badgeName,
+      badgeIcon: program.badgeIcon,
+      badgeImage: program.badgeImage,
+      badgeBackgroundColor: program.badgeBackgroundColor,
+      badgeTextColor: program.badgeTextColor,
+      badgeBorderColor: program.badgeBorderColor,
+      badgeDescription: program.badgeDescription,
+    },
     orderitem: rawOrder.orderitem.map((item) => ({
       ...item,
       price: Number(item.price),

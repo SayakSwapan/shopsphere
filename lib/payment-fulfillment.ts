@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 import { createAdminNotification } from "@/lib/notifications";
+import { countEligiblePurchase, redeemLoyaltyReward } from "@/lib/loyalty";
 
 /**
  * Shared, idempotent post-payment fulfillment used by BOTH the client
@@ -157,6 +158,46 @@ export async function markOrderPaid(
     entityId: order.id,
     notifyKey: "notify_on_order",
   }).catch(console.error);
+
+  // If the customer redeemed a loyalty reward on this verified order, consume
+  // it now (transaction-safe, idempotent). Otherwise count the purchase toward
+  // their next reward.
+  if (order.loyaltyRewardApplied) {
+    try {
+      const orderValue =
+        Number(order.subtotal ?? 0) +
+        Number(order.gst ?? 0) +
+        Number(order.shipping ?? 0) -
+        Number(order.discount ?? 0);
+      const redemption = await prisma.$transaction((tx) =>
+        redeemLoyaltyReward(tx, {
+          customerId: order.userId,
+          orderId: order.id,
+          orderAmount: orderValue,
+          source: "ONLINE",
+        })
+      );
+      if (redemption && !order.loyaltyCycleId) {
+        await prisma.order.update({
+          where: { id: order.id },
+          data: {
+            loyaltyCycleId: redemption.cycleId ?? null,
+            loyaltyPurchaseCounted: true,
+          },
+        });
+      }
+    } catch (error) {
+      console.error("Loyalty redemption failed for paid order:", error);
+    }
+  } else {
+    // Count this purchase toward loyalty progress (fire-and-forget)
+    countEligiblePurchase({
+      customerId: order.userId,
+      orderId: order.id,
+      orderAmount: Number(order.totalAmount),
+      source: "ONLINE",
+    }).catch(console.error);
+  }
 
   return { processed: true };
 }

@@ -10,6 +10,7 @@ import { calcTransactionFee } from "@/lib/finance/transaction-charge.service";
 import { customizationLetterCharge, customizationUnitPrice } from "@/lib/print-pricing";
 import { getRestrictedCartItems } from "@/lib/product-deliverability";
 import { createAdminNotification } from "@/lib/notifications";
+import { getLoyaltyProgram, calculateLoyaltyDiscount } from "@/lib/loyalty";
 
 export async function POST(req: Request) {
   try {
@@ -19,7 +20,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
     }
 
-    const { addressId, couponId } = await req.json();
+    const { addressId, couponId, useLoyaltyReward } = await req.json();
     if (!addressId) return NextResponse.json({ success: false, message: "Address is required." }, { status: 400 });
 
     const user = await prisma.user.findUnique({
@@ -127,7 +128,23 @@ export async function POST(req: Request) {
     );
     shipping = shippingResult.shipping;
 
-    const total = subtotal - discount + shipping + gst;
+    // Loyalty reward discount (backend-calculated, never trusted from client).
+    let loyaltyDiscount = 0;
+    let loyaltyRewardId: string | null = null;
+    const loyaltyProgram = await getLoyaltyProgram();
+    if (loyaltyProgram.isActive && useLoyaltyReward !== false) {
+      const orderValueBasis = subtotal + gst + shipping - discount;
+      const loyaltyCalc = await calculateLoyaltyDiscount(user.id, orderValueBasis);
+      if (loyaltyCalc.applicable && loyaltyCalc.discountAmount > 0) {
+        loyaltyDiscount = loyaltyCalc.discountAmount;
+        const loyalty = await prisma.customerLoyalty.findUnique({
+          where: { customerId: user.id },
+        });
+        loyaltyRewardId = loyalty?.id ?? null;
+      }
+    }
+
+    const total = subtotal - discount - loyaltyDiscount + shipping + gst;
 
     const txFeeResult = await calcTransactionFee(total, "RAZORPAY", "RAZORPAY");
     const transactionFee = txFeeResult.fee;
@@ -144,6 +161,10 @@ export async function POST(req: Request) {
         shipping,
         discount,
         couponId: couponId ?? null,
+        loyaltyPurchaseCounted: false,
+        loyaltyRewardApplied: loyaltyDiscount > 0,
+        loyaltyRewardId,
+        loyaltyDiscountAmount: loyaltyDiscount > 0 ? loyaltyDiscount : null,
         status: "PENDING",
         paymentMethod: "RAZORPAY",
         paymentStatus: "PENDING",

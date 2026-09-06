@@ -1,6 +1,9 @@
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import CustomerActions from "@/components/admin/customers/customer-actions";
+import { getCustomerLoyaltyStatus } from "@/lib/loyalty";
+import { formatCurrency } from "@/lib/format";
 
 interface Props {
   params: Promise<{
@@ -62,6 +65,34 @@ export default async function CustomerDetailsPage({
   if (!customer) {
     notFound();
   }
+
+  const loyaltyStatus = await getCustomerLoyaltyStatus(customer.id);
+
+  const [loyaltyPurchasesCount, loyaltyRedemptionsCount] = await Promise.all([
+    prisma.loyaltyPurchase.count({
+      where: { customerId: customer.id },
+    }),
+    prisma.loyaltyRewardRedemption.count({
+      where: { customerId: customer.id },
+    }),
+  ]);
+
+  const rewardStatus = loyaltyStatus?.availableReward ?? "PENDING";
+  const rewardBadge: Record<string, { label: string; cls: string }> = {
+    AVAILABLE: { label: "Reward Available", cls: "bg-emerald-500/20 text-emerald-400" },
+    PENDING: { label: "In Progress", cls: "bg-slate-500/20 text-slate-400" },
+    REDEED: { label: "Redeemed", cls: "bg-blue-500/20 text-blue-400" },
+    EXPIRED: { label: "Expired", cls: "bg-red-500/20 text-red-400" },
+    REVOKED: { label: "Revoked", cls: "bg-orange-500/20 text-orange-400" },
+  };
+  const lb = rewardBadge[rewardStatus] ?? rewardBadge.PENDING;
+  const progressPct = loyaltyStatus
+    ? Math.min(
+        100,
+        (loyaltyStatus.currentPurchaseCount / loyaltyStatus.requiredPurchases) *
+          100
+      )
+    : 0;
 
   return (
     <div className="space-y-8">
@@ -158,6 +189,97 @@ export default async function CustomerDetailsPage({
         </div>
 
       </div>
+
+      {/* LOYALTY & REWARDS */}
+      {loyaltyStatus && (
+        <div className="rounded-2xl bg-[#111827] border border-slate-700 p-6">
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="text-xl font-bold text-white">
+              Loyalty &amp; Rewards
+            </h2>
+            <Link
+              href={`/admin/loyalty/customers/${customer.id}`}
+              className="rounded-lg bg-amber-500/15 px-4 py-2 text-sm font-semibold text-amber-400 transition-colors hover:bg-amber-500/25"
+            >
+              Manage Loyalty →
+            </Link>
+          </div>
+
+          <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-5">
+            <div className="rounded-xl bg-slate-900 p-5 border border-slate-700">
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-slate-500">Reward Status</p>
+                <span className={`rounded-full px-3 py-1 text-xs font-bold ${lb.cls}`}>
+                  {lb.label}
+                </span>
+              </div>
+              <p className="mt-2 text-2xl font-black text-white">
+                {loyaltyStatus.badgeName || "Loyalty Member"}
+              </p>
+              {loyaltyStatus.hasAvailableReward &&
+              loyaltyStatus.rewardExpiresAt ? (
+                <p className="mt-1 text-xs text-slate-400">
+                  Expires {loyaltyStatus.rewardExpiresAt.toLocaleDateString()}
+                </p>
+              ) : (
+                <p className="mt-1 text-xs text-slate-500">
+                  Cycle #{loyaltyStatus.currentCycleNumber}
+                </p>
+              )}
+            </div>
+
+            <div className="rounded-xl bg-slate-900 p-5 border border-slate-700">
+              <p className="text-sm text-slate-500">Cycle Progress</p>
+              <div className="mt-2 flex items-end gap-2">
+                <span className="text-2xl font-black text-white">
+                  {loyaltyStatus.currentPurchaseCount}
+                </span>
+                <span className="text-slate-400 mb-0.5 text-sm">
+                  / {loyaltyStatus.requiredPurchases} purchases
+                </span>
+              </div>
+              <div className="mt-3 h-2 rounded-full bg-slate-800 overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-amber-500 to-amber-400"
+                  style={{ width: `${progressPct}%` }}
+                />
+              </div>
+              <p className="mt-2 text-xs text-slate-500">
+                {loyaltyStatus.totalRewardsEarned} earned ·{" "}
+                {loyaltyStatus.totalRewardsRedeemed} redeemed
+              </p>
+            </div>
+
+            <div className="rounded-xl bg-slate-900 p-5 border border-slate-700">
+              <p className="text-sm text-slate-500">Discount Received</p>
+              <p className="mt-2 text-2xl font-black text-emerald-400">
+                {formatCurrency(loyaltyStatus.totalDiscountReceived)}
+              </p>
+              <p className="mt-1 text-xs text-slate-500">
+                Lifetime savings across cycles
+              </p>
+            </div>
+
+            <div className="rounded-xl bg-slate-900 p-5 border border-slate-700">
+              <p className="text-sm text-slate-500">Activity</p>
+              <p className="mt-2 text-2xl font-black text-white">
+                {loyaltyPurchasesCount}
+                <span className="text-sm text-slate-400 font-semibold">
+                  {" "}
+                  counted purchase{loyaltyPurchasesCount !== 1 ? "s" : ""}
+                </span>
+              </p>
+              <p className="mt-2 text-2xl font-black text-white">
+                {loyaltyRedemptionsCount}
+                <span className="text-sm text-slate-400 font-semibold">
+                  {" "}
+                  redemption{loyaltyRedemptionsCount !== 1 ? "s" : ""}
+                </span>
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ADDRESSES */}
 

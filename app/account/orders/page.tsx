@@ -59,6 +59,8 @@ export default async function OrdersPage() {
     gst: order.gst ? Number(order.gst) : 0,
     shipping: order.shipping ? Number(order.shipping) : 0,
     discount: order.discount ? Number(order.discount) : 0,
+    loyaltyDiscountAmount:
+      order.loyaltyDiscountAmount != null ? Number(order.loyaltyDiscountAmount) : null,
     orderitem: order.orderitem.map((item) => ({
       ...item,
       price: Number(item.price),

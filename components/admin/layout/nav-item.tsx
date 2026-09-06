@@ -37,6 +37,8 @@ import {
   Archive,
   ShieldCheck,
   Bot,
+  Award,
+  Gift,
   type LucideIcon,
 } from "lucide-react";
 
@@ -109,6 +111,17 @@ export const navItems: NavEntry[] = [
       { title: "Wishlists", href: "/admin/wishlists", icon: Heart },
       { title: "Partners", href: "/admin/partners", icon: Users2 },
       { title: "Permissions", href: "/admin/partners/permissions", icon: KeyRound },
+    ],
+  },
+  {
+    type: "section",
+    title: "Loyalty Program",
+    icon: Award,
+    children: [
+      { title: "Loyalty Dashboard", href: "/admin/loyalty", icon: Award },
+      { title: "Program Settings", href: "/admin/loyalty/settings", icon: Gift },
+      { title: "Customer Loyalty", href: "/admin/loyalty/customers", icon: Users2 },
+      { title: "Reward History", href: "/admin/loyalty/history", icon: BadgeIndianRupee },
     ],
   },
   {

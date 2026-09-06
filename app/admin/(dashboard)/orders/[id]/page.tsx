@@ -9,6 +9,7 @@ import { OrderStatus } from "@/lib/constants/order-status";
 import { getOrderFlowGuide } from "@/lib/flow-guides";
 import { statusColor, statusLabel } from "@/lib/return-replacement";
 import { getSiteSettings, getInvoiceBusiness } from "@/lib/site-settings";
+import { getLoyaltyProgram } from "@/lib/loyalty";
 import {
   customizationBilledLetters,
   customizationDesignCharge,
@@ -92,6 +93,7 @@ export default async function OrderDetailsPage({
 
   const settings = await getSiteSettings();
   const business = getInvoiceBusiness(settings);
+  const program = await getLoyaltyProgram();
 
   // Decimal/Float -> number for formatting.
   const order = {
@@ -101,6 +103,28 @@ export default async function OrderDetailsPage({
     gst: orderRaw.gst ? Number(orderRaw.gst) : null,
     shipping: orderRaw.shipping ? Number(orderRaw.shipping) : null,
     discount: orderRaw.discount ? Number(orderRaw.discount) : null,
+    loyaltyDiscount:
+      orderRaw.loyaltyDiscountAmount != null
+        ? Number(orderRaw.loyaltyDiscountAmount)
+        : null,
+    loyaltyRewardApplied: orderRaw.loyaltyRewardApplied,
+    loyalty: {
+      inProgress: program.isActive && !orderRaw.loyaltyRewardApplied,
+      purchaseCount: orderRaw.loyaltyPurchaseCounted ? 1 : 0,
+      requiredPurchases: program.requiredPurchases,
+      rewardApplied: Boolean(orderRaw.loyaltyRewardApplied),
+      loyaltyDiscount:
+        orderRaw.loyaltyDiscountAmount != null
+          ? Number(orderRaw.loyaltyDiscountAmount)
+          : null,
+      badgeName: program.badgeName,
+      badgeIcon: program.badgeIcon,
+      badgeImage: program.badgeImage,
+      badgeBackgroundColor: program.badgeBackgroundColor,
+      badgeTextColor: program.badgeTextColor,
+      badgeBorderColor: program.badgeBorderColor,
+      badgeDescription: program.badgeDescription,
+    },
     orderitem: orderRaw.orderitem.map((item) => ({
       ...item,
       price: Number(item.price),

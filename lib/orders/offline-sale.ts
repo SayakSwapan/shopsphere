@@ -5,6 +5,12 @@ import {
   validateOfflineSellingPrice,
 } from "@/lib/pricing/offline";
 import { createAdminNotification } from "@/lib/notifications";
+import {
+  countEligiblePurchase,
+  redeemLoyaltyReward,
+  calculateLoyaltyDiscount,
+  handleRefundLoyaltyAdjustment,
+} from "@/lib/loyalty";
 
 /**
  * Shared service for the Offline / POS sales system.
@@ -54,6 +60,8 @@ export interface OfflineOrderInput {
   paidAmount?: number;
   /** Whether this is a partial / due payment sale. */
   isPartialPayment?: boolean;
+  /** Apply the customer's available loyalty reward to this sale. */
+  useLoyaltyReward?: boolean;
 }
 
 export class OfflineSaleError extends Error {
@@ -308,13 +316,36 @@ async function createOrderAndItems(opts: {
   const totalProfit = resolved.reduce((s, i) => s + i.pricing.lineProfit, 0);
   const totalAmount = round2(subtotal + gst);
 
+  const isComplete = input.mode === "complete";
+
+  // Loyalty reward handling for offline sales. The discount is ALWAYS computed
+  // on the backend — never trusted from the client.
+  let loyaltyDiscount = 0;
+  let loyaltyRewardId: string | null = null;
+  if (isComplete && input.useLoyaltyReward) {
+    const loyaltyCalc = await calculateLoyaltyDiscount(
+      customerUser.userId,
+      totalAmount
+    );
+    if (loyaltyCalc.applicable && loyaltyCalc.discountAmount > 0) {
+      loyaltyDiscount = loyaltyCalc.discountAmount;
+      const loyaltyRec = await prisma.customerLoyalty.findUnique({
+        where: { customerId: customerUser.userId },
+      });
+      loyaltyRewardId = loyaltyRec?.id ?? null;
+    }
+  }
+
+  const discountedTotal = round2(totalAmount - loyaltyDiscount);
+  const totalForPayment = discountedTotal;
+
   // Resolve due / partial payment amounts. The stock is fully handed over at
   // completion; only the cash/UPI flow may be collected later.
   const isPartial = Boolean(input.isPartialPayment);
   const paidAmount = isPartial
-    ? round2(Math.min(input.paidAmount ?? 0, totalAmount))
-    : totalAmount;
-  const dueAmount = round2(totalAmount - paidAmount);
+    ? round2(Math.min(input.paidAmount ?? 0, totalForPayment))
+    : totalForPayment;
+  const dueAmount = round2(totalForPayment - paidAmount);
   if (isPartial && !(dueAmount > 0)) {
     throw new OfflineSaleError(
       "For a due / partial payment sale the paid amount must be less than the total. Use Complete Sale if fully paid."
@@ -325,7 +356,6 @@ async function createOrderAndItems(opts: {
   const discount = 0;
   const transactionFee = 0;
 
-  const isComplete = input.mode === "complete";
   const orderNumber = await buildOfflineOrderNumber();
 
   const result = await prisma.$transaction(async (tx) => {
@@ -340,12 +370,16 @@ async function createOrderAndItems(opts: {
         status: isComplete ? "PAID" : "PENDING",
         paymentStatus: isComplete ? "PAID" : "PENDING",
         paymentMethod: paymentMethod as "CASH",
-        totalAmount,
+        totalAmount: totalForPayment,
         transactionFee,
         subtotal: round2(subtotal),
         gst: round2(gst),
         shipping,
         discount,
+        loyaltyPurchaseCounted: false,
+        loyaltyRewardApplied: loyaltyDiscount > 0,
+        loyaltyRewardId,
+        loyaltyDiscountAmount: loyaltyDiscount > 0 ? loyaltyDiscount : null,
         fullName:
           (input.customer.name || "").trim() || "Walk-in Customer",
         phone: (input.customer.phone || "").trim(),
@@ -472,19 +506,59 @@ async function createOrderAndItems(opts: {
       });
     }
 
+    // Loyalty integration — must run inside the same transaction.
+    if (isComplete) {
+      if (loyaltyDiscount > 0) {
+        // Redeem the reward (resets cycle, records redemption).
+        const redemption = await redeemLoyaltyReward(tx, {
+          customerId: customerUser.userId,
+          orderId: order.id,
+          orderAmount: totalAmount,
+          source: "OFFLINE",
+        });
+        if (redemption) {
+          await tx.order.update({
+            where: { id: order.id },
+            data: {
+              loyaltyCycleId: redemption.cycleId,
+              loyaltyPurchaseCounted: true,
+            },
+          });
+        }
+      } else {
+        // Count this sale toward loyalty progress.
+        const { counted } = await countEligiblePurchase(
+          {
+            customerId: customerUser.userId,
+            orderId: order.id,
+            orderAmount: totalAmount,
+            source: "OFFLINE",
+          },
+          tx
+        );
+        if (counted) {
+          await tx.order.update({
+            where: { id: order.id },
+            data: { loyaltyPurchaseCounted: true },
+          });
+        }
+      }
+    }
+
     return order;
   });
 
   return {
     orderId: result.id,
     orderNumber: result.orderNumber,
-    totalAmount,
+    totalAmount: totalForPayment,
     subtotal: round2(subtotal),
     gst: round2(gst),
     totalProfit: round2(totalProfit),
     paidAmount,
     dueAmount,
     applied: isComplete,
+    loyaltyDiscountApplied: loyaltyDiscount,
   };
 }
 
@@ -657,6 +731,31 @@ export async function completeOfflineOrder(opts: {
     notifyKey: "notify_on_order",
   }).catch(console.error);
 
+  // Loyalty: count this completed sale toward the customer's progress
+  // (only when fully paid — not partial/due — and only once).
+  if (
+    !isPartial &&
+    !order.loyaltyRewardApplied &&
+    !order.loyaltyPurchaseCounted
+  ) {
+    try {
+      const { counted } = await countEligiblePurchase({
+        customerId: order.userId,
+        orderId: order.id,
+        orderAmount: Number(order.totalAmount),
+        source: "OFFLINE",
+      });
+      if (counted) {
+        await prisma.order.update({
+          where: { id: order.id },
+          data: { loyaltyPurchaseCounted: true },
+        });
+      }
+    } catch (e) {
+      console.error("Loyalty count failed for offline order:", e);
+    }
+  }
+
   return { orderId: order.id, already: false, paidAmount, dueAmount, isPartial };
 }
 
@@ -820,6 +919,20 @@ export async function cancelOfflineOrder(opts: { orderId: string }) {
       },
     });
   });
+
+  // Loyalty reversal: if this sale counted toward loyalty and no reward was
+  // redeemed on it, reverse the count. If a reward WAS redeemed, the
+  // redemption stays for audit/manual review.
+  if (order.loyaltyPurchaseCounted && !order.loyaltyRewardApplied) {
+    try {
+      await handleRefundLoyaltyAdjustment({
+        customerId: order.userId,
+        orderId: order.id,
+      });
+    } catch (e) {
+      console.error("Loyalty reversal failed for offline order:", e);
+    }
+  }
 
   return { orderId: order.id, already: false };
 }

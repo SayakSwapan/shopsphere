@@ -27,6 +27,8 @@ type OrderShape = {
   gst: import("@prisma/client").Prisma.Decimal | null;
   shipping: import("@prisma/client").Prisma.Decimal | null;
   discount: import("@prisma/client").Prisma.Decimal | null;
+  loyaltyDiscountAmount: import("@prisma/client").Prisma.Decimal | null;
+  loyaltyRewardApplied: boolean | null;
   fullName: string;
   phone: string;
   isWalkIn: boolean;
@@ -188,6 +190,18 @@ export default function OfflineOrderDetail({ order, business, offlinePolicy }: P
     totalAmount: totalAmount,
     subtotal: order.subtotal != null ? Number(order.subtotal) : null,
     gst: order.gst != null ? Number(order.gst) : null,
+    loyaltyDiscount:
+      order.loyaltyDiscountAmount != null
+        ? Number(order.loyaltyDiscountAmount)
+        : null,
+    loyaltyRewardApplied: order.loyaltyRewardApplied,
+    loyalty: {
+      rewardApplied: Boolean(order.loyaltyRewardApplied),
+      loyaltyDiscount:
+        order.loyaltyDiscountAmount != null
+          ? Number(order.loyaltyDiscountAmount)
+          : null,
+    },
     paidAmount,
     dueAmount,
     isPartial: order.isPartialPayment,

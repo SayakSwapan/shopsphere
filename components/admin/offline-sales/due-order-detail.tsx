@@ -17,6 +17,8 @@ type OrderShape = {
   totalAmount: import("@prisma/client").Prisma.Decimal;
   subtotal: import("@prisma/client").Prisma.Decimal | null;
   gst: import("@prisma/client").Prisma.Decimal | null;
+  loyaltyDiscountAmount: import("@prisma/client").Prisma.Decimal | null;
+  loyaltyRewardApplied: boolean | null;
   paidAmount: import("@prisma/client").Prisma.Decimal | null;
   dueAmount: import("@prisma/client").Prisma.Decimal | null;
   fullName: string;
@@ -113,6 +115,18 @@ export default function DueOrderDetail({ order, business, offlinePolicy }: Props
     totalAmount: total,
     subtotal: order.subtotal != null ? Number(order.subtotal) : null,
     gst: order.gst != null ? Number(order.gst) : null,
+    loyaltyDiscount:
+      order.loyaltyDiscountAmount != null
+        ? Number(order.loyaltyDiscountAmount)
+        : null,
+    loyaltyRewardApplied: order.loyaltyRewardApplied,
+    loyalty: {
+      rewardApplied: Boolean(order.loyaltyRewardApplied),
+      loyaltyDiscount:
+        order.loyaltyDiscountAmount != null
+          ? Number(order.loyaltyDiscountAmount)
+          : null,
+    },
     paidAmount: paid,
     dueAmount: due,
     isPartial: true,

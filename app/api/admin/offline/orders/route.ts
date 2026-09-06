@@ -20,6 +20,7 @@ export async function POST(req: Request) {
       notes?: string;
       paidAmount?: number;
       isPartialPayment?: boolean;
+      useLoyaltyReward?: boolean;
     };
 
     const input: OfflineOrderInput = {
@@ -30,6 +31,7 @@ export async function POST(req: Request) {
       notes: body.notes,
       paidAmount: body.paidAmount,
       isPartialPayment: body.isPartialPayment,
+      useLoyaltyReward: body.useLoyaltyReward,
     };
 
     const result = await createOfflineOrder({

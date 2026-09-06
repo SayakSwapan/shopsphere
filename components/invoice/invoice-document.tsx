@@ -38,6 +38,24 @@ export interface InvoiceItem {
   };
 }
 
+export interface LoyaltyInvoiceInfo {
+  /** true when the customer is collecting purchases toward the next reward. */
+  inProgress?: boolean;
+  purchaseCount?: number;
+  requiredPurchases?: number;
+  /** Badge / reward used on this order (only when a reward was applied). */
+  rewardApplied?: boolean;
+  discountLabel?: string;
+  loyaltyDiscount?: number | null;
+  badgeName?: string;
+  badgeIcon?: string | null;
+  badgeImage?: string | null;
+  badgeBackgroundColor?: string;
+  badgeTextColor?: string;
+  badgeBorderColor?: string;
+  badgeDescription?: string | null;
+}
+
 export interface InvoiceOrder {
   orderNumber: string;
   createdAt: Date | string;
@@ -56,6 +74,9 @@ export interface InvoiceOrder {
   shipping: number | null;
   discount: number | null;
   coupon?: { code: string } | null;
+  loyaltyDiscount?: number | null;
+  loyaltyRewardApplied?: boolean | null;
+  loyalty?: LoyaltyInvoiceInfo;
   user?: {
     name?: string | null;
     email?: string;
@@ -66,6 +87,39 @@ export interface InvoiceOrder {
 interface Props {
   order: InvoiceOrder;
   business: InvoiceBusiness;
+}
+
+function LoyaltyBadgeIcon({
+  icon,
+  image,
+  name,
+  color,
+  size = 18,
+}: {
+  icon?: string | null;
+  image?: string | null;
+  name?: string;
+  color?: string;
+  size?: number;
+}) {
+  if (image) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return (
+      <img src={image} alt={name ?? "loyalty"} style={{ width: size, height: size, objectFit: "contain" }} />
+    );
+  }
+  switch (icon) {
+    case "crown":
+      return <span style={{ fontSize: size, lineHeight: 1 }}>&#9819;</span>;
+    case "star":
+      return <span style={{ fontSize: size, lineHeight: 1 }}>&#11088;</span>;
+    case "gift":
+      return <span style={{ fontSize: size, lineHeight: 1 }}>&#127873;</span>;
+    case "trending":
+      return <span style={{ fontSize: size, lineHeight: 1 }}>&#128200;</span>;
+    default:
+      return <span style={{ fontSize: size, lineHeight: 1 }}>&#127941;</span>;
+  }
 }
 
 const PRIMARY = "var(--t-primary)";
@@ -593,6 +647,13 @@ export default function InvoiceDocument({ order, business }: Props) {
               value={`-${formatCurrency(discount)}`}
             />
           )}
+          {order.loyaltyDiscount ? (
+            <SummaryRow
+              label="Loyalty Reward"
+              value={`-${formatCurrency(order.loyaltyDiscount)}`}
+              strong
+            />
+          ) : null}
           <div
             className="mt-1.5 rounded-lg px-4 py-2"
             style={{
@@ -612,6 +673,69 @@ export default function InvoiceDocument({ order, business }: Props) {
           </div>
         </div>
       </div>
+
+      {/* ── Loyalty program block ── */}
+      {order.loyalty &&
+        (order.loyalty.rewardApplied || order.loyalty.inProgress) && (
+          <div
+            className="mx-6 mt-4 flex items-center gap-4 rounded-lg border p-3 sm:mx-8"
+            style={{
+              background: PRIMARY_SOFT,
+              borderColor: PRIMARY_BORDER,
+              borderLeft: `3px solid ${PRIMARY}`,
+            }}
+          >
+            {order.loyalty.badgeImage || order.loyalty.badgeIcon ? (
+              <span
+                className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full"
+                style={
+                  order.loyalty.badgeBackgroundColor
+                    ? { background: order.loyalty.badgeBackgroundColor }
+                    : undefined
+                }
+              >
+                <LoyaltyBadgeIcon
+                  icon={order.loyalty.badgeIcon}
+                  image={order.loyalty.badgeImage}
+                  name={order.loyalty.badgeName}
+                  color={order.loyalty.badgeTextColor}
+                />
+              </span>
+            ) : null}
+            <div className="flex-1">
+              <p
+                className="text-xs font-black uppercase tracking-wider"
+                style={{ color: PRIMARY_TEXT }}
+              >
+                Loyalty Program
+              </p>
+              {order.loyalty.rewardApplied && (
+                <p className="mt-0.5 text-sm text-gray-800">
+                  {order.loyalty.badgeName
+                    ? `${order.loyalty.badgeName} reward applied — saved `
+                    : "Reward applied — saved "}
+                  <span className="font-black">
+                    {formatCurrency(order.loyalty.loyaltyDiscount ?? 0)}
+                  </span>
+                  .
+                </p>
+              )}
+              {order.loyalty.inProgress && (
+                <p className="mt-0.5 text-sm text-gray-800">
+                  {order.loyalty.purchaseCount ?? 0} of{" "}
+                  {order.loyalty.requiredPurchases ?? 0} qualifying purchase
+                  {order.loyalty.requiredPurchases === 1 ? "" : "s"}{" "}
+                  collected toward your next reward.
+                </p>
+              )}
+              {order.loyalty.badgeDescription && (
+                <p className="mt-0.5 text-xs text-gray-600">
+                  {order.loyalty.badgeDescription}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
 
       {/* ── Return / Replacement policy ── */}
       {policy.length > 0 && (

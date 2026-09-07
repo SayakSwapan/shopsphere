@@ -142,6 +142,8 @@ model order {
   gst      Decimal? @db.Decimal(10,2)
   shipping Decimal? @db.Decimal(10,2)
   discount Decimal? @default(0) @db.Decimal(10,2)
+  // Combo offer savings applied to the product base (pre-GST) for this order.
+  comboDiscount Decimal? @default(0) @db.Decimal(10,2)
 
   // Loyalty reward fields — snapshot of the loyalty config at time of order
   loyaltyPurchaseCounted Boolean  @default(false)
@@ -198,6 +200,8 @@ model orderitem {
   costPriceSnapshot    Decimal? @db.Decimal(10, 2)
   gstSnapshot          Decimal? @db.Decimal(10, 2)
   discountSnapshot     Decimal? @db.Decimal(10, 2) @default(0)
+  // Per-unit combo offer discount snapshot (pre-GST) captured at order time.
+  comboDiscountSnapshot Decimal? @db.Decimal(10, 2) @default(0)
 
   // Offline / POS sale snapshots (populated only for OFFLINE orders). These
   // preserve the exact financial picture at the moment of the sale so later
@@ -331,6 +335,7 @@ metaKeywords    String?   @db.Text
   productQueries  productQuery[]
   printTypes      ProductPrintType[]
   sportsFeaturedProduct SportsFeaturedProduct[]
+  comboOffers     ComboOfferItem[]
   @@index([categoryId])
 }
 
@@ -1817,4 +1822,77 @@ model LoyaltyAuditLog {
   @@index([customerId])
   @@index([adminId])
   @@index([createdAt])
+}
+
+// ─── Combo Offers (Buy 1 Get 1 / Bundle) ──────────────────────────────────
+
+enum ComboOfferType {
+  // Pay only for the most expensive item; the rest are free.
+  BOGO
+  // Admin sets an exact bundle price for the whole set of products.
+  FIXED_PRICE
+}
+
+enum ComboOfferApply {
+  BOTH
+  ONLINE
+  OFFLINE
+}
+
+/**
+ * A bundle offer an admin creates. It links together 2+ products (same or
+ * different categories). The customer sees it on the home page in two styled
+ * sections and on the product details page for every product it contains.
+ *
+ * Pricing (resolved at checkout by `lib/combo-offer.ts`):
+ *  - BOGO          -> pay the single most expensive item, the rest are free.
+ *  - FIXED_PRICE   -> pay exactly `customPrice` for the whole set.
+ *
+ * `applyOnline` / `applyOffline` decide whether the pricing should be honoured
+ * for online checkout and/or offline (POS) sales.
+ */
+model ComboOffer {
+  id          String           @id @default(cuid())
+  slug        String           @unique
+  title       String
+  headline    String?
+  description String?          @db.Text
+  badge       String?                  // e.g. "BOGO", "Combo", "Bundle"
+  imageUrl    String?
+  comboType   ComboOfferType   @default(BOGO)
+  customPrice Decimal?         @db.Decimal(10, 2) // required when comboType = FIXED_PRICE
+  apply       ComboOfferApply  @default(BOTH)
+  isActive    Boolean          @default(true)
+  sortOrder   Int              @default(0)
+  highlightOnHome Boolean      @default(true)
+  startDate   DateTime?
+  endDate     DateTime?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  items ComboOfferItem[]
+
+  @@index([isActive])
+  @@index([sortOrder])
+  @@index([apply])
+  @@index([highlightOnHome])
+}
+
+/**
+ * A product (with a required quantity) that is part of a combo offer.
+ */
+model ComboOfferItem {
+  id           String     @id @default(cuid())
+  comboOfferId String
+  productId    String
+  quantity     Int        @default(1)
+  sortOrder    Int        @default(0)
+  createdAt    DateTime   @default(now())
+
+  comboOffer ComboOffer @relation(fields: [comboOfferId], references: [id], onDelete: Cascade)
+  product    product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([comboOfferId, productId], map: "ComboOfferItem_comboOfferId_productId_key")
+  @@index([comboOfferId])
+  @@index([productId])
 }

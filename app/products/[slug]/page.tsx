@@ -15,6 +15,7 @@ import ProductSectionAccordion from "@/components/store/product/section-accordio
 import NavbarWrapper from "@/components/store/layout/navbar-wrapper";
 import ShareButton from "@/components/store/share-button";
 import SizeChartButton from "@/components/store/product/size-chart-button";
+import PdpComboSection from "@/components/store/product/pdp-combo-section";
 import { ArrowUpRight, RotateCcw, RefreshCw, Info, Home, Star, LayoutGrid, Sparkles } from "lucide-react";
 
 interface Props {
@@ -586,6 +587,9 @@ export default async function ProductPage({ params }: Props) {
           currentProductId={product.id}
         />
       </section>
+
+      {/* COMBO OFFERS containing this product */}
+      <PdpComboSection productId={product.id} />
 
       <Footer />
     </div>

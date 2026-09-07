@@ -61,6 +61,10 @@ interface CartItem {
   customPrintNumber?: boolean;
   customPrintImage?: boolean;
   printTypes?: StorePrintType[];
+  comboBase?: number;
+  comboDiscountUnit?: number;
+  comboFree?: boolean;
+  comboLabel?: string;
   product: {
     id: string;
     name: string;
@@ -72,9 +76,12 @@ interface CartItem {
 }
 
 function inclPrice(item: CartItem): number {
-  const base = item.product.salePrice && item.product.salePrice > 0
-    ? item.product.salePrice
-    : item.product.sellingPrice;
+  const base =
+    item.comboBase !== undefined
+      ? item.comboBase
+      : item.product.salePrice && item.product.salePrice > 0
+      ? item.product.salePrice
+      : item.product.sellingPrice;
   const rate = item.product.gstPercentage || 0;
   return Number((base + (base * rate) / 100).toFixed(2));
 }
@@ -86,6 +93,7 @@ interface Props {
   shipping: number;
   gst: number;
   total: number;
+  comboSavings?: number;
   pincodeInfo: PincodeInfo | null;
   restrictedItems?: RestrictedItem[];
   totalWeightGrams: number;
@@ -99,6 +107,7 @@ export default function CheckoutClient({
   subtotal,
   shipping: initialShipping,
   gst,
+  comboSavings = 0,
   pincodeInfo: initialPincodeInfo,
   restrictedItems: initialRestrictedItems = [],
   totalWeightGrams,
@@ -1065,6 +1074,16 @@ export default function CheckoutClient({
                         <p className={`checkout-mini-meta mt-0.5 text-xs text-text-muted-2`}>
                           {item.variantSize ? `Size ${item.variantSize}` : ""} &times; {item.quantity}
                         </p>
+                        {item.comboLabel && (
+                          <p className="checkout-mini-meta mt-0.5 text-xs font-bold text-primary">
+                            {item.comboLabel}
+                          </p>
+                        )}
+                        {item.comboFree && (
+                          <p className="checkout-mini-meta mt-0.5 text-xs font-bold text-primary">
+                            FREE — Combo deal
+                          </p>
+                        )}
                         {printUnitIncl > 0 && (
                           <p className="checkout-mini-meta mt-0.5 text-xs font-semibold text-primary">
                             incl. print ₹{printUnitIncl.toFixed(2)}
@@ -1129,6 +1148,13 @@ export default function CheckoutClient({
                 <span className="text-text-muted-1">Item Total</span>
                 <span className="font-medium text-text-body">₹{itemTotalInclGst.toLocaleString("en-IN")}</span>
               </div>
+
+              {comboSavings > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-text-muted-1">Combo Savings</span>
+                  <span className="font-medium" style={{ color: "var(--t-success)" }}>-₹{comboSavings.toLocaleString("en-IN")}</span>
+                </div>
+              )}
 
               {couponDiscount > 0 && (
                 <div className="flex justify-between text-sm">

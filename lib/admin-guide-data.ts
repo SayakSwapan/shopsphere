@@ -9,6 +9,7 @@ import {
   Package2,
   Users2,
   TicketPercent,
+  BadgePercent,
   DollarSign,
   CalendarClock,
   Mail,
@@ -912,6 +913,166 @@ export const guideSections: GuideSection[] = [
             title: "Promotion is live",
             detail:
               "Customers see the banners and can apply the coupon at checkout. Track results and expiry dates.",
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: "combo-offers",
+    icon: BadgePercent,
+    title: "Combo Offers",
+    description:
+      "Bundle 2+ products into a deal that prices automatically across the online store and the offline counter.",
+    steps: [
+      {
+        title: "Open Combo Offers",
+        detail:
+          "Go to Combo Offers in the sidebar. The list shows every offer with its status, pricing type and sort order. Click 'Add Combo Offer' to create a new one, or edit an existing offer to change its products or pricing.",
+      },
+      {
+        title: "Design the offer",
+        detail:
+          "Enter a title (shown on the storefront) plus an optional headline, badge (e.g. 'Best Value'), description, and an image. Toggle 'Highlight on Home' to feature the offer in the homepage hero and grid sections.",
+      },
+      {
+        title: "Pick the pricing type",
+        detail:
+          "BOGO — the customer pays for only the single most expensive item in the set and every other product is free. FIXED_PRICE — the customer pays exactly the custom price for the whole set. Prices follow project conventions: the engine works in pre-GST bases and GST is added on top at checkout.",
+      },
+      {
+        title: "Add the products",
+        detail:
+          "Search products and add at least 2 of them to the set, each with a quantity of 1 or more. Set customPrice only for FIXED_PRICE offers. The live preview shows the resulting per-product discounted prices and total savings.",
+      },
+      {
+        title: "Choose where it applies",
+        detail:
+          "BOTH — active everywhere. ONLINE — applies only to carts/checkout on the storefront. OFFLINE — applies only at the offline counter. Online combos price automatically whenever the cart satisfies the set; offline combos are fixed, no-bargain prices at the POS.",
+      },
+      {
+        title: "Set availability & publish",
+        detail:
+          "Lower sortOrder values appear first. Keep the offer active and set optional start/end dates to schedule it. Save to publish — active combos appear on the homepage, on product pages, and at checkout automatically.",
+      },
+    ],
+    tips: [
+      "The combo discount is applied to product bases only — custom-print personalization charges are always billed at full price.",
+      "When several combos are satisfied at once, larger sets take priority; surplus stock beyond what a combo needs stays at full price.",
+      "For offline counter staff: offline combo lines are locked and cannot be negotiated — the admin-managed price is final.",
+      "Add a badge and highlight the offer on home so customers actually discover it. Combo pages are linked from /products?combo=<slug>.",
+      "A single product can appear in multiple offers — whichever set the cart fully satisfies is what applies.",
+    ],
+    diagram: [
+      {
+        title: "Online checkout — automatic combo pricing",
+        nodes: [
+          {
+            type: "start",
+            title: "Customer adds products",
+            detail:
+              "Items land in the cart. Every active combo (scope ONLINE/BOTH, within its dates) is a candidate.",
+            phase: "Cart",
+          },
+          {
+            type: "decision",
+            title: "Cart satisfies a combo?",
+            detail:
+              "The engine checks each offer's required products and quantities against the available units.",
+            branches: [
+              {
+                label: "No",
+                tone: "slate",
+                outcome: "All items are billed at their normal effective price.",
+              },
+              {
+                label: "Yes",
+                tone: "green",
+                outcome: "Large sets first, then by sortOrder — units are reserved for each combo.",
+              },
+            ],
+          },
+          {
+            type: "action",
+            title: "Price reserved units",
+            detail:
+              "BOGO: pay the single priciest reserved unit, all others ₹0. FIXED_PRICE: distribute the custom price across the set proportionally.",
+            phase: "Pricing",
+          },
+          {
+            type: "action",
+            title: "Recalculate totals",
+            detail:
+              "Cart, checkout, Razorpay and COD order flows all recompute subtotal, GST and combo savings from the discounted bases — never from the browser.",
+          },
+          {
+            type: "action",
+            title: "Save snapshots",
+            detail:
+              "The order stores the total combo savings and each line stores its per-unit combo discount so the historical picture stays exact.",
+          },
+          {
+            type: "end",
+            title: "Customer pays the combo price",
+            detail:
+              "Free lines show as FREE with a combo badge; savings are shown in the cart, checkout and order summary.",
+            phase: "Done",
+          },
+        ],
+      },
+      {
+        title: "Offline counter — fixed no-bargain combos",
+        nodes: [
+          {
+            type: "start",
+            title: "Open Create Offline Sale",
+            detail:
+              "At /admin/offline-sales/new. The Combo Offers panel lists every active OFFLINE/BOTH combo.",
+            phase: "POS",
+          },
+          {
+            type: "action",
+            title: "Add products or a combo",
+            detail:
+              "Use the product grid or click 'Add to Sale' on a combo card to pull its products into the sale automatically.",
+          },
+          {
+            type: "decision",
+            title: "Sale satisfies a combo?",
+            detail:
+              "The server re-derives pricing from the database items in the same way as online.",
+            branches: [
+              {
+                label: "No",
+                tone: "slate",
+                outcome: "Normal counter pricing applies — the admin can still bargain to the last selling price.",
+              },
+              {
+                label: "Yes",
+                tone: "green",
+                outcome: "Combo-covered lines are locked with a green 'Combo — fixed price' badge and are not negotiable.",
+              },
+            ],
+          },
+          {
+            type: "action",
+            title: "Charge combo price",
+            detail:
+              "Priced GST-inclusive exactly like online. The price-floor (last selling price) check is bypassed for combo lines — the admin-managed price is final.",
+            phase: "Pricing",
+          },
+          {
+            type: "action",
+            title: "Save snapshot",
+            detail:
+              "Order stores comboDiscount; each line stores its comboDiscountSnapshot. Stock is deducted only when the sale is completed.",
+          },
+          {
+            type: "end",
+            title: "Sale completed",
+            detail:
+              "The customer pays the fixed combo price — no bargaining on those lines.",
+            phase: "Done",
           },
         ],
       },

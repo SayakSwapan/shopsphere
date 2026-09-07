@@ -15,6 +15,8 @@ import {
   ChevronUp,
   Award,
   Gift,
+  Sparkles,
+  Lock,
 } from "lucide-react";
 
 import { formatCurrency } from "@/lib/format";
@@ -61,6 +63,31 @@ interface LineItem {
   variantId: string;
   customerPrice: number;
   quantity: number;
+}
+
+interface ComboProduct extends ProductOption {
+  comboQuantity: number;
+}
+
+interface ComboOfferOption {
+  id: string;
+  title: string;
+  headline?: string | null;
+  description?: string | null;
+  badge?: string | null;
+  imageUrl?: string | null;
+  comboType: "BOGO" | "FIXED_PRICE";
+  customPrice: number | null;
+  products: ComboProduct[];
+}
+
+interface ComboPriceInfo {
+  productId: string;
+  unitBase: number;
+  unitPriceInclGst: number;
+  discountUnitBase: number;
+  combos: { offerId: string; title: string }[];
+  isFree: boolean;
 }
 
 type CustomerMode = "existing" | "walkin";
@@ -146,6 +173,15 @@ export default function NewOfflineSale() {
   const [items, setItems] = useState<LineItem[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
+  const [combos, setCombos] = useState<ComboOfferOption[]>([]);
+  const [combosLoading, setCombosLoading] = useState(true);
+  const [comboPrices, setComboPrices] = useState<Record<string, ComboPriceInfo>>({});
+  const [comboApplied, setComboApplied] = useState<
+    { offerId: string; title: string; badge?: string | null }[]
+  >([]);
+  const [comboSavingsInclGst, setComboSavingsInclGst] = useState(0);
+  const [comboPreviewLoading, setComboPreviewLoading] = useState(false);
+
   const [useLoyaltyReward, setUseLoyaltyReward] = useState(false);
   const [loyalty, setLoyalty] = useState<{
     hasAvailableReward: boolean;
@@ -206,6 +242,25 @@ export default function NewOfflineSale() {
     return () => clearTimeout(t);
   }, []);
 
+  // Active combo offers for the no-bargain panel (OFFLINE scope only).
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/admin/offline/combo-options")
+      .then((r) => r.json())
+      .then((d) => {
+        if (!cancelled && d.success) setCombos(d.combos || []);
+      })
+      .catch(() => {
+        if (!cancelled) setCombos([]);
+      })
+      .finally(() => {
+        if (!cancelled) setCombosLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const customerQuery = async (q: string) => {
     setCustomerSearch(q);
     if (q.trim().length < 2) {
@@ -258,6 +313,60 @@ export default function NewOfflineSale() {
       totalQty += it.quantity;
     }
     return { subtotal, gst, total: subtotal + gst, totalProfit, totalCost, totalQty, itemCount: items.length };
+  }, [items]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Live combo pricing preview: whenever the sale changes, ask the server for
+  // the exact combo-managed prices (mirrors what the order API will charge).
+  // Combo-covered lines are locked — the customer cannot bargain those.
+  const comboRefreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (comboRefreshTimer.current) clearTimeout(comboRefreshTimer.current);
+    comboRefreshTimer.current = setTimeout(async () => {
+      setComboPreviewLoading(true);
+      try {
+        const list = items
+          .filter((it) => it.product)
+          .map((it) => ({
+            productId: it.product!.id,
+            variantId: it.variantId || null,
+            customerSellingPrice: selectionPrice(it),
+            quantity: it.quantity,
+          }));
+        const res = await fetch("/api/admin/offline/combo-pricing", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ items: list }),
+        });
+        const data = await res.json();
+        if (!data.success) return;
+        const byId: Record<string, ComboPriceInfo> = data.result.byProductId || {};
+        setComboPrices(byId);
+        setComboApplied(data.result.applied || []);
+        setComboSavingsInclGst(data.result.comboSavingsInclGst || 0);
+        setItems((prev) =>
+          prev.map((it) => {
+            if (!it.product) return it;
+            const cp = byId[it.product.id];
+            if (!cp) return it;
+            const target =
+              cp.isFree || (cp.combos && cp.combos.length > 0)
+                ? cp.unitPriceInclGst
+                : null;
+            if (target == null || Math.abs(it.customerPrice - target) < 0.001) {
+              return it;
+            }
+            return { ...it, customerPrice: target };
+          })
+        );
+      } catch {
+        // Preview is best-effort; the backend re-validates on submit.
+      } finally {
+        setComboPreviewLoading(false);
+      }
+    }, 350);
+    return () => {
+      if (comboRefreshTimer.current) clearTimeout(comboRefreshTimer.current);
+    };
   }, [items]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Load the selected customer's loyalty status whenever the cart total changes
@@ -392,6 +501,46 @@ export default function NewOfflineSale() {
     setItems((prev) => prev.filter((it) => it.key !== key));
   };
 
+  const addComboToSale = (combo: ComboOfferOption) => {
+    setItems((prev) => {
+      const next = [...prev];
+      for (const p of combo.products) {
+        const fallbackVariant = p.variants.length === 1 ? p.variants[0].id : "";
+        const existing = next.find(
+          (it) => it.product?.id === p.id && it.variantId === fallbackVariant
+        );
+        if (existing) {
+          next[next.indexOf(existing)] = {
+            ...existing,
+            quantity: existing.quantity + Math.max(1, p.comboQuantity),
+          };
+        } else {
+          const { comboQuantity: _cq, ...product } = p;
+          void _cq;
+          next.push({
+            key: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+            product: { ...product },
+            variantId: fallbackVariant,
+            customerPrice: onlineIncl(p),
+            quantity: Math.max(1, p.comboQuantity),
+          });
+        }
+      }
+      return next;
+    });
+    toast.success(
+      `Combo "${combo.title}" added — price is fixed, no negotiation.`
+    );
+  };
+
+  const comboInfoFor = (item: LineItem): ComboPriceInfo | undefined =>
+    item.product ? comboPrices[item.product.id] : undefined;
+
+  const isComboLocked = (item: LineItem): boolean => {
+    const cp = comboInfoFor(item);
+    return !!cp && (cp.isFree || (cp.combos && cp.combos.length > 0));
+  };
+
   const availableStock = (item: LineItem): number => {
     if (!item.product) return 0;
     if (item.variantId) {
@@ -412,7 +561,12 @@ export default function NewOfflineSale() {
       if (it.quantity > availableStock(it))
         return `Insufficient stock available for "${it.product.name}". Available: ${availableStock(it)}.`;
       const price = selectionPrice(it);
-      if (it.product.lastSellingPrice != null && price < it.product.lastSellingPrice) {
+      const comboLocked = isComboLocked(it);
+      if (
+        it.product.lastSellingPrice != null &&
+        !comboLocked &&
+        price < it.product.lastSellingPrice
+      ) {
         return `Selling price cannot be lower than the minimum allowed offline selling price of ${formatCurrency(it.product.lastSellingPrice)} for "${it.product.name}".`;
       }
     }
@@ -610,6 +764,86 @@ export default function NewOfflineSale() {
           </button>
         </section>
 
+        {/* ── Combo Offers: fixed admin-managed price — customer cannot negotiate ── */}
+        <section className="rounded-2xl border border-slate-700 bg-[#111827] p-4 sm:p-6">
+          <SectionHeader
+            icon={<Sparkles size={18} className="text-amber-300" />}
+            title="Combo Offers"
+            right={
+              comboPreviewLoading ? (
+                <Loader2 size={15} className="animate-spin text-amber-300" />
+              ) : (
+                <span className="rounded-full bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-300">
+                  {combosLoading ? "Loading..." : `${combos.length} active`}
+                </span>
+              )
+            }
+          />
+
+          {comboApplied.length > 0 && (
+            <div className="mb-3 flex flex-wrap gap-2">
+              {comboApplied.map((c) => (
+                <span
+                  key={c.offerId}
+                  className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-400"
+                >
+                  <Lock size={11} />
+                  Combo applied: {c.title}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {combos.length === 0 ? (
+            <p className="py-6 text-center text-sm text-slate-500">
+              {combosLoading
+                ? "Loading combo offers..."
+                : "No active combo offers. Create one from the Combo Offers section."}
+            </p>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {combos.map((c) => (
+                <div key={c.id} className="rounded-xl border border-amber-600/30 bg-[#0F172A] p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        {c.badge && (
+                          <span className="rounded bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-bold text-amber-300">
+                            {c.badge}
+                          </span>
+                        )}
+                        <span className="truncate text-sm font-bold text-white">{c.title}</span>
+                      </div>
+                      <div className="mt-0.5 text-[11px] text-slate-400">
+                        {c.comboType === "FIXED_PRICE"
+                          ? `Fixed price ₹${Number(c.customPrice ?? 0).toLocaleString("en-IN")} + GST for the whole set`
+                          : "Buy the set — pay for the most expensive, rest free"}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => addComboToSale(c)}
+                      className="shrink-0 rounded-lg bg-amber-600/80 px-3 py-1.5 text-[11px] font-semibold text-white transition hover:bg-amber-500"
+                    >
+                      Add to Sale
+                    </button>
+                  </div>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {c.products.map((p) => (
+                      <span
+                        key={p.id}
+                        className="rounded bg-slate-800 px-2 py-0.5 text-[11px] text-slate-300"
+                      >
+                        {p.name} × {p.comboQuantity}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
         {/* ── Right column: Cart + Customer + Payment ── */}
         <div className="space-y-6 xl:col-span-2">
           {/* Cart */}
@@ -633,8 +867,10 @@ export default function NewOfflineSale() {
                   const p = item.product!;
                   const pricing = pricingFor(item);
                   const stock = availableStock(item);
+                  const comboInfo = comboInfoFor(item);
+                  const comboLocked = isComboLocked(item);
                   const belowMin =
-                    pricing && p.lastSellingPrice != null
+                    !comboLocked && pricing && p.lastSellingPrice != null
                       ? pricing.actualSellingPrice < p.lastSellingPrice
                       : false;
                   return (
@@ -648,6 +884,25 @@ export default function NewOfflineSale() {
                             <span>Min: <span className="text-indigo-300">{p.lastSellingPrice != null ? formatCurrency(p.lastSellingPrice) : "—"}</span></span>
                             <span>GST: <span className="text-slate-200">{p.gstPercentage}%</span></span>
                           </div>
+                          {comboLocked && comboInfo && (
+                            <div className="mt-1.5 flex items-center gap-1.5">
+                              <span
+                                className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold ${
+                                  comboInfo.isFree
+                                    ? "bg-rose-500/10 text-rose-400"
+                                    : "bg-emerald-500/10 text-emerald-400"
+                                }`}
+                              >
+                                <Lock size={10} />
+                                {comboInfo.isFree ? "FREE — Combo" : "Combo — fixed price"}
+                              </span>
+                              {comboInfo.combos.length > 0 && (
+                                <span className="truncate text-[10px] text-slate-500">
+                                  {comboInfo.combos.map((c) => c.title).join(", ")}
+                                </span>
+                              )}
+                            </div>
+                          )}
                         </div>
                         <button
                           type="button"
@@ -716,11 +971,16 @@ export default function NewOfflineSale() {
                             type="number"
                             min={0}
                             step="0.01"
+                            disabled={comboLocked}
                             value={Number.isFinite(item.customerPrice) ? item.customerPrice : ""}
                             onChange={(e) =>
                               updateItem(item.key, { customerPrice: Number(e.target.value) || 0 })
                             }
-                            className={`${inputCls} ${belowMin ? "border-rose-600 text-rose-400" : ""}`}
+                            className={`${inputCls} ${
+                              comboLocked
+                                ? "border-emerald-700 bg-emerald-500/5 text-emerald-300 opacity-90"
+                                : ""
+                            } ${belowMin ? "border-rose-600 text-rose-400" : ""}`}
                           />
                         </div>
                       </div>
@@ -1112,6 +1372,15 @@ export default function NewOfflineSale() {
                 <span className="text-slate-400">Total GST</span>
                 <span className="font-semibold text-white">{formatCurrency(summary.gst)}</span>
               </div>
+              {comboSavingsInclGst > 0 && (
+                <div className="flex items-center justify-between pt-1 text-emerald-400">
+                  <span className="flex items-center gap-1.5">
+                    <Sparkles size={13} />
+                    Combo savings (fixed — no bargaining)
+                  </span>
+                  <span className="font-semibold">{formatCurrency(comboSavingsInclGst)}</span>
+                </div>
+              )}
             </div>
 
             <div className="mt-3 flex items-center justify-between rounded-xl bg-indigo-600/10 px-4 py-3">

@@ -48,7 +48,7 @@ export default async function LoyaltyPage() {
   ]);
 
   return (
-    <div className="min-h-screen bg-bg-page">
+    <div className="min-h-screen bg-bg-page" style={{ fontFamily: "var(--t-font-body)" }}>
       <NavbarWrapper />
 
       <section className="relative overflow-hidden border-b border-border-subtle">

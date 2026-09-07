@@ -4,9 +4,10 @@ import { Package, ShieldCheck, RotateCcw, Truck, PartyPopper } from "lucide-reac
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getEffectivePrice, getGstBreakdown, priceWithGst } from "@/lib/pricing";
+import { getGstBreakdown, priceWithGst } from "@/lib/pricing";
 import { calculateShipping } from "@/lib/shipping";
 import { customizationLetterCharge, customizationUnitPrice, customizationUnitPriceWithGst } from "@/lib/print-pricing";
+import { applyComboPricing } from "@/lib/combo-offer";
 
 import NavbarWrapper from "@/components/store/layout/navbar-wrapper";
 import Footer from "@/components/store/layout/footer";
@@ -49,11 +50,36 @@ export default async function CartPage() {
   const items = cart?.cartitem ?? [];
   const itemCount = items.reduce((t, i) => t + i.quantity, 0);
 
+  // ── Combo pricing ────────────────────────────────────────────────────────
+  // Shared engine resolves active BOGO / fixed-price bundles and returns a
+  // discounted PRE-GST unit base per cart line (custom-print charges are billed
+  // at full price on top, per the combo convention).
+  const comboResult = await applyComboPricing(
+    items.map((item) => ({
+      productId: item.productId,
+      quantity: item.quantity,
+      product: {
+        salePrice: item.product.salePrice,
+        finalPrice: item.product.finalPrice ?? 0,
+        sellingPrice: Number(item.product.sellingPrice),
+        gstPercentage: Number(item.product.gstPercentage) || 0,
+      },
+    })),
+    "ONLINE"
+  );
+
+  const comboByCartItemId = new Map<string, (typeof comboResult.priced)[number]>();
+  items.forEach((item, idx) => {
+    comboByCartItemId.set(item.id, comboResult.priced[idx]);
+  });
+
   let totalSelling = 0;
   let totalGst = 0;
+  let comboSavings = 0;
 
   for (const item of items) {
-    const base = getEffectivePrice(item.product.salePrice, undefined, item.product.sellingPrice);
+    const priced = comboByCartItemId.get(item.id)!;
+    const base = priced.unitBase;
     const { gstAmount } = getGstBreakdown(
       base,
       Number(item.product.gstPercentage) || 0
@@ -69,10 +95,12 @@ export default async function CartPage() {
 
     totalSelling += (base + printUnit) * item.quantity;
     totalGst += (gstAmount + printGst) * item.quantity;
+    comboSavings += priced.comboDiscountUnit * item.quantity;
   }
 
   totalSelling = Math.round(totalSelling * 100) / 100;
   totalGst = Math.round(totalGst * 100) / 100;
+  comboSavings = Math.round(comboSavings * 100) / 100;
 
   const shippingResult = await calculateShipping(
     items.map((item) => ({
@@ -143,39 +171,50 @@ export default async function CartPage() {
           <div className="grid gap-6 sm:gap-8 lg:grid-cols-5">
             {/* ── LEFT: CART ITEMS ── */}
             <div className="space-y-4 lg:col-span-3">
-              {items.map((item) => (
-                <CartItem
-                  key={item.id}
-                  item={{
-                    id: item.id,
-                    quantity: item.quantity,
-                    customization: item.customization as
-                      | {
-                          printTypeId?: string;
-                          printTypeName?: string;
-                          name?: string;
-                          number?: string;
-                          imageUrl?: string;
-                          letters?: number;
-                          pricePerLetter?: number;
-                          designFee?: number;
-                          price?: number;
-                        }
-                      | null
-                      | undefined,
-                    product: {
-                      id: item.product.id,
-                      slug: item.product.slug,
-                      name: item.product.name,
-                      sellingPrice: Number(item.product.sellingPrice),
-                      salePrice: item.product.salePrice ? Number(item.product.salePrice) : undefined,
-                      gstPercentage: Number(item.product.gstPercentage) || 0,
-                      productimage: item.product.productimage,
-                    },
-                    productvariant: item.productvariant,
-                  }}
-                />
-              ))}
+              {items.map((item) => {
+                const priced = comboByCartItemId.get(item.id)!;
+                return (
+                  <CartItem
+                    key={item.id}
+                    item={{
+                      id: item.id,
+                      quantity: item.quantity,
+                      customization: item.customization as
+                        | {
+                            printTypeId?: string;
+                            printTypeName?: string;
+                            name?: string;
+                            number?: string;
+                            imageUrl?: string;
+                            letters?: number;
+                            pricePerLetter?: number;
+                            designFee?: number;
+                            price?: number;
+                          }
+                        | null
+                        | undefined,
+                      product: {
+                        id: item.product.id,
+                        slug: item.product.slug,
+                        name: item.product.name,
+                        sellingPrice: Number(item.product.sellingPrice),
+                        salePrice: item.product.salePrice ? Number(item.product.salePrice) : undefined,
+                        gstPercentage: Number(item.product.gstPercentage) || 0,
+                        productimage: item.product.productimage,
+                      },
+                      productvariant: item.productvariant,
+                    }}
+                    comboBase={priced.unitBase}
+                    comboDiscountUnit={priced.comboDiscountUnit}
+                    comboFree={priced.isFree}
+                    comboLabel={
+                      priced.combos.length > 0
+                        ? priced.combos[0].title
+                        : undefined
+                    }
+                  />
+                );
+              })}
             </div>
 
             {/* ── RIGHT: ORDER SUMMARY ── */}
@@ -198,7 +237,8 @@ export default async function CartPage() {
                 <div className="border-t border-border-subtle px-4 sm:px-6 py-4">
                   <div className="space-y-3 cart-mini-list">
                     {items.map((item) => {
-                      const unit = getEffectivePrice(item.product.salePrice, undefined, item.product.sellingPrice);
+                      const priced = comboByCartItemId.get(item.id)!;
+                      const unit = priced.unitBase;
                       const inclUnit = priceWithGst(unit, Number(item.product.gstPercentage) || 0);
                       const printUnit = customizationUnitPriceWithGst(
                         item.customization as import("@/types/custom-print").CustomPrintData | null,
@@ -223,6 +263,16 @@ export default async function CartPage() {
                                 : ""}{" "}
                               &times; {item.quantity}
                             </p>
+                            {priced.isFree && (
+                              <p className="cart-mini-meta mt-0.5 text-xs font-bold text-primary">
+                                FREE — Combo deal
+                              </p>
+                            )}
+                            {!priced.isFree && priced.comboDiscountUnit > 0 && (
+                              <p className="cart-mini-meta mt-0.5 text-xs font-semibold text-primary">
+                                Combo deal applied
+                              </p>
+                            )}
                             {printUnit > 0 && (
                               <p className="cart-mini-meta mt-0.5 text-xs font-semibold text-primary">
                                 incl. print ₹{printUnit.toFixed(2)}
@@ -249,6 +299,30 @@ export default async function CartPage() {
                       ₹{itemTotalInclGst.toLocaleString("en-IN")}
                     </span>
                   </div>
+
+                  {comboSavings > 0 && (
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-text-muted-1 flex items-center gap-1.5">
+                        <span
+                          className="rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-wider"
+                          style={{
+                            background: "color-mix(in srgb, var(--t-primary) 15%, transparent)",
+                            color: "var(--t-primary)",
+                          }}
+                        >
+                          Combo Savings
+                        </span>
+                        {comboResult.applied.length > 0 && (
+                          <span className="text-xs text-text-muted-2">
+                            {comboResult.applied.map((a) => a.title).join(", ")}
+                          </span>
+                        )}
+                      </span>
+                      <span className="font-bold" style={{ color: "var(--t-success)" }}>
+                        −₹{comboSavings.toLocaleString("en-IN")}
+                      </span>
+                    </div>
+                  )}
 
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-text-muted-1">Delivery</span>

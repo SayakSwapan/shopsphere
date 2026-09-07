@@ -18,6 +18,7 @@ import PromoBanners from "@/components/store/home/promo-banners";
 import SportsFeaturedProducts from "@/components/store/home/sports-featured-products";
 import TrustBar from "@/components/store/home/trust-bar";
 import FeatureCards from "@/components/store/home/feature-cards";
+import ComboDealsSection from "@/components/store/home/combo-deals-section";
 
 export const dynamic = "force-dynamic";
 
@@ -139,6 +140,7 @@ export default async function HomePage(props: { searchParams?: Promise<{ preview
         <HeroSlider banners={banners} />
         <SportsMarquee />
         <SportsCategoryStrip />
+        <ComboDealsSection />
         <SportsFeaturedProducts />
         <SportsPerks />
         <TrustBar />
@@ -158,6 +160,9 @@ export default async function HomePage(props: { searchParams?: Promise<{ preview
       {/* Dynamic Homepage Content */}
       <PromoBanners />
       <FeatureCards />
+
+      {/* Combo Offers — two styled sections */}
+      <ComboDealsSection />
 
       {/* Ethnic: Motif Divider after hero */}
       {isEthnic && <MotifDivider />}

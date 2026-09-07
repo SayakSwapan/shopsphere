@@ -11,6 +11,7 @@ import { customizationLetterCharge, customizationUnitPrice } from "@/lib/print-p
 import { getRestrictedCartItems } from "@/lib/product-deliverability";
 import { createAdminNotification } from "@/lib/notifications";
 import { getLoyaltyProgram, calculateLoyaltyDiscount } from "@/lib/loyalty";
+import { applyComboPricing } from "@/lib/combo-offer";
 
 export async function POST(req: Request) {
   try {
@@ -61,9 +62,32 @@ export async function POST(req: Request) {
 
     let subtotal = 0;
     let gst = 0;
+    let comboSavings = 0;
+
+    // Combo pricing: discounted pre-GST unit base per cart line (custom-print
+    // charges are billed at full price on top).
+    const comboResult = await applyComboPricing(
+      user.cart.cartitem.map((item) => ({
+        productId: item.productId,
+        quantity: item.quantity,
+        product: {
+          salePrice: item.product.salePrice,
+          finalPrice: item.product.finalPrice ?? 0,
+          sellingPrice: Number(item.product.sellingPrice),
+          gstPercentage: Number(item.product.gstPercentage) || 0,
+        },
+      })),
+      "ONLINE"
+    );
+
+    const comboByCartItemId = new Map<string, (typeof comboResult.priced)[number]>();
+    user.cart.cartitem.forEach((item, idx) => {
+      comboByCartItemId.set(item.id, comboResult.priced[idx]);
+    });
 
     for (const item of user.cart.cartitem) {
-      const unitPrice = Number(item.product.salePrice || item.product.sellingPrice);
+      const priced = comboByCartItemId.get(item.id)!;
+      const unitPrice = priced.unitBase;
       const { gstAmount } = getGstBreakdown(unitPrice, Number(item.product.gstPercentage) || 0);
 
       // Custom print charge (pre-GST) is billed per piece, so multiply by qty.
@@ -76,10 +100,12 @@ export async function POST(req: Request) {
 
       subtotal += (unitPrice + printUnit) * item.quantity;
       gst += (gstAmount + printGst) * item.quantity;
+      comboSavings += priced.comboDiscountUnit * item.quantity;
     }
 
     subtotal = Math.round(subtotal * 100) / 100;
     gst = Math.round(gst * 100) / 100;
+    comboSavings = Math.round(comboSavings * 100) / 100;
 
     let discount = 0;
     let shipping = 0;
@@ -160,6 +186,7 @@ export async function POST(req: Request) {
         gst,
         shipping,
         discount,
+        comboDiscount: comboSavings || null,
         couponId: couponId ?? null,
         loyaltyPurchaseCounted: false,
         loyaltyRewardApplied: loyaltyDiscount > 0,
@@ -180,7 +207,8 @@ export async function POST(req: Request) {
     });
 
     for (const item of user.cart.cartitem) {
-      const sellingPrice = Number(item.product.salePrice || item.product.sellingPrice);
+      const priced = comboByCartItemId.get(item.id)!;
+      const sellingPrice = priced.unitBase;
       const costPrice = Number(item.product.costPrice);
       const gstPct = Number(item.product.gstPercentage) || 0;
       const { gstAmount } = getGstBreakdown(sellingPrice, gstPct);
@@ -201,6 +229,7 @@ export async function POST(req: Request) {
           costPriceSnapshot: costPrice,
           gstSnapshot: Math.round(gstAmount * 100) / 100,
           discountSnapshot: item.quantity > 0 ? Math.round((discount / user.cart.cartitem.length) * 100) / 100 : 0,
+          comboDiscountSnapshot: Math.round(priced.comboDiscountUnit * 100) / 100,
           variantSku: item.productvariant?.sku ?? null,
           variantSize: item.productvariant?.size?.sizeName ?? null,
           variantGender: item.productvariant?.gender?.name ?? null,

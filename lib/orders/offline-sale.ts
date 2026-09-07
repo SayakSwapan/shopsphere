@@ -1,9 +1,11 @@
 import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
 import {
+  baseToPriceInclGst,
   calculateOfflineItemPricing,
   validateOfflineSellingPrice,
 } from "@/lib/pricing/offline";
+import { applyComboPricing } from "@/lib/combo-offer";
 import { createAdminNotification } from "@/lib/notifications";
 import {
   countEligiblePurchase,
@@ -101,6 +103,7 @@ type ResolvedItem = {
     costPrice: number;
     gstPercentage: number;
     salePrice: number;
+    finalPrice: number;
     sellingPrice: number;
     lastSellingPrice: number | null;
     onlineSellingPrice: number;
@@ -123,6 +126,7 @@ async function resolveItem(
       sellingPrice: true,
       lastSellingPrice: true,
       lastSellingProfitPercentage: true,
+      finalPrice: true,
       stock: true,
     },
   });
@@ -160,12 +164,121 @@ async function resolveItem(
       gstPercentage: Number(product.gstPercentage) || 0,
       salePrice: Number(product.salePrice),
       sellingPrice: Number(product.sellingPrice),
+      finalPrice: Number(product.finalPrice),
       lastSellingPrice: Number(product.lastSellingPrice),
       onlineSellingPrice,
     },
     variant,
     availableStock,
   };
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Combo offer support.
+//
+// When the sale's items fully satisfy an ACTIVE combo (scope OFFLINE / BOTH),
+// the combo-managed price applies AUTOMATICALLY — the customer cannot bargain
+// those lines down. Prices are converted to the offline GST-INCLUSIVE
+// convention via `baseToPriceInclGst` (the combo engine works in pre-GST
+// bases, mirroring the online flow).
+// ────────────────────────────────────────────────────────────────────────────
+
+export interface OfflineComboPriceInfo {
+  productId: string;
+  /** Combo-managed PRE-GST unit base charged for this line. */
+  unitBase: number;
+  /** GST-inclusive unit price charged at the counter (fixed — no bargaining). */
+  unitPriceInclGst: number;
+  /** Per-unit combo savings on the product base (pre-GST). */
+  discountUnitBase: number;
+  /** Combos this product satisfies (for display). */
+  combos: { offerId: string; title: string }[];
+  isFree: boolean;
+}
+
+export interface OfflineComboAdjustmentResult {
+  byProductId: Record<string, OfflineComboPriceInfo>;
+  applied: { offerId: string; title: string; badge?: string | null }[];
+  /** Total combo savings (pre-GST product base). */
+  comboSavingsBase: number;
+  /** GST-inclusive equivalent of the savings (POS display). */
+  comboSavingsInclGst: number;
+}
+
+type ResolvedLine = { resolved: ResolvedItem; line: OfflineLineItemInput };
+
+async function resolveLines(
+  lines: OfflineLineItemInput[]
+): Promise<ResolvedLine[]> {
+  return Promise.all(
+    lines.map(async (line) => ({ resolved: await resolveItem(line), line }))
+  );
+}
+
+async function computeOfflineComboAdjustmentsFromResolved(
+  resolvedLines: ResolvedLine[]
+): Promise<OfflineComboAdjustmentResult> {
+  if (resolvedLines.length === 0) {
+    return {
+      byProductId: {},
+      applied: [],
+      comboSavingsBase: 0,
+      comboSavingsInclGst: 0,
+    };
+  }
+
+  const itemsInput = resolvedLines.map(({ resolved, line }) => ({
+    productId: line.productId,
+    quantity: line.quantity,
+    product: {
+      salePrice: resolved.product.salePrice,
+      finalPrice: resolved.product.finalPrice,
+      sellingPrice: resolved.product.sellingPrice,
+      gstPercentage: resolved.product.gstPercentage,
+    },
+  }));
+
+  const res = await applyComboPricing(itemsInput, "OFFLINE");
+
+  const byProductId: Record<string, OfflineComboPriceInfo> = {};
+  let comboSavingsInclGst = 0;
+
+  res.priced.forEach((priced, idx) => {
+    const line = resolvedLines[idx];
+    if (!line) return;
+    const productId = line.line.productId;
+    const gst = line.resolved.product.gstPercentage;
+    byProductId[productId] = {
+      productId,
+      unitBase: priced.unitBase,
+      unitPriceInclGst: round2(baseToPriceInclGst(priced.unitBase, gst)),
+      discountUnitBase: priced.comboDiscountUnit,
+      combos: priced.combos,
+      isFree: priced.isFree,
+    };
+    comboSavingsInclGst +=
+      round2(baseToPriceInclGst(priced.comboDiscountUnit, gst)) *
+      (line.line.quantity || 0);
+  });
+
+  return {
+    byProductId,
+    applied: res.applied,
+    comboSavingsBase: round2(res.comboSavings),
+    comboSavingsInclGst: round2(comboSavingsInclGst),
+  };
+}
+
+/**
+ * Public helper — resolves products server-side and returns the combo-managed
+ * per-product prices for a set of offline lines. Used both by the offline order
+ * service (authoritative) and the POS UI preview endpoint (display only).
+ */
+export async function computeOfflineComboAdjustments(
+  lines: OfflineLineItemInput[]
+): Promise<OfflineComboAdjustmentResult> {
+  const resolvedLines = await resolveLines(lines);
+  return computeOfflineComboAdjustmentsFromResolved(resolvedLines);
 }
 
 async function resolveShippingCode(customer: OfflineCustomerInput): Promise<{
@@ -263,13 +376,44 @@ async function createOrderAndItems(opts: {
   }
 
   // --- Server-side resolution + validation (never trust the client) ---
-  const resolved: { resolved: ResolvedItem; line: OfflineLineItemInput; pricing: ReturnType<typeof calculateOfflineItemPricing> }[] =
-    [];
+  const resolvedBase = await resolveLines(input.items);
 
-  for (const line of input.items) {
-    const r = await resolveItem(line);
+  // Quantity sanity + stock checks run before pricing; the price-floor check
+  // happens after combo pricing is known (combo-managed prices are fixed).
+  for (const { resolved: r, line } of resolvedBase) {
+    if (!Number.isFinite(line.quantity) || line.quantity <= 0) {
+      throw new OfflineSaleError(
+        `Quantity must be greater than 0 for "${r.product.name}".`
+      );
+    }
+    if (line.quantity > r.availableStock) {
+      throw new OfflineSaleError(
+        `Insufficient stock available for "${r.product.name}". Available: ${r.availableStock}.`
+      );
+    }
+  }
+
+  // Combo offers auto-apply (OFFLINE scope): when the sale's items satisfy an
+  // active combo, the admin-managed combo price is charged — those lines are
+  // not bargainable below it.
+  const comboAdjust =
+    await computeOfflineComboAdjustmentsFromResolved(resolvedBase);
+
+  const resolved: {
+    resolved: ResolvedItem;
+    line: OfflineLineItemInput;
+    pricing: ReturnType<typeof calculateOfflineItemPricing>;
+    combo?: OfflineComboPriceInfo;
+  }[] = [];
+
+  for (const { resolved: r, line } of resolvedBase) {
+    const combo = comboAdjust.byProductId[line.productId];
+    const comboApplied = combo && combo.combos.length > 0 ? combo : undefined;
+
     const pricing = calculateOfflineItemPricing({
-      actualSellingPrice: line.customerSellingPrice,
+      actualSellingPrice: comboApplied
+        ? comboApplied.unitPriceInclGst
+        : line.customerSellingPrice,
       costPrice: r.product.costPrice,
       gstPercentage: r.product.gstPercentage,
       quantity: line.quantity,
@@ -277,33 +421,24 @@ async function createOrderAndItems(opts: {
       onlineSellingPrice: r.product.onlineSellingPrice,
     });
 
-    // Quantity > 0
-    if (!Number.isFinite(line.quantity) || line.quantity <= 0) {
-      throw new OfflineSaleError(
-        `Quantity must be greater than 0 for "${r.product.name}".`
-      );
-    }
-
-    // Customer selling price >= last selling price + price not negative
+    // Price cannot be negative.
     if (!Number.isFinite(pricing.actualSellingPrice) || pricing.actualSellingPrice < 0) {
       throw new OfflineSaleError("Price cannot be negative.");
     }
-    const check = validateOfflineSellingPrice({
-      customerSellingPrice: pricing.actualSellingPrice,
-      lastSellingPrice: r.product.lastSellingPrice,
-    });
-    if (!check.valid) {
-      throw new OfflineSaleError(check.message!);
+
+    // Admin-managed combo prices may sit below the offline floor — that is the
+    // whole point of a no-bargain combo — so the floor check is skipped there.
+    if (!comboApplied) {
+      const check = validateOfflineSellingPrice({
+        customerSellingPrice: pricing.actualSellingPrice,
+        lastSellingPrice: r.product.lastSellingPrice,
+      });
+      if (!check.valid) {
+        throw new OfflineSaleError(check.message!);
+      }
     }
 
-    // Stock check
-    if (line.quantity > r.availableStock) {
-      throw new OfflineSaleError(
-        `Insufficient stock available for "${r.product.name}". Available: ${r.availableStock}.`
-      );
-    }
-
-    resolved.push({ resolved: r, line, pricing });
+    resolved.push({ resolved: r, line, pricing, combo: comboApplied });
   }
 
   const paymentMethod = input.paymentMethod;
@@ -376,6 +511,8 @@ async function createOrderAndItems(opts: {
         gst: round2(gst),
         shipping,
         discount,
+        comboDiscount:
+          comboAdjust.comboSavingsBase > 0 ? comboAdjust.comboSavingsBase : null,
         loyaltyPurchaseCounted: false,
         loyaltyRewardApplied: loyaltyDiscount > 0,
         loyaltyRewardId,
@@ -405,7 +542,7 @@ async function createOrderAndItems(opts: {
       },
     });
 
-    for (const { resolved: r, line, pricing } of resolved) {
+    for (const { resolved: r, line, pricing, combo } of resolved) {
       // Validate stock BEFORE write to avoid negative stock (draft skipped).
       if (isComplete) {
         if (line.quantity > r.availableStock) {
@@ -428,6 +565,9 @@ async function createOrderAndItems(opts: {
           costPriceSnapshot: pricing.costPrice,
           gstSnapshot: pricing.gstAmount,
           discountSnapshot: 0,
+          comboDiscountSnapshot: combo
+            ? round2(combo.discountUnitBase)
+            : 0,
           lastSellingPriceAtSale: pricing.lastSellingPrice,
           actualSellingPrice: pricing.actualSellingPrice,
           gstPercentageAtSale: pricing.gstPercentage,

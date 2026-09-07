@@ -1,0 +1,313 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Combo Offer pricing engine
+//
+// A combo offer bundles 2+ products (same or different categories). When a
+// customer's cart fully contains every product of an active combo (respecting
+// the required quantities), the combo price is applied automatically across the
+// whole checkout pipeline (cart page, checkout page, payment + COD order APIs).
+//
+// Pricing rules (mirror of `lib/pricing.ts` conventions — stored prices are the
+// PRE-GST taxable base and GST is added on top):
+//   • BOGO         — pay only the single most expensive item, all others free.
+//   • FIXED_PRICE  — pay exactly `customPrice` for the whole set.
+//
+// The combo discount is applied ONLY to the product base. Custom-print
+// personalization charges are always billed at full price (they are add-on
+// services independent of the product itself).
+//
+// If a cart item is shared between the combo group and extra quantity, only the
+// reserved quantity gets the discount; the surplus is charged at full price.
+// ─────────────────────────────────────────────────────────────────────────────
+
+import { prisma } from "@/lib/prisma";
+import { getEffectivePrice, getGstBreakdown } from "@/lib/pricing";
+
+export type ComboApply = "BOTH" | "ONLINE" | "OFFLINE";
+
+export interface ComboPricedItem {
+  /** Original cart item (Prisma cartitem with .product) — typed loosely to keep this engine reusable. */
+  cartitem: Record<string, unknown> & { product: Record<string, unknown> };
+  /** Effective PRE-GST unit base after the combo discount (excludes print charges). */
+  unitBase: number;
+  /** Per-unit combo savings applied to the product base (pre-GST). */
+  comboDiscountUnit: number;
+  /** Ids/titles of combos this item is part of (for display). */
+  combos: { offerId: string; title: string }[];
+  /** True when this exact line should be shown as "free" (BOGO zero price). */
+  isFree: boolean;
+}
+
+export interface ComboPricingResult {
+  priced: ComboPricedItem[];
+  /** Sum of line product totals (pre-GST), after combo discount. */
+  subtotal: number;
+  /** Sum of GST over the discounted product bases. */
+  gst: number;
+  /** Total combo savings (pre-GST, product base only). */
+  comboSavings: number;
+  /** Combos that were satisfied and applied to this cart. */
+  applied: { offerId: string; title: string; badge?: string | null }[];
+}
+
+/** Maps the apply enum to online/offline applicability. */
+export function comboAppliesTo(apply: ComboApply, orderType: "ONLINE" | "OFFLINE"): boolean {
+  if (apply === "BOTH") return true;
+  if (apply === "ONLINE") return orderType === "ONLINE";
+  if (apply === "OFFLINE") return orderType === "OFFLINE";
+  return false;
+}
+
+/**
+ * Loads every active combo offer with its items (products include the price
+ * fields needed for pricing). Shared so all callers fetch identical data.
+ */
+export async function getActiveComboOffers() {
+  const now = new Date();
+  return prisma.comboOffer.findMany({
+    where: {
+      isActive: true,
+      AND: [
+        { OR: [{ startDate: null }, { startDate: { lte: now } }] },
+        { OR: [{ endDate: null }, { endDate: { gte: now } }] },
+      ],
+    },
+    include: {
+      items: {
+        include: {
+          product: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              sellingPrice: true,
+              salePrice: true,
+              finalPrice: true,
+              gstPercentage: true,
+              productimage: { orderBy: { createdAt: "asc" as const }, take: 1 },
+            },
+          },
+        },
+      },
+    },
+    orderBy: { sortOrder: "asc" },
+  });
+}
+
+/**
+ * True (implicit Prisma shape) the engine needs from each product:
+ * @returns the effective PRE-GST unit base for a product.
+ */
+function productBase(product: Record<string, unknown>): number {
+  return getEffectivePrice(
+    (product as { salePrice?: unknown }).salePrice,
+    (product as { finalPrice?: unknown }).finalPrice,
+    (product as { sellingPrice?: unknown }).sellingPrice
+  );
+}
+
+/**
+ * Core engine: given cart items and an order type, returns per-cartitem priced
+ * unit bases with combo discounts applied, plus the aggregate subtotal, GST and
+ * combo savings.
+ *
+ * @param items            cart items (each: { productId, quantity, product }).
+ * @param orderType        "ONLINE" | "OFFLINE" — filters apply scope.
+ * @param combos           optional pre-fetched combos (avoids re-querying).
+ * @param isOnline         legacy alias; prefer orderType.
+ */
+export async function applyComboPricing(
+  items: { productId: string; quantity: number; product: Record<string, unknown> }[],
+  orderType: "ONLINE" | "OFFLINE",
+  combos?: Awaited<ReturnType<typeof getActiveComboOffers>>
+): Promise<ComboPricingResult> {
+  const allCombos = combos ?? (await getActiveComboOffers());
+
+  // Normalise every cart item to individual "units" so we can reserve exact
+  // quantities toward combos even when the cart has surplus of a product.
+  const units: {
+    idx: number;
+    productId: string;
+    base: number;
+    reserved?: boolean;
+  }[] = [];
+  const baseByProduct = new Map<string, number>();
+  items.forEach((item, idx) => {
+    const base = productBase(item.product);
+    baseByProduct.set(item.productId, base);
+    for (let i = 0; i < item.quantity; i++) {
+      units.push({ idx, productId: item.productId, base });
+    }
+  });
+
+  // Determine which combos are fully satisfied and reserve the needed units.
+  // Combos with more items (larger sets) take priority; ties broken by sortOrder.
+  const satisfiable = allCombos
+    .filter((c) => comboAppliesTo(c.apply as ComboApply, orderType))
+    .map((c) => {
+      const need = new Map<string, number>();
+      c.items.forEach((it) => need.set(it.productId, (need.get(it.productId) ?? 0) + it.quantity));
+      const available = new Map<string, number>();
+      units.forEach((u) => {
+        if (!u.reserved) available.set(u.productId, (available.get(u.productId) ?? 0) + 1);
+      });
+      let ok = true;
+      need.forEach((q, pid) => {
+        if ((available.get(pid) ?? 0) < q) ok = false;
+      });
+      return { combo: c, need, ok, size: c.items.reduce((s, it) => s + it.quantity, 0) };
+    })
+    .filter((s) => s.ok && s.combo.items.length >= 2)
+    .sort((a, b) => b.size - a.size || a.combo.sortOrder - b.combo.sortOrder);
+
+  const appliedReservations: {
+    combo: (typeof satisfiable)[number]["combo"];
+    reservedUnits: typeof units;
+  }[] = [];
+
+  for (const s of satisfiable) {
+    if (!s.ok) continue;
+    // Check availability of every required product against current reservations.
+    const reserved: typeof units = [];
+    const avail = new Map<string, number>();
+    units.forEach((u) => {
+      if (!u.reserved) avail.set(u.productId, (avail.get(u.productId) ?? 0) + 1);
+    });
+    let stillOk = true;
+    s.need.forEach((q, pid) => {
+      if ((avail.get(pid) ?? 0) < q) stillOk = false;
+    });
+    if (!stillOk) continue;
+    // Greedy-reserve units for this combo.
+    s.need.forEach((q, pid) => {
+      let taken = 0;
+      for (const u of units) {
+        if (taken >= q) break;
+        if (u.reserved) continue;
+        if (u.productId === pid) {
+          u.reserved = true;
+          reserved.push(u);
+          taken++;
+        }
+      }
+    });
+    appliedReservations.push({ combo: s.combo, reservedUnits: reserved });
+  }
+
+  // Now compute per-cartitem combo discounts. Each reserved unit knows its
+  // original cart line (`idx`), so discounts are attributed to the right line
+  // even when a product appears in multiple cart lines (different variants).
+  const comboByUnit: {
+    idx: number;
+    comboOfferId: string;
+    comboTitle: string;
+    badge?: string | null;
+    base: number;
+    pay: number;
+  }[] = [];
+
+  for (const ar of appliedReservations) {
+    const totalPrice = ar.reservedUnits.reduce((s, u) => s + u.base, 0);
+
+    if (ar.combo.comboType === "BOGO") {
+      // Pay only the single most expensive reserved unit; all others are free.
+      const maxBase = Math.max(...ar.reservedUnits.map((u) => u.base), 0);
+      for (const u of ar.reservedUnits) {
+        comboByUnit.push({
+          idx: u.idx,
+          comboOfferId: ar.combo.id,
+          comboTitle: ar.combo.title,
+          badge: ar.combo.badge,
+          base: u.base,
+          pay: u.base >= maxBase ? u.base : 0,
+        });
+      }
+      continue;
+    }
+
+    // FIXED_PRICE: pay exactly customPrice (fall back to the priciest unit if
+    // unset/invalid); distribute the resulting discount proportionally.
+    const custom = Number(ar.combo.customPrice);
+    const target =
+      Number.isFinite(custom) && custom > 0 ? custom : Math.max(...ar.reservedUnits.map((u) => u.base), 0);
+    const capped = Math.min(target, totalPrice);
+    const discount = Math.max(0, totalPrice - capped);
+    for (const u of ar.reservedUnits) {
+      const share =
+        totalPrice <= 0 ? 0 : Math.round(((u.base / totalPrice) * discount + Number.EPSILON) * 100) / 100;
+      comboByUnit.push({
+        idx: u.idx,
+        comboOfferId: ar.combo.id,
+        comboTitle: ar.combo.title,
+        badge: ar.combo.badge,
+        base: u.base,
+        pay: Math.max(0, Math.round((u.base - share + Number.EPSILON) * 100) / 100),
+      });
+    }
+  }
+
+  // Aggregate per original cartitem.
+  const perItem = items.map((item, idx) => {
+    const myUnits = units.filter((u) => u.idx === idx && u.productId === item.productId);
+    const totalBase = myUnits.reduce((s, u) => s + u.base, 0);
+    const lineCombos = comboByUnit.filter((cb) => cb.idx === idx);
+    const discountedBase = lineCombos.reduce((s, cb) => s + cb.pay, 0);
+
+    // Surplus units — the customer has more of this product than a combo needs —
+    // stay at full price.
+    const reservedCount = lineCombos.length;
+    const surplusBase = units
+      .filter((u) => u.idx === idx && u.productId === item.productId && !u.reserved)
+      .reduce((s, u) => s + u.base, 0);
+
+    const effectiveBase = discountedBase + surplusBase;
+    const totalFullBase =
+      totalBase +
+      units
+        .filter((u) => u.idx === idx && u.productId === item.productId && !u.reserved)
+        .reduce((s, u) => s + u.base, 0);
+
+    const discountUnit =
+      item.quantity > 0 ? (totalFullBase - effectiveBase) / item.quantity : 0;
+    const unitBase = item.quantity > 0 ? effectiveBase / item.quantity : 0;
+
+    const combos = lineCombos
+      .map((cb) => ({ offerId: cb.comboOfferId, title: cb.comboTitle }))
+      .filter((v, i, a) => a.findIndex((x) => x.offerId === v.offerId) === i);
+
+    // BOGO "free" = this line's discounted unit base is zero.
+    const isFree = unitBase <= 0 && reservedCount > 0;
+
+    return {
+      cartitem: item as unknown as ComboPricedItem["cartitem"],
+      unitBase: Math.round(unitBase * 100) / 100,
+      comboDiscountUnit: Math.round(discountUnit * 100) / 100,
+      combos,
+      isFree,
+    };
+  });
+
+  let subtotal = 0;
+  let gst = 0;
+  let comboSavings = 0;
+
+  for (const p of perItem) {
+    const qty = Number((p.cartitem as { quantity?: unknown }).quantity) || 0;
+    const gstRate = Number((p.cartitem.product as { gstPercentage?: unknown }).gstPercentage) || 0;
+    const { gstAmount } = getGstBreakdown(p.unitBase, gstRate);
+    subtotal += p.unitBase * qty;
+    gst += gstAmount * qty;
+    comboSavings += p.comboDiscountUnit * qty;
+  }
+
+  subtotal = Math.round(subtotal * 100) / 100;
+  gst = Math.round(gst * 100) / 100;
+  comboSavings = Math.round(comboSavings * 100) / 100;
+
+  const applied = appliedReservations.map((ar) => ({
+    offerId: ar.combo.id,
+    title: ar.combo.title,
+    badge: ar.combo.badge ?? null,
+  }));
+
+  return { priced: perItem, subtotal, gst, comboSavings, applied };
+}

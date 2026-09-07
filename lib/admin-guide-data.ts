@@ -938,12 +938,12 @@ export const guideSections: GuideSection[] = [
       {
         title: "Pick the pricing type",
         detail:
-          "BOGO — the customer pays for only the single most expensive item in the set and every other product is free. FIXED_PRICE — the customer pays exactly the custom price for the whole set. Prices follow project conventions: the engine works in pre-GST bases and GST is added on top at checkout.",
+          "BOGO — the customer pays for the N most expensive items in the set ('Pay For') and the rest of the set is free. Classic 'Buy 1 Get 1' = 2 items with Pay For 1; 'Buy 2 Get 1' = 3 items with Pay For 2. FIXED_PRICE — the customer pays exactly the custom price for the whole set. Prices follow project conventions: the engine works in pre-GST bases and GST is added on top at checkout.",
       },
       {
         title: "Add the products",
         detail:
-          "Search products and add at least 2 of them to the set, each with a quantity of 1 or more. Set customPrice only for FIXED_PRICE offers. The live preview shows the resulting per-product discounted prices and total savings.",
+          "A list of available products loads automatically — search or just click to add at least 2 of them to the set, each with a quantity of 1 or more. Set customPrice only for FIXED_PRICE offers. The live preview shows the resulting per-product discounted prices and total savings. The 'Free Items' box keeps the buy/get math honest: 'Pay For' must stay below the total set size so at least one item is free.",
       },
       {
         title: "Choose where it applies",
@@ -953,7 +953,7 @@ export const guideSections: GuideSection[] = [
       {
         title: "Set availability & publish",
         detail:
-          "Lower sortOrder values appear first. Keep the offer active and set optional start/end dates to schedule it. Save to publish — active combos appear on the homepage, on product pages, and at checkout automatically.",
+          "Lower sortOrder values appear first. Keep the offer active and set optional start/end dates to schedule it. Save to publish — active combos appear on the homepage, on product pages, and at checkout automatically. Dates are saved in your local timezone.",
       },
     ],
     tips: [
@@ -962,6 +962,7 @@ export const guideSections: GuideSection[] = [
       "For offline counter staff: offline combo lines are locked and cannot be negotiated — the admin-managed price is final.",
       "Add a badge and highlight the offer on home so customers actually discover it. Combo pages are linked from /products?combo=<slug>.",
       "A single product can appear in multiple offers — whichever set the cart fully satisfies is what applies.",
+      "The Combo Offers list also tracks finances: combo revenue, the discount given, every offer's performance, and the online vs offline split — cancelled orders are excluded.",
     ],
     diagram: [
       {
@@ -996,7 +997,7 @@ export const guideSections: GuideSection[] = [
             type: "action",
             title: "Price reserved units",
             detail:
-              "BOGO: pay the single priciest reserved unit, all others ₹0. FIXED_PRICE: distribute the custom price across the set proportionally.",
+              "BOGO: pay the buyCount most expensive reserved units, all others ₹0. FIXED_PRICE: distribute the custom price across the set proportionally.",
             phase: "Pricing",
           },
           {

@@ -238,6 +238,22 @@ export async function POST(req: Request) {
       });
     }
 
+    // Combo finance tracking: snapshot the applied offers onto the order so the
+    // admin can attribute combo revenue / discount per offer (and online share).
+    if (comboResult.applied.length > 0) {
+      await prisma.comboSale.createMany({
+        data: comboResult.applied.map((a) => ({
+          id: randomUUID(),
+          orderId: order.id,
+          orderType: "ONLINE",
+          comboOfferId: a.offerId,
+          title: a.title,
+          unitsSold: a.unitsSold,
+          discountBase: a.discountBase,
+        })),
+      });
+    }
+
     await prisma.paymentTransaction.create({
       data: {
         id: randomUUID(),

@@ -8,7 +8,7 @@
 //
 // Pricing rules (mirror of `lib/pricing.ts` conventions — stored prices are the
 // PRE-GST taxable base and GST is added on top):
-//   • BOGO         — pay only the single most expensive item, all others free.
+//   • BOGO         — pay the `buyCount` most expensive items, all others free.
 //   • FIXED_PRICE  — pay exactly `customPrice` for the whole set.
 //
 // The combo discount is applied ONLY to the product base. Custom-print
@@ -46,7 +46,15 @@ export interface ComboPricingResult {
   /** Total combo savings (pre-GST, product base only). */
   comboSavings: number;
   /** Combos that were satisfied and applied to this cart. */
-  applied: { offerId: string; title: string; badge?: string | null }[];
+  applied: {
+    offerId: string;
+    title: string;
+    badge?: string | null;
+    /** Pre-GST discount this single offer gave (its reserved set only). */
+    discountBase: number;
+    /** Number of product units this offer covered (for finance tracking). */
+    unitsSold: number;
+  }[];
 }
 
 /** Maps the apply enum to online/offline applicability. */
@@ -205,44 +213,85 @@ export async function applyComboPricing(
     pay: number;
   }[] = [];
 
-  for (const ar of appliedReservations) {
-    const totalPrice = ar.reservedUnits.reduce((s, u) => s + u.base, 0);
+  type ReservedUnit = (typeof units)[number];
+  type AppliedReservation = (typeof appliedReservations)[number];
 
-    if (ar.combo.comboType === "BOGO") {
-      // Pay only the single most expensive reserved unit; all others are free.
-      const maxBase = Math.max(...ar.reservedUnits.map((u) => u.base), 0);
-      for (const u of ar.reservedUnits) {
-        comboByUnit.push({
-          idx: u.idx,
-          comboOfferId: ar.combo.id,
-          comboTitle: ar.combo.title,
-          badge: ar.combo.badge,
-          base: u.base,
-          pay: u.base >= maxBase ? u.base : 0,
-        });
-      }
-      continue;
+  // Price one combo's reserved set. Returns, aligned with `units`, the unit
+  // price the customer effectively pays for each reserved unit.
+  //   • BOGO         — pay the `buyCount` MOST expensive units, the rest free
+  //                    (buyCount defaults to 1 = classic "buy 1 get N-1 free").
+  //   • FIXED_PRICE  — pay exactly `customPrice` (fall back to the priciest
+  //                    unit if unset/invalid); the resulting discount is
+  //                    distributed proportionally across the set.
+  const priceReservedSet = (
+    combo: AppliedReservation["combo"],
+    reservedUnits: ReservedUnit[]
+  ): { idx: number; base: number; pay: number }[] => {
+    const totalPrice = reservedUnits.reduce((s, u) => s + u.base, 0);
+
+    if (combo.comboType === "BOGO") {
+      const buyCount = Math.min(
+        Math.max(1, Number(combo.buyCount) || 1),
+        reservedUnits.length
+      );
+      const sorted = [...reservedUnits].sort((a, b) => b.base - a.base);
+      const paySet = new Set<ReservedUnit>(sorted.slice(0, buyCount));
+      return reservedUnits.map((u) => ({
+        idx: u.idx,
+        base: u.base,
+        pay: paySet.has(u) ? u.base : 0,
+      }));
     }
 
-    // FIXED_PRICE: pay exactly customPrice (fall back to the priciest unit if
-    // unset/invalid); distribute the resulting discount proportionally.
-    const custom = Number(ar.combo.customPrice);
+    const custom = Number(combo.customPrice);
     const target =
-      Number.isFinite(custom) && custom > 0 ? custom : Math.max(...ar.reservedUnits.map((u) => u.base), 0);
+      Number.isFinite(custom) && custom > 0
+        ? custom
+        : Math.max(...reservedUnits.map((u) => u.base), 0);
     const capped = Math.min(target, totalPrice);
     const discount = Math.max(0, totalPrice - capped);
-    for (const u of ar.reservedUnits) {
+    return reservedUnits.map((u) => {
       const share =
-        totalPrice <= 0 ? 0 : Math.round(((u.base / totalPrice) * discount + Number.EPSILON) * 100) / 100;
-      comboByUnit.push({
+        totalPrice <= 0
+          ? 0
+          : Math.round(((u.base / totalPrice) * discount + Number.EPSILON) * 100) / 100;
+      return {
         idx: u.idx,
+        base: u.base,
+        pay: Math.max(0, Math.round((u.base - share + Number.EPSILON) * 100) / 100),
+      };
+    });
+  };
+
+  const appliedStats: {
+    offerId: string;
+    title: string;
+    badge?: string | null;
+    discountBase: number;
+    unitsSold: number;
+  }[] = [];
+
+  for (const ar of appliedReservations) {
+    const pays = priceReservedSet(ar.combo, ar.reservedUnits);
+    const totalBase = ar.reservedUnits.reduce((s, u) => s + u.base, 0);
+    const paid = pays.reduce((s, p) => s + p.pay, 0);
+    for (const p of pays) {
+      comboByUnit.push({
+        idx: p.idx,
         comboOfferId: ar.combo.id,
         comboTitle: ar.combo.title,
         badge: ar.combo.badge,
-        base: u.base,
-        pay: Math.max(0, Math.round((u.base - share + Number.EPSILON) * 100) / 100),
+        base: p.base,
+        pay: p.pay,
       });
     }
+    appliedStats.push({
+      offerId: ar.combo.id,
+      title: ar.combo.title,
+      badge: ar.combo.badge ?? null,
+      discountBase: Math.round((totalBase - paid + Number.EPSILON) * 100) / 100,
+      unitsSold: pays.length,
+    });
   }
 
   // Aggregate per original cartitem.
@@ -303,10 +352,12 @@ export async function applyComboPricing(
   gst = Math.round(gst * 100) / 100;
   comboSavings = Math.round(comboSavings * 100) / 100;
 
-  const applied = appliedReservations.map((ar) => ({
-    offerId: ar.combo.id,
-    title: ar.combo.title,
-    badge: ar.combo.badge ?? null,
+  const applied = appliedStats.map((a) => ({
+    offerId: a.offerId,
+    title: a.title,
+    badge: a.badge ?? null,
+    discountBase: a.discountBase,
+    unitsSold: a.unitsSold,
   }));
 
   return { priced: perItem, subtotal, gst, comboSavings, applied };

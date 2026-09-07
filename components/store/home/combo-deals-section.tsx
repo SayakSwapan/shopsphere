@@ -24,6 +24,7 @@ interface ComboWithItems {
   imageUrl: string | null;
   comboType: "BOGO" | "FIXED_PRICE";
   customPrice: number | null;
+  buyCount: number;
   items: {
     quantity: number;
     product: {
@@ -43,19 +44,17 @@ interface ComboWithItems {
 // SECTION 1 — "Combo Deals" hero strip
 //
 // Pairs every featured combo with its product line-up and a live price offer:
-// BOGO shows "Pay for 1, Get N free", FIXED_PRICE shows the bundle rate.
+// BOGO shows "Pay for N, Get M free", FIXED_PRICE shows the bundle rate.
 // ─────────────────────────────────────────────────────────────────────────────
 function ComboHero({ combo }: { combo: ComboWithItems }) {
-  const totalNormal = combo.items.reduce(
-    (s, it) => s + baseOf(it.product) * it.quantity,
-    0
-  );
   const count = combo.items.reduce((s, it) => s + it.quantity, 0);
+  const buyCount = Math.min(Math.max(1, Number(combo.buyCount) || 1), count);
+  const freeCount = Math.max(0, count - buyCount);
 
   const offerLine =
     combo.comboType === "FIXED_PRICE" && Number(combo.customPrice) > 0
       ? `Bundle for ${priceWithGst(Number(combo.customPrice), 0).toLocaleString("en-IN")}`
-      : `Pay for 1 · Get ${count - 1} ${count - 1 === 1 ? "item" : "items"} free`;
+      : `Pay for ${buyCount} · Get ${freeCount} ${freeCount === 1 ? "item" : "items"} free`;
 
   return (
     <section className="max-w-7xl mx-auto px-4 sm:px-6 py-10 sm:py-14">
@@ -281,7 +280,7 @@ function ComboGrid({ combos }: { combos: ComboWithItems[] }) {
                 >
                   {combo.comboType === "FIXED_PRICE" && Number(combo.customPrice) > 0
                     ? `₹${Number(combo.customPrice)}`
-                    : "Get free"}
+                    : `Get ${Math.max(0, combo.items.reduce((s, it) => s + it.quantity, 0) - (Math.min(Math.max(1, Number(combo.buyCount) || 1), combo.items.reduce((s, it) => s + it.quantity, 0))))} free`}
                 </span>
               </div>
 

@@ -168,6 +168,7 @@ coupon Coupon? @relation(fields: [couponId], references: [id])
   productQueries productQuery[]
   stockmovement stockmovement[]
   offlinepayment offlinepayment[]
+  comboSales ComboSale[]
   createdBy user? @relation("OrderCreatedBy", fields: [createdById], references: [id])
 
   @@index([userId])
@@ -1824,7 +1825,7 @@ model LoyaltyAuditLog {
   @@index([createdAt])
 }
 
-// ─── Combo Offers (Buy 1 Get 1 / Bundle) ──────────────────────────────────
+// ─── Combo Offers (Buy 1 Get 1 / Buy 2 Get 1 / Bundle) ─────────────────────
 
 enum ComboOfferType {
   // Pay only for the most expensive item; the rest are free.
@@ -1861,6 +1862,11 @@ model ComboOffer {
   imageUrl    String?
   comboType   ComboOfferType   @default(BOGO)
   customPrice Decimal?         @db.Decimal(10, 2) // required when comboType = FIXED_PRICE
+  // BOGO: the number of items the customer pays for — the highest-priced units
+  // are charged and the rest of the set (set size − buyCount) is free. Default
+  // 1 = classic "buy 1 get N−1 free". e.g. a 3-product set with buyCount=2 is
+  // "Buy 2 Get 1 Free".
+  buyCount    Int              @default(1)
   apply       ComboOfferApply  @default(BOTH)
   isActive    Boolean          @default(true)
   sortOrder   Int              @default(0)
@@ -1895,4 +1901,28 @@ model ComboOfferItem {
   @@unique([comboOfferId, productId], map: "ComboOfferItem_comboOfferId_productId_key")
   @@index([comboOfferId])
   @@index([productId])
+}
+
+/**
+ * One row per applied combo offer on a paid/completed order (online or
+ * offline). Powers the admin combo finance tracking — how many times each
+ * offer was applied, how many units it moved and how much discount it gave —
+ * without changing the fixed set of `orderitem` price snapshots.
+ */
+model ComboSale {
+  id          String   @id @default(cuid())
+  orderId     String
+  orderType   String // "ONLINE" | "OFFLINE"
+  comboOfferId String
+  title       String // snapshot of the offer title at sale time
+  unitsSold   Int      @default(0) // set units this offer covered in the order
+  discountBase Decimal  @db.Decimal(10, 2) // pre-GST combo savings for this offer
+  createdAt   DateTime @default(now())
+
+  order order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@index([comboOfferId])
+  @@index([orderType])
+  @@index([comboOfferId, orderType])
 }

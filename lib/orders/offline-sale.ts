@@ -198,7 +198,13 @@ export interface OfflineComboPriceInfo {
 
 export interface OfflineComboAdjustmentResult {
   byProductId: Record<string, OfflineComboPriceInfo>;
-  applied: { offerId: string; title: string; badge?: string | null }[];
+  applied: {
+    offerId: string;
+    title: string;
+    badge?: string | null;
+    discountBase: number;
+    unitsSold: number;
+  }[];
   /** Total combo savings (pre-GST product base). */
   comboSavingsBase: number;
   /** GST-inclusive equivalent of the savings (POS display). */
@@ -614,6 +620,23 @@ async function createOrderAndItems(opts: {
           },
         });
       }
+    }
+
+    // Combo offer finance tracking: snapshot every applied offer onto the
+    // order so the admin Combo Offers finance view can attribute revenue and
+    // discounts per offer over time (per-unit numbers live on the order items).
+    if (comboAdjust.applied.length > 0) {
+      await tx.comboSale.createMany({
+        data: comboAdjust.applied.map((a) => ({
+          id: crypto.randomUUID(),
+          orderId: order.id,
+          orderType: "OFFLINE",
+          comboOfferId: a.offerId,
+          title: a.title,
+          unitsSold: a.unitsSold ?? 0,
+          discountBase: a.discountBase ?? 0,
+        })),
+      });
     }
 
     // Payment transaction record (offline = settled immediately, no gateway).

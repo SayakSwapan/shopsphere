@@ -37,6 +37,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Item quantities must be at least 1" }, { status: 400 });
     }
 
+    const comboType = body.comboType === "FIXED_PRICE" ? "FIXED_PRICE" : "BOGO";
+    const buyCount = Number(body.buyCount) || 1;
+    const totalUnits = items.reduce((s: number, q: number) => s + q, 0);
+    if (comboType === "BOGO" && (buyCount < 1 || buyCount >= totalUnits)) {
+      return NextResponse.json(
+        { error: "For BOGO offers, 'Pay for' must be at least 1 and less than the total items in the set so at least one item is free." },
+        { status: 400 }
+      );
+    }
+
     let slug = slugify(body.title);
     const exists = await prisma.comboOffer.findUnique({ where: { slug } });
     if (exists) slug = `${slug}-${Date.now().toString().slice(-6)}`;
@@ -54,6 +64,7 @@ export async function POST(req: Request) {
           body.comboType === "FIXED_PRICE" && body.customPrice
             ? Number(body.customPrice)
             : null,
+        buyCount: comboType === "BOGO" ? buyCount : 1,
         apply: body.apply || "BOTH",
         isActive: body.isActive ?? true,
         sortOrder: body.sortOrder ?? 0,

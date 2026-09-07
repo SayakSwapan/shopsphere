@@ -40,6 +40,19 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     const existing = await prisma.comboOffer.findUnique({ where: { id } });
     if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+    const comboType = body.comboType === "FIXED_PRICE" ? "FIXED_PRICE" : "BOGO";
+    const buyCount = Number(body.buyCount) || 1;
+    const totalUnits = body.items.reduce(
+      (s: number, it: { quantity: number }) => s + (Number(it.quantity) || 1),
+      0
+    );
+    if (comboType === "BOGO" && (buyCount < 1 || buyCount >= totalUnits)) {
+      return NextResponse.json(
+        { error: "For BOGO offers, 'Pay for' must be at least 1 and less than the total items in the set so at least one item is free." },
+        { status: 400 }
+      );
+    }
+
     let slug = slugify(body.title);
     const dupe = await prisma.comboOffer.findFirst({
       where: { slug, NOT: { id } },
@@ -62,6 +75,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
             body.comboType === "FIXED_PRICE" && body.customPrice
               ? Number(body.customPrice)
               : null,
+          buyCount: comboType === "BOGO" ? buyCount : 1,
           apply: body.apply || "BOTH",
           isActive: body.isActive ?? true,
           sortOrder: body.sortOrder ?? 0,

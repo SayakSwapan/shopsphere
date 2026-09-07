@@ -14,16 +14,20 @@ export async function GET(req: Request) {
   const products = await prisma.product.findMany({
     where: {
       status: true,
-      ...(search ? { name: { contains: search, mode: "insensitive" } } : {}),
+      ...(search
+        ? { OR: [{ name: { contains: search, mode: "insensitive" } }, { slug: search }] }
+        : {}),
     },
     select: {
       id: true,
       name: true,
       slug: true,
       sellingPrice: true,
+      costPrice: true,
       salePrice: true,
       finalPrice: true,
       gstPercentage: true,
+      stock: true,
       category: { select: { name: true } },
       productimage: { orderBy: { createdAt: "asc" as const }, take: 1 },
     },

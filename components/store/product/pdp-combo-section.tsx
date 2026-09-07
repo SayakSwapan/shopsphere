@@ -22,6 +22,7 @@ type PdpCombo = {
   imageUrl: string | null;
   comboType: "BOGO" | "FIXED_PRICE";
   customPrice: number | null;
+  buyCount: number;
   items: {
     quantity: number;
     product: {
@@ -82,10 +83,13 @@ export default async function PdpComboSection({ productId }: { productId: string
             (s, it) => s + baseOf(it.product) * it.quantity,
             0
           );
+          const count = combo.items.reduce((s, it) => s + it.quantity, 0);
+          const buyCount = Math.min(Math.max(1, Number(combo.buyCount) || 1), count);
+          const freeCount = Math.max(0, count - buyCount);
           const dealText =
             combo.comboType === "FIXED_PRICE" && Number(combo.customPrice) > 0
               ? `Bundle for ${priceWithGst(Number(combo.customPrice), 0).toLocaleString("en-IN")}`
-              : "Buy 1 Get 1 — pay priciest, rest free";
+              : `Buy ${buyCount} Get ${freeCount} — pay priciest ${buyCount}, rest free`;
           return (
             <div
               key={combo.id}

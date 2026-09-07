@@ -245,6 +245,22 @@ export async function POST(req: Request) {
       await prisma.product.update({ where: { id: item.productId }, data: { totalSold: { increment: item.quantity }, stock: { decrement: item.quantity } } });
     }
 
+    // Combo finance tracking: snapshot the applied offers onto the order so the
+    // admin can attribute combo revenue / discount per offer (and online share).
+    if (comboResult.applied.length > 0) {
+      await prisma.comboSale.createMany({
+        data: comboResult.applied.map((a) => ({
+          id: randomUUID(),
+          orderId: order.id,
+          orderType: "ONLINE",
+          comboOfferId: a.offerId,
+          title: a.title,
+          unitsSold: a.unitsSold,
+          discountBase: a.discountBase,
+        })),
+      });
+    }
+
     if (couponId && discount > 0) {
       await prisma.couponUsage.create({ data: { couponId, userId: user.id, orderId: order.id } });
       await prisma.coupon.update({ where: { id: couponId }, data: { usedCount: { increment: 1 } } });

@@ -12,9 +12,13 @@ import {
   Search,
   Plus,
   X,
-  Boxes,
   Tag,
   Calendar,
+  Coins,
+  ReceiptText,
+  IndianRupee,
+  PackagePlus,
+  Minus,
 } from "lucide-react";
 import { priceWithGst } from "@/lib/pricing";
 
@@ -23,12 +27,30 @@ interface SelectedProduct {
   name: string;
   slug: string;
   sellingPrice: number;
+  costPrice: number;
   salePrice: number | null;
   finalPrice: number | null;
   gstPercentage: number;
+  stock: number;
   categoryName?: string;
   imageUrl?: string | null;
   quantity: number;
+}
+
+/** datetime-local ("YYYY-MM-DDTHH:mm", browser local time) → UTC ISO string. */
+function toUtcIso(local: string): string {
+  if (!local) return "";
+  const d = new Date(local);
+  return Number.isNaN(d.getTime()) ? "" : d.toISOString();
+}
+
+/** UTC ISO string → datetime-local value in browser local time. */
+function toLocalInput(utcIso: string | null | undefined): string {
+  if (!utcIso) return "";
+  const d = new Date(utcIso);
+  if (Number.isNaN(d.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 interface Props {
@@ -58,6 +80,7 @@ export default function ComboOfferForm({ mode, id }: Props) {
     badge: "",
     imageUrl: "",
     comboType: "BOGO",
+    buyCount: "1",
     customPrice: "",
     apply: "BOTH",
     isActive: true,
@@ -76,35 +99,27 @@ export default function ComboOfferForm({ mode, id }: Props) {
 
   const push = useCallback((v: Partial<typeof form>) => setForm((prev) => ({ ...prev, ...v })), []);
 
-  // Fetch search results (debounced)
-  useEffect(() => {
-    if (mode === "edit" && !items.length && id) return; // editing: wait for initial load
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const runSearch = async (q: string) => {
-    if (!q.trim()) {
-      setSearchResults([]);
-      return;
-    }
     setSearching(true);
     try {
-      const res = await fetch(`/api/admin/combo-offers/products?search=${encodeURIComponent(q)}&take=20`);
+      const res = await fetch(`/api/admin/combo-offers/products?search=${encodeURIComponent(q)}&take=${q.trim() ? 20 : 8}`);
       const data = await res.json();
       if (data.success) {
-        setSearchResults(
-          (data.products || []).map((p: Record<string, unknown>) => ({
-            id: p.id as string,
-            name: p.name as string,
-            slug: p.slug as string,
-            sellingPrice: Number(p.sellingPrice),
-            salePrice: p.salePrice ? Number(p.salePrice) : null,
-            finalPrice: p.finalPrice ? Number(p.finalPrice) : null,
-            gstPercentage: Number(p.gstPercentage) || 0,
-            categoryName: (p.category as { name?: string } | undefined)?.name,
-            imageUrl: (p.productimage as { url?: string }[] | undefined)?.[0]?.url ?? null,
-            quantity: 1,          }))
-        );
+        const list: SelectedProduct[] = (data.products || []).map((p: Record<string, unknown>) => ({
+          id: p.id as string,
+          name: p.name as string,
+          slug: p.slug as string,
+          sellingPrice: Number(p.sellingPrice),
+          costPrice: Number(p.costPrice) || 0,
+          salePrice: p.salePrice ? Number(p.salePrice) : null,
+          finalPrice: p.finalPrice ? Number(p.finalPrice) : null,
+          gstPercentage: Number(p.gstPercentage) || 0,
+          stock: Number(p.stock) || 0,
+          categoryName: (p.category as { name?: string } | undefined)?.name,
+          imageUrl: (p.productimage as { url?: string }[] | undefined)?.[0]?.url ?? null,
+          quantity: 1,
+        }));
+        setSearchResults(list.filter((l) => !items.some((i) => i.id === l.id)));
       }
     } catch {
       setSearchResults([]);
@@ -113,44 +128,119 @@ export default function ComboOfferForm({ mode, id }: Props) {
     }
   };
 
+  // Fetch product search results (debounced). An empty query returns a small
+  // default list so admins can pick products without typing (create mode).
+  useEffect(() => {
+    if (mode === "edit" && !items.length && id) return; // editing: wait for initial load
+    const t = setTimeout(() => {
+      runSearch(search);
+    }, search ? 350 : 0);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search]);
+
   const addProduct = (p: SelectedProduct) => {
     if (items.some((i) => i.id === p.id)) {
       toast.info("Product already added");
       return;
     }
     setItems((prev) => [...prev, { ...p, quantity: 1 }]);
-    setSearch("");
-    setSearchResults([]);
+    setSearchResults((prev) => prev.filter((r) => r.id !== p.id));
   };
 
   const removeProduct = (pid: string) => setItems((prev) => prev.filter((i) => i.id !== pid));
   const setQty = (pid: string, qty: number) =>
     setItems((prev) => prev.map((i) => (i.id === pid ? { ...i, quantity: Math.max(1, qty) } : i)));
 
-  // ── Price preview ──────────────────────────────────────────────────────
-  const preview = (() => {
-    if (items.length < 2) {
-      return { ok: false, normalTotal: 0, pay: 0, message: "Add at least 2 products to see the deal" };
-    }
-    const normalTotal = items.reduce((s, i) => s + effectiveBase(i) * i.quantity, 0);
-    const freeUnits = items.reduce((s, i) => s + (i.quantity > 0 ? i.quantity - (i.quantity >= 1 ? 1 : 0) : 0), 0);
-    if (form.comboType === "BOGO") {
-      const maxBase = items.reduce((s, i) => Math.max(s, effectiveBase(i)), 0);
+  // ── Price breakdown & deal preview ───────────────────────────────────────
+  const breakdown = (() => {
+    const rows = items.map((i) => {
+      const base = effectiveBase(i);
+      const inclUnit = priceWithGst(base, i.gstPercentage);
+      const cost = Number(i.costPrice) || 0;
       return {
-        ok: true,
-        normalTotal,
-        pay: maxBase,
-        message: `Pay ₹${Math.round(maxBase * 100) / 100} (billed GST added on top) — the priciest item; the rest are FREE.`,
+        id: i.id,
+        name: i.name,
+        quantity: i.quantity,
+        gst: i.gstPercentage,
+        imageUrl: i.imageUrl || null,
+        base,
+        inclUnit,
+        lineCost: cost * i.quantity,
+        lineIncl: inclUnit * i.quantity,
+      };
+    });
+    const normalBase = Math.round(rows.reduce((s, r) => s + r.base * r.quantity, 0) * 100) / 100;
+    const normalIncl = Math.round(rows.reduce((s, r) => s + r.lineIncl, 0) * 100) / 100;
+    const totalCost = Math.round(rows.reduce((s, r) => s + r.lineCost, 0) * 100) / 100;
+
+    if (rows.length < 2) {
+      return {
+        ok: false as const,
+        rows,
+        normalBase,
+        normalIncl,
+        totalCost,
+        payBase: 0,
+        savings: 0,
+        savingsPct: 0,
+        freeCount: 0,
+        buyCount: 1,
+        message: "Add at least 2 products to see the deal",
       };
     }
+
+    if (form.comboType === "BOGO") {
+      // Level the set into individual units and pay for the priciest buyCount.
+      const buyCount = Math.min(Math.max(1, Number(form.buyCount) || 1), rows.reduce((s, r) => s + r.quantity, 0));
+      const flat: { base: number; quantity: number; id: string }[] = [];
+      for (const r of rows) {
+        for (let k = 0; k < r.quantity; k++) flat.push({ base: r.base, id: r.id, quantity: r.quantity });
+      }
+      const paidSet = new Set(flat.sort((a, b) => b.base - a.base).slice(0, buyCount));
+      const payBase = flat.reduce((s, u) => s + (paidSet.has(u) ? u.base : 0), 0);
+      const freeUnits = flat.length - buyCount;
+      const savings = Math.round((normalBase - payBase + Number.EPSILON) * 100) / 100;
+      let payLine: string;
+      if (buyCount === 1) payLine = "the single priciest item";
+      else if (buyCount === flat.length - 1) payLine = `all but one item (the ${buyCount} priciest)`;
+      else payLine = `the ${buyCount} priciest item(s)`;
+      return {
+        ok: true as const,
+        rows,
+        normalBase,
+        normalIncl,
+        totalCost,
+        payBase,
+        savings,
+        savingsPct: normalBase > 0 ? Math.round((savings / normalBase) * 100) : 0,
+        freeCount: freeUnits,
+        buyCount,
+        message:
+          `Pay for ${payLine} at ₹${Math.round(payBase * 100) / 100} + GST. ` +
+          (freeUnits === 0
+            ? "No item is left free — add more products or lower the number you pay for."
+            : `All other ${freeUnits} item${freeUnits === 1 ? "" : "s"} are FREE.`),
+      };
+    }
+
     const custom = Number(form.customPrice);
     const customValid = Number.isFinite(custom) && custom > 0;
+    const payBase = customValid ? Math.round(Math.min(custom, normalBase) * 100) / 100 : 0;
+    const savings = Math.round((normalBase - payBase + Number.EPSILON) * 100) / 100;
     return {
-      ok: true,
-      normalTotal,
-      pay: customValid ? Math.min(custom, normalTotal) : normalTotal,
+      ok: true as const,
+      rows,
+      normalBase,
+      normalIncl,
+      totalCost,
+      payBase,
+      savings,
+      savingsPct: normalBase > 0 ? Math.round((savings / normalBase) * 100) : 0,
+      freeCount: 0,
+      buyCount: 1,
       message: customValid
-        ? `Bundle price ₹${Math.round(custom * 100) / 100} — you save ₹${Math.round((normalTotal - Math.min(custom, normalTotal)) * 100) / 100}`
+        ? `Bundle price ₹${payBase} + GST billed on top. You save ₹${savings} (${Math.round((savings / Math.max(1, normalBase)) * 100)}%) against the combined selling price.`
         : "Enter a bundle price to set the custom deal.",
     };
   })();
@@ -203,13 +293,14 @@ export default function ComboOfferForm({ mode, id }: Props) {
           badge: data.badge || "",
           imageUrl: data.imageUrl || "",
           comboType: data.comboType || "BOGO",
+          buyCount: data.comboType !== "FIXED_PRICE" && data.buyCount != null ? String(data.buyCount) : "1",
           customPrice: data.customPrice ? String(data.customPrice) : "",
           apply: data.apply || "BOTH",
           isActive: data.isActive ?? true,
           highlightOnHome: data.highlightOnHome ?? true,
           sortOrder: data.sortOrder ?? 0,
-          startDate: data.startDate ? data.startDate.slice(0, 16) : "",
-          endDate: data.endDate ? data.endDate.slice(0, 16) : "",
+          startDate: toLocalInput(data.startDate),
+          endDate: toLocalInput(data.endDate),
         });
         const loaded: SelectedProduct[] = [];
         for (const it of data.items || []) {
@@ -222,9 +313,11 @@ export default function ComboOfferForm({ mode, id }: Props) {
               name: it.product?.name || p?.name || it.productId,
               slug: it.product?.slug || p?.slug || "",
               sellingPrice: Number(p?.sellingPrice ?? 0),
+              costPrice: Number(p?.costPrice ?? 0),
               salePrice: p?.salePrice ? Number(p.salePrice) : null,
               finalPrice: p?.finalPrice ? Number(p.finalPrice) : null,
               gstPercentage: Number(p?.gstPercentage) || 0,
+              stock: Number(p?.stock) || 0,
               categoryName: p?.category?.name,
               imageUrl: (p?.productimage as { url?: string }[] | undefined)?.[0]?.url ?? null,
               quantity: it.quantity,
@@ -235,9 +328,11 @@ export default function ComboOfferForm({ mode, id }: Props) {
               name: it.product?.name || it.productId,
               slug: "",
               sellingPrice: 0,
+              costPrice: 0,
               salePrice: null,
               finalPrice: null,
               gstPercentage: 0,
+              stock: 0,
               quantity: it.quantity,
             });
           }
@@ -264,6 +359,14 @@ export default function ComboOfferForm({ mode, id }: Props) {
       toast.error("Add at least 2 products to the combo");
       return;
     }
+    if (form.comboType === "BOGO") {
+      const buyCount = Number(form.buyCount) || 1;
+      const totalUnits = items.reduce((s, i) => s + i.quantity, 0);
+      if (buyCount < 1 || buyCount >= totalUnits) {
+        toast.error("For BOGO combos, you must pay for at least 1 item and leave at least 1 item free");
+        return;
+      }
+    }
     if (form.comboType === "FIXED_PRICE" && !(Number(form.customPrice) > 0)) {
       toast.error("Enter a bundle price for FIXED_PRICE combos");
       return;
@@ -272,7 +375,10 @@ export default function ComboOfferForm({ mode, id }: Props) {
     try {
       const payload = {
         ...form,
+        startDate: toUtcIso(form.startDate),
+        endDate: toUtcIso(form.endDate),
         items: items.map((i) => ({ productId: i.id, quantity: i.quantity })),
+        buyCount: Number(form.buyCount) || 1,
       };
       const url = mode === "edit" ? `/api/admin/combo-offers/${id}` : "/api/admin/combo-offers";
       const res = await fetch(url, {
@@ -419,9 +525,9 @@ export default function ComboOfferForm({ mode, id }: Props) {
         </div>
 
         {/* ── Deal type & pricing ── */}
-        <div className="rounded-2xl border border-[#1E293B] bg-[#111827] p-5 space-y-4">
+        <div className="rounded-2xl border border-[#1E293B] bg-[#111827] p-5 space-y-5">
           <h2 className="text-sm font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
-            <Boxes size={15} /> Deal Type & Pricing
+            <Tag size={15} /> Deal Type & Pricing
           </h2>
 
           <div className="grid sm:grid-cols-2 gap-4">
@@ -432,7 +538,7 @@ export default function ComboOfferForm({ mode, id }: Props) {
                 onChange={(e) => push({ comboType: e.target.value })}
                 className={inputCls}
               >
-                <option value="BOGO">Buy 1 Get 1 Free (pay priciest)</option>
+                <option value="BOGO">BOGO — Buy X, Get Y Free (pay X priciest)</option>
                 <option value="FIXED_PRICE">Bundle — fixed price</option>
               </select>
             </div>
@@ -450,46 +556,170 @@ export default function ComboOfferForm({ mode, id }: Props) {
             </div>
           </div>
 
+          {form.comboType === "BOGO" && (
+            <div className="grid sm:grid-cols-3 gap-4">
+              <div>
+                <label className={labelCls}>Pay For (items to charge) *</label>
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={form.buyCount}
+                  onChange={(e) => push({ buyCount: e.target.value })}
+                  className={inputCls}
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <label className={labelCls}>Free Items (auto)</label>
+                <div className="rounded-lg border border-[#1E293B] bg-[#0A0F1E] px-4 py-2.5 text-sm text-slate-300">
+                  {items.length < 2 ? (
+                    "Add products below to calculate"
+                  ) : breakdown.ok && breakdown.freeCount > 0 ? (
+                    <>
+                      You charge <b className="text-amber-400">{breakdown.buyCount}</b> — customer gets{" "}
+                      <b className="text-emerald-400">{breakdown.freeCount} FREE</b>
+                      {breakdown.freeCount === 1 ? " item" : " items"}
+                      {" ("}Buy {breakdown.buyCount} Get {breakdown.freeCount} Free{")"}
+                    </>
+                  ) : (
+                    <span className="text-red-400">
+                      No item is free — add more products or lower the number you pay for.
+                    </span>
+                  )}
+                  <p className="mt-1 text-xs text-slate-500">
+                    The {breakdown.buyCount} most expensive items are charged; the rest of the set is free.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {form.comboType === "FIXED_PRICE" && (
             <div>
-              <label className={labelCls}>Bundle Price (₹) *</label>
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={form.customPrice}
-                onChange={(e) => push({ customPrice: e.target.value })}
-                className={inputCls}
-                placeholder="e.g. 1499"
-              />
+              <label className={labelCls}>Combo Price (₹) — decided by you *</label>
+              <div className="relative">
+                <IndianRupee size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={form.customPrice}
+                  onChange={(e) => push({ customPrice: e.target.value })}
+                  className={`${inputCls} pl-9`}
+                  placeholder="e.g. 1499"
+                />
+              </div>
               <p className="mt-1 text-xs text-slate-500">
-                The exact amount the customer pays for the whole set (billed GST added on top).
+                The price the customer pays for the WHOLE set. GST is billed on top at checkout. Keep it
+                below the combined selling price (₹{Math.round(breakdown.normalIncl * 100) / 100} incl. GST)
+                so the combo creates a real saving.
               </p>
             </div>
           )}
 
-          {/* Live preview */}
+          {/* Price breakup per product */}
+          {items.length > 0 && (
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wider text-amber-400 mb-2 flex items-center gap-2">
+                <ReceiptText size={14} /> Price Breakup — {items.length} product{items.length === 1 ? "" : "s"}
+              </p>
+              <div className="rounded-xl border border-[#1E293B] bg-[#0A0F1E] overflow-x-auto">
+                <table className="w-full text-sm min-w-[560px]">
+                  <thead>
+                    <tr className="text-left text-[10px] uppercase tracking-wider text-slate-500 border-b border-[#1E293B] bg-[#0D1425]">
+                      <th className="px-3 py-2.5 font-semibold">Product</th>
+                      <th className="px-2 py-2.5 font-semibold text-center">Qty</th>
+                      <th className="px-2 py-2.5 font-semibold text-right">Cost Price</th>
+                      <th className="px-2 py-2.5 font-semibold text-right">Selling Incl. GST</th>
+                      <th className="px-3 py-2.5 font-semibold text-right">Line Total</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#1E293B]">
+                    {breakdown.rows.map((r) => (
+                      <tr key={r.id} className="text-slate-300">
+                        <td className="px-3 py-2.5">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            {r.imageUrl ? (
+                              <img src={r.imageUrl} alt="" className="h-8 w-8 rounded-md object-cover border border-[#1E293B]" />
+                            ) : (
+                              <div className="h-8 w-8 rounded-md bg-[#1E293B] flex items-center justify-center text-[9px] text-slate-500">
+                                NA
+                              </div>
+                            )}
+                            <div className="min-w-0">
+                              <p className="text-xs text-white truncate max-w-[180px]">{r.name}</p>
+                              <p className="text-[10px] text-slate-500">GST {Number.isFinite(r.gst) ? r.gst : 0}%</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-2 py-2.5 text-center">{r.quantity}</td>
+                        <td className="px-2 py-2.5 text-right text-slate-400 font-medium">
+                          ₹{Math.round(r.lineCost * 100) / 100}
+                        </td>
+                        <td className="px-2 py-2.5 text-right text-slate-300">
+                          <span className="text-[10px] text-slate-500 block">₹{Math.round(r.inclUnit * 100) / 100}/u</span>
+                        </td>
+                        <td className="px-3 py-2.5 text-right font-semibold text-white">
+                          ₹{Math.round(r.lineIncl * 100) / 100}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="border-t border-[#1E293B] bg-[#0D1425] font-bold text-white">
+                      <td className="px-3 py-2.5 text-[10px] uppercase tracking-wider text-slate-500" colSpan={2}>
+                        Totals
+                      </td>
+                      <td className="px-2 py-2.5 text-right text-xs text-slate-400">₹{Math.round(breakdown.totalCost * 100) / 100}</td>
+                      <td className="px-2 py-2.5 text-right text-[10px] text-slate-500">Worth incl. GST</td>
+                      <td className="px-3 py-2.5 text-right text-amber-300">₹{Math.round(breakdown.normalIncl * 100) / 100}</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Combo deal summary */}
           <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
-            <p className="text-xs font-bold uppercase tracking-wider text-amber-400 mb-2">
-              Live Price Preview
+            <p className="text-xs font-bold uppercase tracking-wider text-amber-400 mb-3 flex items-center gap-2">
+              <IndianRupee size={14} /> Combo Deal Summary
             </p>
-            {!preview.ok ? (
-              <p className="text-sm text-slate-400">{preview.message}</p>
+            {!breakdown.ok ? (
+              <p className="text-sm text-slate-400">{breakdown.message}</p>
             ) : (
-              <div className="space-y-1.5 text-sm">
+              <div className="space-y-2 text-sm">
                 <div className="flex justify-between text-slate-300">
-                  <span>Normal total (all products, GST excluded)</span>
+                  <span>Combined selling price</span>
                   <span className="font-semibold line-through text-slate-500">
-                    ₹{Math.round(preview.normalTotal * 100) / 100}
+                    ₹{Math.round(breakdown.normalBase * 100) / 100}
                   </span>
                 </div>
                 <div className="flex justify-between text-slate-300">
-                  <span>Combo price</span>
-                  <span className="font-black text-amber-300">
-                    ₹{Math.round(preview.pay * 100) / 100}
+                  <span>Incl. GST worth</span>
+                  <span className="font-semibold text-slate-400">
+                    ₹{Math.round(breakdown.normalIncl * 100) / 100}
                   </span>
                 </div>
-                <p className="text-xs text-slate-500 pt-1">{preview.message}</p>
+                <div className="flex justify-between text-slate-300">
+                  <span>{form.comboType === "BOGO" ? `You pay (${breakdown.buyCount} priciest)` : "Bundle price"}</span>
+                  <span className="font-black text-amber-300">
+                    ₹{Math.round(breakdown.payBase * 100) / 100}
+                    <span className="text-[10px] font-semibold text-slate-500 ml-1">+ GST billed</span>
+                  </span>
+                </div>
+                {form.comboType === "BOGO" && breakdown.freeCount > 0 && (
+                  <p className="text-xs text-emerald-400 font-semibold">{breakdown.message}</p>
+                )}
+                <div className="flex justify-between pt-1.5 border-t border-amber-500/15 text-emerald-300 font-semibold">
+                  <span>Customer saves</span>
+                  <span>
+                    ₹{Math.round(breakdown.savings * 100) / 100} ({breakdown.savingsPct}%)
+                  </span>
+                </div>
+                {form.comboType !== "BOGO" && (
+                  <p className="text-xs text-slate-500 pt-1">{breakdown.message}</p>
+                )}
               </div>
             )}
           </div>
@@ -497,9 +727,14 @@ export default function ComboOfferForm({ mode, id }: Props) {
 
         {/* ── Products ── */}
         <div className="rounded-2xl border border-[#1E293B] bg-[#111827] p-5 space-y-4">
-          <h2 className="text-sm font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
-            <Boxes size={15} /> Products in this Combo <span className="text-slate-600">({items.length} added)</span>
-          </h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+              <PackagePlus size={15} /> Products in this Combo
+            </h2>
+            <span className="inline-flex items-center justify-center min-w-7 h-7 px-2 rounded-full bg-amber-500/15 text-amber-300 text-xs font-bold">
+              {items.length}
+            </span>
+          </div>
 
           {/* Search */}
           <div className="relative">
@@ -507,77 +742,167 @@ export default function ComboOfferForm({ mode, id }: Props) {
             <input
               type="text"
               value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                runSearch(e.target.value);
-              }}
+              onChange={(e) => setSearch(e.target.value)}
               className={`${inputCls} pl-10`}
-              placeholder="Search products to add (min 2 required)"
+              placeholder="Search products to add — defaults shown (min 2 required)"
             />
             {searching && <Loader2 size={16} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 animate-spin" />}
           </div>
 
+          {/* Search results — image-first cards */}
           {searchResults.length > 0 && (
-            <div className="rounded-xl border border-[#1E293B] bg-[#0A0F1E] divide-y divide-[#1E293B] max-h-56 overflow-y-auto">
-              {searchResults.map((p) => (
-                <div key={p.id} className="flex items-center gap-3 px-3 py-2.5 hover:bg-white/5">
-                  {p.imageUrl ? (
-                    <img src={p.imageUrl} alt="" className="h-9 w-9 rounded object-cover" />
-                  ) : (
-                    <div className="h-9 w-9 rounded bg-[#1E293B] flex items-center justify-center text-[10px] text-slate-500">
-                      NA
-                    </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-white truncate">{p.name}</p>
-                    <p className="text-xs text-slate-500 truncate">
-                      {p.categoryName || ""} · ₹{Math.round(effectiveBase(p) * 100) / 100}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => addProduct(p)}
-                    className="flex items-center gap-1 rounded-lg bg-amber-500/15 text-amber-300 px-3 py-1.5 text-xs font-semibold hover:bg-amber-500/25"
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+              {searchResults.map((p) => {
+                const isAdded = items.some((i) => i.id === p.id);
+                const base = effectiveBase(p);
+                const mrp = Number(p.sellingPrice) || 0;
+                const onSale = mrp > 0 && Math.abs(base - mrp) > 0.001;
+                const out = Number(p.stock) <= 0;
+                return (
+                  <div
+                    key={p.id}
+                    className={`group relative rounded-xl border bg-[#0A0F1E] overflow-hidden transition-all ${
+                      isAdded ? "border-emerald-500/40" : "border-[#1E293B] hover:border-amber-500/40 hover:shadow-lg hover:shadow-amber-500/5"
+                    }`}
                   >
-                    <Plus size={13} /> Add
-                  </button>
-                </div>
-              ))}
+                    <div className="relative h-28 overflow-hidden bg-[#0D1425]">
+                      {p.imageUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={p.imageUrl}
+                          alt={p.name}
+                          className="h-full w-full object-cover transition duration-500 group-hover:scale-110"
+                        />
+                      ) : (
+                        <div className="h-full w-full flex items-center justify-center text-2xl font-black text-slate-700">
+                          {p.name.trim().charAt(0).toUpperCase() || "?"}
+                        </div>
+                      )}
+                      <div className="absolute inset-0 bg-gradient-to-t from-[#0A0F1E] via-transparent to-transparent" />
+                      <div className="absolute top-2 left-2 right-2 flex items-start justify-between gap-2">
+                        <span className="px-2 py-0.5 rounded-md bg-black/60 backdrop-blur-sm text-[10px] font-semibold text-slate-200 truncate max-w-[60%]">
+                          {p.categoryName || "Uncategorized"}
+                        </span>
+                        <span
+                          className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
+                            out
+                              ? "bg-red-500/70 text-white"
+                              : "bg-emerald-500/70 text-white"
+                          }`}
+                        >
+                          {out ? "Out of stock" : `${p.stock} in stock`}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="p-3 space-y-2">
+                      <p className="text-sm font-semibold text-white truncate">{p.name}</p>
+
+                      <div className="flex items-baseline gap-1.5">
+                        <span className="text-sm font-black text-amber-300">
+                          ₹{Math.round(base * 100) / 100}
+                        </span>
+                        {onSale && (
+                          <span className="text-[10px] text-slate-500 line-through">
+                            ₹{Math.round(mrp * 100) / 100}
+                          </span>
+                        )}
+                        <span className="ml-auto text-[10px] text-slate-500">
+                          + {Math.round(priceWithGst(base, p.gstPercentage) * 100) / 100} incl. GST
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between pt-1.5 border-t border-[#1E293B]">
+                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-500">
+                          <Coins size={11} /> Cost ₹{Math.round(Number(p.costPrice) || 0)}
+                        </span>
+                        <span className="text-[10px] font-semibold text-slate-500">
+                          GST {Math.round(Number(p.gstPercentage) || 0)}%
+                        </span>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => addProduct(p)}
+                        disabled={isAdded}
+                        className={`mt-1 w-full flex items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-bold transition-colors ${
+                          isAdded
+                            ? "bg-emerald-500/10 text-emerald-400 cursor-default"
+                            : "bg-amber-500/15 text-amber-300 hover:bg-amber-500/25"
+                        }`}
+                      >
+                        {isAdded ? (
+                          <>
+                            <span className="inline-block h-2 w-2 rounded-full bg-emerald-400" /> Added to combo
+                          </>
+                        ) : (
+                          <>
+                            <Plus size={13} /> Add to combo
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
 
-          {/* Selected */}
+          {/* Selected items */}
           {items.length === 0 ? (
-            <p className="text-sm text-slate-500 text-center py-6">
-              No products added yet. Search and add at least 2 products.
-            </p>
+            <div className="rounded-xl border border-dashed border-[#1E293B] text-center py-8">
+              <PackagePlus size={22} className="mx-auto text-slate-600 mb-2" />
+              <p className="text-sm text-slate-500">
+                No products added yet. Search above and pick at least 2 products.
+              </p>
+            </div>
           ) : (
             <div className="space-y-2">
-              {items.map((i) => (
-                <div key={i.id} className="flex items-center gap-3 rounded-xl border border-[#1E293B] bg-[#0A0F1E] px-3 py-2.5">
+              {items.map((i, idx) => (
+                <div
+                  key={i.id}
+                  className="flex items-center gap-3 rounded-xl border border-[#1E293B] bg-[#0A0F1E] px-3 py-2.5"
+                >
+                  <span className="flex-shrink-0 h-6 w-6 rounded-full bg-amber-500/15 text-amber-300 text-[11px] font-bold flex items-center justify-center">
+                    {idx + 1}
+                  </span>
                   {i.imageUrl ? (
-                    <img src={i.imageUrl} alt="" className="h-10 w-10 rounded object-cover" />
+                    <img src={i.imageUrl} alt="" className="h-11 w-11 rounded-lg object-cover border border-[#1E293B]" />
                   ) : (
-                    <div className="h-10 w-10 rounded bg-[#1E293B] flex items-center justify-center text-[10px] text-slate-500">
+                    <div className="h-11 w-11 rounded-lg bg-[#1E293B] flex items-center justify-center text-[10px] text-slate-500">
                       NA
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-white truncate">{i.name}</p>
-                    <p className="text-xs text-slate-500">
-                      ₹{Math.round(effectiveBase(i) * 100) / 100} each — incl. GST ₹
-                      {Math.round(priceWithGst(effectiveBase(i), i.gstPercentage) * 100) / 100}
+                    <p className="text-[11px] text-slate-500">
+                      ₹{Math.round(priceWithGst(effectiveBase(i), i.gstPercentage) * 100) / 100} incl. GST
+                      <span className="text-slate-600"> · cost ₹{Math.round(Number(i.costPrice) || 0)}</span>
                     </p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <label className="text-xs text-slate-400">Qty</label>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setQty(i.id, i.quantity - 1)}
+                      disabled={i.quantity <= 1}
+                      className="h-7 w-7 rounded-md border border-[#1E293B] bg-[#111827] text-slate-300 flex items-center justify-center hover:bg-white/5 disabled:opacity-40"
+                    >
+                      <Minus size={13} />
+                    </button>
                     <input
                       type="number"
                       min="1"
                       value={i.quantity}
                       onChange={(e) => setQty(i.id, Number(e.target.value))}
-                      className="w-16 bg-[#0A0F1E] border border-[#1E293B] text-white rounded-lg px-2 py-1.5 text-center text-sm"
+                      className="w-13 h-7 bg-[#0A0F1E] border border-[#1E293B] text-white rounded-md text-center text-sm"
                     />
+                    <button
+                      type="button"
+                      onClick={() => setQty(i.id, i.quantity + 1)}
+                      className="h-7 w-7 rounded-md border border-[#1E293B] bg-[#111827] text-slate-300 flex items-center justify-center hover:bg-white/5"
+                    >
+                      <Plus size={13} />
+                    </button>
                   </div>
                   <button
                     type="button"

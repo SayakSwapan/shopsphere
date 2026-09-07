@@ -78,6 +78,7 @@ interface ComboOfferOption {
   imageUrl?: string | null;
   comboType: "BOGO" | "FIXED_PRICE";
   customPrice: number | null;
+  buyCount: number;
   products: ComboProduct[];
 }
 
@@ -815,9 +816,15 @@ export default function NewOfflineSale() {
                         <span className="truncate text-sm font-bold text-white">{c.title}</span>
                       </div>
                       <div className="mt-0.5 text-[11px] text-slate-400">
-                        {c.comboType === "FIXED_PRICE"
-                          ? `Fixed price ₹${Number(c.customPrice ?? 0).toLocaleString("en-IN")} + GST for the whole set`
-                          : "Buy the set — pay for the most expensive, rest free"}
+                        {c.comboType === "FIXED_PRICE" ? (
+                          `Fixed price ₹${Number(c.customPrice ?? 0).toLocaleString("en-IN")} + GST for the whole set`
+                        ) : (
+                          <>
+                            Pay for the{" "}
+                            <span className="font-semibold text-amber-300">{Math.max(1, Math.min(c.buyCount || 1, c.products.reduce((s, p) => s + p.comboQuantity, 0)))}</span>{" "}
+                            most expensive — the rest of the set is FREE
+                          </>
+                        )}
                       </div>
                     </div>
                     <button

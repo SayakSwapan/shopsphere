@@ -34,12 +34,41 @@ interface Product {
   productvariant: ProductVariant[];
 }
 
+interface ComboInfo {
+  slug: string;
+  title: string;
+  badge: string | null;
+  headline: string | null;
+  description: string | null;
+  comboType: "BOGO" | "PICK_ANY" | "FIXED_PRICE";
+  customPrice: number | null;
+  buyCount: number;
+  minPick?: number;
+  items: { quantity: number; product: { id: string; name: string } }[];
+}
+
 interface Props {
   products: Product[];
   categories: { id: string; name: string }[];
   genders: { id: string; name: string }[];
   perPage?: number;
-  combo?: { slug: string; title: string; badge: string | null } | null;
+  combo?: ComboInfo | null;
+}
+
+/** Short human description of what the offer gives (Buy 1 Get 1 free, etc.). */
+function comboOfferLine(combo: ComboInfo): string {
+  if (combo.slug === "all") return "Every active combo in one view";
+  const count = combo.items.reduce((s, it) => s + it.quantity, 0);
+  if (combo.comboType === "FIXED_PRICE" && combo.customPrice && combo.customPrice > 0) {
+    return `Bundle all ${count} items for ₹${combo.customPrice}`;
+  }
+  if (combo.comboType === "PICK_ANY") {
+    const min = Math.min(Math.max(2, combo.minPick || 2), combo.items.length);
+    return `Pick any ${min}+ · pay 1, rest free`;
+  }
+  const buy = Math.min(Math.max(1, combo.buyCount || 1), count);
+  const free = Math.max(0, count - buy);
+  return `Buy ${buy} · Get ${free} free`;
 }
 
 const DEFAULT_PER_PAGE = 12;
@@ -105,35 +134,78 @@ export default function ProductsContent({ products, categories, genders, perPage
         {/* Combo banner */}
         {combo && (
           <div
-            className="mb-4 flex items-center justify-between gap-3 p-3 sm:p-4"
+            className="mb-4 overflow-hidden"
             style={{
-              background: "color-mix(in srgb, var(--t-primary) 10%, transparent)",
-              border: "1px solid color-mix(in srgb, var(--t-primary) 25%, transparent)",
+              border: "1px solid color-mix(in srgb, var(--t-primary) 30%, transparent)",
               borderRadius: "var(--t-radius-card)",
+              background: "color-mix(in srgb, var(--t-primary) 7%, transparent)",
             }}
           >
-            <div className="flex items-center gap-2.5 min-w-0">
-              <Tag size={16} style={{ color: "var(--t-primary)", flexShrink: 0 }} />
-              <div className="min-w-0">
-                <p className="text-xs font-bold uppercase tracking-wider text-text-muted-2">
-                  {combo.badge || "Combo Deal"}
-                </p>
-                <p className="text-sm font-semibold text-text-heading truncate">{combo.title}</p>
+            <div className="flex items-center justify-between gap-3 p-3 sm:p-4">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <Tag size={16} style={{ color: "var(--t-primary)", flexShrink: 0 }} />
+                <div className="min-w-0">
+                  <p className="text-xs font-bold uppercase tracking-wider text-text-muted-2">
+                    {combo.badge || "Combo Deal"}
+                  </p>
+                  <p className="text-sm font-semibold text-text-heading truncate">{combo.title}</p>
+                </div>
               </div>
+              <button
+                onClick={clearCombo}
+                disabled={isPending}
+                className="flex-shrink-0 inline-flex items-center gap-1.5 text-[11px] uppercase tracking-wider font-semibold px-3 py-1.5 transition-all duration-200 hover:bg-bg-card-nested active:scale-95 disabled:opacity-50"
+                style={{
+                  border: "1px solid var(--t-border-card)",
+                  color: "var(--t-text-body)",
+                  borderRadius: "var(--t-radius-badge)",
+                }}
+              >
+                <X size={11} />
+                Clear
+              </button>
             </div>
-            <button
-              onClick={clearCombo}
-              disabled={isPending}
-              className="flex-shrink-0 inline-flex items-center gap-1.5 text-[11px] uppercase tracking-wider font-semibold px-3 py-1.5 transition-all duration-200 hover:bg-bg-card-nested active:scale-95 disabled:opacity-50"
-              style={{
-                border: "1px solid var(--t-border-card)",
-                color: "var(--t-text-body)",
-                borderRadius: "var(--t-radius-badge)",
-              }}
+
+            <div
+              className="px-4 sm:px-4 pb-3 sm:pb-4"
+              style={{ borderTop: "1px solid color-mix(in srgb, var(--t-primary) 18%, transparent)" }}
             >
-              <X size={11} />
-              Clear
-            </button>
+              <p className="mt-3 text-sm font-black text-text-heading" style={{ fontFamily: "var(--t-font-heading)" }}>
+                {comboOfferLine(combo)}
+              </p>
+              {combo.items.length > 0 && (
+                <div className="mt-2.5">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-text-muted-2">
+                    Add all of these to qualify —
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {combo.items.map((it, i) => (
+                      <span
+                        key={it.product.id}
+                        className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1"
+                        style={{
+                          background: "var(--t-bg-card)",
+                          border: "1px solid var(--t-border-card)",
+                          color: "var(--t-text-body)",
+                          borderRadius: "var(--t-radius-badge)",
+                        }}
+                      >
+                        {it.quantity > 1 && (
+                          <span className="font-black text-primary">{it.quantity}×</span>
+                        )}
+                        {it.product.name}
+                        {i < combo.items.length - 1 && (
+                          <span className="text-text-muted-3">+</span>
+                        )}
+                      </span>
+                    ))}
+                  </div>
+                  <p className="mt-2 text-xs text-text-muted-1">
+                    The deal applies automatically at checkout. Buying these separately charges full price.
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
         )}
 

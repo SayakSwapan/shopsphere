@@ -24,8 +24,20 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
 
   // Resolve combo product IDs if a combo filter is active.
   let comboProductIds: string[] | null = null;
-  let comboTitle: string | null = null;
-  let comboBadge: string | null = null;
+  let comboInfo:
+    | {
+        slug: string;
+        title: string;
+        badge: string | null;
+        headline: string | null;
+        description: string | null;
+        comboType: "BOGO" | "PICK_ANY" | "FIXED_PRICE";
+        customPrice: number | null;
+        buyCount: number;
+        minPick?: number;
+        items: { quantity: number; product: { id: string; name: string } }[];
+      }
+    | null = null;
 
   if (comboSlug) {
     const now = new Date();
@@ -38,15 +50,28 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
             { OR: [{ endDate: null }, { endDate: { gte: now } }] },
           ],
         },
-        select: { items: { select: { productId: true } } },
+        select: {
+          title: true,
+          badge: true,
+          items: { select: { productId: true } },
+        },
       });
       const idSet = new Set<string>();
       for (const c of activeCombos) {
         for (const it of c.items) idSet.add(it.productId);
       }
       comboProductIds = [...idSet];
-      comboTitle = "All Combo Deals";
-      comboBadge = null;
+      comboInfo = {
+        slug: "all",
+        title: "All Combo Deals",
+        badge: null,
+        headline: null,
+        description: "Every product that's part of an active combo offer, all in one place.",
+        comboType: "FIXED_PRICE",
+        customPrice: null,
+        buyCount: 1,
+        items: [],
+      };
     } else {
       const combo = await prisma.comboOffer.findFirst({
         where: {
@@ -60,13 +85,37 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
         select: {
           title: true,
           badge: true,
-          items: { select: { productId: true } },
+          headline: true,
+          description: true,
+          comboType: true,
+          customPrice: true,
+          buyCount: true,
+          minPick: true,
+          items: {
+            select: {
+              quantity: true,
+              product: { select: { id: true, name: true } },
+            },
+          },
         },
       });
       if (combo) {
-        comboProductIds = combo.items.map((it) => it.productId);
-        comboTitle = combo.title;
-        comboBadge = combo.badge;
+        comboProductIds = combo.items.map((it) => it.product.id);
+        comboInfo = {
+          slug: comboSlug,
+          title: combo.title,
+          badge: combo.badge,
+          headline: combo.headline,
+          description: combo.description,
+          comboType: combo.comboType,
+          customPrice: combo.customPrice != null ? Number(combo.customPrice) : null,
+          buyCount: combo.buyCount,
+          minPick: combo.minPick ?? undefined,
+          items: combo.items.map((it) => ({
+            quantity: it.quantity,
+            product: { id: it.product.id, name: it.product.name },
+          })),
+        };
       }
     }
   }
@@ -149,15 +198,15 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
       >
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-10 sm:py-14">
           <p className="text-xs font-bold uppercase tracking-[0.3em] text-primary mb-2">
-            {comboTitle ? "● Combo Deal" : "● Marketplace"}
+            {comboInfo ? "● Combo Deal" : "● Marketplace"}
           </p>
           <h1
             className="text-4xl sm:text-5xl lg:text-6xl font-black uppercase leading-none tracking-tight text-text-heading"
             style={{ fontFamily: "var(--t-font-heading)" }}
           >
-            {comboTitle ? (
+            {comboInfo ? (
               <>
-                {comboBadge || "Bundle"} <span className="text-primary">Deal</span>
+                {comboInfo.badge || "Bundle"} <span className="text-primary">Deal</span>
               </>
             ) : (
               <>
@@ -165,9 +214,9 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
               </>
             )}
           </h1>
-          {comboTitle ? (
+          {comboInfo ? (
             <p className="mt-3 text-sm max-w-md leading-relaxed text-text-muted-1">
-              Shop the curated combo — products listed are part of this exclusive bundle offer.
+              {comboInfo.description || "Shop the curated combo — products listed are part of this exclusive bundle offer."}
             </p>
           ) : (
             <p className="mt-3 text-sm max-w-md leading-relaxed text-text-muted-1">
@@ -196,7 +245,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
           categories={categories}
           genders={genders}
           perPage={perPage}
-          combo={comboTitle ? { slug: comboSlug, title: comboTitle, badge: comboBadge } : null}
+          combo={comboInfo}
         />
       </div>
 

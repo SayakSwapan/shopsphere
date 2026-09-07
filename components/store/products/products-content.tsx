@@ -1,14 +1,14 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useTransition } from "react";
 import FilterSidebar from "./filter-sidebar";
 import MobileFilterDrawer from "./mobile-filter-drawer";
 import MobileFilterButton from "./mobile-filter-button";
 import ProductsToolbar from "./products-toolbar";
 import AppliedFilters from "./applied-filters";
 import ProductCard from "@/components/store/product-card";
-import { Package, ChevronDown } from "lucide-react";
-import { useSearchParams } from "next/navigation";
+import { Package, ChevronDown, X, Tag } from "lucide-react";
+import { useSearchParams, useRouter } from "next/navigation";
 
 interface ProductVariant {
   stock: number;
@@ -39,21 +39,34 @@ interface Props {
   categories: { id: string; name: string }[];
   genders: { id: string; name: string }[];
   perPage?: number;
+  combo?: { slug: string; title: string; badge: string | null } | null;
 }
 
 const DEFAULT_PER_PAGE = 12;
 
-export default function ProductsContent({ products, categories, genders, perPage }: Props) {
+export default function ProductsContent({ products, categories, genders, perPage, combo }: Props) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const itemsPerPage = perPage && perPage > 0 ? perPage : DEFAULT_PER_PAGE;
   const [visibleCount, setVisibleCount] = useState(itemsPerPage);
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
   const searchQuery = searchParams.get("q") || "";
+
+  const clearCombo = useCallback(() => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("combo");
+    const q = params.toString();
+    startTransition(() => {
+      router.push(q ? `/products?${q}` : "/products");
+    });
+  }, [searchParams, router]);
 
   const activeCount =
     (searchParams.get("category")?.split(",").filter(Boolean).length || 0) +
     (searchParams.get("gender")?.split(",").filter(Boolean).length || 0) +
-    (searchParams.get("price") ? 1 : 0);
+    (searchParams.get("price") ? 1 : 0) +
+    (searchParams.get("combo") ? 1 : 0);
 
   const filterSidebar = useMemo(
     () => <FilterSidebar categories={categories} genders={genders} />,
@@ -88,6 +101,41 @@ export default function ProductsContent({ products, categories, genders, perPage
         <div className="mb-4">
           <AppliedFilters />
         </div>
+
+        {/* Combo banner */}
+        {combo && (
+          <div
+            className="mb-4 flex items-center justify-between gap-3 p-3 sm:p-4"
+            style={{
+              background: "color-mix(in srgb, var(--t-primary) 10%, transparent)",
+              border: "1px solid color-mix(in srgb, var(--t-primary) 25%, transparent)",
+              borderRadius: "var(--t-radius-card)",
+            }}
+          >
+            <div className="flex items-center gap-2.5 min-w-0">
+              <Tag size={16} style={{ color: "var(--t-primary)", flexShrink: 0 }} />
+              <div className="min-w-0">
+                <p className="text-xs font-bold uppercase tracking-wider text-text-muted-2">
+                  {combo.badge || "Combo Deal"}
+                </p>
+                <p className="text-sm font-semibold text-text-heading truncate">{combo.title}</p>
+              </div>
+            </div>
+            <button
+              onClick={clearCombo}
+              disabled={isPending}
+              className="flex-shrink-0 inline-flex items-center gap-1.5 text-[11px] uppercase tracking-wider font-semibold px-3 py-1.5 transition-all duration-200 hover:bg-bg-card-nested active:scale-95 disabled:opacity-50"
+              style={{
+                border: "1px solid var(--t-border-card)",
+                color: "var(--t-text-body)",
+                borderRadius: "var(--t-radius-badge)",
+              }}
+            >
+              <X size={11} />
+              Clear
+            </button>
+          </div>
+        )}
 
         {/* Search query indicator */}
         {searchQuery && (

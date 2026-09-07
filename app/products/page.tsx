@@ -9,6 +9,7 @@ interface ProductsPageProps {
     gender?: string;
     price?: string;
     q?: string;
+    combo?: string;
   }>;
 }
 
@@ -19,11 +20,64 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
   const selectedGenders = params.gender?.split(",").filter(Boolean) || [];
   const selectedPrice = params.price || "";
   const searchQuery = params.q || "";
+  const comboSlug = params.combo || "";
+
+  // Resolve combo product IDs if a combo filter is active.
+  let comboProductIds: string[] | null = null;
+  let comboTitle: string | null = null;
+  let comboBadge: string | null = null;
+
+  if (comboSlug) {
+    const now = new Date();
+    if (comboSlug === "all") {
+      const activeCombos = await prisma.comboOffer.findMany({
+        where: {
+          isActive: true,
+          AND: [
+            { OR: [{ startDate: null }, { startDate: { lte: now } }] },
+            { OR: [{ endDate: null }, { endDate: { gte: now } }] },
+          ],
+        },
+        select: { items: { select: { productId: true } } },
+      });
+      const idSet = new Set<string>();
+      for (const c of activeCombos) {
+        for (const it of c.items) idSet.add(it.productId);
+      }
+      comboProductIds = [...idSet];
+      comboTitle = "All Combo Deals";
+      comboBadge = null;
+    } else {
+      const combo = await prisma.comboOffer.findFirst({
+        where: {
+          slug: comboSlug,
+          isActive: true,
+          AND: [
+            { OR: [{ startDate: null }, { startDate: { lte: now } }] },
+            { OR: [{ endDate: null }, { endDate: { gte: now } }] },
+          ],
+        },
+        select: {
+          title: true,
+          badge: true,
+          items: { select: { productId: true } },
+        },
+      });
+      if (combo) {
+        comboProductIds = combo.items.map((it) => it.productId);
+        comboTitle = combo.title;
+        comboBadge = combo.badge;
+      }
+    }
+  }
 
   const [rawProducts, categories, genders, perPageSetting] = await Promise.all([
     prisma.product.findMany({
       where: {
         status: true,
+        ...(comboProductIds && comboProductIds.length > 0 && {
+          id: { in: comboProductIds },
+        }),
         ...(searchQuery && {
           name: { contains: searchQuery },
         }),
@@ -94,17 +148,32 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
         style={{ background: "color-mix(in srgb, var(--t-bg-card) 60%, var(--t-bg-page))" }}
       >
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-10 sm:py-14">
-          <p className="text-xs font-bold uppercase tracking-[0.3em] text-primary mb-2">● Marketplace</p>
+          <p className="text-xs font-bold uppercase tracking-[0.3em] text-primary mb-2">
+            {comboTitle ? "● Combo Deal" : "● Marketplace"}
+          </p>
           <h1
             className="text-4xl sm:text-5xl lg:text-6xl font-black uppercase leading-none tracking-tight text-text-heading"
             style={{ fontFamily: "var(--t-font-heading)" }}
           >
-            Explore{" "}
-            <span className="text-primary">Products</span>
+            {comboTitle ? (
+              <>
+                {comboBadge || "Bundle"} <span className="text-primary">Deal</span>
+              </>
+            ) : (
+              <>
+                Explore <span className="text-primary">Products</span>
+              </>
+            )}
           </h1>
-          <p className="mt-3 text-sm max-w-md leading-relaxed text-text-muted-1">
-            Discover premium jerseys, footwear, lifestyle apparel and exclusive collections.
-          </p>
+          {comboTitle ? (
+            <p className="mt-3 text-sm max-w-md leading-relaxed text-text-muted-1">
+              Shop the curated combo — products listed are part of this exclusive bundle offer.
+            </p>
+          ) : (
+            <p className="mt-3 text-sm max-w-md leading-relaxed text-text-muted-1">
+              Discover premium jerseys, footwear, lifestyle apparel and exclusive collections.
+            </p>
+          )}
           {products.length > 0 && (
             <div
               className="mt-4 inline-flex items-center gap-2 bg-primary text-bg-page text-xs font-bold px-3 py-1.5"
@@ -122,7 +191,13 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
 
       {/* Main content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
-        <ProductsContent products={products} categories={categories} genders={genders} perPage={perPage} />
+        <ProductsContent
+          products={products}
+          categories={categories}
+          genders={genders}
+          perPage={perPage}
+          combo={comboTitle ? { slug: comboSlug, title: comboTitle, badge: comboBadge } : null}
+        />
       </div>
 
       <Footer />

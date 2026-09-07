@@ -1,6 +1,6 @@
 "use client";
 
-import { X, Loader2 } from "lucide-react";
+import { X, Loader2, Tag } from "lucide-react";
 import { useFilterNavigation } from "./use-filter-navigation";
 
 export default function AppliedFilters() {
@@ -9,8 +9,13 @@ export default function AppliedFilters() {
   const categories = searchParams.get("category")?.split(",").filter(Boolean) || [];
   const genders = searchParams.get("gender")?.split(",").filter(Boolean) || [];
   const price = searchParams.get("price") || "";
+  const combo = searchParams.get("combo") || "";
 
   const removeFilter = (key: string, value?: string) => {
+    if (key === "combo") {
+      navigate("combo", (params) => params.delete("combo"));
+      return;
+    }
     navigate(key === "price" ? "price" : `${key}:${value}`, (params) => {
       if (key === "price") {
         params.delete("price");
@@ -26,7 +31,8 @@ export default function AppliedFilters() {
   const priceLabel =
     price === "low-high" ? "Price: Low to High" : price === "high-low" ? "Price: High to Low" : "";
 
-  const tags: { key: string; value?: string; label: string }[] = [
+  const tags: { key: string; value?: string; label: string; icon?: boolean }[] = [
+    ...(combo ? [{ key: "combo", value: combo, label: `Combo: ${combo === "all" ? "All" : combo}`, icon: true }] : []),
     ...categories.map((c) => ({ key: "category", value: c, label: c })),
     ...genders.map((g) => ({ key: "gender", value: g, label: g })),
     ...(priceLabel ? [{ key: "price", label: priceLabel }] : []),
@@ -44,7 +50,7 @@ export default function AppliedFilters() {
         Active:
       </span>
       {tags.map((tag, i) => {
-        const isTagPending = pendingKey === (tag.key === "price" ? "price" : `${tag.key}:${tag.value}`);
+        const isTagPending = pendingKey === (tag.key === "price" ? "price" : tag.key === "combo" ? "combo" : `${tag.key}:${tag.value}`);
         return (
           <button
             key={`${tag.key}-${tag.value || tag.label}-${i}`}
@@ -72,6 +78,7 @@ export default function AppliedFilters() {
               </>
             ) : (
               <>
+                {tag.icon && <Tag size={11} style={{ color: "var(--t-primary)" }} />}
                 {tag.label}
                 <X size={12} style={{ color: "var(--t-primary)" }} />
               </>

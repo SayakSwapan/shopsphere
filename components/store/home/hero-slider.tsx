@@ -181,12 +181,13 @@ function SportsHero({
           )}
 
           <h1
-            className="leading-[0.92] mb-6"
+            className="leading-[0.90] mb-6"
             style={{
               fontSize: "clamp(3rem, 8vw, 6rem)",
               fontFamily: "'Anton', sans-serif",
               textTransform: "uppercase",
               color: "#FFFFFF",
+              letterSpacing: "0.03em",
             }}
           >
             {slide.title.split(" ").length > 2 ? (
@@ -222,8 +223,8 @@ function SportsHero({
 
           {slide.subtitle && (
             <p
-              className="text-sm sm:text-base leading-relaxed mb-8 max-w-md"
-              style={{ color: "rgba(255,255,255,0.70)", fontFamily: "var(--t-font-body)", fontWeight: 300, letterSpacing: "0.02em" }}
+              className="text-sm sm:text-base leading-[1.8] mb-8 max-w-md"
+              style={{ color: "rgba(255,255,255,0.70)", fontFamily: "'Raleway', sans-serif", fontWeight: 300, letterSpacing: "0.04em" }}
             >
               {slide.subtitle}
             </p>
@@ -344,13 +345,13 @@ function FashionHero({
 
           <h1
             className="font-semibold leading-[0.95] text-text-heading"
-            style={{ fontSize: "clamp(2.5rem, 7vw, 6rem)", fontFamily: "var(--t-font-heading)", letterSpacing: "-0.01em" }}
+            style={{ fontSize: "clamp(2.5rem, 7vw, 6rem)", fontFamily: "'Playfair Display', serif", letterSpacing: "-0.01em" }}
           >
             {slide.title.split(" ").length > 2 ? (
               <>
                 {slide.title.split(" ").slice(0, 2).join(" ")}
                 <br />
-                <em className="not-italic" style={{ color: "var(--t-primary)" }}>
+                <em style={{ color: "var(--t-primary)", fontStyle: "italic" }}>
                   {slide.title.split(" ").slice(2).join(" ")}
                 </em>
               </>
@@ -360,7 +361,7 @@ function FashionHero({
           </h1>
 
           {slide.subtitle && (
-            <p className="mt-6 text-sm sm:text-base leading-relaxed max-w-lg" style={{ color: "var(--t-text-muted-1)", fontFamily: "var(--t-font-body)", fontWeight: 300, letterSpacing: "0.02em" }}>
+            <p className="mt-6 text-sm sm:text-base leading-[1.8] max-w-lg" style={{ color: "var(--t-text-muted-1)", fontFamily: "'Raleway', sans-serif", fontWeight: 300, letterSpacing: "0.04em" }}>
               {slide.subtitle}
             </p>
           )}
@@ -428,13 +429,14 @@ function EthnicHero({
               fontFamily: "'Cormorant Garamond', serif",
               fontWeight: 600,
               color: "#2B211A",
+              letterSpacing: "-0.01em",
             }}
           >
             {slide.title.split(" ").length > 2 ? (
               <>
                 {slide.title.split(" ").slice(0, 2).join(" ")}
                 <br />
-                <em className="not-italic" style={{ color: "#6E1F27" }}>
+                <em style={{ color: "#6E1F27", fontStyle: "italic", fontWeight: 500 }}>
                   {slide.title.split(" ").slice(2).join(" ")}
                 </em>
               </>
@@ -442,15 +444,15 @@ function EthnicHero({
               <>
                 Heritage
                 <br />
-                <em className="not-italic" style={{ color: "#6E1F27" }}>{slide.title}</em>
+                <em style={{ color: "#6E1F27", fontStyle: "italic", fontWeight: 500 }}>{slide.title}</em>
               </>
             )}
           </h1>
 
           {slide.subtitle && (
             <p
-              className="text-[14px] sm:text-[15px] leading-[1.75] mb-8 max-w-md"
-              style={{ color: "#5A4E42", fontFamily: "var(--t-font-body)", fontWeight: 300, letterSpacing: "0.01em" }}
+              className="text-[14px] sm:text-[15px] leading-[1.85] mb-8 max-w-md"
+              style={{ color: "#5A4E42", fontFamily: "'Raleway', sans-serif", fontWeight: 300, letterSpacing: "0.03em" }}
             >
               {slide.subtitle}
             </p>
@@ -560,13 +562,13 @@ function LuxuryHero({
 
           <h1
             className="font-medium leading-[1.0] text-text-heading"
-            style={{ fontSize: "clamp(2.5rem, 7vw, 5.5rem)", fontFamily: "var(--t-font-heading)", letterSpacing: "0.01em" }}
+            style={{ fontSize: "clamp(2.5rem, 7vw, 5.5rem)", fontFamily: "'Cormorant Garamond', serif", letterSpacing: "0.02em" }}
           >
             {slide.title.split(" ").length > 2 ? (
               <>
                 {slide.title.split(" ").slice(0, 2).join(" ")}
                 <br />
-                <em className="font-light italic" style={{ color: "var(--t-primary)" }}>
+                <em className="font-light italic" style={{ color: "var(--t-primary)", fontStyle: "italic" }}>
                   {slide.title.split(" ").slice(2).join(" ")}
                 </em>
               </>
@@ -576,7 +578,7 @@ function LuxuryHero({
           </h1>
 
           {slide.subtitle && (
-            <p className="mt-6 text-sm sm:text-base leading-relaxed max-w-md mx-auto" style={{ color: "var(--t-text-muted-1)", fontFamily: "var(--t-font-body)", fontWeight: 300, letterSpacing: "0.02em" }}>
+            <p className="mt-6 text-sm sm:text-base leading-[1.8] max-w-md mx-auto" style={{ color: "var(--t-text-muted-1)", fontFamily: "'Raleway', sans-serif", fontWeight: 300, letterSpacing: "0.05em" }}>
               {slide.subtitle}
             </p>
           )}

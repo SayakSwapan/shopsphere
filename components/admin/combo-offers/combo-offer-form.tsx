@@ -19,8 +19,25 @@ import {
   IndianRupee,
   PackagePlus,
   Minus,
+  BookOpen,
+  AlertTriangle,
+  Clock,
 } from "lucide-react";
 import { priceWithGst, getActivePriceBase } from "@/lib/pricing";
+import ComboGuideModal from "./combo-guide-modal";
+
+const BADGE_SUGGESTIONS = [
+  "BOGO",
+  "Mega Deal",
+  "Bundle",
+  "Pick Any",
+  "Flash Sale",
+  "Limited",
+  "Festival",
+  "Clearance",
+  "Best Value",
+  "Combo",
+];
 
 interface SelectedProduct {
   id: string;
@@ -87,6 +104,13 @@ function productOfferActive(p: SelectedProduct): boolean {
   return true;
 }
 
+/** Per-unit minimum sell price floor (max of lastSellingPrice and costPrice). */
+function productFloor(p: SelectedProduct): number {
+  const last = Number(p.lastSellingPrice) || 0;
+  const cost = Number(p.costPrice) || 0;
+  return Math.max(last, cost);
+}
+
 export default function ComboOfferForm({ mode, id }: Props) {
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -117,6 +141,14 @@ export default function ComboOfferForm({ mode, id }: Props) {
   const [search, setSearch] = useState("");
   const [searchResults, setSearchResults] = useState<SelectedProduct[]>([]);
   const [searching, setSearching] = useState(false);
+
+  // Guide modal
+  const [guideOpen, setGuideOpen] = useState(false);
+
+  // End-state display (edit mode)
+  const [endReason, setEndReason] = useState<string | null>(null);
+  const [endedAt, setEndedAt] = useState<string | null>(null);
+  const [endNote, setEndNote] = useState<string | null>(null);
 
   const push = useCallback((v: Partial<typeof form>) => setForm((prev) => ({ ...prev, ...v })), []);
 
@@ -192,6 +224,7 @@ export default function ComboOfferForm({ mode, id }: Props) {
         imageUrl: i.imageUrl || null,
         base,
         inclUnit,
+        floor: productFloor(i),
         lineCost: cost * i.quantity,
         lineIncl: inclUnit * i.quantity,
       };
@@ -212,6 +245,8 @@ export default function ComboOfferForm({ mode, id }: Props) {
         savingsPct: 0,
         freeCount: 0,
         buyCount: 1,
+        floorsTotal: 0,
+        floorShortfall: 0,
         message: "Add at least 2 products to see the deal",
       };
     }
@@ -242,6 +277,8 @@ export default function ComboOfferForm({ mode, id }: Props) {
         savingsPct: normalBase > 0 ? Math.round((savings / normalBase) * 100) : 0,
         freeCount: freeUnits,
         buyCount,
+        floorsTotal: 0,
+        floorShortfall: 0,
         message:
           `Pay for ${payLine} at ₹${Math.round(payBase * 100) / 100} + GST. ` +
           (freeUnits === 0
@@ -274,6 +311,8 @@ export default function ComboOfferForm({ mode, id }: Props) {
         savingsPct: normalBase > 0 ? Math.round((savings / normalBase) * 100) : 0,
         freeCount: freeUnits,
         buyCount,
+        floorsTotal: 0,
+        floorShortfall: 0,
         message:
           `Pick any ${minPick}+ from the ${rows.length} products in the pool — pay for the single priciest item (₹${Math.round(payBase * 100) / 100} + GST). ` +
           `Every other picked item is FREE.`,
@@ -284,6 +323,11 @@ export default function ComboOfferForm({ mode, id }: Props) {
     const customValid = Number.isFinite(custom) && custom > 0;
     const payBase = customValid ? Math.round(Math.min(custom, normalBase) * 100) / 100 : 0;
     const savings = Math.round((normalBase - payBase + Number.EPSILON) * 100) / 100;
+    const floorsTotal = Math.round(
+      rows.reduce((s, r) => s + productFloor(items.find((i) => i.id === r.id)!) * r.quantity, 0) * 100
+    ) / 100;
+    const floorShortfall =
+      customValid && floorsTotal > 0 ? Math.round((floorsTotal - custom) * 100) / 100 : 0;
     return {
       ok: true as const,
       rows,
@@ -295,8 +339,12 @@ export default function ComboOfferForm({ mode, id }: Props) {
       savingsPct: normalBase > 0 ? Math.round((savings / normalBase) * 100) : 0,
       freeCount: 0,
       buyCount: 1,
+      floorsTotal,
+      floorShortfall,
       message: customValid
-        ? `Bundle price ₹${payBase} + GST billed on top. You save ₹${savings} (${Math.round((savings / Math.max(1, normalBase)) * 100)}%) against the combined selling price.`
+        ? floorShortfall > 0
+          ? `Bundle price ₹${payBase} is ₹${floorShortfall} below the minimum sell price floor (₹${floorsTotal}). Raise the bundle price so every product stays above its minimum sell price.`
+          : `Bundle price ₹${payBase} + GST billed on top. You save ₹${savings} (${Math.round((savings / Math.max(1, normalBase)) * 100)}%) against the combined selling price.`
         : "Enter a bundle price to set the custom deal.",
     };
   })();
@@ -359,6 +407,9 @@ export default function ComboOfferForm({ mode, id }: Props) {
           startDate: toLocalInput(data.startDate),
           endDate: toLocalInput(data.endDate),
         });
+        setEndReason(data.endReason ?? null);
+        setEndedAt(data.endedAt ?? null);
+        setEndNote(data.endNote ?? null);
         const loaded: SelectedProduct[] = [];
         for (const it of data.items || []) {
           try {
@@ -433,6 +484,17 @@ export default function ComboOfferForm({ mode, id }: Props) {
       toast.error("Enter a bundle price for FIXED_PRICE combos");
       return;
     }
+    // Validate FIXED_PRICE floor: bundle price must cover all product minimum sell prices.
+    if (form.comboType === "FIXED_PRICE" && Number(form.customPrice) > 0) {
+      const floorsTotal = items.reduce((s, i) => s + productFloor(i) * i.quantity, 0);
+      const customPrice = Number(form.customPrice);
+      if (customPrice < floorsTotal) {
+        toast.error(
+          `Bundle price ₹${customPrice} is too low. The minimum sell price floor for these ${items.length} products totals ₹${Math.round(floorsTotal * 100) / 100}.`
+        );
+        return;
+      }
+    }
     if (form.comboType === "PICK_ANY") {
       const minPick = Number(form.minPick) || 2;
       if (minPick < 2 || minPick > items.length) {
@@ -490,9 +552,37 @@ export default function ComboOfferForm({ mode, id }: Props) {
         Back to Combo Offers
       </Link>
 
-      <h1 className="text-2xl font-bold text-white mb-6">
-        {mode === "edit" ? "Edit Combo Offer" : "Create Combo Offer"}
-      </h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold text-white">
+          {mode === "edit" ? "Edit Combo Offer" : "Create Combo Offer"}
+        </h1>
+        <button
+          type="button"
+          onClick={() => setGuideOpen(true)}
+          className="flex items-center gap-2 bg-amber-500/15 text-amber-400 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-amber-500/25 transition-colors"
+        >
+          <BookOpen size={16} />
+          Combo Guide
+        </button>
+      </div>
+
+      {/* End-reason banner (edit mode) */}
+      {mode === "edit" && endReason && !form.isActive && (
+        <div className="mb-6 rounded-xl border border-red-500/20 bg-red-500/5 px-4 py-3">
+          <div className="flex items-center gap-2 text-sm font-semibold text-red-400">
+            {endReason === "STOCK_OUT" ? <AlertTriangle size={16} /> : <Clock size={16} />}
+            This offer ended — {endReason === "STOCK_OUT" ? "Product sold out" : endReason === "TIME_ENDED" ? "Time period over" : "Disabled by admin"}
+          </div>
+          {endNote && (
+            <p className="text-xs text-red-400/70 mt-1 ml-6">{endNote}</p>
+          )}
+          {endedAt && (
+            <p className="text-[10px] text-slate-500 mt-1 ml-6">
+              Ended {new Date(endedAt).toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+            </p>
+          )}
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* ── Basics ── */}
@@ -522,6 +612,22 @@ export default function ComboOfferForm({ mode, id }: Props) {
                 className={inputCls}
                 placeholder="e.g. BOGO · Limited"
               />
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {BADGE_SUGGESTIONS.map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => push({ badge: form.badge === s ? "" : s })}
+                    className={`px-2.5 py-1 rounded-full text-[10px] font-bold transition-colors ${
+                      form.badge === s
+                        ? "bg-amber-500 text-[#0A0F1E]"
+                        : "bg-amber-500/10 text-amber-400 hover:bg-amber-500/20"
+                    }`}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
@@ -722,6 +828,21 @@ export default function ComboOfferForm({ mode, id }: Props) {
                 below the combined selling price (₹{Math.round(breakdown.normalIncl * 100) / 100} incl. GST)
                 so the combo creates a real saving.
               </p>
+              {breakdown.floorShortfall > 0 && (
+                <div className="mt-2 flex items-start gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400">
+                  <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+                  <span>
+                    Bundle price is ₹{breakdown.floorShortfall} below the combined minimum sell price
+                    (₹{breakdown.floorsTotal}). <b>Raise it</b> so no product sells below its minimum sell
+                    price (max of cost &amp; last selling price).
+                  </span>
+                </div>
+              )}
+              {breakdown.floorsTotal > 0 && (
+                <p className="mt-1 text-[10px] text-slate-500">
+                  Min. sell price floor for this set: ₹{breakdown.floorsTotal}
+                </p>
+              )}
             </div>
           )}
 
@@ -738,6 +859,7 @@ export default function ComboOfferForm({ mode, id }: Props) {
                       <th className="px-3 py-2.5 font-semibold">Product</th>
                       <th className="px-2 py-2.5 font-semibold text-center">Qty</th>
                       <th className="px-2 py-2.5 font-semibold text-right">Cost Price</th>
+                      <th className="px-2 py-2.5 font-semibold text-right">Min Sell/unit</th>
                       <th className="px-2 py-2.5 font-semibold text-right">Selling Incl. GST</th>
                       <th className="px-3 py-2.5 font-semibold text-right">Line Total</th>
                     </tr>
@@ -764,6 +886,13 @@ export default function ComboOfferForm({ mode, id }: Props) {
                         <td className="px-2 py-2.5 text-right text-slate-400 font-medium">
                           ₹{Math.round(r.lineCost * 100) / 100}
                         </td>
+                        <td className="px-2 py-2.5 text-right text-slate-400">
+                          {r.floor > 0 ? (
+                            <span className="text-[10px] text-slate-400">₹{Math.round(r.floor * 100) / 100}/u</span>
+                          ) : (
+                            <span className="text-[10px] text-slate-600">—</span>
+                          )}
+                        </td>
                         <td className="px-2 py-2.5 text-right text-slate-300">
                           <span className="text-[10px] text-slate-500 block">₹{Math.round(r.inclUnit * 100) / 100}/u</span>
                         </td>
@@ -779,6 +908,9 @@ export default function ComboOfferForm({ mode, id }: Props) {
                         Totals
                       </td>
                       <td className="px-2 py-2.5 text-right text-xs text-slate-400">₹{Math.round(breakdown.totalCost * 100) / 100}</td>
+                      <td className="px-2 py-2.5 text-right text-[10px] text-slate-500">
+                        {breakdown.floorsTotal > 0 ? `₹${breakdown.floorsTotal}` : "—"}
+                      </td>
                       <td className="px-2 py-2.5 text-right text-[10px] text-slate-500">Worth incl. GST</td>
                       <td className="px-3 py-2.5 text-right text-amber-300">₹{Math.round(breakdown.normalIncl * 100) / 100}</td>
                     </tr>
@@ -945,14 +1077,18 @@ export default function ComboOfferForm({ mode, id }: Props) {
                       <button
                         type="button"
                         onClick={() => addProduct(p)}
-                        disabled={isAdded}
+                        disabled={isAdded || out}
                         className={`mt-1 w-full flex items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-bold transition-colors ${
-                          isAdded
+                          out
+                            ? "bg-slate-500/10 text-slate-500 cursor-not-allowed"
+                            : isAdded
                             ? "bg-emerald-500/10 text-emerald-400 cursor-default"
                             : "bg-amber-500/15 text-amber-300 hover:bg-amber-500/25"
                         }`}
                       >
-                        {isAdded ? (
+                        {out ? (
+                          "Out of stock — cannot add"
+                        ) : isAdded ? (
                           <>
                             <span className="inline-block h-2 w-2 rounded-full bg-emerald-400" /> Added to combo
                           </>
@@ -1107,6 +1243,8 @@ export default function ComboOfferForm({ mode, id }: Props) {
           </button>
         </div>
       </form>
+
+      <ComboGuideModal open={guideOpen} onClose={() => setGuideOpen(false)} />
     </div>
   );
 }

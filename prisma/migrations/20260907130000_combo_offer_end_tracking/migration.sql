@@ -1,0 +1,4 @@
+-- AlterTable
+ALTER TABLE "ComboOffer" ADD COLUMN "endReason" VARCHAR(20),
+ADD COLUMN "endedAt" TIMESTAMP(3),
+ADD COLUMN "endNote" VARCHAR(255);

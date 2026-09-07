@@ -9,14 +9,17 @@
 // Pricing rules (mirror of `lib/pricing.ts` conventions — stored prices are the
 // PRE-GST taxable base and GST is added on top):
 //   • BOGO         — pay the `buyCount` most expensive items, all others free.
-//   • FIXED_PRICE  — pay exactly `customPrice` for the whole set.
+//   • FIXED_PRICE  — pay exactly `customPrice` for the whole set. Each product's
+//                    per-unit share must not fall below its minimum sell price
+//                    floor (max of lastSellingPrice and costPrice).
+//   • PICK_ANY     — pay the single priciest picked unit, rest free.
 //
 // The combo discount is applied ONLY to the product base. Custom-print
 // personalization charges are always billed at full price (they are add-on
 // services independent of the product itself).
 //
-// If a cart item is shared between the combo group and extra quantity, only the
-// reserved quantity gets the discount; the surplus is charged at full price.
+// End-state enforcement: an offer whose time has expired or whose a product has
+// sold out is automatically deactivated with endReason/endedAt/endNote fields.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { prisma } from "@/lib/prisma";
@@ -65,11 +68,82 @@ export function comboAppliesTo(apply: ComboApply, orderType: "ONLINE" | "OFFLINE
   return false;
 }
 
+// ── End-state enforcement ───────────────────────────────────────────────────
+// Runs on a throttle to keep `getActiveComboOffers` cheap. Any active offer
+// whose time has expired or whose a product is sold out is deactivated.
+const SYNC_COOLDOWN_MS = 30_000;
+let lastSyncAt = 0;
+
+export async function syncComboEndState() {
+  const now = Date.now();
+  if (now - lastSyncAt < SYNC_COOLDOWN_MS) return;
+  lastSyncAt = now;
+
+  const dbNow = new Date();
+
+  // 1. Time-ended: deactivate offers whose endDate has passed.
+  await prisma.comboOffer.updateMany({
+    where: {
+      isActive: true,
+      endReason: null,
+      endDate: { lt: dbNow },
+    },
+    data: {
+      isActive: false,
+      endReason: "TIME_ENDED",
+      endedAt: dbNow,
+    },
+  });
+
+  // 2. Stock-out: deactivate offers where any item's product stock <= 0.
+  const activeOffers = await prisma.comboOffer.findMany({
+    where: {
+      isActive: true,
+      endReason: null,
+    },
+    include: {
+      items: {
+        include: {
+          product: { select: { id: true, name: true, stock: true } },
+        },
+      },
+    },
+  });
+
+  for (const offer of activeOffers) {
+    const outOfStockItem = offer.items.find((it) => it.product.stock <= 0);
+    if (outOfStockItem) {
+      await prisma.comboOffer.update({
+        where: { id: offer.id },
+        data: {
+          isActive: false,
+          endReason: "STOCK_OUT",
+          endedAt: dbNow,
+          endNote: `${outOfStockItem.product.name} sold out`,
+        },
+      });
+    }
+  }
+}
+
+// ── Product minimum sell price floor ────────────────────────────────────────
+// Per unit, the lowest price the engine is allowed to assign in a FIXED_PRICE
+// distribution. Uses lastSellingPrice when configured, otherwise falls back to
+// costPrice. Returns 0 when both are missing (no floor enforced).
+function productFloor(product: Record<string, unknown>): number {
+  const last = Number((product as { lastSellingPrice?: unknown }).lastSellingPrice) || 0;
+  const cost = Number((product as { costPrice?: unknown }).costPrice) || 0;
+  return Math.max(last, cost);
+}
+
 /**
  * Loads every active combo offer with its items (products include the price
- * fields needed for pricing). Shared so all callers fetch identical data.
+ * fields needed for pricing). Enforces end-state (time / stock-out) and
+ * excludes offers whose products are all in stock.
  */
 export async function getActiveComboOffers() {
+  await syncComboEndState();
+
   const now = new Date();
   return prisma.comboOffer.findMany({
     where: {
@@ -88,6 +162,8 @@ export async function getActiveComboOffers() {
               name: true,
               slug: true,
               sellingPrice: true,
+              costPrice: true,
+              lastSellingPrice: true,
               salePrice: true,
               finalPrice: true,
               gstPercentage: true,
@@ -95,6 +171,7 @@ export async function getActiveComboOffers() {
               discountValue: true,
               offerStart: true,
               offerEnd: true,
+              stock: true,
               productimage: { orderBy: { createdAt: "asc" as const }, take: 1 },
             },
           },
@@ -102,7 +179,11 @@ export async function getActiveComboOffers() {
       },
     },
     orderBy: { sortOrder: "asc" },
-  });
+  }).then((offers) =>
+    offers.filter((o) =>
+      o.items.every((it) => (it.product as { stock: number }).stock > 0)
+    )
+  );
 }
 
 /**
@@ -134,7 +215,6 @@ function productBase(product: Record<string, unknown>): number {
  * @param items            cart items (each: { productId, quantity, product }).
  * @param orderType        "ONLINE" | "OFFLINE" — filters apply scope.
  * @param combos           optional pre-fetched combos (avoids re-querying).
- * @param isOnline         legacy alias; prefer orderType.
  */
 export async function applyComboPricing(
   items: { productId: string; quantity: number; product: Record<string, unknown> }[],
@@ -149,14 +229,16 @@ export async function applyComboPricing(
     idx: number;
     productId: string;
     base: number;
+    floor: number;
     reserved?: boolean;
   }[] = [];
   const baseByProduct = new Map<string, number>();
   items.forEach((item, idx) => {
     const base = productBase(item.product);
     baseByProduct.set(item.productId, base);
+    const floor = productFloor(item.product);
     for (let i = 0; i < item.quantity; i++) {
-      units.push({ idx, productId: item.productId, base });
+      units.push({ idx, productId: item.productId, base, floor });
     }
   });
 
@@ -284,7 +366,8 @@ export async function applyComboPricing(
   //                    at 1).
   //   • FIXED_PRICE  — pay exactly `customPrice` (fall back to the priciest
   //                    unit if unset/invalid); the resulting discount is
-  //                    distributed proportionally across the set.
+  //                    distributed proportionally, but each unit's pay is
+  //                    clamped to >= its floor (min sell price).
   const priceReservedSet = (
     combo: AppliedReservation["combo"],
     reservedUnits: ReservedUnit[]
@@ -305,12 +388,46 @@ export async function applyComboPricing(
       }));
     }
 
+    // ── FIXED_PRICE: proportional distribution with min-sell floor ──────
     const custom = Number(combo.customPrice);
     const target =
       Number.isFinite(custom) && custom > 0
         ? custom
         : Math.max(...reservedUnits.map((u) => u.base), 0);
     const capped = Math.min(target, totalPrice);
+
+    // Water-fill: assign each unit its floor first, then distribute the
+    // remaining budget proportionally by (base − floor) capacity.
+    const floors = reservedUnits.map((u) => Math.min(u.floor, u.base));
+    const floorsSum = floors.reduce((s, f) => s + f, 0);
+
+    if (floorsSum <= capped && totalPrice > 0) {
+      // Feasible: distribute remaining budget proportionally above floors.
+      const remaining = Math.max(0, capped - floorsSum);
+      const capacities = reservedUnits.map((u, i) => Math.max(0, u.base - floors[i]));
+      const totalCapacity = capacities.reduce((s, c) => s + c, 0);
+
+      const pays = reservedUnits.map((u, i) => {
+        if (totalCapacity <= 0) return floors[i];
+        const share =
+          Math.round(((capacities[i] / totalCapacity) * remaining + Number.EPSILON) * 100) / 100;
+        return Math.round((floors[i] + share + Number.EPSILON) * 100) / 100;
+      });
+
+      // Round correction: ensure sum === capped (adjust last unit).
+      const paySum = pays.reduce((s, p) => s + p, 0);
+      const diff = Math.round((capped - paySum + Number.EPSILON) * 100) / 100;
+      if (diff !== 0 && pays.length > 0) pays[pays.length - 1] += diff;
+
+      return reservedUnits.map((u, i) => ({
+        idx: u.idx,
+        base: u.base,
+        pay: Math.max(0, pays[i]),
+      }));
+    }
+
+    // Infeasible (floors sum > target): fall back to proportional distribution.
+    // This should not happen when the admin form validates correctly.
     const discount = Math.max(0, totalPrice - capped);
     return reservedUnits.map((u) => {
       const share =

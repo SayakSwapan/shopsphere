@@ -60,6 +60,8 @@ export default async function CheckoutPage() {
         salePrice: item.product.salePrice,
         finalPrice: item.product.finalPrice ?? 0,
         sellingPrice: Number(item.product.sellingPrice),
+        costPrice: Number(item.product.costPrice) || 0,
+        lastSellingPrice: item.product.lastSellingPrice != null ? Number(item.product.lastSellingPrice) : null,
         gstPercentage: Number(item.product.gstPercentage) || 0,
         discountType: item.product.discountType,
         discountValue: item.product.discountValue,

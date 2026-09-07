@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
-import { ChevronRight, Store } from "lucide-react";
-import { navItems, type NavEntry } from "./nav-item";
+import { useState, useRef, useEffect, useMemo } from "react";
+import { ChevronRight, Store, Search } from "lucide-react";
+import { navItems, type NavEntry, type NavItem } from "./nav-item";
 import { useSiteName } from "@/components/store/site-settings-provider";
 import SiteBrand from "@/components/brand/site-brand";
 
@@ -15,10 +15,36 @@ function getActiveSection(pathname: string): string | null {
   return activeSection?.title ?? null;
 }
 
+interface FlatResult {
+  child: NavItem;
+  sectionTitle: string;
+}
+
+function flattenSearch(query: string): FlatResult[] {
+  const q = query.toLowerCase();
+  const results: FlatResult[] = [];
+  for (const entry of navItems) {
+    if (entry.type === "item") {
+      if (entry.item.title.toLowerCase().includes(q)) {
+        results.push({ child: entry.item, sectionTitle: "" });
+      }
+    } else {
+      for (const child of entry.children) {
+        if (child.title.toLowerCase().includes(q)) {
+          results.push({ child, sectionTitle: entry.title });
+        }
+      }
+    }
+  }
+  return results;
+}
+
 export default function AdminSidebar({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   const siteName = useSiteName();
   const [manualOpen, setManualOpen] = useState<{ title: string; pathname: string } | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const searchRef = useRef<HTMLInputElement>(null);
 
   const activeTitle = getActiveSection(pathname);
 
@@ -30,6 +56,20 @@ export default function AdminSidebar({ onNavigate }: { onNavigate?: () => void }
     openSections.add(manualOpen.title);
   }
 
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        searchRef.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
+
+  const searchResults = useMemo(() => flattenSearch(searchQuery), [searchQuery]);
+  const isSearching = searchQuery.trim().length > 0;
+
   const toggleSection = (title: string) => {
     if (title === activeTitle) return;
     setManualOpen((prev) => {
@@ -38,6 +78,11 @@ export default function AdminSidebar({ onNavigate }: { onNavigate?: () => void }
       }
       return { title, pathname };
     });
+  };
+
+  const handleSearchLinkClick = () => {
+    setSearchQuery("");
+    onNavigate?.();
   };
 
   const renderEntry = (entry: NavEntry) => {
@@ -122,6 +167,35 @@ export default function AdminSidebar({ onNavigate }: { onNavigate?: () => void }
     );
   };
 
+  const renderSearchResult = ({ child, sectionTitle }: FlatResult) => {
+    const Icon = child.icon;
+    const active = pathname === child.href || pathname.startsWith(child.href + "/");
+    return (
+      <Link
+        key={child.href}
+        href={child.href}
+        onClick={handleSearchLinkClick}
+        className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all"
+        style={{
+          background: active
+            ? "linear-gradient(90deg, rgba(245,158,11,0.18), rgba(245,158,11,0.05))"
+            : "transparent",
+          color: active ? "#F59E0B" : "#94A3B8",
+          boxShadow: active ? "inset 3px 0 0 #F59E0B, 0 2px 12px rgba(245,158,11,0.12)" : "none",
+          fontWeight: active ? 600 : 500,
+        }}
+      >
+        <Icon size={18} strokeWidth={active ? 2.2 : 1.8} />
+        <span className="flex-1">{child.title}</span>
+        {sectionTitle && (
+          <span className="text-[10px] font-medium uppercase tracking-wider px-1.5 py-0.5 rounded bg-slate-700/50 text-slate-500">
+            {sectionTitle}
+          </span>
+        )}
+      </Link>
+    );
+  };
+
   return (
     <aside
       className="w-64 h-screen sticky top-0 flex flex-col overflow-hidden"
@@ -160,8 +234,35 @@ export default function AdminSidebar({ onNavigate }: { onNavigate?: () => void }
         </div>
       </div>
 
-      <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto min-h-0">
-        {navItems.map(renderEntry)}
+      <div className="px-3 pt-3 pb-1 shrink-0">
+        <div className="relative">
+          <Search
+            size={16}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none"
+          />
+          <input
+            ref={searchRef}
+            type="text"
+            placeholder="Search menu... ⌘K"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full rounded-lg border border-[#1E293B] bg-[#0A0F1E] pl-9 pr-3 py-2 text-sm text-white placeholder-slate-500 outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/30 transition-colors"
+          />
+        </div>
+      </div>
+
+      <nav className="flex-1 py-3 px-3 space-y-1 overflow-y-auto min-h-0">
+        {isSearching ? (
+          searchResults.length > 0 ? (
+            searchResults.map(renderSearchResult)
+          ) : (
+            <p className="px-3 py-6 text-center text-sm text-slate-500">
+              No matching menu items
+            </p>
+          )
+        ) : (
+          navItems.map(renderEntry)
+        )}
       </nav>
 
       <div

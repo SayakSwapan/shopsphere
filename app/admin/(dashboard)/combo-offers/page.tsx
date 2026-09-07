@@ -10,18 +10,28 @@ import {
   Layers,
   Store,
   Globe,
+  AlertTriangle,
+  Clock,
 } from "lucide-react";
 import DeleteButton from "@/components/admin/common/delete-button";
+import { syncComboEndState } from "@/lib/combo-offer";
 
 export const dynamic = "force-dynamic";
 
 const TYPE_LABEL: Record<string, string> = { BOGO: "BOGO", PICK_ANY: "Pick Any", FIXED_PRICE: "Bundle" };
 const APPLY_LABEL: Record<string, string> = { BOTH: "Online & Offline", ONLINE: "Online", OFFLINE: "Offline" };
+const END_REASON_LABEL: Record<string, { text: string; style: string }> = {
+  STOCK_OUT: { text: "Product sold out", style: "bg-red-500/15 text-red-400" },
+  TIME_ENDED: { text: "Time period over", style: "bg-amber-500/15 text-amber-400" },
+  MANUAL: { text: "Disabled by admin", style: "bg-slate-500/15 text-slate-400" },
+};
 
 const inr = (n: number, digits = 0) =>
   `₹${(Number.isFinite(n) ? n : 0).toLocaleString("en-IN", { maximumFractionDigits: digits })}`;
 
 export default async function ComboOffersPage() {
+  await syncComboEndState();
+
   const [offers, sales] = await Promise.all([
     prisma.comboOffer.findMany({
       orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
@@ -143,13 +153,22 @@ export default async function ComboOffersPage() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <h3 className="text-sm font-semibold text-white truncate">{offer.title}</h3>
-                    <span
-                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                        offer.isActive ? "bg-emerald-500/15 text-emerald-400" : "bg-slate-500/15 text-slate-400"
-                      }`}
-                    >
-                      {offer.isActive ? "Active" : "Inactive"}
-                    </span>
+                    {offer.isActive ? (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400">
+                        Active
+                      </span>
+                    ) : offer.endReason ? (
+                      <span
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${END_REASON_LABEL[offer.endReason]?.style ?? "bg-slate-500/15 text-slate-400"}`}
+                        title={offer.endNote ?? undefined}
+                      >
+                        Ended — {END_REASON_LABEL[offer.endReason]?.text ?? offer.endReason}
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-500/15 text-slate-400">
+                        Inactive
+                      </span>
+                    )}
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400">
                       {TYPE_LABEL[offer.comboType] || offer.comboType}
                     </span>
@@ -165,6 +184,17 @@ export default async function ComboOffersPage() {
                   <p className="text-xs text-slate-500 mt-0.5 truncate">
                     {offer.items.length} product(s): {offer.items.map((i) => i.product.name).join(", ")}
                   </p>
+                  {!offer.isActive && offer.endReason && offer.endNote && (
+                    <p className="text-[10px] text-red-400/80 mt-0.5 flex items-center gap-1">
+                      {offer.endReason === "STOCK_OUT" ? <AlertTriangle size={10} /> : <Clock size={10} />}
+                      {offer.endNote}
+                      {offer.endedAt && (
+                        <span className="text-slate-600 ml-1">
+                          · {new Date(offer.endedAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}
+                        </span>
+                      )}
+                    </p>
+                  )}
                   <p className="text-xs text-slate-600 mt-0.5 truncate">
                     {offer.comboType === "FIXED_PRICE" && offer.customPrice != null
                       ? `Bundle ₹${Number(offer.customPrice)}`

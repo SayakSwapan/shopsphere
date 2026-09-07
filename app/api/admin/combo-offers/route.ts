@@ -37,6 +37,26 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Item quantities must be at least 1" }, { status: 400 });
     }
 
+    // Validate stock: no product with stock <= 0 can be added to a combo.
+    const productIds = body.items.map((it: { productId: string }) => it.productId);
+    const products = await prisma.product.findMany({
+      where: { id: { in: productIds } },
+      select: { id: true, name: true, stock: true, costPrice: true, lastSellingPrice: true },
+    });
+    const productMap = new Map(products.map((p) => [p.id, p]));
+    for (const it of body.items) {
+      const p = productMap.get(it.productId);
+      if (!p) {
+        return NextResponse.json({ error: `Product not found: ${it.productId}` }, { status: 400 });
+      }
+      if (p.stock <= 0) {
+        return NextResponse.json(
+          { error: `"${p.name}" has 0 stock and cannot be added to a combo offer.` },
+          { status: 400 }
+        );
+      }
+    }
+
     const comboType =
       body.comboType === "FIXED_PRICE"
         ? "FIXED_PRICE"
@@ -58,6 +78,25 @@ export async function POST(req: Request) {
         { error: `For Pick Any offers, the minimum pick (M) must be at least 2 and no more than the ${poolSize} products in the pool.` },
         { status: 400 }
       );
+    }
+
+    // Validate FIXED_PRICE: per-unit allocated price must not fall below min sell floor.
+    if (comboType === "FIXED_PRICE" && body.customPrice) {
+      const customPrice = Number(body.customPrice);
+      if (Number.isFinite(customPrice) && customPrice > 0) {
+        const totalBase = body.items.reduce((s: number, it: { productId: string; quantity: number }) => {
+          const p = productMap.get(it.productId)!;
+          return s + Number(p.lastSellingPrice ?? p.costPrice ?? 0) * (Number(it.quantity) || 1);
+        }, 0);
+        if (customPrice < totalBase) {
+          return NextResponse.json(
+            {
+              error: `Bundle price ₹${customPrice} is too low. The minimum sell price floor for these products totals ₹${Math.round(totalBase * 100) / 100}.`,
+            },
+            { status: 400 }
+          );
+        }
+      }
     }
 
     let slug = slugify(body.title);

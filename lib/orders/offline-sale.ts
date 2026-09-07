@@ -252,6 +252,8 @@ async function computeOfflineComboAdjustmentsFromResolved(
       salePrice: resolved.product.salePrice,
       finalPrice: resolved.product.finalPrice,
       sellingPrice: resolved.product.sellingPrice,
+      costPrice: resolved.product.costPrice,
+      lastSellingPrice: resolved.product.lastSellingPrice,
       gstPercentage: resolved.product.gstPercentage,
       discountType: resolved.product.discountType,
       discountValue: resolved.product.discountValue,

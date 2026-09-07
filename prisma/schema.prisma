@@ -1882,6 +1882,11 @@ model ComboOffer {
   highlightOnHome Boolean      @default(true)
   startDate   DateTime?
   endDate     DateTime?
+  // End-state tracking: when an offer is auto-deactivated (time expired or a
+  // product sold out) the system records why so the admin panel can display it.
+  endReason   String?          @db.VarChar(20) // TIME_ENDED | STOCK_OUT | MANUAL
+  endedAt     DateTime?
+  endNote     String?          @db.VarChar(255) // e.g. product name that sold out
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
 

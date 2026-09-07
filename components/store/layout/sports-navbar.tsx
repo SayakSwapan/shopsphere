@@ -31,6 +31,7 @@ export interface SportsCategory {
 
 const QUICK_LINKS = [
   { href: "/", label: "Home" },
+  { href: "/combo-offers", label: "Combo Offers" },
   { href: "/products", label: "Shop All" },
   // { href: "/products?category=sale", label: "Sale" },
 ];

@@ -139,10 +139,11 @@ export async function markOrderPaid(
   }
 
   /**
-   * Empty Cart
+   * Empty Cart — but NOT for dedicated combo orders. Combo orders are a
+   * separate flow with their own selection (not stored in the normal cart),
+   * so the customer's regular cart must remain untouched.
    */
-
-  if (order.user.cart) {
+  if (order.user.cart && !order.isComboOrder) {
     await prisma.cartitem.deleteMany({
       where: {
         cartId: order.user.cart.id,

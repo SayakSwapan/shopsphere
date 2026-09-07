@@ -42,6 +42,7 @@ export default function Navbar({ session, announcement, categories = [] }: Navba
 
   const navLinks = [
     { href: "/", label: "Home" },
+    { href: "/combo-offers", label: "Combo Offers" },
     { href: "/products", label: "New Arrivals" },
     { href: "/products", label: "Trending" },
     { href: "/about", label: "About" },

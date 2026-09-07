@@ -80,6 +80,21 @@ export async function POST(req: Request) {
       );
     }
 
+    // Total items the customer selects on the dedicated combo page ("Get").
+    const getCount = comboType === "PICK_ANY" ? minPick : Math.max(2, Number(body.getCount) || 2);
+    if (getCount < 2 || getCount > poolSize) {
+      return NextResponse.json(
+        { error: `For the combo page, customers must select between 2 and ${poolSize} products (Get count).` },
+        { status: 400 }
+      );
+    }
+    if (comboType === "BOGO" && getCount <= buyCount) {
+      return NextResponse.json(
+        { error: "For BOGO offers, the Select (Get) count must be greater than the count you charge for (Pay For)." },
+        { status: 400 }
+      );
+    }
+
     // Validate FIXED_PRICE: per-unit allocated price must not fall below min sell floor.
     if (comboType === "FIXED_PRICE" && body.customPrice) {
       const customPrice = Number(body.customPrice);
@@ -117,6 +132,7 @@ export async function POST(req: Request) {
             ? Number(body.customPrice)
             : null,
         buyCount: comboType === "BOGO" ? buyCount : 1,
+        getCount,
         minPick: comboType === "PICK_ANY" ? minPick : 2,
         apply: body.apply || "BOTH",
         isActive: body.isActive ?? true,

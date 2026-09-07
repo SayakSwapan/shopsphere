@@ -156,6 +156,11 @@ model order {
 
   transactionFee Decimal? @default(0) @db.Decimal(10,2)
 
+  // True when this ONLINE order was placed through the dedicated combo-offer
+  // checkout flow (a fixed product selection under one offer). Payment
+  // fulfillment must NOT clear the customer's regular cart for these orders.
+  isComboOrder Boolean @default(false)
+
 coupon Coupon? @relation(fields: [couponId], references: [id])
 
   couponUsage CouponUsage?
@@ -1882,6 +1887,14 @@ model ComboOffer {
   highlightOnHome Boolean      @default(true)
   startDate   DateTime?
   endDate     DateTime?
+  // Dedicated combo-offer flow: the EXACT number of different products the
+  // customer must select from the pool to fulfil the offer. Examples:
+  //   "Buy 1 Get 1 Free" -> buyCount=1, getCount=2
+  //   "Buy 3 Get 5"      -> buyCount=3, getCount=5 (pay priciest 3)
+  // The automatic cart / POS engine ignores this field (it reserves whatever
+  // the cart actually contains); it only drives the customer combo offer pages
+  // and the dedicated combo checkout.
+  getCount    Int              @default(2)
   // End-state tracking: when an offer is auto-deactivated (time expired or a
   // product sold out) the system records why so the admin panel can display it.
   endReason   String?          @db.VarChar(20) // TIME_ENDED | STOCK_OUT | MANUAL

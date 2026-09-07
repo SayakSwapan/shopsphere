@@ -29,6 +29,12 @@ const END_REASON_LABEL: Record<string, { text: string; style: string }> = {
 const inr = (n: number, digits = 0) =>
   `₹${(Number.isFinite(n) ? n : 0).toLocaleString("en-IN", { maximumFractionDigits: digits })}`;
 
+/** Total products the customer selects on the dedicated combo page. */
+const comboGetCountValue = (offer: { comboType: string; getCount: number | null; minPick: number | null; items: { quantity: number }[] }) =>
+  offer.comboType === "PICK_ANY"
+    ? Math.min(Math.max(2, Number(offer.minPick) || 2), offer.items.length)
+    : Math.max(2, Number(offer.getCount) || 2);
+
 export default async function ComboOffersPage() {
   await syncComboEndState();
 
@@ -197,10 +203,10 @@ export default async function ComboOffersPage() {
                   )}
                   <p className="text-xs text-slate-600 mt-0.5 truncate">
                     {offer.comboType === "FIXED_PRICE" && offer.customPrice != null
-                      ? `Bundle ₹${Number(offer.customPrice)}`
+                      ? `Bundle ₹${Number(offer.customPrice)} · select ${comboGetCountValue(offer)} of ${offer.items.length} products`
                       : offer.comboType === "PICK_ANY"
                       ? `Pick any ${Math.min(Math.max(2, Number(offer.minPick) || 2), offer.items.length)}+ · pay 1 priciest, rest free`
-                      : `Pay for ${offer.buyCount} · Get ${freeUnits} free (priciest ${offer.buyCount} charged)`}
+                      : `Buy ${offer.buyCount} Get ${Math.max(0, comboGetCountValue(offer) - (Number(offer.buyCount) || 1))} Free (combo page) · cart/POS: Get ${freeUnits} free (priciest ${offer.buyCount} charged)`}
                     {" · "}
                     {offer.badge || "No badge"}
                   </p>
@@ -323,7 +329,7 @@ export default async function ComboOffersPage() {
                         <div className="text-white font-medium">{p.offer.title}</div>
                         <div className="text-[10px] text-slate-500">
                           {TYPE_LABEL[p.offer.comboType] || p.offer.comboType}
-                          {p.offer.comboType === "BOGO" && ` · Buy ${p.offer.buyCount} Get ${Math.max(0, p.offer.items.reduce((s, i) => s + i.quantity, 0) - (Number(p.offer.buyCount) || 1))} Free`}
+                          {p.offer.comboType === "BOGO" && ` · Buy ${p.offer.buyCount} Get ${Math.max(0, comboGetCountValue(p.offer) - (Number(p.offer.buyCount) || 1))} Free (combo page) / ${Math.max(0, p.offer.items.reduce((s, i) => s + i.quantity, 0) - (Number(p.offer.buyCount) || 1))} free (cart)`}
                           {p.offer.comboType === "PICK_ANY" && ` · Pick any ${Math.min(Math.max(2, Number(p.offer.minPick) || 2), p.offer.items.length)}+ · pay 1, rest free`}
                         </div>
                       </td>

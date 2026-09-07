@@ -128,6 +128,7 @@ export default function ComboOfferForm({ mode, id }: Props) {
     imageUrl: "",
     comboType: "BOGO",
     buyCount: "1",
+    getCount: "2",
     minPick: "2",
     customPrice: "",
     apply: "BOTH",
@@ -401,6 +402,9 @@ export default function ComboOfferForm({ mode, id }: Props) {
           imageUrl: data.imageUrl || "",
           comboType: data.comboType || "BOGO",
           buyCount: data.comboType !== "FIXED_PRICE" && data.buyCount != null ? String(data.buyCount) : "1",
+          getCount: data.comboType === "PICK_ANY"
+            ? (data.minPick ? String(data.minPick) : "2")
+            : (data.getCount != null ? String(data.getCount) : "2"),
           minPick: data.minPick ? String(data.minPick) : "2",
           customPrice: data.customPrice ? String(data.customPrice) : "",
           apply: data.apply || "BOTH",
@@ -477,15 +481,31 @@ export default function ComboOfferForm({ mode, id }: Props) {
     }
     if (form.comboType === "BOGO") {
       const buyCount = Number(form.buyCount) || 1;
+      const getCount = Math.max(2, Number(form.getCount) || 2);
       const totalUnits = items.reduce((s, i) => s + i.quantity, 0);
       if (buyCount < 1 || buyCount >= totalUnits) {
         toast.error("For BOGO combos, you must pay for at least 1 item and leave at least 1 item free");
         return;
       }
+      if (getCount > items.length) {
+        toast.error(`Customers must select ${getCount} products, but only ${items.length} are in the pool. Add more products or lower the Get count.`);
+        return;
+      }
+      if (getCount <= buyCount) {
+        toast.error("For BOGO, the Select count (Get) must be greater than the count you charge for (Pay For).");
+        return;
+      }
     }
-    if (form.comboType === "FIXED_PRICE" && !(Number(form.customPrice) > 0)) {
-      toast.error("Enter a bundle price for FIXED_PRICE combos");
-      return;
+    if (form.comboType === "FIXED_PRICE") {
+      const getCount = Math.max(2, Number(form.getCount) || 2);
+      if (getCount > items.length) {
+        toast.error(`Customers must select ${getCount} products, but only ${items.length} are in the pool. Add more products or lower the Select count.`);
+        return;
+      }
+      if (!(Number(form.customPrice) > 0)) {
+        toast.error("Enter a bundle price for FIXED_PRICE combos");
+        return;
+      }
     }
     // Validate FIXED_PRICE floor: bundle price must cover all product minimum sell prices.
     if (form.comboType === "FIXED_PRICE" && Number(form.customPrice) > 0) {
@@ -507,12 +527,17 @@ export default function ComboOfferForm({ mode, id }: Props) {
     }
     setLoading(true);
     try {
+      const finalGetCount =
+        form.comboType === "PICK_ANY"
+          ? Math.max(2, Number(form.minPick) || 2)
+          : Math.max(2, Number(form.getCount) || 2);
       const payload = {
         ...form,
         startDate: toUtcIso(form.startDate),
         endDate: toUtcIso(form.endDate),
         items: items.map((i) => ({ productId: i.id, quantity: i.quantity })),
         buyCount: Number(form.buyCount) || 1,
+        getCount: finalGetCount,
         minPick: Number(form.minPick) || 2,
       };
       const url = mode === "edit" ? `/api/admin/combo-offers/${id}` : "/api/admin/combo-offers";
@@ -757,25 +782,36 @@ export default function ComboOfferForm({ mode, id }: Props) {
                   className={inputCls}
                 />
               </div>
-              <div className="sm:col-span-2">
+              <div>
+                <label className={labelCls}>Customer Selects (Get) *</label>
+                <input
+                  type="number"
+                  min="2"
+                  step="1"
+                  value={form.getCount}
+                  onChange={(e) => push({ getCount: e.target.value })}
+                  className={inputCls}
+                />
+                <p className="mt-1 text-xs text-slate-500">
+                  Total items the customer picks on the combo page (1 unit per product). Max {items.length || "—"}.
+                </p>
+              </div>
+              <div>
                 <label className={labelCls}>Free Items (auto)</label>
-                <div className="rounded-lg border border-[#1E293B] bg-[#0A0F1E] px-4 py-2.5 text-sm text-slate-300">
+                <div className="rounded-lg border border-[#1E293B] bg-[#0A0F1E] px-4 py-2.5 text-sm text-slate-300 min-h-[58px]">
                   {items.length < 2 ? (
                     "Add products below to calculate"
-                  ) : breakdown.ok && breakdown.freeCount > 0 ? (
-                    <>
-                      You charge <b className="text-amber-400">{breakdown.buyCount}</b> — customer gets{" "}
-                      <b className="text-emerald-400">{breakdown.freeCount} FREE</b>
-                      {breakdown.freeCount === 1 ? " item" : " items"}
-                      {" ("}Buy {breakdown.buyCount} Get {breakdown.freeCount} Free{")"}
-                    </>
                   ) : (
-                    <span className="text-red-400">
-                      No item is free — add more products or lower the number you pay for.
-                    </span>
+                    <>
+                      <b className="text-amber-400">Buy {Math.max(1, Number(form.buyCount) || 1)}</b> Get{" "}
+                      <b className="text-emerald-400">
+                        {Math.max(0, Math.min(Math.max(2, Number(form.getCount) || 2), items.length) - (Math.max(1, Number(form.buyCount) || 1)))}
+                      </b>{" "}
+                      Free
+                    </>
                   )}
                   <p className="mt-1 text-xs text-slate-500">
-                    The {breakdown.buyCount} most expensive items are charged; the rest of the set is free.
+                    The highest-priced selected items are charged; the rest are free.
                   </p>
                 </div>
               </div>
@@ -812,7 +848,7 @@ export default function ComboOfferForm({ mode, id }: Props) {
                     </>
                   )}
                   <p className="mt-1 text-xs text-slate-500">
-                    PICK_ANY always charges exactly 1 item (&ldquo;Pay for&rdquo; is fixed at 1). The customer picks any M distinct products.
+                    PICK_ANY always charges exactly 1 item (&ldquo;Pay for&rdquo; is fixed at 1). The customer picks any M distinct products on the combo page.
                   </p>
                 </div>
               </div>
@@ -820,62 +856,79 @@ export default function ComboOfferForm({ mode, id }: Props) {
           )}
 
           {form.comboType === "FIXED_PRICE" && (
-            <div>
-              <label className={labelCls}>Combo Price (₹) — suggested by the system, set by you *</label>
-              <div className="relative">
-                <IndianRupee size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div>
+                <label className={labelCls}>Combo Price (₹) — suggested by the system, set by you *</label>
+                <div className="relative">
+                  <IndianRupee size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={form.customPrice}
+                    onChange={(e) => push({ customPrice: e.target.value })}
+                    className={`${inputCls} pl-9`}
+                    placeholder="e.g. 1499"
+                  />
+                </div>
+                {suggestedPrice != null && suggestedPrice > 0 && (
+                  <div className="mt-2 flex items-center gap-2.5 rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2">
+                    <Sparkles size={14} className="shrink-0 text-amber-400" />
+                    <p className="flex-1 text-xs text-amber-200/90">
+                      Suggested price: <b className="text-amber-300">₹{Math.round(suggestedPrice * 100) / 100}</b>
+                      <span className="text-slate-400">
+                        {" "}
+                        ({Math.round(SUGGESTED_DISCOUNT * 100)}% off combined selling price
+                        {suggestedPrice === breakdown.floorsTotal && breakdown.floorsTotal > 0
+                          ? ", raised to the min. sell price floor"
+                          : ""}). You decide the final price —
+                      </span>
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => push({ customPrice: String(Math.round(suggestedPrice * 100) / 100) })}
+                      className="shrink-0 rounded-md bg-amber-500/15 px-2.5 py-1 text-[11px] font-bold text-amber-300 hover:bg-amber-500/25 transition-colors"
+                    >
+                      Use this price
+                    </button>
+                  </div>
+                )}
+                <p className="mt-1 text-xs text-slate-500">
+                  The price the customer pays for the WHOLE set. GST is billed on top at checkout. Keep it
+                  below the combined selling price (₹{Math.round(breakdown.normalIncl * 100) / 100} incl. GST)
+                  so the combo creates a real saving.
+                </p>
+                {breakdown.floorShortfall > 0 && (
+                  <div className="mt-2 flex items-start gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400">
+                    <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+                    <span>
+                      Bundle price is ₹{breakdown.floorShortfall} below the combined minimum sell price
+                      (₹{breakdown.floorsTotal}). <b>Raise it</b> so no product sells below its minimum sell
+                      price (max of cost &amp; last selling price).
+                    </span>
+                  </div>
+                )}
+                {breakdown.floorsTotal > 0 && (
+                  <p className="mt-1 text-[10px] text-slate-500">
+                    Min. sell price floor for this set: ₹{breakdown.floorsTotal}
+                  </p>
+                )}
+              </div>
+              <div>
+                <label className={labelCls}>Customer Selects (products) *</label>
                 <input
                   type="number"
-                  min="0"
-                  step="0.01"
-                  value={form.customPrice}
-                  onChange={(e) => push({ customPrice: e.target.value })}
-                  className={`${inputCls} pl-9`}
-                  placeholder="e.g. 1499"
+                  min="2"
+                  step="1"
+                  value={form.getCount}
+                  onChange={(e) => push({ getCount: e.target.value })}
+                  className={inputCls}
                 />
-              </div>
-              {suggestedPrice != null && suggestedPrice > 0 && (
-                <div className="mt-2 flex items-center gap-2.5 rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2">
-                  <Sparkles size={14} className="shrink-0 text-amber-400" />
-                  <p className="flex-1 text-xs text-amber-200/90">
-                    Suggested price: <b className="text-amber-300">₹{Math.round(suggestedPrice * 100) / 100}</b>
-                    <span className="text-slate-400">
-                      {" "}
-                      ({Math.round(SUGGESTED_DISCOUNT * 100)}% off combined selling price
-                      {suggestedPrice === breakdown.floorsTotal && breakdown.floorsTotal > 0
-                        ? ", raised to the min. sell price floor"
-                        : ""}). You decide the final price —
-                    </span>
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => push({ customPrice: String(Math.round(suggestedPrice * 100) / 100) })}
-                    className="shrink-0 rounded-md bg-amber-500/15 px-2.5 py-1 text-[11px] font-bold text-amber-300 hover:bg-amber-500/25 transition-colors"
-                  >
-                    Use this price
-                  </button>
-                </div>
-              )}
-              <p className="mt-1 text-xs text-slate-500">
-                The price the customer pays for the WHOLE set. GST is billed on top at checkout. Keep it
-                below the combined selling price (₹{Math.round(breakdown.normalIncl * 100) / 100} incl. GST)
-                so the combo creates a real saving.
-              </p>
-              {breakdown.floorShortfall > 0 && (
-                <div className="mt-2 flex items-start gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400">
-                  <AlertTriangle size={14} className="mt-0.5 shrink-0" />
-                  <span>
-                    Bundle price is ₹{breakdown.floorShortfall} below the combined minimum sell price
-                    (₹{breakdown.floorsTotal}). <b>Raise it</b> so no product sells below its minimum sell
-                    price (max of cost &amp; last selling price).
-                  </span>
-                </div>
-              )}
-              {breakdown.floorsTotal > 0 && (
-                <p className="mt-1 text-[10px] text-slate-500">
-                  Min. sell price floor for this set: ₹{breakdown.floorsTotal}
+                <p className="mt-1 text-xs text-slate-500">
+                  Total items the customer must pick on the combo page for this bundle price
+                  (1 unit per product). Max {items.length || "—"}.
                 </p>
-              )}
+              </div>
             </div>
           )}
 

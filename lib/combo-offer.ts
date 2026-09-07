@@ -95,7 +95,12 @@ export async function syncComboEndState() {
     },
   });
 
-  // 2. Stock-out: deactivate offers where any item's product stock <= 0.
+  // 2. Stock-out: deactivate offers that can no longer be fulfilled. The combo
+  //    page needs `getCount` distinct in-stock products; the cart/POS engine
+  //    additionally requires every pool product in stock (enforced in
+  //    getActiveComboOffers). So an offer only auto-ends when fewer than
+  //    `getCount` products have stock — the pool gets filtered dynamically
+  //    before that point.
   const activeOffers = await prisma.comboOffer.findMany({
     where: {
       isActive: true,
@@ -111,18 +116,21 @@ export async function syncComboEndState() {
   });
 
   for (const offer of activeOffers) {
+    const required = Math.max(2, offer.getCount ?? 2);
+    const inStockCount = offer.items.filter((it) => it.product.stock > 0).length;
+    if (inStockCount >= required) continue;
     const outOfStockItem = offer.items.find((it) => it.product.stock <= 0);
-    if (outOfStockItem) {
-      await prisma.comboOffer.update({
-        where: { id: offer.id },
-        data: {
-          isActive: false,
-          endReason: "STOCK_OUT",
-          endedAt: dbNow,
-          endNote: `${outOfStockItem.product.name} sold out`,
-        },
-      });
-    }
+    await prisma.comboOffer.update({
+      where: { id: offer.id },
+      data: {
+        isActive: false,
+        endReason: "STOCK_OUT",
+        endedAt: dbNow,
+        endNote: outOfStockItem
+          ? `${outOfStockItem.product.name} sold out — only ${inStockCount} of ${required} combo products left in stock`
+          : `Only ${inStockCount} of ${required} combo products in stock`,
+      },
+    });
   }
 }
 

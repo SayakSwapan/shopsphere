@@ -159,8 +159,9 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
         productimage: { select: { url: true }, take: 1 },
         productvariant: {
           select: {
+            id: true,
             stock: true,
-            size: { select: { sizeName: true } },
+            size: { select: { sizeName: true, sizeCategory: true } },
             gender: { select: { name: true } },
           },
         },

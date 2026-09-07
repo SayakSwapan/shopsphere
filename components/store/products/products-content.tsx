@@ -7,12 +7,14 @@ import MobileFilterButton from "./mobile-filter-button";
 import ProductsToolbar from "./products-toolbar";
 import AppliedFilters from "./applied-filters";
 import ProductCard from "@/components/store/product-card";
+import ComboQuickAddCard from "./combo-quick-add-card";
 import { Package, ChevronDown, X, Tag } from "lucide-react";
 import { useSearchParams, useRouter } from "next/navigation";
 
 interface ProductVariant {
+  id: string;
   stock: number;
-  size: { sizeName: string } | null;
+  size: { sizeName: string; sizeCategory: string } | null;
   gender: { name: string } | null;
 }
 
@@ -104,6 +106,18 @@ export default function ProductsContent({ products, categories, genders, perPage
 
   const visibleProducts = useMemo(() => products.slice(0, visibleCount), [products, visibleCount]);
   const hasMore = visibleCount < products.length;
+
+  // Required quantity per product when viewing a specific combo (e.g. "2 of this
+  // product are needed to complete the offer").
+  const requiredQtyByProduct = useMemo(() => {
+    const map = new Map<string, number>();
+    if (combo && combo.slug !== "all") {
+      for (const it of combo.items) {
+        map.set(it.product.id, Math.max(1, it.quantity));
+      }
+    }
+    return map;
+  }, [combo]);
 
   const loadMore = useCallback(() => {
     setVisibleCount((prev) => prev + itemsPerPage);
@@ -220,28 +234,36 @@ export default function ProductsContent({ products, categories, genders, perPage
         {products.length > 0 ? (
           <>
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-              {visibleProducts.map((product) => (
-                <ProductCard
-                  key={product.id}
-                  product={{
-                    id: product.id,
-                    name: product.name,
-                    slug: product.slug,
-                    sellingPrice: Number(product.sellingPrice),
-                    salePrice: Number(product.salePrice),
-                    finalPrice: Number(product.finalPrice),
-                    discountType: product.discountType ?? undefined,
-                    discountValue: Number(product.discountValue),
-                    gstPercentage: Number(product.gstPercentage),
-                    offerStart: product.offerStart,
-                    offerEnd: product.offerEnd,
-                    isFeatured: product.isFeatured,
-                    isTrending: product.isTrending,
-                    productimage: product.productimage.map((img) => ({ url: img.url })),
-                    productvariant: product.productvariant,
-                  }}
-                />
-              ))}
+              {visibleProducts.map((product) =>
+                combo ? (
+                  <ComboQuickAddCard
+                    key={product.id}
+                    product={product}
+                    requiredQuantity={requiredQtyByProduct.get(product.id) ?? 1}
+                  />
+                ) : (
+                  <ProductCard
+                    key={product.id}
+                    product={{
+                      id: product.id,
+                      name: product.name,
+                      slug: product.slug,
+                      sellingPrice: Number(product.sellingPrice),
+                      salePrice: Number(product.salePrice),
+                      finalPrice: Number(product.finalPrice),
+                      discountType: product.discountType ?? undefined,
+                      discountValue: Number(product.discountValue),
+                      gstPercentage: Number(product.gstPercentage),
+                      offerStart: product.offerStart,
+                      offerEnd: product.offerEnd,
+                      isFeatured: product.isFeatured,
+                      isTrending: product.isTrending,
+                      productimage: product.productimage.map((img) => ({ url: img.url })),
+                      productvariant: product.productvariant,
+                    }}
+                  />
+                )
+              )}
             </div>
 
             {/* View More button */}

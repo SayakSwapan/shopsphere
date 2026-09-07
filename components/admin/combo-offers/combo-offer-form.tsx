@@ -22,9 +22,12 @@ import {
   BookOpen,
   AlertTriangle,
   Clock,
+  Sparkles,
 } from "lucide-react";
 import { priceWithGst, getActivePriceBase } from "@/lib/pricing";
 import ComboGuideModal from "./combo-guide-modal";
+
+const SUGGESTED_DISCOUNT = 0.2;
 
 const BADGE_SUGGESTIONS = [
   "BOGO",
@@ -542,6 +545,14 @@ export default function ComboOfferForm({ mode, id }: Props) {
     "w-full bg-[#0A0F1E] border border-[#1E293B] text-white rounded-lg px-4 py-2.5 text-sm focus:border-amber-500/50 outline-none";
   const labelCls = "block text-sm font-medium text-slate-300 mb-1.5";
 
+  // System-suggested bundle price: flat % off the combined selling price, clamped
+  // so it never dips below the combined minimum sell price floor. The admin keeps
+  // final say — the suggestion only fills the editable customPrice field.
+  const suggestedPrice =
+    breakdown.ok && breakdown.normalBase > 0
+      ? Math.max(Math.round(breakdown.normalBase * (1 - SUGGESTED_DISCOUNT) * 100) / 100, breakdown.floorsTotal)
+      : null;
+
   return (
     <div className="p-6 max-w-4xl">
       <Link
@@ -810,7 +821,7 @@ export default function ComboOfferForm({ mode, id }: Props) {
 
           {form.comboType === "FIXED_PRICE" && (
             <div>
-              <label className={labelCls}>Combo Price (₹) — decided by you *</label>
+              <label className={labelCls}>Combo Price (₹) — suggested by the system, set by you *</label>
               <div className="relative">
                 <IndianRupee size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
                 <input
@@ -823,6 +834,28 @@ export default function ComboOfferForm({ mode, id }: Props) {
                   placeholder="e.g. 1499"
                 />
               </div>
+              {suggestedPrice != null && suggestedPrice > 0 && (
+                <div className="mt-2 flex items-center gap-2.5 rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2">
+                  <Sparkles size={14} className="shrink-0 text-amber-400" />
+                  <p className="flex-1 text-xs text-amber-200/90">
+                    Suggested price: <b className="text-amber-300">₹{Math.round(suggestedPrice * 100) / 100}</b>
+                    <span className="text-slate-400">
+                      {" "}
+                      ({Math.round(SUGGESTED_DISCOUNT * 100)}% off combined selling price
+                      {suggestedPrice === breakdown.floorsTotal && breakdown.floorsTotal > 0
+                        ? ", raised to the min. sell price floor"
+                        : ""}). You decide the final price —
+                    </span>
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => push({ customPrice: String(Math.round(suggestedPrice * 100) / 100) })}
+                    className="shrink-0 rounded-md bg-amber-500/15 px-2.5 py-1 text-[11px] font-bold text-amber-300 hover:bg-amber-500/25 transition-colors"
+                  >
+                    Use this price
+                  </button>
+                </div>
+              )}
               <p className="mt-1 text-xs text-slate-500">
                 The price the customer pays for the WHOLE set. GST is billed on top at checkout. Keep it
                 below the combined selling price (₹{Math.round(breakdown.normalIncl * 100) / 100} incl. GST)

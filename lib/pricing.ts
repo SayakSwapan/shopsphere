@@ -59,6 +59,60 @@ export function getEffectivePrice(
 }
 
 // ---------------------------------------------------------------------------
+// Offer-window-aware pricing
+//
+// A product's discounted price (salePrice/finalPrice) only counts while its
+// offer is LIVE — from offerStart (inclusive) to offerEnd (inclusive), with a
+// non-zero discount configured. Outside that window the customer is charged the
+// regular sellingPrice. Item cards on the storefront already gate on this; the
+// pricing engines (cart, combo, checkout, orders) must do the same so they
+// never charge a stale offer price after the offer ends.
+// ---------------------------------------------------------------------------
+
+export interface OfferWindowInput {
+  discountType?: unknown;
+  discountValue?: unknown;
+  offerStart?: Date | string | null;
+  offerEnd?: Date | string | null;
+  now?: Date;
+}
+
+/**
+ * True when the product's configured discount is currently running: a valid
+ * discount type + non-zero value AND now within [offerStart, offerEnd].
+ * Matches the storefront product-card logic exactly.
+ */
+export function isProductOfferActive(opts: OfferWindowInput): boolean {
+  const value = Number(opts.discountValue) || 0;
+  if (value <= 0) return false;
+  const type = String(opts.discountType ?? "").toUpperCase();
+  if (!isPercentDiscount(type) && !isFlatDiscount(type)) return false;
+  const now = opts.now ?? new Date();
+  if (opts.offerStart && now < new Date(opts.offerStart)) return false;
+  if (opts.offerEnd && now > new Date(opts.offerEnd)) return false;
+  return true;
+}
+
+/**
+ * The pre-GST unit base the CUSTOMER actually sees/pays right now:
+ * the discounted salePrice while the offer is live, otherwise the regular
+ * sellingPrice. Uses getActivePriceBase under the hood.
+ */
+export function getActivePriceBase(opts: {
+  salePrice: unknown;
+  finalPrice: unknown;
+  sellingPrice: unknown;
+  discountType?: unknown;
+  discountValue?: unknown;
+  offerStart?: Date | string | null;
+  offerEnd?: Date | string | null;
+  now?: Date;
+}): number {
+  if (!isProductOfferActive(opts)) return Number(opts.sellingPrice) || 0;
+  return getEffectivePrice(opts.salePrice, opts.finalPrice, opts.sellingPrice);
+}
+
+// ---------------------------------------------------------------------------
 // Discount & final-price math
 //
 // Product decision: the GST-inclusive final price (priceWithGst(sellingPrice))

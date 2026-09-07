@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getEffectivePrice, getGstBreakdown } from "@/lib/pricing";
+import { getActivePriceBase, getGstBreakdown } from "@/lib/pricing";
 import { calculateShipping } from "@/lib/shipping";
 import { customizationLetterCharge, customizationUnitPrice } from "@/lib/print-pricing";
 
@@ -68,7 +68,15 @@ export default async function ReviewOrderPage() {
     let gst = 0;
 
     for (const item of cart.cartitem) {
-        const price = getEffectivePrice(item.product.salePrice, undefined, item.product.sellingPrice);
+        const price = getActivePriceBase({
+          salePrice: item.product.salePrice,
+          finalPrice: undefined,
+          sellingPrice: Number(item.product.sellingPrice),
+          discountType: item.product.discountType,
+          discountValue: item.product.discountValue,
+          offerStart: item.product.offerStart,
+          offerEnd: item.product.offerEnd,
+        });
         const { gstAmount } = getGstBreakdown(
             price,
             Number(item.product.gstPercentage) || 0

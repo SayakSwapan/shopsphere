@@ -75,6 +75,10 @@ export async function POST(req: Request) {
           finalPrice: item.product.finalPrice ?? 0,
           sellingPrice: Number(item.product.sellingPrice),
           gstPercentage: Number(item.product.gstPercentage) || 0,
+          discountType: item.product.discountType,
+          discountValue: item.product.discountValue,
+          offerStart: item.product.offerStart,
+          offerEnd: item.product.offerEnd,
         },
       })),
       "ONLINE"
@@ -171,6 +175,23 @@ export async function POST(req: Request) {
     }
 
     const total = subtotal - discount - loyaltyDiscount + shipping + gst;
+
+    // Combo offers are exclusive — they never stack with a coupon code or a
+    // loyalty reward. If a combo actually applied AND another campaign discount
+    // would ALSO apply, reject the order rather than silently double-discount.
+    if (
+      comboResult.applied.length > 0 &&
+      (discount > 0 || loyaltyDiscount > 0)
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "A combo offer is already applied to this order. Combo offers cannot be combined with coupon codes or loyalty rewards.",
+        },
+        { status: 400 }
+      );
+    }
 
     const txFeeResult = await calcTransactionFee(total, "RAZORPAY", "RAZORPAY");
     const transactionFee = txFeeResult.fee;

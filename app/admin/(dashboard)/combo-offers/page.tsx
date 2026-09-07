@@ -15,7 +15,7 @@ import DeleteButton from "@/components/admin/common/delete-button";
 
 export const dynamic = "force-dynamic";
 
-const TYPE_LABEL: Record<string, string> = { BOGO: "BOGO", FIXED_PRICE: "Bundle" };
+const TYPE_LABEL: Record<string, string> = { BOGO: "BOGO", PICK_ANY: "Pick Any", FIXED_PRICE: "Bundle" };
 const APPLY_LABEL: Record<string, string> = { BOTH: "Online & Offline", ONLINE: "Online", OFFLINE: "Offline" };
 
 const inr = (n: number, digits = 0) =>
@@ -168,6 +168,8 @@ export default async function ComboOffersPage() {
                   <p className="text-xs text-slate-600 mt-0.5 truncate">
                     {offer.comboType === "FIXED_PRICE" && offer.customPrice != null
                       ? `Bundle ₹${Number(offer.customPrice)}`
+                      : offer.comboType === "PICK_ANY"
+                      ? `Pick any ${Math.min(Math.max(2, Number(offer.minPick) || 2), offer.items.length)}+ · pay 1 priciest, rest free`
                       : `Pay for ${offer.buyCount} · Get ${freeUnits} free (priciest ${offer.buyCount} charged)`}
                     {" · "}
                     {offer.badge || "No badge"}
@@ -292,6 +294,7 @@ export default async function ComboOffersPage() {
                         <div className="text-[10px] text-slate-500">
                           {TYPE_LABEL[p.offer.comboType] || p.offer.comboType}
                           {p.offer.comboType === "BOGO" && ` · Buy ${p.offer.buyCount} Get ${Math.max(0, p.offer.items.reduce((s, i) => s + i.quantity, 0) - (Number(p.offer.buyCount) || 1))} Free`}
+                          {p.offer.comboType === "PICK_ANY" && ` · Pick any ${Math.min(Math.max(2, Number(p.offer.minPick) || 2), p.offer.items.length)}+ · pay 1, rest free`}
                         </div>
                       </td>
                       <td className="px-2 py-2.5 text-center text-slate-300">{p.orders}</td>

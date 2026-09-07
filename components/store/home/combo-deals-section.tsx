@@ -1,17 +1,29 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { BadgePercent, ArrowRight, Tag, Sparkles } from "lucide-react";
-import { priceWithGst } from "@/lib/pricing";
+import { priceWithGst, getActivePriceBase } from "@/lib/pricing";
 
 export const dynamic = "force-dynamic";
 
-/** Effective pre-GST unit base for a combo item's product. */
-function baseOf(p: { salePrice: number | null; finalPrice: number | null; sellingPrice: number }) {
-  for (const c of [p.salePrice, p.finalPrice, p.sellingPrice]) {
-    const v = Number(c);
-    if (Number.isFinite(v) && v > 0) return v;
-  }
-  return Number(p.sellingPrice) || 0;
+/** Effective pre-GST unit base for a combo item's product (offer-window aware). */
+function baseOf(p: {
+  salePrice: number | null;
+  finalPrice: number | null;
+  sellingPrice: number;
+  discountType?: string | null;
+  discountValue?: number | null;
+  offerStart?: Date | string | null;
+  offerEnd?: Date | string | null;
+}) {
+  return getActivePriceBase({
+    salePrice: p.salePrice,
+    finalPrice: p.finalPrice,
+    sellingPrice: p.sellingPrice,
+    discountType: p.discountType,
+    discountValue: p.discountValue,
+    offerStart: p.offerStart,
+    offerEnd: p.offerEnd,
+  });
 }
 
 interface ComboWithItems {
@@ -22,9 +34,10 @@ interface ComboWithItems {
   description: string | null;
   badge: string | null;
   imageUrl: string | null;
-  comboType: "BOGO" | "FIXED_PRICE";
+  comboType: "BOGO" | "PICK_ANY" | "FIXED_PRICE";
   customPrice: number | null;
   buyCount: number;
+  minPick?: number;
   items: {
     quantity: number;
     product: {
@@ -35,6 +48,10 @@ interface ComboWithItems {
       salePrice: number | null;
       finalPrice: number | null;
       gstPercentage: number;
+      discountType?: string | null;
+      discountValue?: number | null;
+      offerStart?: Date | string | null;
+      offerEnd?: Date | string | null;
       productimage: { url: string }[];
     };
   }[];
@@ -54,6 +71,8 @@ function ComboHero({ combo }: { combo: ComboWithItems }) {
   const offerLine =
     combo.comboType === "FIXED_PRICE" && Number(combo.customPrice) > 0
       ? `Bundle for ${priceWithGst(Number(combo.customPrice), 0).toLocaleString("en-IN")}`
+      : combo.comboType === "PICK_ANY"
+      ? `Pick any ${Math.min(Math.max(2, Number(combo.minPick) || 2), combo.items.length)}+ · pay 1, rest free`
       : `Pay for ${buyCount} · Get ${freeCount} ${freeCount === 1 ? "item" : "items"} free`;
 
   return (
@@ -240,7 +259,7 @@ function ComboGrid({ combos }: { combos: ComboWithItems[] }) {
                   }}
                 >
                   <Tag size={11} />
-                  {combo.comboType === "FIXED_PRICE" ? "Bundle" : "BOGO"}
+                  {combo.comboType === "FIXED_PRICE" ? "Bundle" : combo.comboType === "PICK_ANY" ? "Pick Any" : "BOGO"}
                 </span>
               </div>
 
@@ -280,6 +299,8 @@ function ComboGrid({ combos }: { combos: ComboWithItems[] }) {
                 >
                   {combo.comboType === "FIXED_PRICE" && Number(combo.customPrice) > 0
                     ? `₹${Number(combo.customPrice)}`
+                    : combo.comboType === "PICK_ANY"
+                    ? "Pay 1 · rest free"
                     : `Get ${Math.max(0, combo.items.reduce((s, it) => s + it.quantity, 0) - (Math.min(Math.max(1, Number(combo.buyCount) || 1), combo.items.reduce((s, it) => s + it.quantity, 0))))} free`}
                 </span>
               </div>
@@ -327,6 +348,10 @@ export default async function ComboDealsSection() {
               salePrice: true,
               finalPrice: true,
               gstPercentage: true,
+              discountType: true,
+              discountValue: true,
+              offerStart: true,
+              offerEnd: true,
               productimage: { take: 1 },
             },
           },

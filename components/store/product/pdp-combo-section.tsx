@@ -1,16 +1,28 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { BadgePercent, ArrowRight, Plus } from "lucide-react";
-import { priceWithGst } from "@/lib/pricing";
+import { priceWithGst, getActivePriceBase } from "@/lib/pricing";
 
 export const dynamic = "force-dynamic";
 
-function baseOf(p: { salePrice: number | null; finalPrice: number | null; sellingPrice: number }) {
-  for (const c of [p.salePrice, p.finalPrice, p.sellingPrice]) {
-    const v = Number(c);
-    if (Number.isFinite(v) && v > 0) return v;
-  }
-  return Number(p.sellingPrice) || 0;
+function baseOf(p: {
+  salePrice: number | null;
+  finalPrice: number | null;
+  sellingPrice: number;
+  discountType?: string | null;
+  discountValue?: number | null;
+  offerStart?: Date | string | null;
+  offerEnd?: Date | string | null;
+}) {
+  return getActivePriceBase({
+    salePrice: p.salePrice,
+    finalPrice: p.finalPrice,
+    sellingPrice: p.sellingPrice,
+    discountType: p.discountType,
+    discountValue: p.discountValue,
+    offerStart: p.offerStart,
+    offerEnd: p.offerEnd,
+  });
 }
 
 type PdpCombo = {
@@ -20,9 +32,10 @@ type PdpCombo = {
   headline: string | null;
   badge: string | null;
   imageUrl: string | null;
-  comboType: "BOGO" | "FIXED_PRICE";
+  comboType: "BOGO" | "PICK_ANY" | "FIXED_PRICE";
   customPrice: number | null;
   buyCount: number;
+  minPick?: number;
   items: {
     quantity: number;
     product: {
@@ -33,6 +46,10 @@ type PdpCombo = {
       salePrice: number | null;
       finalPrice: number | null;
       gstPercentage: number;
+      discountType?: string | null;
+      discountValue?: number | null;
+      offerStart?: Date | string | null;
+      offerEnd?: Date | string | null;
       productimage: { url: string }[];
     };
   }[];
@@ -62,6 +79,10 @@ export default async function PdpComboSection({ productId }: { productId: string
               salePrice: true,
               finalPrice: true,
               gstPercentage: true,
+              discountType: true,
+              discountValue: true,
+              offerStart: true,
+              offerEnd: true,
               productimage: { take: 1 },
             },
           },
@@ -89,6 +110,8 @@ export default async function PdpComboSection({ productId }: { productId: string
           const dealText =
             combo.comboType === "FIXED_PRICE" && Number(combo.customPrice) > 0
               ? `Bundle for ${priceWithGst(Number(combo.customPrice), 0).toLocaleString("en-IN")}`
+              : combo.comboType === "PICK_ANY"
+              ? `Pick any ${Math.min(Math.max(2, Number(combo.minPick) || 2), combo.items.length)}+ · pay 1, rest free`
               : `Buy ${buyCount} Get ${freeCount} — pay priciest ${buyCount}, rest free`;
           return (
             <div

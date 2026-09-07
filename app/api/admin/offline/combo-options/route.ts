@@ -69,6 +69,7 @@ export async function GET() {
       comboType: offer.comboType,
       customPrice: offer.customPrice != null ? Number(offer.customPrice) : null,
       buyCount: offer.comboType === "BOGO" ? Number(offer.buyCount) || 1 : 1,
+      minPick: offer.minPick,
       products: offer.items.map((item) => {
         const p = item.product;
         return {

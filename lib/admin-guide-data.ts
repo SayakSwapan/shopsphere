@@ -938,7 +938,7 @@ export const guideSections: GuideSection[] = [
       {
         title: "Pick the pricing type",
         detail:
-          "BOGO — the customer pays for the N most expensive items in the set ('Pay For') and the rest of the set is free. Classic 'Buy 1 Get 1' = 2 items with Pay For 1; 'Buy 2 Get 1' = 3 items with Pay For 2. FIXED_PRICE — the customer pays exactly the custom price for the whole set. Prices follow project conventions: the engine works in pre-GST bases and GST is added on top at checkout.",
+          "BOGO — the customer pays for the N most expensive items in the set ('Pay For') and the rest of the set is free. Classic 'Buy 1 Get 1' = 2 items with Pay For 1; 'Buy 2 Get 1' = 3 items with Pay For 2. PICK_ANY — set a 'Minimum Pick' (M): the customer picks any M+ DISTINCT products from the pool and pays ONLY the single priciest picked item — every other picked item is FREE (Pay For is always fixed at 1). FIXED_PRICE — the customer pays exactly the custom price for the whole set. Prices follow project conventions: the engine works in pre-GST bases and GST is added on top at checkout.",
       },
       {
         title: "Add the products",
@@ -962,6 +962,8 @@ export const guideSections: GuideSection[] = [
       "For offline counter staff: offline combo lines are locked and cannot be negotiated — the admin-managed price is final.",
       "Add a badge and highlight the offer on home so customers actually discover it. Combo pages are linked from /products?combo=<slug>.",
       "A single product can appear in multiple offers — whichever set the cart fully satisfies is what applies.",
+      "Combo offers are EXCLUSIVE: they never stack with coupon codes or loyalty rewards. If a combo applies, the checkout disables coupons/loyalty and the order is rejected if both would discount at once.",
+      "Product offer windows are honoured everywhere — a product's discount only counts while its offer is live. Once an offer ends, pricing (cart, combo bases, checkout and orders) automatically reverts to the regular selling price.",
       "The Combo Offers list also tracks finances: combo revenue, the discount given, every offer's performance, and the online vs offline split — cancelled orders are excluded.",
     ],
     diagram: [
@@ -997,7 +999,7 @@ export const guideSections: GuideSection[] = [
             type: "action",
             title: "Price reserved units",
             detail:
-              "BOGO: pay the buyCount most expensive reserved units, all others ₹0. FIXED_PRICE: distribute the custom price across the set proportionally.",
+              "BOGO: pay the buyCount most expensive reserved units, all others ₹0. PICK_ANY: pay the single priciest picked unit, every other picked unit ₹0. FIXED_PRICE: distribute the custom price across the set proportionally.",
             phase: "Pricing",
           },
           {

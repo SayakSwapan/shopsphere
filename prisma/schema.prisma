@@ -1825,11 +1825,15 @@ model LoyaltyAuditLog {
   @@index([createdAt])
 }
 
-// ─── Combo Offers (Buy 1 Get 1 / Buy 2 Get 1 / Bundle) ─────────────────────
+// ─── Combo Offers (Buy 1 Get 1 / Buy 2 Get 1 / Pick Any / Bundle) ───────────
 
 enum ComboOfferType {
   // Pay only for the most expensive item; the rest are free.
   BOGO
+  // "Pick Any M from the pool" — the customer picks M+ DISTINCT products from
+  // the set and pays only for the most expensive picked item; every other
+  // picked item is free. `minPick` defines M.
+  PICK_ANY
   // Admin sets an exact bundle price for the whole set of products.
   FIXED_PRICE
 }
@@ -1846,7 +1850,9 @@ enum ComboOfferApply {
  * sections and on the product details page for every product it contains.
  *
  * Pricing (resolved at checkout by `lib/combo-offer.ts`):
- *  - BOGO          -> pay the single most expensive item, the rest are free.
+ *  - BOGO          -> pay the `buyCount` most expensive items, the rest free.
+ *  - PICK_ANY      -> pick `minPick`+ distinct products from the set, pay ONLY
+ *                     the most expensive picked item, the rest picked free.
  *  - FIXED_PRICE   -> pay exactly `customPrice` for the whole set.
  *
  * `applyOnline` / `applyOffline` decide whether the pricing should be honoured
@@ -1867,6 +1873,9 @@ model ComboOffer {
   // 1 = classic "buy 1 get N−1 free". e.g. a 3-product set with buyCount=2 is
   // "Buy 2 Get 1 Free".
   buyCount    Int              @default(1)
+  // PICK_ANY: how many DISTINCT products from `items` the customer must have in
+  // a single cart before the deal triggers (pay priciest 1, rest free).
+  minPick     Int              @default(2)
   apply       ComboOfferApply  @default(BOTH)
   isActive    Boolean          @default(true)
   sortOrder   Int              @default(0)

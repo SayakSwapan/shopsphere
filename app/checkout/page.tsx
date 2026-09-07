@@ -61,6 +61,10 @@ export default async function CheckoutPage() {
         finalPrice: item.product.finalPrice ?? 0,
         sellingPrice: Number(item.product.sellingPrice),
         gstPercentage: Number(item.product.gstPercentage) || 0,
+        discountType: item.product.discountType,
+        discountValue: item.product.discountValue,
+        offerStart: item.product.offerStart,
+        offerEnd: item.product.offerEnd,
       },
     })),
     "ONLINE"
@@ -170,6 +174,7 @@ export default async function CheckoutPage() {
         gst={gst}
         total={total}
         comboSavings={comboSavings}
+        comboApplied={comboResult.applied.length > 0}
         pincodeInfo={pincodeInfo}
         restrictedItems={restrictedItems}
         totalWeightGrams={shippingResult.weightGrams}

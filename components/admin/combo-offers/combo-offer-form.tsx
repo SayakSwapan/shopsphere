@@ -20,7 +20,7 @@ import {
   PackagePlus,
   Minus,
 } from "lucide-react";
-import { priceWithGst } from "@/lib/pricing";
+import { priceWithGst, getActivePriceBase } from "@/lib/pricing";
 
 interface SelectedProduct {
   id: string;
@@ -35,6 +35,11 @@ interface SelectedProduct {
   categoryName?: string;
   imageUrl?: string | null;
   quantity: number;
+  lastSellingPrice?: number | null;
+  discountType?: string | null;
+  discountValue?: number | null;
+  offerStart?: string | null;
+  offerEnd?: string | null;
 }
 
 /** datetime-local ("YYYY-MM-DDTHH:mm", browser local time) → UTC ISO string. */
@@ -58,13 +63,28 @@ interface Props {
   id?: string;
 }
 
-function effectiveBase(p: { salePrice: number | null; finalPrice: number | null; sellingPrice: number }) {
-  const candidates = [p.salePrice, p.finalPrice, p.sellingPrice];
-  for (const c of candidates) {
-    const v = Number(c);
-    if (Number.isFinite(v) && v > 0) return v;
-  }
-  return Number(p.sellingPrice) || 0;
+function effectiveBase(p: SelectedProduct): number {
+  return getActivePriceBase({
+    salePrice: p.salePrice,
+    finalPrice: p.finalPrice,
+    sellingPrice: p.sellingPrice,
+    discountType: p.discountType,
+    discountValue: p.discountValue,
+    offerStart: p.offerStart,
+    offerEnd: p.offerEnd,
+  });
+}
+
+/** True when the product card should show the discount (offer window live). */
+function productOfferActive(p: SelectedProduct): boolean {
+  const value = Number(p.discountValue) || 0;
+  if (value <= 0) return false;
+  const type = String(p.discountType ?? "").toUpperCase();
+  if (type !== "PERCENTAGE" && type !== "FLAT") return false;
+  const now = new Date();
+  if (p.offerStart && now < new Date(p.offerStart)) return false;
+  if (p.offerEnd && now > new Date(p.offerEnd)) return false;
+  return true;
 }
 
 export default function ComboOfferForm({ mode, id }: Props) {
@@ -81,6 +101,7 @@ export default function ComboOfferForm({ mode, id }: Props) {
     imageUrl: "",
     comboType: "BOGO",
     buyCount: "1",
+    minPick: "2",
     customPrice: "",
     apply: "BOTH",
     isActive: true,
@@ -117,6 +138,11 @@ export default function ComboOfferForm({ mode, id }: Props) {
           stock: Number(p.stock) || 0,
           categoryName: (p.category as { name?: string } | undefined)?.name,
           imageUrl: (p.productimage as { url?: string }[] | undefined)?.[0]?.url ?? null,
+          lastSellingPrice: p.lastSellingPrice != null ? Number(p.lastSellingPrice) : null,
+          discountType: p.discountType as string | null,
+          discountValue: p.discountValue != null ? Number(p.discountValue) : null,
+          offerStart: p.offerStart as string | null,
+          offerEnd: p.offerEnd as string | null,
           quantity: 1,
         }));
         setSearchResults(list.filter((l) => !items.some((i) => i.id === l.id)));
@@ -224,6 +250,36 @@ export default function ComboOfferForm({ mode, id }: Props) {
       };
     }
 
+    if (form.comboType === "PICK_ANY") {
+      // Customer picks any M distinct products from the pool; pay priciest 1,
+      // every other picked item is FREE. buyCount is fixed at 1.
+      const buyCount = 1;
+      const minPick = Math.min(Math.max(2, Number(form.minPick) || 2), rows.length);
+      const flat: { base: number; quantity: number; id: string }[] = [];
+      for (const r of rows) {
+        for (let k = 0; k < r.quantity; k++) flat.push({ base: r.base, id: r.id, quantity: r.quantity });
+      }
+      const paidSet = new Set(flat.sort((a, b) => b.base - a.base).slice(0, buyCount));
+      const payBase = flat.reduce((s, u) => s + (paidSet.has(u) ? u.base : 0), 0);
+      const freeUnits = flat.length - buyCount;
+      const savings = Math.round((normalBase - payBase + Number.EPSILON) * 100) / 100;
+      return {
+        ok: true as const,
+        rows,
+        normalBase,
+        normalIncl,
+        totalCost,
+        payBase,
+        savings,
+        savingsPct: normalBase > 0 ? Math.round((savings / normalBase) * 100) : 0,
+        freeCount: freeUnits,
+        buyCount,
+        message:
+          `Pick any ${minPick}+ from the ${rows.length} products in the pool — pay for the single priciest item (₹${Math.round(payBase * 100) / 100} + GST). ` +
+          `Every other picked item is FREE.`,
+      };
+    }
+
     const custom = Number(form.customPrice);
     const customValid = Number.isFinite(custom) && custom > 0;
     const payBase = customValid ? Math.round(Math.min(custom, normalBase) * 100) / 100 : 0;
@@ -294,6 +350,7 @@ export default function ComboOfferForm({ mode, id }: Props) {
           imageUrl: data.imageUrl || "",
           comboType: data.comboType || "BOGO",
           buyCount: data.comboType !== "FIXED_PRICE" && data.buyCount != null ? String(data.buyCount) : "1",
+          minPick: data.minPick ? String(data.minPick) : "2",
           customPrice: data.customPrice ? String(data.customPrice) : "",
           apply: data.apply || "BOTH",
           isActive: data.isActive ?? true,
@@ -320,6 +377,11 @@ export default function ComboOfferForm({ mode, id }: Props) {
               stock: Number(p?.stock) || 0,
               categoryName: p?.category?.name,
               imageUrl: (p?.productimage as { url?: string }[] | undefined)?.[0]?.url ?? null,
+              lastSellingPrice: p?.lastSellingPrice != null ? Number(p.lastSellingPrice) : null,
+              discountType: p?.discountType as string | null,
+              discountValue: p?.discountValue != null ? Number(p.discountValue) : null,
+              offerStart: p?.offerStart as string | null,
+              offerEnd: p?.offerEnd as string | null,
               quantity: it.quantity,
             });
           } catch {
@@ -371,6 +433,13 @@ export default function ComboOfferForm({ mode, id }: Props) {
       toast.error("Enter a bundle price for FIXED_PRICE combos");
       return;
     }
+    if (form.comboType === "PICK_ANY") {
+      const minPick = Number(form.minPick) || 2;
+      if (minPick < 2 || minPick > items.length) {
+        toast.error(`Minimum pick (M) must be at least 2 and no more than the ${items.length} products in the pool`);
+        return;
+      }
+    }
     setLoading(true);
     try {
       const payload = {
@@ -379,6 +448,7 @@ export default function ComboOfferForm({ mode, id }: Props) {
         endDate: toUtcIso(form.endDate),
         items: items.map((i) => ({ productId: i.id, quantity: i.quantity })),
         buyCount: Number(form.buyCount) || 1,
+        minPick: Number(form.minPick) || 2,
       };
       const url = mode === "edit" ? `/api/admin/combo-offers/${id}` : "/api/admin/combo-offers";
       const res = await fetch(url, {
@@ -539,6 +609,7 @@ export default function ComboOfferForm({ mode, id }: Props) {
                 className={inputCls}
               >
                 <option value="BOGO">BOGO — Buy X, Get Y Free (pay X priciest)</option>
+                <option value="PICK_ANY">Pick Any M — pay 1 priciest, rest free</option>
                 <option value="FIXED_PRICE">Bundle — fixed price</option>
               </select>
             </div>
@@ -588,6 +659,43 @@ export default function ComboOfferForm({ mode, id }: Props) {
                   )}
                   <p className="mt-1 text-xs text-slate-500">
                     The {breakdown.buyCount} most expensive items are charged; the rest of the set is free.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {form.comboType === "PICK_ANY" && (
+            <div className="grid sm:grid-cols-3 gap-4">
+              <div>
+                <label className={labelCls}>Minimum Pick (M) *</label>
+                <input
+                  type="number"
+                  min="2"
+                  step="1"
+                  value={form.minPick}
+                  onChange={(e) => push({ minPick: e.target.value })}
+                  className={inputCls}
+                />
+                <p className="mt-1 text-xs text-slate-500">
+                  Customer must pick at least this many products from the pool. Must be 2 to the pool size
+                  ({items.length || "—"}).
+                </p>
+              </div>
+              <div className="sm:col-span-2">
+                <label className={labelCls}>How it works (auto)</label>
+                <div className="rounded-lg border border-[#1E293B] bg-[#0A0F1E] px-4 py-2.5 text-sm text-slate-300">
+                  {items.length < 2 ? (
+                    "Add products to the pool below to calculate"
+                  ) : (
+                    <>
+                      Pick any <b className="text-amber-400">{Math.min(Math.max(2, Number(form.minPick) || 2), items.length)}+</b> from{" "}
+                      <b className="text-emerald-400">{items.length}</b> pool product{items.length === 1 ? "" : "s"} — pay only the{" "}
+                      <b className="text-amber-400">1 priciest</b>, every other picked item <b className="text-emerald-400">FREE</b>.
+                    </>
+                  )}
+                  <p className="mt-1 text-xs text-slate-500">
+                    PICK_ANY always charges exactly 1 item (&ldquo;Pay for&rdquo; is fixed at 1). The customer picks any M distinct products.
                   </p>
                 </div>
               </div>
@@ -702,13 +810,19 @@ export default function ComboOfferForm({ mode, id }: Props) {
                   </span>
                 </div>
                 <div className="flex justify-between text-slate-300">
-                  <span>{form.comboType === "BOGO" ? `You pay (${breakdown.buyCount} priciest)` : "Bundle price"}</span>
+                  <span>
+                    {form.comboType === "BOGO"
+                      ? `You pay (${breakdown.buyCount} priciest)`
+                      : form.comboType === "PICK_ANY"
+                      ? "You pay (1 priciest picked)"
+                      : "Bundle price"}
+                  </span>
                   <span className="font-black text-amber-300">
                     ₹{Math.round(breakdown.payBase * 100) / 100}
                     <span className="text-[10px] font-semibold text-slate-500 ml-1">+ GST billed</span>
                   </span>
                 </div>
-                {form.comboType === "BOGO" && breakdown.freeCount > 0 && (
+                {(form.comboType === "BOGO" || form.comboType === "PICK_ANY") && breakdown.freeCount > 0 && (
                   <p className="text-xs text-emerald-400 font-semibold">{breakdown.message}</p>
                 )}
                 <div className="flex justify-between pt-1.5 border-t border-amber-500/15 text-emerald-300 font-semibold">
@@ -717,7 +831,7 @@ export default function ComboOfferForm({ mode, id }: Props) {
                     ₹{Math.round(breakdown.savings * 100) / 100} ({breakdown.savingsPct}%)
                   </span>
                 </div>
-                {form.comboType !== "BOGO" && (
+                {form.comboType === "FIXED_PRICE" && (
                   <p className="text-xs text-slate-500 pt-1">{breakdown.message}</p>
                 )}
               </div>
@@ -756,7 +870,9 @@ export default function ComboOfferForm({ mode, id }: Props) {
                 const isAdded = items.some((i) => i.id === p.id);
                 const base = effectiveBase(p);
                 const mrp = Number(p.sellingPrice) || 0;
+                const offerLive = productOfferActive(p);
                 const onSale = mrp > 0 && Math.abs(base - mrp) > 0.001;
+                const minSell = Number(p.lastSellingPrice) || 0;
                 const out = Number(p.stock) <= 0;
                 return (
                   <div
@@ -807,6 +923,11 @@ export default function ComboOfferForm({ mode, id }: Props) {
                             ₹{Math.round(mrp * 100) / 100}
                           </span>
                         )}
+                        {offerLive && (
+                          <span className="px-1.5 py-0.5 rounded bg-amber-500/15 text-[9px] font-bold text-amber-300 uppercase">
+                            Offer live
+                          </span>
+                        )}
                         <span className="ml-auto text-[10px] text-slate-500">
                           + {Math.round(priceWithGst(base, p.gstPercentage) * 100) / 100} incl. GST
                         </span>
@@ -817,7 +938,7 @@ export default function ComboOfferForm({ mode, id }: Props) {
                           <Coins size={11} /> Cost ₹{Math.round(Number(p.costPrice) || 0)}
                         </span>
                         <span className="text-[10px] font-semibold text-slate-500">
-                          GST {Math.round(Number(p.gstPercentage) || 0)}%
+                          Min sell {minSell > 0 ? `₹${Math.round(minSell * 100) / 100}` : "—"}
                         </span>
                       </div>
 

@@ -94,6 +94,7 @@ interface Props {
   gst: number;
   total: number;
   comboSavings?: number;
+  comboApplied?: boolean;
   pincodeInfo: PincodeInfo | null;
   restrictedItems?: RestrictedItem[];
   totalWeightGrams: number;
@@ -108,6 +109,7 @@ export default function CheckoutClient({
   shipping: initialShipping,
   gst,
   comboSavings = 0,
+  comboApplied = false,
   pincodeInfo: initialPincodeInfo,
   restrictedItems: initialRestrictedItems = [],
   totalWeightGrams,
@@ -719,50 +721,91 @@ export default function CheckoutClient({
             </section>
           )}
 
-          {/* Coupons */}
-          <section
-            className="overflow-hidden border border-border-card bg-bg-card"
-            style={{ borderRadius: "var(--t-radius-card)" }}
-          >
-            <div className="flex items-center gap-3 border-b border-border-subtle px-4 sm:px-6 py-4 sm:py-5">
-              <div
-                className="flex h-8 w-8 items-center justify-center"
-                style={{ borderRadius: "var(--t-radius-card)", background: "color-mix(in srgb, var(--t-primary) 15%, transparent)" }}
-              >
-                <Tag size={16} className="text-primary" />
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-wider text-primary" style={{ fontFamily: "var(--t-font-heading)" }}>Step 3</p>
-                <h2 className="text-lg font-bold text-text-heading">Apply Coupon</h2>
-              </div>
-            </div>
-            <div className="p-4 sm:p-6">
-              <CouponSelector
-                subtotal={subtotal}
-                selectedCoupon={selectedCoupon}
-                onSelect={setSelectedCoupon}
-              />
-              {selectedCoupon && (
+          {/* Coupons — disabled when a combo offer is active (no stacking) */}
+          {comboApplied ? (
+            <section
+              className="overflow-hidden border border-border-card bg-bg-card"
+              style={{ borderRadius: "var(--t-radius-card)" }}
+            >
+              <div className="flex items-center gap-3 border-b border-border-subtle px-4 sm:px-6 py-4 sm:py-5">
                 <div
-                  className="mt-4 flex items-center justify-between border px-4 py-3"
-                  style={{
-                    borderRadius: "var(--t-radius-input)",
-                    borderColor: "color-mix(in srgb, var(--t-success) 30%, transparent)",
-                    background: "color-mix(in srgb, var(--t-success) 5%, transparent)",
-                  }}
+                  className="flex h-8 w-8 items-center justify-center"
+                  style={{ borderRadius: "var(--t-radius-card)", background: "color-mix(in srgb, var(--t-primary) 15%, transparent)" }}
                 >
-                  <div>
-                    <p className="text-sm font-bold" style={{ color: "var(--t-success)" }}>{selectedCoupon.code}</p>
-                    <p className="text-xs text-text-muted-2">{selectedCoupon.title}</p>
-                  </div>
-                  <button onClick={() => setSelectedCoupon(null)} className="text-xs font-medium text-danger hover:opacity-80">Remove</button>
+                  <Tag size={16} className="text-primary" />
                 </div>
-              )}
-            </div>
-          </section>
+                <div>
+                  <p className="text-xs uppercase tracking-wider text-primary" style={{ fontFamily: "var(--t-font-heading)" }}>Step 3</p>
+                  <h2 className="text-lg font-bold text-text-heading">Apply Coupon</h2>
+                </div>
+              </div>
+              <div className="px-4 sm:px-6 py-4 text-sm text-text-muted-2">
+                A combo offer is applied — coupons cannot be used with combo pricing.
+              </div>
+            </section>
+          ) : (
+            <section
+              className="overflow-hidden border border-border-card bg-bg-card"
+              style={{ borderRadius: "var(--t-radius-card)" }}
+            >
+              <div className="flex items-center gap-3 border-b border-border-subtle px-4 sm:px-6 py-4 sm:py-5">
+                <div
+                  className="flex h-8 w-8 items-center justify-center"
+                  style={{ borderRadius: "var(--t-radius-card)", background: "color-mix(in srgb, var(--t-primary) 15%, transparent)" }}
+                >
+                  <Tag size={16} className="text-primary" />
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-wider text-primary" style={{ fontFamily: "var(--t-font-heading)" }}>Step 3</p>
+                  <h2 className="text-lg font-bold text-text-heading">Apply Coupon</h2>
+                </div>
+              </div>
+              <div className="p-4 sm:p-6">
+                <CouponSelector
+                  subtotal={subtotal}
+                  selectedCoupon={selectedCoupon}
+                  onSelect={setSelectedCoupon}
+                />
+                {selectedCoupon && (
+                  <div
+                    className="mt-4 flex items-center justify-between border px-4 py-3"
+                    style={{
+                      borderRadius: "var(--t-radius-input)",
+                      borderColor: "color-mix(in srgb, var(--t-success) 30%, transparent)",
+                      background: "color-mix(in srgb, var(--t-success) 5%, transparent)",
+                    }}
+                  >
+                    <div>
+                      <p className="text-sm font-bold" style={{ color: "var(--t-success)" }}>{selectedCoupon.code}</p>
+                      <p className="text-xs text-text-muted-2">{selectedCoupon.title}</p>
+                    </div>
+                    <button onClick={() => setSelectedCoupon(null)} className="text-xs font-medium text-danger hover:opacity-80">Remove</button>
+                  </div>
+                )}
+              </div>
+            </section>
+          )}
 
-          {/* Loyalty Reward — Use Now / Save for Later */}
-          {loyaltyLoading ? (
+          {/* Loyalty Reward — disabled when a combo offer is active (no stacking) */}
+          {comboApplied ? (
+            <section
+              className="overflow-hidden border border-border-card bg-bg-card"
+              style={{ borderRadius: "var(--t-radius-card)" }}
+            >
+              <div className="flex items-center gap-3 border-b border-border-subtle px-4 sm:px-6 py-4 sm:py-5">
+                <div className="flex h-8 w-8 items-center justify-center" style={{ borderRadius: "var(--t-radius-card)", background: "color-mix(in srgb, var(--t-primary) 15%, transparent)" }}>
+                  <Gift size={16} className="text-primary" />
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-wider text-primary" style={{ fontFamily: "var(--t-font-heading)" }}>Loyalty</p>
+                  <h2 className="text-lg font-bold text-text-heading">Loyalty Reward</h2>
+                </div>
+              </div>
+              <div className="px-4 sm:px-6 py-4 text-sm text-text-muted-2">
+                A combo offer is applied — loyalty rewards cannot be used with combo pricing.
+              </div>
+            </section>
+          ) : loyaltyLoading ? (
             <section
               className="overflow-hidden border border-border-card bg-bg-card"
               style={{ borderRadius: "var(--t-radius-card)" }}

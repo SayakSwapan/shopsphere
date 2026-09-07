@@ -76,9 +76,10 @@ interface ComboOfferOption {
   description?: string | null;
   badge?: string | null;
   imageUrl?: string | null;
-  comboType: "BOGO" | "FIXED_PRICE";
+  comboType: "BOGO" | "PICK_ANY" | "FIXED_PRICE";
   customPrice: number | null;
   buyCount: number;
+  minPick?: number;
   products: ComboProduct[];
 }
 
@@ -818,6 +819,12 @@ export default function NewOfflineSale() {
                       <div className="mt-0.5 text-[11px] text-slate-400">
                         {c.comboType === "FIXED_PRICE" ? (
                           `Fixed price ₹${Number(c.customPrice ?? 0).toLocaleString("en-IN")} + GST for the whole set`
+                        ) : c.comboType === "PICK_ANY" ? (
+                          <>
+                            Pick any{" "}
+                            <span className="font-semibold text-amber-300">{Math.min(Math.max(2, Number(c.minPick) || 2), c.products.length)}+</span>{" "}
+                            from the pool — pay the single priciest, every other picked item FREE
+                          </>
                         ) : (
                           <>
                             Pay for the{" "}

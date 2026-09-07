@@ -20,7 +20,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { prisma } from "@/lib/prisma";
-import { getEffectivePrice, getGstBreakdown } from "@/lib/pricing";
+import { getGstBreakdown, getActivePriceBase } from "@/lib/pricing";
 
 export type ComboApply = "BOTH" | "ONLINE" | "OFFLINE";
 
@@ -91,6 +91,10 @@ export async function getActiveComboOffers() {
               salePrice: true,
               finalPrice: true,
               gstPercentage: true,
+              discountType: true,
+              discountValue: true,
+              offerStart: true,
+              offerEnd: true,
               productimage: { orderBy: { createdAt: "asc" as const }, take: 1 },
             },
           },
@@ -102,15 +106,24 @@ export async function getActiveComboOffers() {
 }
 
 /**
- * True (implicit Prisma shape) the engine needs from each product:
- * @returns the effective PRE-GST unit base for a product.
+ * Effective PRE-GST unit base for a product — offer-window aware.
+ *
+ * The Offer window ONLY discounts while the product's deal is live
+ * (non-zero discount, now within offerStart..offerEnd). Outside the window the
+ * customer pays the regular sellingPrice. Callers that don't carry the offer
+ * fields (e.g. the offline POS input, which sells at the offline price) get the
+ * plain sellingPrice — discounting never depends on a stale salePrice alone.
  */
 function productBase(product: Record<string, unknown>): number {
-  return getEffectivePrice(
-    (product as { salePrice?: unknown }).salePrice,
-    (product as { finalPrice?: unknown }).finalPrice,
-    (product as { sellingPrice?: unknown }).sellingPrice
-  );
+  return getActivePriceBase({
+    salePrice: (product as { salePrice?: unknown }).salePrice,
+    finalPrice: (product as { finalPrice?: unknown }).finalPrice,
+    sellingPrice: (product as { sellingPrice?: unknown }).sellingPrice,
+    discountType: (product as { discountType?: unknown }).discountType,
+    discountValue: (product as { discountValue?: unknown }).discountValue,
+    offerStart: (product as { offerStart?: Date | null }).offerStart,
+    offerEnd: (product as { offerEnd?: Date | null }).offerEnd,
+  });
 }
 
 /**
@@ -149,9 +162,36 @@ export async function applyComboPricing(
 
   // Determine which combos are fully satisfied and reserve the needed units.
   // Combos with more items (larger sets) take priority; ties broken by sortOrder.
+  //
+  // PICK_ANY: the customer must have `minPick` DISTINCT products from the pool
+  // (each with its required quantity) — any from the set, not a specific one.
+  const pickAnyPresentCount = (
+    combo: (typeof allCombos)[number],
+    availUnits: typeof units
+  ): number => {
+    const avail = new Map<string, number>();
+    availUnits.forEach((u) => {
+      avail.set(u.productId, (avail.get(u.productId) ?? 0) + 1);
+    });
+    let present = 0;
+    combo.items.forEach((it) => {
+      if ((avail.get(it.productId) ?? 0) >= (it.quantity || 1)) present++;
+    });
+    return present;
+  };
+
   const satisfiable = allCombos
     .filter((c) => comboAppliesTo(c.apply as ComboApply, orderType))
     .map((c) => {
+      if (c.comboType === "PICK_ANY") {
+        const required = Math.min(Math.max(2, Number(c.minPick) || 2), c.items.length);
+        return {
+          combo: c,
+          need: new Map<string, number>(),
+          ok: pickAnyPresentCount(c, units) >= required,
+          size: required,
+        };
+      }
       const need = new Map<string, number>();
       c.items.forEach((it) => need.set(it.productId, (need.get(it.productId) ?? 0) + it.quantity));
       const available = new Map<string, number>();
@@ -174,8 +214,27 @@ export async function applyComboPricing(
 
   for (const s of satisfiable) {
     if (!s.ok) continue;
-    // Check availability of every required product against current reservations.
     const reserved: typeof units = [];
+
+    if (s.combo.comboType === "PICK_ANY") {
+      // Re-verify presence against current reservations; if still satisfied,
+      // reserve EVERY unreserved unit belonging to the pool (customer picked
+      // any M+ from it — all of those items are combo-managed).
+      if (pickAnyPresentCount(s.combo, units) < s.size) continue;
+      const poolIds = new Set(s.combo.items.map((it) => it.productId));
+      for (const u of units) {
+        if (u.reserved) continue;
+        if (poolIds.has(u.productId)) {
+          u.reserved = true;
+          reserved.push(u);
+        }
+      }
+      if (reserved.length > 0) {
+        appliedReservations.push({ combo: s.combo, reservedUnits: reserved });
+      }
+      continue;
+    }
+    // Check availability of every required product against current reservations.
     const avail = new Map<string, number>();
     units.forEach((u) => {
       if (!u.reserved) avail.set(u.productId, (avail.get(u.productId) ?? 0) + 1);
@@ -220,6 +279,9 @@ export async function applyComboPricing(
   // price the customer effectively pays for each reserved unit.
   //   • BOGO         — pay the `buyCount` MOST expensive units, the rest free
   //                    (buyCount defaults to 1 = classic "buy 1 get N-1 free").
+  //   • PICK_ANY     — pay the single MOST expensive picked unit, every other
+  //                    picked unit FREE (same path as BOGO with buyCount fixed
+  //                    at 1).
   //   • FIXED_PRICE  — pay exactly `customPrice` (fall back to the priciest
   //                    unit if unset/invalid); the resulting discount is
   //                    distributed proportionally across the set.
@@ -229,9 +291,9 @@ export async function applyComboPricing(
   ): { idx: number; base: number; pay: number }[] => {
     const totalPrice = reservedUnits.reduce((s, u) => s + u.base, 0);
 
-    if (combo.comboType === "BOGO") {
+    if (combo.comboType === "BOGO" || combo.comboType === "PICK_ANY") {
       const buyCount = Math.min(
-        Math.max(1, Number(combo.buyCount) || 1),
+        Math.max(1, combo.comboType === "PICK_ANY" ? 1 : Number(combo.buyCount) || 1),
         reservedUnits.length
       );
       const sorted = [...reservedUnits].sort((a, b) => b.base - a.base);

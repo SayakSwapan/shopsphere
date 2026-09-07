@@ -37,12 +37,25 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Item quantities must be at least 1" }, { status: 400 });
     }
 
-    const comboType = body.comboType === "FIXED_PRICE" ? "FIXED_PRICE" : "BOGO";
+    const comboType =
+      body.comboType === "FIXED_PRICE"
+        ? "FIXED_PRICE"
+        : body.comboType === "PICK_ANY"
+        ? "PICK_ANY"
+        : "BOGO";
     const buyCount = Number(body.buyCount) || 1;
+    const poolSize = body.items.length;
     const totalUnits = items.reduce((s: number, q: number) => s + q, 0);
     if (comboType === "BOGO" && (buyCount < 1 || buyCount >= totalUnits)) {
       return NextResponse.json(
         { error: "For BOGO offers, 'Pay for' must be at least 1 and less than the total items in the set so at least one item is free." },
+        { status: 400 }
+      );
+    }
+    const minPick = comboType === "PICK_ANY" ? Number(body.minPick) || 2 : 2;
+    if (comboType === "PICK_ANY" && (minPick < 2 || minPick > poolSize)) {
+      return NextResponse.json(
+        { error: `For Pick Any offers, the minimum pick (M) must be at least 2 and no more than the ${poolSize} products in the pool.` },
         { status: 400 }
       );
     }
@@ -59,12 +72,13 @@ export async function POST(req: Request) {
         description: body.description || null,
         badge: body.badge || null,
         imageUrl: body.imageUrl || null,
-        comboType: body.comboType === "FIXED_PRICE" ? "FIXED_PRICE" : "BOGO",
+        comboType,
         customPrice:
-          body.comboType === "FIXED_PRICE" && body.customPrice
+          comboType === "FIXED_PRICE" && body.customPrice
             ? Number(body.customPrice)
             : null,
         buyCount: comboType === "BOGO" ? buyCount : 1,
+        minPick: comboType === "PICK_ANY" ? minPick : 2,
         apply: body.apply || "BOTH",
         isActive: body.isActive ?? true,
         sortOrder: body.sortOrder ?? 0,

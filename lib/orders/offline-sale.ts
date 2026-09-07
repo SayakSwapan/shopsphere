@@ -107,6 +107,10 @@ type ResolvedItem = {
     sellingPrice: number;
     lastSellingPrice: number | null;
     onlineSellingPrice: number;
+    discountType?: string | null;
+    discountValue?: number | null;
+    offerStart?: Date | null;
+    offerEnd?: Date | null;
   };
   variant: ResolvedVariant | null;
   availableStock: number;
@@ -127,6 +131,10 @@ async function resolveItem(
       lastSellingPrice: true,
       lastSellingProfitPercentage: true,
       finalPrice: true,
+      discountType: true,
+      discountValue: true,
+      offerStart: true,
+      offerEnd: true,
       stock: true,
     },
   });
@@ -167,6 +175,10 @@ async function resolveItem(
       finalPrice: Number(product.finalPrice),
       lastSellingPrice: Number(product.lastSellingPrice),
       onlineSellingPrice,
+      discountType: product.discountType,
+      discountValue: product.discountValue != null ? Number(product.discountValue) : null,
+      offerStart: product.offerStart,
+      offerEnd: product.offerEnd,
     },
     variant,
     availableStock,
@@ -241,6 +253,10 @@ async function computeOfflineComboAdjustmentsFromResolved(
       finalPrice: resolved.product.finalPrice,
       sellingPrice: resolved.product.sellingPrice,
       gstPercentage: resolved.product.gstPercentage,
+      discountType: resolved.product.discountType,
+      discountValue: resolved.product.discountValue,
+      offerStart: resolved.product.offerStart,
+      offerEnd: resolved.product.offerEnd,
     },
   }));
 

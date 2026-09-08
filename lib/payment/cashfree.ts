@@ -84,6 +84,7 @@ interface CashfreePaymentRaw {
   cf_payment_id?: string;
   order_id?: string;
   order_amount?: string | number;
+  payment_amount?: string | number;
   payment_status?: string;
   payment_method?: unknown;
   captured?: boolean;
@@ -163,10 +164,18 @@ export async function createPaymentSession(input: {
  * Returns `null` when Cashfree has no payment record for the order yet.
  */
 export async function fetchPayment(orderId: string): Promise<CashfreePayment | null> {
-  const data = (await cashfreeFetch(
-    `/pg/orders/${encodeURIComponent(orderId)}/payments`
-  )) as { data?: CashfreePaymentRaw[] };
-  const payments: CashfreePaymentRaw[] = Array.isArray(data?.data) ? data.data : [];
+  let data: unknown;
+  try {
+    data = await cashfreeFetch(
+      `/pg/orders/${encodeURIComponent(orderId)}/payments`
+    );
+  } catch (err) {
+    console.error("[cashfree.fetchPayment] API error for", orderId, err);
+    throw err;
+  }
+  const raw = data as { data?: CashfreePaymentRaw[] };
+  console.log("[cashfree.fetchPayment] raw response for", orderId, JSON.stringify(raw).slice(0, 1000));
+  const payments: CashfreePaymentRaw[] = Array.isArray(raw?.data) ? raw.data : [];
   // Cashfree returns attempts newest-first; pick the most recent one.
   const latest = payments[0];
   if (!latest) return null;
@@ -174,7 +183,7 @@ export async function fetchPayment(orderId: string): Promise<CashfreePayment | n
   return {
     paymentId: latest.payment_id ?? latest.cf_payment_id ?? "unknown",
     orderId: latest.order_id ?? orderId,
-    amount: Number(latest.order_amount ?? 0),
+    amount: Number(latest.payment_amount ?? latest.order_amount ?? 0),
     status: latest.payment_status ?? "UNKNOWN",
     method:
       typeof latest.payment_method === "string" ? latest.payment_method : null,

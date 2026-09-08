@@ -50,13 +50,16 @@ export async function POST(req: Request) {
       // take 1-3 seconds to appear after the modal closes. Poll a few times
       // before giving up.
       let payment = await fetchPayment(order.id);
+      console.log("[cashfree verify] first fetch for order", order.id, "=>", JSON.stringify(payment));
       if (!isPaymentSuccessful(payment, Number(order.totalAmount))) {
         for (let attempt = 0; attempt < 4; attempt++) {
           await new Promise((resolve) => setTimeout(resolve, 1500));
           payment = await fetchPayment(order.id);
+          console.log(`[cashfree verify] poll ${attempt + 1} for order ${order.id} =>`, JSON.stringify(payment));
           if (isPaymentSuccessful(payment, Number(order.totalAmount))) break;
         }
       }
+      console.log("[cashfree verify] final for order", order.id, "=>", JSON.stringify(payment), "expected", Number(order.totalAmount));
       if (!isPaymentSuccessful(payment, Number(order.totalAmount))) {
         return NextResponse.json(
           { success: false, message: "Payment is not confirmed by Cashfree." },

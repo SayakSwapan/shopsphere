@@ -112,7 +112,9 @@ export default async function PdpComboSection({ productId }: { productId: string
               ? `Bundle for ${priceWithGst(Number(combo.customPrice), 0).toLocaleString("en-IN")}`
               : combo.comboType === "PICK_ANY"
               ? `Pick any ${Math.min(Math.max(2, Number(combo.minPick) || 2), combo.items.length)}+ · pay 1, rest free`
-              : `Buy ${buyCount} Get ${freeCount} — pay priciest ${buyCount}, rest free`;
+              : freeCount > 0
+              ? `Buy ${buyCount} Get ${freeCount} Free`
+              : `Buy ${buyCount} item${buyCount > 1 ? "s" : ""}`;
           return (
             <div
               key={combo.id}

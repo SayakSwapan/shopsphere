@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Plus, Pencil, Play, Eye, Clapperboard } from "lucide-react";
 import DeleteInstagramReelButton from "@/components/admin/instagram-reels/delete-instagram-reel-button";
 import { formatReelViews, getReelThumbnailUrl } from "@/lib/instagram";
+import ReelImage from "@/components/instagram-reel-image";
 
 export const dynamic = "force-dynamic";
 
@@ -60,13 +61,15 @@ export default async function InstagramReelsPage() {
                     className="relative w-16 h-24 rounded-lg overflow-hidden border border-[#1E293B] flex-shrink-0 bg-[#0A0F1E] block"
                   >
                     {thumb ? (
-                      <img
+                      <ReelImage
                         src={thumb}
                         alt={r.caption || "Instagram reel"}
                         className="w-full h-full object-cover"
-                        onError={(e) => {
-                          (e.currentTarget as HTMLImageElement).style.display = "none";
-                        }}
+                        fallback={
+                          <div className="w-full h-full flex items-center justify-center">
+                            <Clapperboard size={18} className="text-slate-600" />
+                          </div>
+                        }
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">

@@ -21,6 +21,7 @@ import { useAuthModal } from "@/components/auth/auth-context";
 import { useTheme } from "@/lib/themes/theme-provider";
 import { useSiteName } from "@/components/store/site-settings-provider";
 import SearchBar from "@/components/store/search-bar";
+import FitText from "@/components/brand/fit-text";
 
 export interface SportsCategory {
   id: string;
@@ -166,11 +167,13 @@ export default function SportsNavbar({
               >
                 <Zap size={18} fill="#0A0E13" className="text-[#0A0E13]" />
               </span>
-              <span
-                className="uppercase leading-tight [overflow-wrap:anywhere]"
+              <FitText
+                baseSize={26}
+                minSize={12}
+                maxWidth={230}
+                className="uppercase leading-none"
                 style={{
                   fontFamily: "'Anton', sans-serif",
-                  fontSize: "clamp(0.85rem, 2vw, 1.6rem)",
                   color: "#F4F3EE",
                   letterSpacing: "0.02em",
                 }}
@@ -179,7 +182,7 @@ export default function SportsNavbar({
                 {brandAccent && (
                   <span style={{ color: "var(--sports-volt)" }}>{brandAccent}</span>
                 )}
-              </span>
+              </FitText>
             </Link>
 
             {/* Desktop nav */}

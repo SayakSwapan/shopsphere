@@ -1,14 +1,23 @@
 import { prisma } from "@/lib/prisma";
 import { Play, Eye, Clapperboard } from "lucide-react";
 import { formatReelViews, getReelThumbnailUrl } from "@/lib/instagram";
+import ReelImage from "@/components/instagram-reel-image";
 
 export const dynamic = "force-dynamic";
 
 export default async function InstagramReelsSection() {
-  const reels = await prisma.instagramReel.findMany({
-    where: { isActive: true },
-    orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
-  });
+  let reels: Awaited<
+    ReturnType<typeof prisma.instagramReel.findMany>
+  > = [];
+
+  try {
+    reels = await prisma.instagramReel.findMany({
+      where: { isActive: true },
+      orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
+    });
+  } catch {
+    return null;
+  }
 
   if (reels.length === 0) return null;
 
@@ -60,14 +69,15 @@ export default async function InstagramReelsSection() {
               title={reel.caption || "Watch on Instagram"}
             >
               {thumb ? (
-                <img
+                <ReelImage
                   src={thumb}
                   alt={reel.caption || "Instagram reel"}
-                  loading="lazy"
                   className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  onError={(e) => {
-                    (e.currentTarget as HTMLImageElement).style.display = "none";
-                  }}
+                  fallback={
+                    <div className="absolute inset-0 flex items-center justify-center bg-bg-card">
+                      <Clapperboard size={24} className="text-text-muted-1" />
+                    </div>
+                  }
                 />
               ) : (
                 <div className="absolute inset-0 flex items-center justify-center bg-bg-card">

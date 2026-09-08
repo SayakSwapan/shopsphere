@@ -608,7 +608,7 @@ export default function ComboOfferRoom({ offer }: { offer: ComboRoomOffer }) {
                   {offer.comboType === "PICK_ANY"
                     ? `Pick any ${getCount} · pay for the 1 most expensive`
                     : freeCount && freeCount > 0
-                    ? `Pay for ${buyCount} · ${freeCount} free`
+                    ? `Buy ${buyCount} · Get ${freeCount} Free`
                     : isFixedPrice
                     ? `Everything for ${formatCurrency(offer.customPrice ?? 0)}`
                     : "Discount applies at checkout"}

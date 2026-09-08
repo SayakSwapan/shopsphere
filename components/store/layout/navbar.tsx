@@ -11,6 +11,7 @@ import { useAuthModal } from "@/components/auth/auth-context";
 import { useTheme } from "@/lib/themes/theme-provider";
 import SearchBar from "@/components/store/search-bar";
 import SiteBrand from "@/components/brand/site-brand";
+import FitText from "@/components/brand/fit-text";
 import { useSiteName } from "@/components/store/site-settings-provider";
 import SportsNavbar, { type SportsCategory } from "./sports-navbar";
 
@@ -133,16 +134,17 @@ export default function Navbar({ session, announcement, categories = [] }: Navba
             {/* ── LOGO ── */}
             <Link
               href="/"
-              className="min-w-0 shrink uppercase leading-tight [overflow-wrap:anywhere]"
+              className="min-w-0 shrink uppercase leading-none"
               style={{
-                fontSize: "clamp(0.9rem, 2.2vw, 1.85rem)",
                 color: themeId === "ethnic" ? "#6E1F27" : "var(--t-text-heading)",
                 letterSpacing: themeId === "ethnic" ? "0.03em" : themeId === "luxury" ? "0.05em" : "-0.03em",
                 fontWeight: themeId === "ethnic" ? 400 : themeId === "fashion" ? 700 : 900,
                 fontFamily: themeId === "ethnic" ? "'Marcellus', serif" : "var(--t-font-heading)",
               }}
             >
-              <SiteBrand name={siteName} />
+              <FitText baseSize={30} minSize={12} maxWidth={260}>
+                <SiteBrand name={siteName} />
+              </FitText>
             </Link>
 
             {/* ── NAV LINKS (desktop) ── */}

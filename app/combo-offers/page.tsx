@@ -144,7 +144,7 @@ export default async function ComboOffersPage() {
                       {offer.comboType === "PICK_ANY" ? (
                         <span className="text-[10px] text-text-muted-2">Pay 1 · rest free</span>
                       ) : offer.comboType === "BOGO" ? (
-                        <span className="text-[10px] text-success">Get {free} free</span>
+                        <span className="text-[10px] text-success">Get {free} Free</span>
                       ) : null}
                     </div>
                     <h3 className="text-lg font-bold text-text-heading leading-snug line-clamp-2 group-hover:text-primary transition-colors">

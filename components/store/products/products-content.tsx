@@ -70,7 +70,7 @@ function comboOfferLine(combo: ComboInfo): string {
   }
   const buy = Math.min(Math.max(1, combo.buyCount || 1), count);
   const free = Math.max(0, count - buy);
-  return `Buy ${buy} · Get ${free} free`;
+  return free > 0 ? `Buy ${buy} Get ${free} Free` : `Buy ${buy} item${buy > 1 ? "s" : ""}`;
 }
 
 const DEFAULT_PER_PAGE = 12;

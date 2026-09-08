@@ -26,6 +26,61 @@ function baseOf(p: {
   });
 }
 
+interface ComboDealDetails {
+  offerLine: string;
+  badge: string;
+  freeIds: Set<string>;
+}
+
+/**
+ * Derived display facts for a combo:
+ * - offerLine: the headline offer ("Buy 1 Get 1 Free", "Bundle for ₹X", ...)
+ * - badge:     short card badge label
+ * - freeIds:   which product ids are FREE in a BOGO set (priciest `buyCount` paid)
+ */
+function comboDealDetails(combo: ComboWithItems): ComboDealDetails {
+  const count = combo.items.reduce((s, it) => s + it.quantity, 0);
+  const buyCount = Math.min(Math.max(1, Number(combo.buyCount) || 1), count);
+  const freeCount = Math.max(0, count - buyCount);
+
+  if (combo.comboType === "FIXED_PRICE" && Number(combo.customPrice) > 0) {
+    return {
+      offerLine: `Bundle for ${priceWithGst(Number(combo.customPrice), 0).toLocaleString("en-IN")}`,
+      badge: "Bundle",
+      freeIds: new Set<string>(),
+    };
+  }
+
+  if (combo.comboType === "PICK_ANY") {
+    const min = Math.min(Math.max(2, Number(combo.minPick) || 2), combo.items.length);
+    return {
+      offerLine: `Pick any ${min}+ · pay 1, rest free`,
+      badge: "Pick Any",
+      freeIds: new Set<string>(),
+    };
+  }
+
+  const pool: { id: string; price: number }[] = [];
+  for (const it of combo.items) {
+    for (let q = 0; q < it.quantity; q++) {
+      pool.push({ id: it.product.id, price: baseOf(it.product) });
+    }
+  }
+  pool.sort((a, b) => a.price - b.price);
+  const freeIds = new Set(pool.slice(0, freeCount).map((e) => e.id));
+
+  const offerLine =
+    freeCount > 0
+      ? `Buy ${buyCount} Get ${freeCount} Free`
+      : `Buy ${buyCount} item${buyCount > 1 ? "s" : ""}`;
+
+  return {
+    offerLine,
+    badge: freeCount > 0 ? `Buy ${buyCount} Get ${freeCount}` : "BOGO",
+    freeIds,
+  };
+}
+
 interface ComboWithItems {
   id: string;
   slug: string;
@@ -61,19 +116,11 @@ interface ComboWithItems {
 // SECTION 1 — "Combo Deals" hero strip
 //
 // Pairs every featured combo with its product line-up and a live price offer:
-// BOGO shows "Pay for N, Get M free", FIXED_PRICE shows the bundle rate.
+// BOGO shows "Buy N Get M Free", FIXED_PRICE shows the bundle rate. Free items
+// in a BOGO set are marked with a FREE badge on their thumbnail.
 // ─────────────────────────────────────────────────────────────────────────────
 function ComboHero({ combo }: { combo: ComboWithItems }) {
-  const count = combo.items.reduce((s, it) => s + it.quantity, 0);
-  const buyCount = Math.min(Math.max(1, Number(combo.buyCount) || 1), count);
-  const freeCount = Math.max(0, count - buyCount);
-
-  const offerLine =
-    combo.comboType === "FIXED_PRICE" && Number(combo.customPrice) > 0
-      ? `Bundle for ${priceWithGst(Number(combo.customPrice), 0).toLocaleString("en-IN")}`
-      : combo.comboType === "PICK_ANY"
-      ? `Pick any ${Math.min(Math.max(2, Number(combo.minPick) || 2), combo.items.length)}+ · pay 1, rest free`
-      : `Pay for ${buyCount} · Get ${freeCount} ${freeCount === 1 ? "item" : "items"} free`;
+  const { offerLine, freeIds } = comboDealDetails(combo);
 
   return (
     <section className="max-w-7xl mx-auto px-4 sm:px-6 py-10 sm:py-14">
@@ -134,22 +181,16 @@ function ComboHero({ combo }: { combo: ComboWithItems }) {
 
           {/* Product line-up */}
           <div className="flex items-center gap-4 px-6 pb-8 md:py-10 md:pr-8 overflow-x-auto">
-            {combo.items.map((it, i) => (
-              <div key={it.product.id} className="flex items-center gap-4">
-                {i > 0 && (
-                  <span
-                    className="font-black text-2xl flex-shrink-0"
-                    style={{ color: "var(--t-accent)", fontFamily: "var(--t-font-heading)" }}
-                  >
-                    +
-                  </span>
-                )}
+            {combo.items.map((it) => {
+              const isFree = freeIds.has(it.product.id);
+              return (
                 <Link
+                  key={it.product.id}
                   href={`/products/${it.product.slug}`}
                   className="group flex-shrink-0 w-28 sm:w-32 text-center"
                 >
                   <div
-                    className="overflow-hidden border border-border-card bg-bg-card-nested"
+                    className="relative overflow-hidden border border-border-card bg-bg-card-nested"
                     style={{ borderRadius: "var(--t-radius-card)" }}
                   >
                     {it.product.productimage[0] ? (
@@ -162,6 +203,18 @@ function ComboHero({ combo }: { combo: ComboWithItems }) {
                     ) : (
                       <div className="h-28 sm:h-32 w-full bg-bg-card-nested" />
                     )}
+                    {isFree && (
+                      <span
+                        className="absolute top-1.5 left-1.5 inline-flex items-center px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-white"
+                        style={{
+                          background: "var(--t-success)",
+                          borderRadius: "var(--t-radius-badge)",
+                          boxShadow: "0 2px 8px rgba(0,0,0,0.25)",
+                        }}
+                      >
+                        Free
+                      </span>
+                    )}
                   </div>
                   <p className="mt-2 truncate text-[11px] font-semibold text-text-body">
                     {it.product.name}
@@ -172,8 +225,8 @@ function ComboHero({ combo }: { combo: ComboWithItems }) {
                     </p>
                   )}
                 </Link>
-              </div>
-            ))}
+              );
+            })}
             <Link
               href={`/combo-offers/${combo.slug}`}
               className="flex-shrink-0 inline-flex items-center gap-2 sm:hidden font-black uppercase text-xs px-6 py-3 border border-primary/40 text-primary hover:bg-primary/10 transition-all"
@@ -226,6 +279,7 @@ function ComboGrid({ combos }: { combos: ComboWithItems[] }) {
             0
           );
           const names = combo.items.map((it) => it.product.name).join(" + ");
+          const { offerLine, badge } = comboDealDetails(combo);
           return (
             <Link
               key={combo.id}
@@ -259,7 +313,7 @@ function ComboGrid({ combos }: { combos: ComboWithItems[] }) {
                   }}
                 >
                   <Tag size={11} />
-                  {combo.comboType === "FIXED_PRICE" ? "Bundle" : combo.comboType === "PICK_ANY" ? "Pick Any" : "BOGO"}
+                  {badge}
                 </span>
               </div>
 
@@ -284,8 +338,8 @@ function ComboGrid({ combos }: { combos: ComboWithItems[] }) {
 
               <p className="mt-4 text-xs text-text-muted-2 line-clamp-2">{names}</p>
 
-              <div className="mt-4 flex items-center justify-between">
-                <div>
+              <div className="mt-4 flex items-center justify-between gap-3">
+                <div className="min-w-0">
                   <p className="text-[10px] uppercase tracking-wider text-text-muted-2">
                     Worth
                   </p>
@@ -294,14 +348,10 @@ function ComboGrid({ combos }: { combos: ComboWithItems[] }) {
                   </p>
                 </div>
                 <span
-                  className="font-black text-lg"
+                  className="font-black text-base sm:text-lg text-right leading-tight"
                   style={{ color: "var(--t-primary)", fontFamily: "var(--t-font-heading)" }}
                 >
-                  {combo.comboType === "FIXED_PRICE" && Number(combo.customPrice) > 0
-                    ? `₹${Number(combo.customPrice)}`
-                    : combo.comboType === "PICK_ANY"
-                    ? "Pay 1 · rest free"
-                    : `Get ${Math.max(0, combo.items.reduce((s, it) => s + it.quantity, 0) - (Math.min(Math.max(1, Number(combo.buyCount) || 1), combo.items.reduce((s, it) => s + it.quantity, 0))))} free`}
+                  {offerLine}
                 </span>
               </div>
 

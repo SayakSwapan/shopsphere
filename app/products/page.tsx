@@ -34,6 +34,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
         comboType: "BOGO" | "PICK_ANY" | "FIXED_PRICE";
         customPrice: number | null;
         buyCount: number;
+        getCount: number;
         minPick?: number;
         items: { quantity: number; product: { id: string; name: string } }[];
       }
@@ -70,6 +71,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
         comboType: "FIXED_PRICE",
         customPrice: null,
         buyCount: 1,
+        getCount: 2,
         items: [],
       };
     } else {
@@ -90,6 +92,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
           comboType: true,
           customPrice: true,
           buyCount: true,
+          getCount: true,
           minPick: true,
           items: {
             select: {
@@ -110,6 +113,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
           comboType: combo.comboType,
           customPrice: combo.customPrice != null ? Number(combo.customPrice) : null,
           buyCount: combo.buyCount,
+          getCount: combo.getCount,
           minPick: combo.minPick ?? undefined,
           items: combo.items.map((it) => ({
             quantity: it.quantity,

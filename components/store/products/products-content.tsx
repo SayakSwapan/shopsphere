@@ -45,6 +45,7 @@ interface ComboInfo {
   comboType: "BOGO" | "PICK_ANY" | "FIXED_PRICE";
   customPrice: number | null;
   buyCount: number;
+  getCount: number;
   minPick?: number;
   items: { quantity: number; product: { id: string; name: string } }[];
 }
@@ -68,8 +69,10 @@ function comboOfferLine(combo: ComboInfo): string {
     const min = Math.min(Math.max(2, combo.minPick || 2), combo.items.length);
     return `Pick any ${min}+ · pay 1, rest free`;
   }
-  const buy = Math.min(Math.max(1, combo.buyCount || 1), count);
-  const free = Math.max(0, count - buy);
+  // "Buy 1 Get 1 Free" is getCount=2 (pick 2), buyCount=1 — NOT the set size.
+  const getCount = Math.max(2, Number(combo.getCount) || 2);
+  const buy = Math.min(Math.max(1, combo.buyCount || 1), getCount);
+  const free = Math.max(0, getCount - buy);
   return free > 0 ? `Buy ${buy} Get ${free} Free` : `Buy ${buy} item${buy > 1 ? "s" : ""}`;
 }
 

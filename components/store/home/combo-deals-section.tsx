@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { BadgePercent, ArrowRight, Tag, Sparkles } from "lucide-react";
+import { ArrowRight, Tag, Sparkles } from "lucide-react";
 import { priceWithGst, getActivePriceBase } from "@/lib/pricing";
+import { comboGetCount } from "@/lib/combo-checkout";
 
 export const dynamic = "force-dynamic";
 
@@ -37,12 +38,12 @@ interface ComboDealDetails {
  * - offerLine: the headline offer ("Buy 1 Get 1 Free", "Bundle for ₹X", ...)
  * - badge:     short card badge label
  * - freeIds:   which product ids are FREE in a BOGO set (priciest `buyCount` paid)
+ *
+ * "Buy 1 Get 1 Free" is modeled as buyCount=1, getCount=2 (customer picks 2
+ * distinct products). `getCount` is the pool depth, NOT a count of the items
+ * configured on the offer — so the free count is always getCount − buyCount.
  */
 function comboDealDetails(combo: ComboWithItems): ComboDealDetails {
-  const count = combo.items.reduce((s, it) => s + it.quantity, 0);
-  const buyCount = Math.min(Math.max(1, Number(combo.buyCount) || 1), count);
-  const freeCount = Math.max(0, count - buyCount);
-
   if (combo.comboType === "FIXED_PRICE" && Number(combo.customPrice) > 0) {
     return {
       offerLine: `Bundle for ${priceWithGst(Number(combo.customPrice), 0).toLocaleString("en-IN")}`,
@@ -52,13 +53,17 @@ function comboDealDetails(combo: ComboWithItems): ComboDealDetails {
   }
 
   if (combo.comboType === "PICK_ANY") {
-    const min = Math.min(Math.max(2, Number(combo.minPick) || 2), combo.items.length);
+    const min = comboGetCount(combo);
     return {
       offerLine: `Pick any ${min}+ · pay 1, rest free`,
       badge: "Pick Any",
       freeIds: new Set<string>(),
     };
   }
+
+  const getCount = comboGetCount(combo);
+  const buyCount = Math.min(Math.max(1, Number(combo.buyCount) || 1), getCount);
+  const freeCount = Math.max(0, getCount - buyCount);
 
   const pool: { id: string; price: number }[] = [];
   for (const it of combo.items) {
@@ -92,7 +97,8 @@ interface ComboWithItems {
   comboType: "BOGO" | "PICK_ANY" | "FIXED_PRICE";
   customPrice: number | null;
   buyCount: number;
-  minPick?: number;
+  getCount: number;
+  minPick: number | null;
   items: {
     quantity: number;
     product: {
@@ -113,136 +119,8 @@ interface ComboWithItems {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SECTION 1 — "Combo Deals" hero strip
-//
-// Pairs every featured combo with its product line-up and a live price offer:
-// BOGO shows "Buy N Get M Free", FIXED_PRICE shows the bundle rate. Free items
-// in a BOGO set are marked with a FREE badge on their thumbnail.
-// ─────────────────────────────────────────────────────────────────────────────
-function ComboHero({ combo }: { combo: ComboWithItems }) {
-  const { offerLine, freeIds } = comboDealDetails(combo);
-
-  return (
-    <section className="max-w-7xl mx-auto px-4 sm:px-6 py-10 sm:py-14">
-      <div
-        className="relative overflow-hidden border border-border-card bg-bg-card"
-        style={{ borderRadius: "var(--t-radius-card)" }}
-      >
-        <div
-          className="absolute inset-0"
-          style={{
-            background:
-              "radial-gradient(900px 320px at 100% 0%, color-mix(in srgb, var(--t-primary) 22%, transparent), transparent 60%), linear-gradient(120deg, color-mix(in srgb, var(--t-primary) 12%, var(--t-bg-card)) 0%, var(--t-bg-card) 55%)",
-          }}
-        />
-        <div className="relative z-10 grid gap-0 md:grid-cols-2">
-          {/* Copy */}
-          <div className="p-6 sm:p-10 flex flex-col justify-center">
-            <span
-              className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.25em] text-primary mb-3"
-              style={{ fontFamily: "var(--t-font-heading)" }}
-            >
-              <BadgePercent size={14} />
-              {combo.badge || "Combo Deal"}
-            </span>
-            <h2
-              className="text-3xl sm:text-4xl font-black uppercase leading-[1.05] text-text-heading tracking-tight"
-              style={{ fontFamily: "var(--t-font-heading)" }}
-            >
-              {combo.title}
-            </h2>
-            {combo.headline && (
-              <p className="mt-3 text-sm text-text-muted-1">{combo.headline}</p>
-            )}
-            <div
-              className="mt-5 inline-flex items-center gap-2 self-start px-4 py-2 text-sm font-black"
-              style={{
-                borderRadius: "var(--t-radius-badge)",
-                background: "color-mix(in srgb, var(--t-primary) 15%, transparent)",
-                color: "var(--t-primary)",
-                fontFamily: "var(--t-font-heading)",
-              }}
-            >
-              {offerLine}
-            </div>
-            {combo.description && (
-              <p className="mt-4 text-xs text-text-muted-2 max-w-md leading-relaxed">
-                {combo.description}
-              </p>
-            )}
-            <Link
-              href={`/combo-offers/${combo.slug}`}
-              className="mt-6 hidden sm:inline-flex items-center gap-2 font-black uppercase text-xs px-7 py-3 border border-primary/40 text-primary hover:bg-primary/10 transition-all self-start"
-              style={{ letterSpacing: "0.1em", borderRadius: "var(--t-radius-button)", fontFamily: "var(--t-font-heading)" }}
-            >
-              Shop The Deal <ArrowRight size={14} strokeWidth={3} />
-            </Link>
-          </div>
-
-          {/* Product line-up */}
-          <div className="flex items-center gap-4 px-6 pb-8 md:py-10 md:pr-8 overflow-x-auto">
-            {combo.items.map((it) => {
-              const isFree = freeIds.has(it.product.id);
-              return (
-                <Link
-                  key={it.product.id}
-                  href={`/products/${it.product.slug}`}
-                  className="group flex-shrink-0 w-28 sm:w-32 text-center"
-                >
-                  <div
-                    className="relative overflow-hidden border border-border-card bg-bg-card-nested"
-                    style={{ borderRadius: "var(--t-radius-card)" }}
-                  >
-                    {it.product.productimage[0] ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={it.product.productimage[0].url}
-                        alt={it.product.name}
-                        className="h-28 sm:h-32 w-full object-cover transition duration-500 group-hover:scale-105"
-                      />
-                    ) : (
-                      <div className="h-28 sm:h-32 w-full bg-bg-card-nested" />
-                    )}
-                    {isFree && (
-                      <span
-                        className="absolute top-1.5 left-1.5 inline-flex items-center px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-white"
-                        style={{
-                          background: "var(--t-success)",
-                          borderRadius: "var(--t-radius-badge)",
-                          boxShadow: "0 2px 8px rgba(0,0,0,0.25)",
-                        }}
-                      >
-                        Free
-                      </span>
-                    )}
-                  </div>
-                  <p className="mt-2 truncate text-[11px] font-semibold text-text-body">
-                    {it.product.name}
-                  </p>
-                  {it.quantity > 1 && (
-                    <p className="text-[10px] font-bold text-text-muted-2">
-                      &times;{it.quantity}
-                    </p>
-                  )}
-                </Link>
-              );
-            })}
-            <Link
-              href={`/combo-offers/${combo.slug}`}
-              className="flex-shrink-0 inline-flex items-center gap-2 sm:hidden font-black uppercase text-xs px-6 py-3 border border-primary/40 text-primary hover:bg-primary/10 transition-all"
-              style={{ letterSpacing: "0.1em", borderRadius: "var(--t-radius-button)", fontFamily: "var(--t-font-heading)" }}
-            >
-              Shop <ArrowRight size={12} strokeWidth={3} />
-            </Link>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// SECTION 2 — "Bundle & Save" card grid
+// "Bundle & Save" card grid — the single combo section on the home page.
+// Free items in a BOGO set are marked with a FREE strip on their thumbnail.
 // ─────────────────────────────────────────────────────────────────────────────
 function ComboGrid({ combos }: { combos: ComboWithItems[] }) {
   return (
@@ -279,7 +157,7 @@ function ComboGrid({ combos }: { combos: ComboWithItems[] }) {
             0
           );
           const names = combo.items.map((it) => it.product.name).join(" + ");
-          const { offerLine, badge } = comboDealDetails(combo);
+          const { offerLine, badge, freeIds } = comboDealDetails(combo);
           return (
             <Link
               key={combo.id}
@@ -323,7 +201,7 @@ function ComboGrid({ combos }: { combos: ComboWithItems[] }) {
                   it.product.productimage[0] ? (
                     <div
                       key={it.product.id}
-                      className="h-14 w-14 overflow-hidden rounded-full border-2 border-bg-card bg-bg-card-nested"
+                      className="relative h-14 w-14 overflow-hidden rounded-full border-2 border-bg-card bg-bg-card-nested"
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
@@ -331,6 +209,14 @@ function ComboGrid({ combos }: { combos: ComboWithItems[] }) {
                         alt={it.product.name}
                         className="h-full w-full object-cover"
                       />
+                      {freeIds.has(it.product.id) && (
+                        <span
+                          className="absolute inset-x-0 bottom-0 text-center text-[7px] font-black uppercase tracking-wider text-white leading-[14px]"
+                          style={{ background: "var(--t-success)" }}
+                        >
+                          Free
+                        </span>
+                      )}
                     </div>
                   ) : null
                 )}
@@ -414,12 +300,5 @@ export default async function ComboDealsSection() {
 
   const combos = offers as unknown as ComboWithItems[];
 
-  return (
-    <>
-      {/* Section 1 — featured hero combo */}
-      <ComboHero combo={combos[0]} />
-      {/* Section 2 — all bundle cards */}
-      <ComboGrid combos={combos} />
-    </>
-  );
+  return <ComboGrid combos={combos} />;
 }

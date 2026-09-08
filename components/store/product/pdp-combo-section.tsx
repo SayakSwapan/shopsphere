@@ -2,6 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { BadgePercent, ArrowRight, Plus } from "lucide-react";
 import { priceWithGst, getActivePriceBase } from "@/lib/pricing";
+import { comboGetCount } from "@/lib/combo-checkout";
 
 export const dynamic = "force-dynamic";
 
@@ -35,7 +36,8 @@ type PdpCombo = {
   comboType: "BOGO" | "PICK_ANY" | "FIXED_PRICE";
   customPrice: number | null;
   buyCount: number;
-  minPick?: number;
+  getCount: number;
+  minPick: number | null;
   items: {
     quantity: number;
     product: {
@@ -104,9 +106,9 @@ export default async function PdpComboSection({ productId }: { productId: string
             (s, it) => s + baseOf(it.product) * it.quantity,
             0
           );
-          const count = combo.items.reduce((s, it) => s + it.quantity, 0);
-          const buyCount = Math.min(Math.max(1, Number(combo.buyCount) || 1), count);
-          const freeCount = Math.max(0, count - buyCount);
+          const getCount = comboGetCount(combo);
+          const buyCount = Math.min(Math.max(1, Number(combo.buyCount) || 1), getCount);
+          const freeCount = Math.max(0, getCount - buyCount);
           const dealText =
             combo.comboType === "FIXED_PRICE" && Number(combo.customPrice) > 0
               ? `Bundle for ${priceWithGst(Number(combo.customPrice), 0).toLocaleString("en-IN")}`

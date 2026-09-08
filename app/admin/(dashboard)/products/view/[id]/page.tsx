@@ -99,19 +99,6 @@ export default async function ProductViewPage({ params }: Props) {
 
   return (
     <div className="space-y-8">
-      {/* BREADCRUMB */}
-      <nav className="flex items-center gap-2 text-sm text-slate-400">
-        <Link href="/admin" className="hover:text-white">
-          Dashboard
-        </Link>
-        <span>/</span>
-        <Link href="/admin/products" className="hover:text-white">
-          Products
-        </Link>
-        <span>/</span>
-        <span className="font-semibold text-slate-200">{product.name}</span>
-      </nav>
-
       {/* HEADER */}
       <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
         <div className="min-w-0">

@@ -242,6 +242,7 @@ export default async function ProductPage({ params }: Props) {
             </Link>
             <span style={{ color: "var(--t-text-muted-3)" }}>/</span>
             <span
+              aria-current="page"
               className="truncate max-w-[140px] sm:max-w-[260px] font-bold"
               style={{ color: "var(--t-primary)" }}
             >

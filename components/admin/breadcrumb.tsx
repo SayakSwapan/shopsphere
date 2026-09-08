@@ -10,7 +10,8 @@ interface Crumb {
   label: string;
 }
 
-const ID_LIKE = /^(\[.*\]|\d+|[0-9a-f]{8,})$/i;
+const ID_LIKE =
+  /^(\[.*\]|\d+|[0-9a-f]{24}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|[a-zA-Z0-9]{16,})$/i;
 const ACTION_LABELS = new Set(["New", "Create", "Edit", "View", "Details"]);
 const SPECIAL_LABELS: Record<string, string> = {
   new: "New",
@@ -79,6 +80,9 @@ function buildCrumbs(pathname: string): Crumb[] {
   const match = matchNav(pathname);
 
   if (match) {
+    if (match.title === "Dashboard") {
+      return crumbs;
+    }
     if (match.section && match.section !== match.title) {
       crumbs.push({ label: match.section });
     }

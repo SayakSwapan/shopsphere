@@ -768,13 +768,18 @@ export async function createComboOrder(input: CreateComboOrderInput): Promise<Co
   });
 
   if (input.paymentMethod === "COD") {
-    // Mirror the existing COD route: deduct stock at creation.
+    // Mirror the existing COD route: deduct stock at creation. Conditional
+    // decrement guards against stock changing since the pricing step (never
+    // pushes a variant/product below zero).
     for (const item of priced.items) {
       if (item.variantId) {
-        await prisma.productvariant.update({ where: { id: item.variantId }, data: { stock: { decrement: 1 } } });
+        await prisma.productvariant.updateMany({
+          where: { id: item.variantId, stock: { gte: 1 } },
+          data: { stock: { decrement: 1 } },
+        });
       }
-      await prisma.product.update({
-        where: { id: item.productId },
+      await prisma.product.updateMany({
+        where: { id: item.productId, stock: { gte: 1 } },
         data: { totalSold: { increment: 1 }, stock: { decrement: 1 } },
       });
     }

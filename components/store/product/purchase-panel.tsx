@@ -11,6 +11,7 @@ import {
   Check,
   Minus,
   Plus,
+  Loader2,
 } from "lucide-react";
 import AddToCartButton from "@/components/store/add-to-cart-button";
 import WishlistButton from "@/components/store/wishlist-button";
@@ -148,6 +149,7 @@ export default function ProductPurchasePanel({
     );
 
   const handleBuyNow = async () => {
+    if (isBuying) return;
     if (!selectedVariant) {
       toast.error(
         needsSizeSelection
@@ -285,7 +287,7 @@ export default function ProductPurchasePanel({
                         setSelectedVariantId(variant.id);
                         setQuantity(1);
                       }}
-                      disabled={isOOS}
+                      disabled={isBuying || isOOS}
                       data-selected={isSelected ? "true" : "false"}
                       className="pd-size-btn"
                     >
@@ -396,7 +398,7 @@ export default function ProductPurchasePanel({
             <button
               type="button"
               onClick={decreaseQuantity}
-              disabled={!selectedVariant || quantity <= 1}
+              disabled={!selectedVariant || quantity <= 1 || isBuying}
               className="flex h-11 w-11 items-center justify-center rounded-xl border transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
               style={{ borderColor: "var(--t-border-card)", color: "var(--t-primary)" }}
               aria-label="Decrease quantity"
@@ -414,7 +416,7 @@ export default function ProductPurchasePanel({
             <button
               type="button"
               onClick={increaseQuantity}
-              disabled={!selectedVariant || quantity >= maxQuantity}
+              disabled={!selectedVariant || quantity >= maxQuantity || isBuying}
               className="flex h-11 w-11 items-center justify-center rounded-xl border transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
               style={{ borderColor: "var(--t-border-card)", color: "var(--t-primary)" }}
               aria-label="Increase quantity"
@@ -438,7 +440,7 @@ export default function ProductPurchasePanel({
                   productId={productId}
                   productVariantId={selectedVariant?.id}
                   quantity={quantity}
-                  disabled={!canPurchase}
+                  disabled={!canPurchase || isBuying}
                 />
               </div>
               <WishlistButton productId={productId} />
@@ -446,12 +448,16 @@ export default function ProductPurchasePanel({
 
           <button
             type="button"
-            disabled={isBuying}
+            disabled={isBuying || !selectedVariant || selectedVariant.stock <= 0}
             onClick={handleBuyNow}
             className="pd-btn-primary w-full py-5 font-black uppercase text-xs tracking-wider sm:w-auto sm:flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
             style={!canPurchase ? { opacity: 0.6 } : undefined}
           >
-            <Zap size={16} strokeWidth={2.5} />
+            {isBuying ? (
+              <Loader2 size={16} strokeWidth={2.5} className="animate-spin" />
+            ) : (
+              <Zap size={16} strokeWidth={2.5} />
+            )}
             {isBuying ? "Processing…" : "Buy Now"}
           </button>
         </div>

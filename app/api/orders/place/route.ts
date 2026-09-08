@@ -70,6 +70,30 @@ export async function POST(req: Request) {
       );
     }
 
+    // Multi-level stock revalidation at order time. The cart-add/update checks
+    // can go stale between browsing and checkout, so re-verify against the
+    // CURRENT database stock before taking the money / reserving inventory.
+    const stockIssues: string[] = [];
+    for (const item of user.cart.cartitem) {
+      if (item.productVariantId) {
+        const variantStock = item.productvariant?.stock ?? 0;
+        if (variantStock < item.quantity) {
+          stockIssues.push(`${item.product.name}${item.productvariant?.sku ? ` (${item.productvariant.sku})` : ""}`);
+        }
+      } else if ((Number(item.product.stock) || 0) < item.quantity) {
+        stockIssues.push(item.product.name);
+      }
+    }
+    if (stockIssues.length > 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: `Some items are no longer in stock: ${stockIssues.join(", ")}. Please adjust your cart and try again.`,
+        },
+        { status: 409 }
+      );
+    }
+
     let subtotal = 0;
     let gst = 0;
     let comboSavings = 0;
@@ -263,9 +287,15 @@ export async function POST(req: Request) {
       });
 
       if (item.productVariantId) {
-        await prisma.productvariant.update({ where: { id: item.productVariantId }, data: { stock: { decrement: item.quantity } } });
+        await prisma.productvariant.updateMany({
+          where: { id: item.productVariantId, stock: { gte: item.quantity } },
+          data: { stock: { decrement: item.quantity } },
+        });
       }
-      await prisma.product.update({ where: { id: item.productId }, data: { totalSold: { increment: item.quantity }, stock: { decrement: item.quantity } } });
+      await prisma.product.updateMany({
+        where: { id: item.productId, stock: { gte: item.quantity } },
+        data: { totalSold: { increment: item.quantity }, stock: { decrement: item.quantity } },
+      });
     }
 
     // Combo finance tracking: snapshot the applied offers onto the order so the

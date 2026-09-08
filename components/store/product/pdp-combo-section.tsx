@@ -160,7 +160,7 @@ export default async function PdpComboSection({ productId }: { productId: string
                     Worth ₹{Math.round(totalNormal * 100) / 100}
                   </p>
                   <Link
-                    href={`/products?combo=${combo.slug}`}
+                    href={`/combo-offers/${combo.slug}`}
                     className="mt-4 inline-flex items-center gap-1.5 font-black uppercase text-xs px-6 py-3 border border-primary/40 text-primary hover:bg-primary/10 transition-all"
                     style={{ letterSpacing: "0.1em", borderRadius: "var(--t-radius-button)", fontFamily: "var(--t-font-heading)" }}
                   >

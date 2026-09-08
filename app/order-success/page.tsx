@@ -102,6 +102,7 @@ export default async function OrderSuccessPage({
     subtotal: subtotalIncl,
     shipping: order.shipping != null ? Number(order.shipping) : 0,
     discount: order.discount != null ? Number(order.discount) : 0,
+    comboDiscount: order.comboDiscount != null ? Number(order.comboDiscount) : 0,
     transactionFee:
       order.transactionFee != null ? Number(order.transactionFee) : 0,
     totalItems,

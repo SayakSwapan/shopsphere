@@ -110,30 +110,29 @@ export async function markOrderPaid(
         },
       });
 
+    // Conditional decrement — a multi-level stock revalidation safety net at
+    // payment time. Even if the cart was validated at add-time, we never push
+    // a variant/product below zero (prevents overselling under concurrency).
     if (variant) {
-      await prisma.productvariant.update({
+      await prisma.productvariant.updateMany({
         where: {
           id: variant.id,
+          stock: { gte: item.quantity },
         },
         data: {
-          stock: {
-            decrement: item.quantity,
-          },
+          stock: { decrement: item.quantity },
         },
       });
     }
 
-    await prisma.product.update({
+    await prisma.product.updateMany({
       where: {
         id: item.productId,
+        stock: { gte: item.quantity },
       },
       data: {
-        stock: {
-          decrement: item.quantity,
-        },
-        totalSold: {
-          increment: item.quantity,
-        },
+        stock: { decrement: item.quantity },
+        totalSold: { increment: item.quantity },
       },
     });
   }

@@ -292,21 +292,32 @@ export default function ComboOfferRoom({ offer }: { offer: ComboRoomOffer }) {
 
   const handleProductClick = useCallback(
     (product: ComboRoomProduct) => {
-      if (selections.some((s) => s.productId === product.id)) return;
+      const alreadySelected = selections.some((s) => s.productId === product.id);
       const inStockVariants =
         product.productvariant && product.productvariant.length > 0
           ? product.productvariant.filter((v) => Number(v.stock) > 0)
           : [];
+
       if (product.productvariant && product.productvariant.length > 0 && inStockVariants.length === 0) {
         toast.error("This product is out of stock.");
         return;
       }
-      if (inStockVariants.length === 1) {
-        addSelection(product.id, inStockVariants[0].id);
+
+      // Sizeless product — add (or re-add) directly without a picker.
+      if (product.productvariant && product.productvariant.length === 0) {
+        if (!alreadySelected) addSelection(product.id, null);
         return;
       }
-      if (product.productvariant && product.productvariant.length === 0) {
-        addSelection(product.id, null);
+
+      // Already selected: re-open the picker so the customer can switch size.
+      // The pick is updated in place (one unit per product rule is preserved).
+      if (alreadySelected) {
+        setModalProduct(product);
+        return;
+      }
+
+      if (inStockVariants.length === 1) {
+        addSelection(product.id, inStockVariants[0].id);
         return;
       }
       setModalProduct(product);
@@ -448,6 +459,9 @@ export default function ComboOfferRoom({ offer }: { offer: ComboRoomOffer }) {
                       )}
                       {!isSelected && inStockVariants.length > 1 && (
                         <p className="mt-1 text-[10px] font-semibold text-text-muted-2">Choose size</p>
+                      )}
+                      {isSelected && inStockVariants.length > 1 && (
+                        <p className="mt-1 text-[10px] font-semibold text-primary">Tap to change size</p>
                       )}
                     </div>
                   </button>
@@ -640,28 +654,43 @@ export default function ComboOfferRoom({ offer }: { offer: ComboRoomOffer }) {
                 {formatCurrency(priceWithGst(activeBase(modalProduct), modalProduct.gstPercentage))}
               </p>
 
-              <p className="mt-3 text-[10px] font-bold uppercase tracking-wider text-text-muted-2">Choose a size</p>
+              <p className="mt-3 text-[10px] font-bold uppercase tracking-wider text-text-muted-2">
+                {selections.some((s) => s.productId === modalProduct.id) ? "Change size" : "Choose a size"}
+              </p>
               <div className="mt-2 grid grid-cols-2 gap-2">
                 {modalProduct.productvariant
                   .filter((v) => Number(v.stock) > 0)
-                  .map((variant) => (
-                    <button
-                      key={variant.id}
-                      type="button"
-                      onClick={() => {
-                        addSelection(modalProduct.id, variant.id);
-                        setModalProduct(null);
-                      }}
-                      className="flex items-center justify-between px-3 py-2.5 border border-border-card bg-bg-card-nested text-left transition-colors hover:border-primary hover:text-primary"
-                      style={{ borderRadius: "var(--t-radius-button)" }}
-                    >
-                      <span className="text-xs font-bold">
-                        {variant.sizeName || "Default"}
-                        {variant.genderName ? ` · ${variant.genderName}` : ""}
-                      </span>
-                      <span className="text-[10px] text-text-muted-2">stock {variant.stock}</span>
-                    </button>
-                  ))}
+                  .map((variant) => {
+                    const isCurrent =
+                      selections.find((s) => s.productId === modalProduct.id)?.productVariantId === variant.id;
+                    return (
+                      <button
+                        key={variant.id}
+                        type="button"
+                        onClick={() => {
+                          addSelection(modalProduct.id, variant.id);
+                          setModalProduct(null);
+                        }}
+                        data-selected={isCurrent ? "true" : "false"}
+                        className="flex items-center justify-between px-3 py-2.5 border bg-bg-card-nested text-left transition-colors hover:border-primary hover:text-primary"
+                        style={{
+                          borderRadius: "var(--t-radius-button)",
+                          borderColor: isCurrent ? "var(--t-primary)" : "var(--t-border-card)",
+                        }}
+                      >
+                        <span className="text-xs font-bold">
+                          {variant.sizeName || "Default"}
+                          {variant.genderName ? ` · ${variant.genderName}` : ""}
+                        </span>
+                        <span
+                          className="text-[10px]"
+                          style={{ color: isCurrent ? "var(--t-primary)" : "var(--t-text-muted-2)" }}
+                        >
+                          {isCurrent ? "Selected · " : ""}stock {variant.stock}
+                        </span>
+                      </button>
+                    );
+                  })}
               </div>
 
               <p className="mt-3 text-[10px] text-text-muted-2">

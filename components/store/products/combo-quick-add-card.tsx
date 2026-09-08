@@ -102,6 +102,11 @@ export default function ComboQuickAddCard({ product, requiredQuantity = 1 }: Pro
 
   const maxStock = selectedVariant ? Math.max(1, selectedVariant.stock) : 1;
 
+  // Combo purchases are quantity-capped: the customer only needs the units the
+  // combo requires (comboOfferItem.quantity). Extra units at full price confuse
+  // the deal, so the stepper never exceeds the combo-required quantity here.
+  const stepperMax = Math.min(maxStock, Math.max(1, requiredQuantity));
+
   const now = new Date();
   const discountType = String(product.discountType || "").toUpperCase();
   const discountValue = Number(product.discountValue || 0);
@@ -129,7 +134,7 @@ export default function ComboQuickAddCard({ product, requiredQuantity = 1 }: Pro
   const hasStock = sizeGroups.some((g) => g.inStock) || (product.productvariant?.length ?? 0) === 0;
 
   const changeQuantity = (delta: number) => {
-    setQuantity((q) => Math.min(Math.max(1, q + delta), maxStock));
+    setQuantity((q) => Math.min(Math.max(1, q + delta), stepperMax));
   };
 
   const addToCart = async () => {
@@ -244,7 +249,8 @@ export default function ComboQuickAddCard({ product, requiredQuantity = 1 }: Pro
                     disabled={loading || disabled}
                     onClick={() => {
                       setSelectedSize(g.sizeName);
-                      setQuantity(Math.max(1, Math.min(requiredQuantity, g.totalStock)));
+                      const firstStock = g.variants.find((v) => v.stock > 0);
+                      setQuantity(firstStock ? Math.max(1, Math.min(requiredQuantity, firstStock.stock)) : 1);
                     }}
                     className={`inline-flex items-center justify-center px-3 py-1.5 text-[11px] font-bold transition-all duration-150 active:scale-95 disabled:opacity-40 disabled:pointer-events-none ${
                       isSelected ? "text-bg-page" : "text-text-muted-1 border border-border-card bg-bg-card-nested"
@@ -318,7 +324,7 @@ export default function ComboQuickAddCard({ product, requiredQuantity = 1 }: Pro
             <button
               type="button"
               onClick={() => changeQuantity(1)}
-              disabled={loading || quantity >= maxStock}
+              disabled={loading || quantity >= stepperMax}
               className="px-2.5 py-2.5 text-text-muted-2 transition-colors hover:text-text-heading disabled:opacity-40 disabled:pointer-events-none"
               aria-label="Increase quantity"
             >

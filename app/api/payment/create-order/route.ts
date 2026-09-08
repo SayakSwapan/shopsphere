@@ -60,6 +60,31 @@ export async function POST(req: Request) {
       );
     }
 
+    // Multi-level stock revalidation at checkout init. Cart-add/update checks
+    // can go stale, so verify against CURRENT database stock before creating
+    // the payment order. The fulfillment step re-guards with conditional
+    // decrements so stock can never go negative.
+    const stockIssues: string[] = [];
+    for (const item of user.cart.cartitem) {
+      if (item.productVariantId) {
+        const variantStock = item.productvariant?.stock ?? 0;
+        if (variantStock < item.quantity) {
+          stockIssues.push(`${item.product.name}${item.productvariant?.sku ? ` (${item.productvariant.sku})` : ""}`);
+        }
+      } else if ((Number(item.product.stock) || 0) < item.quantity) {
+        stockIssues.push(item.product.name);
+      }
+    }
+    if (stockIssues.length > 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: `Some items are no longer in stock: ${stockIssues.join(", ")}. Please adjust your cart and try again.`,
+        },
+        { status: 409 }
+      );
+    }
+
     let subtotal = 0;
     let gst = 0;
     let comboSavings = 0;

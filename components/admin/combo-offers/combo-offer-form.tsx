@@ -1055,6 +1055,45 @@ export default function ComboOfferForm({ mode, id }: Props) {
               </div>
             )}
           </div>
+
+          {/* Admin profit analysis */}
+          {breakdown.ok && (
+            <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4">
+              <p className="text-xs font-bold uppercase tracking-wider text-emerald-400 mb-3 flex items-center gap-2">
+                <Coins size={14} /> Admin Profit Analysis
+              </p>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between text-slate-300">
+                  <span>Original selling value (pre-GST)</span>
+                  <span className="font-semibold">₹{Math.round(breakdown.normalBase * 100) / 100}</span>
+                </div>
+                <div className="flex justify-between text-slate-300">
+                  <span>Customer pays (pre-GST &amp; billed separately)</span>
+                  <span className="font-black text-emerald-300">₹{Math.round(breakdown.payBase * 100) / 100}</span>
+                </div>
+                <div className="flex justify-between text-slate-300">
+                  <span>Total product cost (cost price × qty)</span>
+                  <span className="font-semibold text-slate-400">₹{Math.round(breakdown.totalCost * 100) / 100}</span>
+                </div>
+                <div className="flex justify-between pt-1.5 border-t border-emerald-500/15 text-emerald-300 font-black">
+                  <span>Gross profit (payable − cost)</span>
+                  <span>₹{Math.round(Math.max(0, breakdown.payBase - breakdown.totalCost) * 100) / 100}</span>
+                </div>
+                <div className="flex justify-between text-xs text-emerald-200/80">
+                  <span>Profit margin</span>
+                  <span>
+                    {breakdown.payBase > 0
+                      ? `${Math.round(((breakdown.payBase - breakdown.totalCost) / breakdown.payBase) * 100 * 100) / 100}%`
+                      : "—"}
+                  </span>
+                </div>
+                <p className="pt-1 text-[10px] text-slate-500">
+                  GST is billed on top of the payable base (input credit is netted separately). Margin assumes every paid unit
+                  sells at its current effective base.
+                </p>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* ── Products ── */}

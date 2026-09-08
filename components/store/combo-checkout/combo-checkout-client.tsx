@@ -580,9 +580,11 @@ export default function ComboCheckoutClient({ addresses, offerSlug }: Props) {
                   className="w-full py-4 text-lg font-black uppercase tracking-wider transition-colors bg-primary hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                   style={{ borderRadius: "var(--t-radius-button)", color: "var(--t-bg-page)", fontFamily: "var(--t-font-heading)" }}
                 >
-                  {placing
-                    ? "Processing..."
-                    : pricingState === "loading"
+                  {placing ? (
+                    <>
+                      <Loader2 size={17} className="animate-spin" /> Processing...
+                    </>
+                  ) : pricingState === "loading"
                     ? "Checking availability..."
                     : method === "RAZORPAY"
                     ? "Proceed To Payment"

@@ -37,6 +37,7 @@ interface OrderViewData {
   subtotal: number;
   shipping: number;
   discount: number;
+  comboDiscount: number;
   transactionFee: number;
   totalItems: number;
   items: OrderItemView[];
@@ -373,6 +374,15 @@ export default function OrderSuccessView({ order }: { order: OrderViewData }) {
                     <span className="text-text-muted-1">Coupon Discount</span>
                     <span className="font-medium text-primary">
                       −{formatCurrency(order.discount)}
+                    </span>
+                  </div>
+                )}
+
+                {order.comboDiscount > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-text-muted-1">Combo Savings</span>
+                    <span className="font-medium text-primary">
+                      −{formatCurrency(order.comboDiscount)}
                     </span>
                   </div>
                 )}

@@ -124,7 +124,7 @@ function ComboHero({ combo }: { combo: ComboWithItems }) {
               </p>
             )}
             <Link
-              href={`/products?combo=${combo.slug}`}
+              href={`/combo-offers/${combo.slug}`}
               className="mt-6 hidden sm:inline-flex items-center gap-2 font-black uppercase text-xs px-7 py-3 border border-primary/40 text-primary hover:bg-primary/10 transition-all self-start"
               style={{ letterSpacing: "0.1em", borderRadius: "var(--t-radius-button)", fontFamily: "var(--t-font-heading)" }}
             >
@@ -175,7 +175,7 @@ function ComboHero({ combo }: { combo: ComboWithItems }) {
               </div>
             ))}
             <Link
-              href={`/products?combo=${combo.slug}`}
+              href={`/combo-offers/${combo.slug}`}
               className="flex-shrink-0 inline-flex items-center gap-2 sm:hidden font-black uppercase text-xs px-6 py-3 border border-primary/40 text-primary hover:bg-primary/10 transition-all"
               style={{ letterSpacing: "0.1em", borderRadius: "var(--t-radius-button)", fontFamily: "var(--t-font-heading)" }}
             >
@@ -207,7 +207,7 @@ function ComboGrid({ combos }: { combos: ComboWithItems[] }) {
           </h2>
         </div>
         <Link
-          href="/products?combo=all"
+          href="/combo-offers"
           className="hidden sm:block font-black uppercase text-xs px-7 py-3 border border-primary/40 text-primary hover:bg-primary/10 transition-all"
           style={{ letterSpacing: "0.1em", borderRadius: "var(--t-radius-button)", fontFamily: "var(--t-font-heading)" }}
         >
@@ -229,7 +229,7 @@ function ComboGrid({ combos }: { combos: ComboWithItems[] }) {
           return (
             <Link
               key={combo.id}
-              href={`/products?combo=${combo.slug}`}
+              href={`/combo-offers/${combo.slug}`}
               className="group relative overflow-hidden border border-border-card bg-bg-card p-5 transition-all hover:border-primary/40 hover:shadow-card-hover"
               style={{ borderRadius: "var(--t-radius-card)" }}
             >
@@ -314,7 +314,7 @@ function ComboGrid({ combos }: { combos: ComboWithItems[] }) {
       </div>
 
       <Link
-        href="/products?combo=all"
+        href="/combo-offers"
         className="sm:hidden block mt-6 text-center font-black uppercase text-xs px-7 py-3 border border-primary/40 text-primary hover:bg-primary/10 transition-all"
         style={{ letterSpacing: "0.1em", borderRadius: "var(--t-radius-button)", fontFamily: "var(--t-font-heading)" }}
       >

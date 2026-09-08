@@ -549,7 +549,7 @@ function donutsAndNotes(doc: jsPDF, data: BalanceSheetData) {
 
   sectionTitle(doc, M, 20, "REVENUE BY PAYMENT METHOD");
   chartCard(doc, M, 26, cardW, 60);
-  const payTotal = data.paymentBreakdown.cod + data.paymentBreakdown.razorpay;
+  const payTotal = data.paymentBreakdown.cod + data.paymentBreakdown.razorpay + data.paymentBreakdown.cashfree;
   donut(
     doc,
     M + 34,
@@ -557,17 +557,19 @@ function donutsAndNotes(doc: jsPDF, data: BalanceSheetData) {
     21,
     [
       { value: data.paymentBreakdown.cod, color: C.slate700 },
-      { value: data.paymentBreakdown.razorpay, color: C.blue },
+      { value: data.paymentBreakdown.cashfree, color: C.blue },
+      { value: data.paymentBreakdown.razorpay, color: C.slate400 },
     ],
     inr(payTotal),
     "PAYMENTS"
   );
   const paySegs = [
     { name: "Cash on Delivery (COD)", value: data.paymentBreakdown.cod, color: C.slate700 },
-    { name: "Razorpay", value: data.paymentBreakdown.razorpay, color: C.blue },
+    { name: "Cashfree", value: data.paymentBreakdown.cashfree, color: C.blue },
+    { name: "Razorpay (legacy)", value: data.paymentBreakdown.razorpay, color: C.slate400 },
   ];
   paySegs.forEach((seg, i) => {
-    const y = 38 + i * 12;
+    const y = 32 + i * 12;
     legendRow(doc, M + 66, y, seg.color, seg.name, inr(seg.value), `${Math.round((seg.value / (payTotal || 1)) * 100)}%`, rightX);
   });
 

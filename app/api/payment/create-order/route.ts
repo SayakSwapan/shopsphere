@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { razorpay } from "@/lib/payment/razorpay";
+import { createPaymentSession, CashfreeError } from "@/lib/payment/cashfree";
 import { getGstBreakdown, getActivePriceBase } from "@/lib/pricing";
 import { calculateShipping } from "@/lib/shipping";
 import { calcTransactionFee } from "@/lib/finance/transaction-charge.service";
@@ -191,7 +191,10 @@ export async function POST(req: Request) {
 
     const total = subtotal - discount - loyaltyDiscount + shipping + gst;
 
-    const txFeeResult = await calcTransactionFee(total, "RAZORPAY", "RAZORPAY");
+    // Cashfree is the online gateway for now. Keep matching the existing
+    // Razorpay transaction-charge rules so online fee rules keep applying
+    // (they are keyed on gateway "RAZORPAY" in the admin).
+    const txFeeResult = await calcTransactionFee(total, "RAZORPAY", "CASHFREE");
     const transactionFee = txFeeResult.fee;
 
     const order = await prisma.order.create({
@@ -211,7 +214,7 @@ export async function POST(req: Request) {
         loyaltyRewardId,
         loyaltyDiscountAmount: loyaltyDiscount > 0 ? loyaltyDiscount : null,
         status: "PENDING",
-        paymentMethod: "RAZORPAY",
+        paymentMethod: "CASHFREE",
         paymentStatus: "PENDING",
         addressLine1: address.addressLine1,
         addressLine2: address.addressLine2,
@@ -258,8 +261,8 @@ export async function POST(req: Request) {
       data: {
         id: randomUUID(),
         orderId: order.id,
-        gateway: "RAZORPAY",
-        paymentMethod: "RAZORPAY",
+        gateway: "CASHFREE",
+        paymentMethod: "CASHFREE",
         grossAmount: total,
         gatewayFee: txFeeResult.fee,
         gatewayGST: txFeeResult.gst,
@@ -269,14 +272,25 @@ export async function POST(req: Request) {
       },
     });
 
-    const razorpayOrder = await razorpay.orders.create({
-      amount: Math.round(total * 100),
-      currency: "INR",
-      receipt: order.orderNumber,
-      notes: { dbOrderId: order.id, customer: user.email },
+    // Our db order id doubles as the Cashfree order id (unique + matches
+    // Cashfree's allowed order_id charset), which lets us verify payment
+    // status server-side without any extra lookup.
+    const paymentSession = await createPaymentSession({
+      orderId: order.id,
+      amount: total,
+      note: order.orderNumber,
+      customer: {
+        customerId: user.id,
+        customerName: address.fullName,
+        customerEmail: user.email,
+        customerPhone: address.phone,
+      },
     });
 
-    await prisma.order.update({ where: { id: order.id }, data: { razorpayOrderId: razorpayOrder.id } });
+    await prisma.order.update({
+      where: { id: order.id },
+      data: { cashfreeOrderId: paymentSession.orderId },
+    });
 
     createAdminNotification({
       title: "New Online Order",
@@ -290,14 +304,17 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       success: true,
-      key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
       dbOrderId: order.id,
-      razorpayOrderId: razorpayOrder.id,
-      amount: razorpayOrder.amount,
-      currency: razorpayOrder.currency,
+      orderId: order.id,
+      payment_session_id: paymentSession.paymentSessionId,
+      amount: paymentSession.amount,
+      currency: paymentSession.currency,
       customer: { name: address.fullName, email: user.email, contact: address.phone },
     });
   } catch (error) {
+    if (error instanceof CashfreeError) {
+      return NextResponse.json({ success: false, message: error.message }, { status: error.status });
+    }
     console.log(error);
     return NextResponse.json({ success: false, message: "Unable to create payment." }, { status: 500 });
   }

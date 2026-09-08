@@ -4,7 +4,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { MapPin, CreditCard, Truck, Tag, ShieldCheck, BadgeCheck, Package, Minus, Plus, Trash2, Pencil, ChevronDown, Loader2, TriangleAlert, PartyPopper, Gift, Sparkles } from "lucide-react";
-import { useSiteName } from "@/components/store/site-settings-provider";
 import { customizationUnitPrice, customizationUnitPriceWithGst } from "@/lib/print-pricing";
 import type { CustomPrintData } from "@/types/custom-print";
 import Modal from "@/components/common/modal";
@@ -107,7 +106,6 @@ export default function CheckoutClient({
   amountNeeded,
 }: Props) {
   const router = useRouter();
-  const siteName = useSiteName();
 
   const [selectedCoupon, setSelectedCoupon] = useState<Coupon | null>(null);
   const [loyalty, setLoyalty] = useState<{
@@ -527,33 +525,25 @@ export default function CheckoutClient({
       const data = await res.json();
       if (!res.ok) { toast.error(data.message ?? "Unable to start payment."); return; }
 
-      const Razorpay = window.Razorpay;
-      const payment = new Razorpay({
-        key: data.key,
-        amount: data.amount,
-        currency: data.currency,
-        name: siteName,
-        description: "Order Payment",
-        order_id: data.razorpayOrderId,
-        prefill: { name: data.customer.name, email: data.customer.email, contact: data.customer.contact },
-        theme: { color: "#F59E0B" },
-        handler: async (response: RazorpayResponse) => {
-          const verify = await fetch("/api/payment/verify", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ ...response, couponId: selectedCoupon?.id ?? null, couponDiscount }),
-          });
-          const verifyData = await verify.json();
-          if (verifyData.success) {
-            toast.success("Payment Successful");
-            router.push(`/order-success?id=${verifyData.orderId}`);
-          } else {
-            toast.error("Payment verification failed.");
-          }
-        },
-        modal: { ondismiss() { toast.error("Payment cancelled."); } },
+      const { openCashfreeCheckout } = await import("@/lib/cashfree-checkout");
+      const { redirect } = await openCashfreeCheckout(data.payment_session_id);
+      if (!redirect) {
+        toast.error("Payment cancelled.");
+        return;
+      }
+
+      const verify = await fetch("/api/payment/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderId: data.dbOrderId }),
       });
-      payment.open();
+      const verifyData = await verify.json();
+      if (verifyData.success) {
+        toast.success("Payment Successful");
+        router.push(`/order-success?id=${verifyData.orderId}`);
+      } else {
+        toast.error(verifyData.message ?? "Payment verification failed.");
+      }
     } catch {
       toast.error("Something went wrong.");
     } finally {
@@ -905,7 +895,7 @@ export default function CheckoutClient({
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="font-bold text-text-heading">Online Payment</p>
-                      <p className="text-sm text-text-muted-1">Razorpay / UPI / Card / Net Banking</p>
+                      <p className="text-sm text-text-muted-1">UPI / Cards / Net Banking / Wallets</p>
                     </div>
                     <div
                       className="h-5 w-5 border-2"

@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createComboOrder, ComboCheckoutError } from "@/lib/combo-checkout";
+import { CashfreeError } from "@/lib/payment/cashfree";
 
 export const dynamic = "force-dynamic";
 
@@ -25,7 +26,7 @@ export async function POST(req: Request) {
     if (!addressId) {
       return NextResponse.json({ success: false, message: "Shipping address is required." }, { status: 400 });
     }
-    if (paymentMethod !== "COD" && paymentMethod !== "RAZORPAY") {
+    if (paymentMethod !== "COD" && paymentMethod !== "CASHFREE") {
       return NextResponse.json({ success: false, message: "Invalid payment method." }, { status: 400 });
     }
 
@@ -49,6 +50,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true, ...result });
   } catch (error) {
     if (error instanceof ComboCheckoutError) {
+      return NextResponse.json({ success: false, message: error.message }, { status: error.status });
+    }
+    if (error instanceof CashfreeError) {
       return NextResponse.json({ success: false, message: error.message }, { status: error.status });
     }
     console.error(error);

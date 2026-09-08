@@ -284,7 +284,11 @@ export default function BalanceSheetPage() {
               <span className="text-sm font-bold text-white">{fmt(data.paymentBreakdown.cod)}</span>
             </div>
             <div className="flex items-center justify-between rounded-xl bg-[#0B1624] px-4 py-3">
-              <span className="text-sm text-slate-300">Razorpay</span>
+              <span className="text-sm text-slate-300">Cashfree</span>
+              <span className="text-sm font-bold text-white">{fmt(data.paymentBreakdown.cashfree)}</span>
+            </div>
+            <div className="flex items-center justify-between rounded-xl bg-[#0B1624] px-4 py-3">
+              <span className="text-sm text-slate-300">Razorpay (legacy)</span>
               <span className="text-sm font-bold text-white">{fmt(data.paymentBreakdown.razorpay)}</span>
             </div>
           </div>

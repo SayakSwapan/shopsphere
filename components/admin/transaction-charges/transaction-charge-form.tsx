@@ -91,7 +91,7 @@ export default function TransactionChargeForm({ mode, initial }: Props) {
             <p className="text-xs leading-relaxed text-sky-300/70">
               Rules are evaluated in ascending <strong>sort order</strong>. The first rule whose amount range
               matches the order total is applied. All subsequent rules are ignored. If no rule matches, no fee is charged.
-              Fees apply to <strong>Razorpay (online) payments only</strong> &mdash; COD orders are never charged.
+              Fees apply to <strong>online payments only</strong> (Cashfree orders map to the legacy Razorpay fee rules) &mdash; COD orders are never charged.
             </p>
           </div>
         </div>
@@ -250,7 +250,7 @@ export default function TransactionChargeForm({ mode, initial }: Props) {
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
               className="mt-1.5 w-full rounded-xl border border-slate-700 bg-[#0F172A] px-4 py-3 text-sm text-white outline-none transition focus:border-amber-500"
-              placeholder="e.g. Razorpay standard fee for transactions under ₹1000"
+              placeholder="e.g. Standard fee for online transactions under ₹1000"
             />
             <p className="mt-1 text-xs text-slate-500">An internal note to help identify this rule later. Not shown to customers.</p>
           </div>

@@ -27,7 +27,7 @@ export interface BalanceSheetData {
     returns: number;
   }[];
   expenseBreakdown: { name: string; total: number }[];
-  paymentBreakdown: { cod: number; razorpay: number };
+  paymentBreakdown: { cod: number; razorpay: number; cashfree: number };
 }
 
 function csvEscape(val: string | number): string {
@@ -75,7 +75,8 @@ export function generateBalanceSheetCSV(data: BalanceSheetData): Blob {
   rows.push(["PAYMENT BREAKDOWN"].join(","));
   rows.push(["Method", "Amount"].map(csvEscape).join(","));
   rows.push(["COD", data.paymentBreakdown.cod].map(csvEscape).join(","));
-  rows.push(["Razorpay", data.paymentBreakdown.razorpay].map(csvEscape).join(","));
+  rows.push(["Cashfree", data.paymentBreakdown.cashfree].map(csvEscape).join(","));
+  rows.push(["Razorpay (legacy)", data.paymentBreakdown.razorpay].map(csvEscape).join(","));
 
   return new Blob([rows.join("\n")], { type: "text/csv;charset=utf-8;" });
 }

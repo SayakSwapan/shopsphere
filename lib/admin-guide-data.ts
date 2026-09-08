@@ -1006,7 +1006,7 @@ export const guideSections: GuideSection[] = [
             type: "action",
             title: "Recalculate totals",
             detail:
-              "Cart, checkout, Razorpay and COD order flows all recompute subtotal, GST and combo savings from the discounted bases — never from the browser.",
+              "Cart, checkout, Cashfree and COD order flows all recompute subtotal, GST and combo savings from the discounted bases — never from the browser.",
           },
           {
             type: "action",
@@ -1106,7 +1106,7 @@ export const guideSections: GuideSection[] = [
       {
         title: "Manage Transaction Charges",
         detail:
-          "Go to Finance & Shipping → Transaction Charges. Define fee rules that apply to online (Razorpay) payments. Each rule has an amount range (min–max), a fee type (flat ₹ or percentage %), and a sort order. Rules are evaluated in ascending sort order — the first matching rule applies to the order. COD orders are never charged. Use the sort order to prioritise rules: for example, a 2% fee for orders up to ₹1000 at sort order 1, and a flat ₹20 fee for larger orders at sort order 2. Toggle a rule inactive to temporarily skip it without deleting.",
+          "Go to Finance & Shipping → Transaction Charges. Define fee rules that apply to online payments (Cashfree currently — the gateway selector maps online orders to the legacy Razorpay rules). Each rule has an amount range (min–max), a fee type (flat ₹ or percentage %), and a sort order. Rules are evaluated in ascending sort order — the first matching rule applies to the order. COD orders are never charged. Use the sort order to prioritise rules: for example, a 2% fee for orders up to ₹1000 at sort order 1, and a flat ₹20 fee for larger orders at sort order 2. Toggle a rule inactive to temporarily skip it without deleting.",
       },
       {
         title: "Configure Shipping",
@@ -1456,7 +1456,7 @@ export const guideSections: GuideSection[] = [
       {
         title: "Watch the Security page",
         detail:
-          "Security → shows failed/successful logins of the last 24h, currently locked accounts, and a configuration checklist (JWT secret, Razorpay webhook secret, API keys). Check it weekly, or right after any suspicious email.",
+          "Security → shows failed/successful logins of the last 24h, currently locked accounts, and a configuration checklist (JWT secret, payment gateway keys, API keys). Check it weekly, or right after any suspicious email.",
       },
       {
         title: "OTP safety (password resets & verification)",
@@ -1466,7 +1466,7 @@ export const guideSections: GuideSection[] = [
       {
         title: "Payment verification flow",
         detail:
-          "Every online payment is verified server-side against Razorpay's HMAC signature before an order is marked PAID. The webhook endpoint double-confirms payments from Razorpay's servers once RAZORPAY_WEBHOOK_SECRET is configured. Duplicate confirmations are ignored automatically.",
+          "Every online payment is verified server-side by querying the gateway's own Payments API (Cashfree currently; Razorpay previously) before an order is marked PAID — the browser never reports amounts or signatures. Duplicate confirmations are ignored automatically.",
       },
       {
         title: "Customer data isolation",
@@ -1526,18 +1526,18 @@ export const guideSections: GuideSection[] = [
         nodes: [
           {
             type: "start",
-            title: "Customer pays via Razorpay",
+            title: "Customer pays via Cashfree",
             detail: "Order amount is always computed server-side from the database cart — never trusted from the browser.",
           },
           {
             type: "action",
-            title: "Client callback verify",
-            detail: "/api/payment/verify recomputes the HMAC signature server-side before anything happens.",
+            title: "Server-side status check",
+            detail: "/api/payment/verify queries Cashfree's Payments API for the order and confirms a SUCCESS payment for the billed amount.",
           },
           {
             type: "action",
-            title: "Webhook double-check",
-            detail: "Razorpay also calls /api/payment/webhook, verified with its own secret (when configured).",
+            title: "Its own server confirms",
+            detail: "Both the checkout close and the gateway-ledger record agree before anything happens.",
           },
           {
             type: "decision",

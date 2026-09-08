@@ -15,7 +15,6 @@ import {
   Truck,
 } from "lucide-react";
 
-import { useSiteName } from "@/components/store/site-settings-provider";
 import { formatCurrency } from "@/lib/format";
 
 interface Address {
@@ -98,7 +97,6 @@ interface Props {
 
 export default function ComboCheckoutClient({ addresses, offerSlug }: Props) {
   const router = useRouter();
-  const siteName = useSiteName();
   const storageKey = `combo-selection:${offerSlug}`;
 
   const [selections, setSelections] = useState<Selection[] | null>(null);
@@ -121,7 +119,7 @@ export default function ComboCheckoutClient({ addresses, offerSlug }: Props) {
   const [pricingMessage, setPricingMessage] = useState("");
   const pricingRef = useRef(0);
 
-  const [method, setMethod] = useState<"COD" | "RAZORPAY">("RAZORPAY");
+  const [method, setMethod] = useState<"COD" | "CASHFREE">("CASHFREE");
   const [placing, setPlacing] = useState(false);
 
   // ── Load selection + offer meta on mount ──
@@ -192,9 +190,9 @@ export default function ComboCheckoutClient({ addresses, offerSlug }: Props) {
         setShipping(data.shipping as ShippingPreview | null);
         setPricingState("success");
         if (data.shipping && !data.shipping.deliverable && method === "COD" && !data.shipping.allowCod) {
-          setMethod("RAZORPAY");
+          setMethod("CASHFREE");
         }
-        if (data.shipping && !data.shipping.deliverable && method === "RAZORPAY" && !data.shipping.allowOnline) {
+        if (data.shipping && !data.shipping.deliverable && method === "CASHFREE" && !data.shipping.allowOnline) {
           setMethod("COD");
         }
       } catch (error) {
@@ -279,43 +277,35 @@ export default function ComboCheckoutClient({ addresses, offerSlug }: Props) {
         return;
       }
 
-      const Razorpay = window.Razorpay;
-      const payment = new Razorpay({
-        key: data.key,
-        amount: data.amount,
-        currency: data.currency,
-        name: siteName,
-        description: "Combo Order Payment",
-        order_id: data.razorpayOrderId,
-        prefill: { name: data.customer.name, email: data.customer.email, contact: data.customer.contact },
-        theme: { color: "#F59E0B" },
-        handler: async (response: RazorpayResponse) => {
-          try {
-            const verify = await fetch("/api/payment/verify", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(response),
-            });
-            const verifyData = await verify.json();
-            if (verifyData.success) {
-              toast.success("Payment Successful");
-              router.push(`/order-success?id=${verifyData.orderId}`);
-            } else {
-              toast.error("Payment verification failed.");
-            }
-          } catch {
-            toast.error("Payment verification failed.");
-          }
-        },
-        modal: { ondismiss() { toast.error("Payment cancelled."); } },
-      });
-      payment.open();
+      const { openCashfreeCheckout } = await import("@/lib/cashfree-checkout");
+      const { redirect } = await openCashfreeCheckout(data.payment_session_id);
+      if (!redirect) {
+        toast.error("Payment cancelled.");
+        return;
+      }
+
+      try {
+        const verify = await fetch("/api/payment/verify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ orderId: data.dbOrderId }),
+        });
+        const verifyData = await verify.json();
+        if (verifyData.success) {
+          toast.success("Payment Successful");
+          router.push(`/order-success?id=${verifyData.orderId}`);
+        } else {
+          toast.error(verifyData.message ?? "Payment verification failed.");
+        }
+      } catch {
+        toast.error("Payment verification failed.");
+      }
     } catch {
       toast.error("Something went wrong.");
     } finally {
       setPlacing(false);
     }
-  }, [complete, selectedAddress, shipping, method, offerSlug, selections, router, siteName]);
+  }, [complete, selectedAddress, shipping, method, offerSlug, selections, router]);
 
   // ── Render ──
   return (
@@ -491,25 +481,25 @@ export default function ComboCheckoutClient({ addresses, offerSlug }: Props) {
               <div className="space-y-3 p-4 sm:p-6">
                 {onlineAvailable && (
                   <button
-                    onClick={() => setMethod("RAZORPAY")}
+                    onClick={() => setMethod("CASHFREE")}
                     className="w-full border p-5 text-left transition"
                     style={{
                       borderRadius: "var(--t-radius-card)",
-                      borderColor: method === "RAZORPAY" ? "var(--t-primary)" : "var(--t-border-card)",
-                      background: method === "RAZORPAY" ? "color-mix(in srgb, var(--t-primary) 10%, var(--t-bg-card))" : "var(--t-bg-card-nested)",
+                      borderColor: method === "CASHFREE" ? "var(--t-primary)" : "var(--t-border-card)",
+                      background: method === "CASHFREE" ? "color-mix(in srgb, var(--t-primary) 10%, var(--t-bg-card))" : "var(--t-bg-card-nested)",
                     }}
                   >
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="font-bold text-text-heading">Online Payment</p>
-                        <p className="text-sm text-text-muted-1">Razorpay / UPI / Card / Net Banking</p>
+                        <p className="text-sm text-text-muted-1">UPI / Cards / Net Banking / Wallets</p>
                       </div>
                       <div
                         className="h-5 w-5 border-2"
                         style={{
                           borderRadius: "50%",
-                          borderColor: method === "RAZORPAY" ? "var(--t-primary)" : "var(--t-text-muted-3)",
-                          background: method === "RAZORPAY" ? "var(--t-primary)" : "transparent",
+                          borderColor: method === "CASHFREE" ? "var(--t-primary)" : "var(--t-text-muted-3)",
+                          background: method === "CASHFREE" ? "var(--t-primary)" : "transparent",
                         }}
                       />
                     </div>
@@ -586,7 +576,7 @@ export default function ComboCheckoutClient({ addresses, offerSlug }: Props) {
                     </>
                   ) : pricingState === "loading"
                     ? "Checking availability..."
-                    : method === "RAZORPAY"
+                    : method === "CASHFREE"
                     ? "Proceed To Payment"
                     : "Place Order"}
                 </button>

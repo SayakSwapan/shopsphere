@@ -9,7 +9,7 @@
 //      (one unit each, with a size/variant) from the offer's pool.
 //   3. `/api/combo/pricing` returns a server-validated price preview.
 //   4. `/combo-checkout` reuses the store's addresses + pincode + shipping and
-//      `/api/combo/orders` creates the order (COD or Razorpay) server-side.
+//      `/api/combo/orders` creates the order (COD or Cashfree) server-side.
 //
 // Pricing rule for the dedicated flow (mirrors the auto combo engine):
 //   • BOGO       — pay the `buyCount` MOST expensive selected products, rest FREE.
@@ -29,7 +29,7 @@ import { calculateShipping, getPincodeInfo } from "@/lib/shipping";
 import { getRestrictedCartItems } from "@/lib/product-deliverability";
 import { calcTransactionFee } from "@/lib/finance/transaction-charge.service";
 import { createAdminNotification } from "@/lib/notifications";
-import { razorpay } from "@/lib/payment/razorpay";
+import { createPaymentSession } from "@/lib/payment/cashfree";
 import type { ComboOfferType } from "@prisma/client";
 
 export class ComboCheckoutError extends Error {
@@ -573,20 +573,19 @@ export interface CreateComboOrderInput {
   offerSlug: string;
   selections: ComboSelectionLine[];
   addressId: string;
-  paymentMethod: "COD" | "RAZORPAY";
+  paymentMethod: "COD" | "CASHFREE";
   useLoyaltyReward?: boolean;
 }
 
 export interface ComboOrderResult {
   orderId: string;
   orderNumber: string;
-  paymentMethod: "COD" | "RAZORPAY";
+  paymentMethod: "COD" | "CASHFREE";
   // COD only
   success?: boolean;
-  // Razorpay only
-  key?: string;
+  // Online (Cashfree) only
+  payment_session_id?: string;
   dbOrderId?: string;
-  razorpayOrderId?: string;
   amount?: number;
   currency?: string;
   customer?: { name: string; email: string; contact: string };
@@ -594,7 +593,7 @@ export interface ComboOrderResult {
 
 /**
  * Authoritative combo order creation. Mirrors the existing online order routes
- * (COD + Razorpay) but for a fixed combo selection. Never trusts the client:
+ * (COD + Cashfree) but for a fixed combo selection. Never trusts the client:
  * offer activity, selection rules, latest prices/stock, pincode restriction and
  * serviceability are all re-validated here.
  */
@@ -696,8 +695,10 @@ export async function createComboOrder(input: CreateComboOrderInput): Promise<Co
 
   let transactionFee = 0;
   let txFeeResult: Awaited<ReturnType<typeof calcTransactionFee>> | null = null;
-  if (input.paymentMethod === "RAZORPAY") {
-    txFeeResult = await calcTransactionFee(total, "RAZORPAY", "RAZORPAY");
+  if (input.paymentMethod !== "COD") {
+    // Cashfree is the online gateway. Match existing Razorpay fee rules so the
+    // admin-configured online charges keep applying.
+    txFeeResult = await calcTransactionFee(total, "RAZORPAY", "CASHFREE");
     transactionFee = txFeeResult.fee;
   }
 
@@ -812,13 +813,13 @@ export async function createComboOrder(input: CreateComboOrderInput): Promise<Co
     return { orderId: order.id, orderNumber: order.orderNumber, paymentMethod: "COD", success: true };
   }
 
-  // ── Razorpay ──
+  // ── Cashfree (online gateway) ──
   await prisma.paymentTransaction.create({
     data: {
       id: randomUUID(),
       orderId: order.id,
-      gateway: "RAZORPAY",
-      paymentMethod: "RAZORPAY",
+      gateway: "CASHFREE",
+      paymentMethod: "CASHFREE",
       grossAmount: total,
       gatewayFee: txFeeResult?.fee ?? 0,
       gatewayGST: txFeeResult?.gst ?? 0,
@@ -828,14 +829,23 @@ export async function createComboOrder(input: CreateComboOrderInput): Promise<Co
     },
   });
 
-  const razorpayOrder = await razorpay.orders.create({
-    amount: Math.round(total * 100),
-    currency: "INR",
-    receipt: order.orderNumber,
-    notes: { dbOrderId: order.id, customer: user.email, comboOfferId: offer.id },
+  // Our db order id doubles as Cashfree's order_id (unique, allowed charset).
+  const paymentSession = await createPaymentSession({
+    orderId: order.id,
+    amount: total,
+    note: order.orderNumber,
+    customer: {
+      customerId: user.id,
+      customerName: address.fullName,
+      customerEmail: user.email,
+      customerPhone: address.phone,
+    },
   });
 
-  await prisma.order.update({ where: { id: order.id }, data: { razorpayOrderId: razorpayOrder.id } });
+  await prisma.order.update({
+    where: { id: order.id },
+    data: { cashfreeOrderId: paymentSession.orderId },
+  });
 
   createAdminNotification({
     title: "New Combo Order",
@@ -850,12 +860,11 @@ export async function createComboOrder(input: CreateComboOrderInput): Promise<Co
   return {
     orderId: order.id,
     orderNumber: order.orderNumber,
-    paymentMethod: "RAZORPAY",
-    key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+    paymentMethod: "CASHFREE",
+    payment_session_id: paymentSession.paymentSessionId,
     dbOrderId: order.id,
-    razorpayOrderId: razorpayOrder.id,
-    amount: Number(razorpayOrder.amount),
-    currency: razorpayOrder.currency,
+    amount: paymentSession.amount,
+    currency: paymentSession.currency,
     customer: { name: address.fullName, email: user.email, contact: address.phone },
   };
 }

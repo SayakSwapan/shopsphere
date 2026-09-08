@@ -14,11 +14,11 @@ export const SUCCESSFUL_ORDER_FILTER: Prisma.orderWhereInput = {
 };
 
 /**
- * Orders that are archived — an online order where the Razorpay payment never
+ * Orders that are archived — an online order where the payment never
  * succeeded: it was cancelled, abandoned, or failed outright.
  */
 export const ARCHIVED_ORDER_FILTER: Prisma.orderWhereInput = {
-  paymentMethod: "RAZORPAY",
+  paymentMethod: { in: ["RAZORPAY", "CASHFREE"] },
   paymentStatus: { in: ["PENDING", "FAILED"] as PaymentStatus[] },
 };
 
@@ -36,6 +36,7 @@ export interface AdminOrderRow {
   discount: number | null;
   createdAt: string;
   razorpayPaymentId: string | null;
+  cashfreePaymentId: string | null;
   user: { name: string; email: string } | null;
   _count: { orderitem: number };
 }
@@ -82,6 +83,7 @@ export async function getAdminOrderRows(
     discount: order.discount !== null ? Number(order.discount) : null,
     createdAt: order.createdAt.toISOString(),
     razorpayPaymentId: order.razorpayPaymentId,
+    cashfreePaymentId: order.cashfreePaymentId,
     user: order.user
       ? { name: order.user.name ?? "", email: order.user.email }
       : null,

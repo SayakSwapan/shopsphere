@@ -535,11 +535,11 @@ export default async function OrderDetailPage({ params }: Props) {
                     {order.paymentStatus}
                   </span>
                 </div>
-                {order.razorpayPaymentId && (
+                {(order.razorpayPaymentId || order.cashfreePaymentId) && (
                   <div className="flex justify-between text-text-muted-1">
                     <span>Transaction ID</span>
                     <span className="text-text-heading font-mono text-xs">
-                      {order.razorpayPaymentId}
+                      {order.cashfreePaymentId ?? order.razorpayPaymentId}
                     </span>
                   </div>
                 )}

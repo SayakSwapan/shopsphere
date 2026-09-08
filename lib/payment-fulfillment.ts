@@ -14,8 +14,8 @@ import { countEligiblePurchase, redeemLoyaltyReward } from "@/lib/loyalty";
  */
 export async function markOrderPaid(
   orderId: string,
-  razorpayPaymentId: string,
-  razorpaySignature: string
+  gatewayPaymentId: string,
+  gatewayRef: string
 ): Promise<{ processed: boolean }> {
   const order = await prisma.order.findFirst({
     where: { id: orderId },
@@ -36,6 +36,11 @@ export async function markOrderPaid(
 
   // Atomically claim the order so concurrent calls can't double-process
   // stock/coupons. Only the caller that flips PENDING -> PAID proceeds.
+  const claimData =
+    order.paymentMethod === "CASHFREE"
+      ? { cashfreePaymentId: gatewayPaymentId }
+      : { razorpayPaymentId: gatewayPaymentId, razorpaySignature: gatewayRef };
+
   const claimed = await prisma.order.updateMany({
     where: {
       id: order.id,
@@ -44,8 +49,7 @@ export async function markOrderPaid(
     data: {
       status: "PAID",
       paymentStatus: "PAID",
-      razorpayPaymentId: razorpayPaymentId,
-      razorpaySignature: razorpaySignature,
+      ...claimData,
       paidAt: new Date(),
     },
   });
@@ -60,7 +64,7 @@ export async function markOrderPaid(
     await prisma.paymentTransaction.update({
       where: { id: tx.id },
       data: {
-        gatewayPaymentId: razorpayPaymentId,
+        gatewayPaymentId: gatewayPaymentId,
         paymentStatus: "PAID",
         settlementDate: new Date(),
       },
@@ -152,7 +156,9 @@ export async function markOrderPaid(
 
   createAdminNotification({
     title: "Payment Received",
-    message: `Order ${order.orderNumber} — ₹${Number(order.totalAmount).toFixed(2)} paid via Razorpay`,
+    message: `Order ${order.orderNumber} — ₹${Number(order.totalAmount).toFixed(2)} paid via ${
+      order.paymentMethod === "CASHFREE" ? "Cashfree" : "Razorpay"
+    }`,
     type: "PAYMENT",
     entityType: "ORDER",
     entityId: order.id,

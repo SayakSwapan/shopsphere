@@ -37,7 +37,7 @@ export interface BalanceSheetData {
   summary: BalanceSheetSummary;
   monthly: BalanceSheetMonth[];
   expenseBreakdown: { name: string; total: number }[];
-  paymentBreakdown: { cod: number; razorpay: number };
+  paymentBreakdown: { cod: number; razorpay: number; cashfree: number };
 }
 
 function parseFY(fy: string): { startYear: number; endYear: number } {
@@ -162,6 +162,7 @@ export async function generateBalanceSheet(fyParam?: string): Promise<BalanceShe
   const paymentBreakdown = {
     cod: Math.round(orders.filter((o) => o.paymentMethod === "COD").reduce((s, o) => s + Number(o.totalAmount), 0)),
     razorpay: Math.round(orders.filter((o) => o.paymentMethod === "RAZORPAY").reduce((s, o) => s + Number(o.totalAmount), 0)),
+    cashfree: Math.round(orders.filter((o) => o.paymentMethod === "CASHFREE").reduce((s, o) => s + Number(o.totalAmount), 0)),
   };
 
   return { fy, startYear, endYear, summary, monthly, expenseBreakdown, paymentBreakdown };

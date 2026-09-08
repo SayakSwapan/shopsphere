@@ -65,8 +65,8 @@ export default function PaymentMethod({
               </p>
 
               <p className="text-sm text-slate-400">
-                Razorpay / UPI / Card /
-                Net Banking
+                UPI / Cards / Net Banking
+                / Wallets
               </p>
 
             </div>

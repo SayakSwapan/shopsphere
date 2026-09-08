@@ -60,6 +60,7 @@ export const OFFLINE_PAYMENT_METHODS = [
 export const PAYMENT_METHOD_LABELS: Record<string, string> = {
   COD: "Cash on Delivery",
   RAZORPAY: "Online (Razorpay)",
+  CASHFREE: "Online (Cashfree)",
   CASH: "Cash",
   UPI: "UPI",
   CARD: "Card",

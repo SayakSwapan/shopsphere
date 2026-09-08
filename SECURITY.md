@@ -44,12 +44,17 @@ They are **not interchangeable**: an admin cookie cannot access customer APIs an
 - **Token-minting script removed** — `_admintoken.ts` (printed valid admin tokens) deleted.
 
 ### Payments
-- **Webhook implemented** — `/api/payment/webhook` verifies Razorpay's HMAC signature over the raw
-  body (`RAZORPAY_WEBHOOK_SECRET`) and fulfills paid orders server-to-server. Fails closed (503)
-  when unconfigured. Fulfillment is shared with the client callback via
-  `lib/payment-fulfillment.ts` and is idempotent: an atomic `PENDING → PAID` claim means stock,
-  coupons and carts are processed exactly once even under retries/concurrency.
-- **Timing-safe signature comparison** in both payment verification paths.
+- **Cashfree is the current online gateway** — `/api/payment/create-order` opens a Cashfree payment
+  session (db order id doubles as Cashfree's `order_id`), and `/api/payment/verify` marks an order
+  PAID only after querying Cashfree's own Payments API and confirming a `SUCCESS` payment for the
+  billed amount. The browser never reports amounts or signatures.
+- **Legacy Razorpay flow kept dormant** — `/api/payment/webhook` verifies Razorpay's HMAC signature
+  over the raw body (`RAZORPAY_WEBHOOK_SECRET`) and fulfills paid orders server-to-server; fails
+  closed (503) when unconfigured. Used only if the online gateway is rolled back to Razorpay.
+- Fulfillment is shared via `lib/payment-fulfillment.ts` and is idempotent: an atomic
+  `PENDING → PAID` claim means stock, coupons and carts are processed exactly once even under
+  retries/concurrency.
+- **Timing-safe comparison** in the legacy Razorpay verification path.
 
 ### Uploads
 - Admin uploads restricted to images (JPEG/PNG/WebP/GIF/AVIF), max 10 MB, sanitized Cloudinary
@@ -65,8 +70,8 @@ They are **not interchangeable**: an admin cookie cannot access customer APIs an
 | Variable | Purpose |
 | --- | --- |
 | `JWT_SECRET` | Signs all tokens. Must be ≥ 32 random chars. Rotating it invalidates all sessions. |
-| `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` | Payment creation + client-callback signature verification. |
-| `RAZORPAY_WEBHOOK_SECRET` | Webhook signature verification. Configure the same value in Razorpay Dashboard → Settings → Webhooks, listening to `payment.captured` and `order.paid`. |
+| `CASHFREE_CLIENT_ID` / `CASHFREE_CLIENT_SECRET` / `CASHFREE_ENV` | Cashfree online payments (current gateway). `CASHFREE_ENV` is `TEST` or `PROD`. `NEXT_PUBLIC_CASHFREE_ENV` must be `sandbox` or `production` (must match). |
+| `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` / `RAZORPAY_WEBHOOK_SECRET` | Legacy Razorpay gateway — only needed if rolling back to Razorpay. |
 
 The **Security page** in the admin sidebar shows live status for all of these.
 

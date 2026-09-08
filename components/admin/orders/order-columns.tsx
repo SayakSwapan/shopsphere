@@ -28,6 +28,7 @@ interface Props {
     totalAmount: number;
     createdAt: string | Date;
     razorpayPaymentId?: string | null;
+    cashfreePaymentId?: string | null;
     paymentMethod?: string;
     paymentStatus?: string;
     user: {
@@ -97,21 +98,17 @@ export function OrderRow({
         {formatCurrency(order.totalAmount)}
       </td>
       <td className="px-6 py-4">
-  {order.razorpayPaymentId ? (
+  {(order.razorpayPaymentId ?? order.cashfreePaymentId) && (
     <span className="font-mono text-xs text-green-400">
-      {order.razorpayPaymentId}
-    </span>
-  ) : (
-    <span className="text-slate-500">
-      —
+      {order.cashfreePaymentId ?? order.razorpayPaymentId}
     </span>
   )}
 </td>
 <td className="px-6 py-4">
-  {order.paymentMethod === "RAZORPAY" ? (
+  {order.paymentMethod === "RAZORPAY" || order.paymentMethod === "CASHFREE" ? (
     <div className="flex flex-col items-start gap-1">
       <span className="rounded bg-blue-500/10 px-2 py-1 text-xs font-semibold text-blue-400">
-        Razorpay
+        {order.paymentMethod === "CASHFREE" ? "Cashfree" : "Razorpay"}
       </span>
       <PaymentStatusBadge status={order.paymentStatus} />
     </div>

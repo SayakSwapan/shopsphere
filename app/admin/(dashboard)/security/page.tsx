@@ -67,6 +67,10 @@ export default async function SecurityPage() {
   const jwtSecretOk = !!process.env.JWT_SECRET && process.env.JWT_SECRET.length >= 32;
   const webhookSecretOk = !!process.env.RAZORPAY_WEBHOOK_SECRET;
   const razorpayKeysOk = !!process.env.RAZORPAY_KEY_ID && !!process.env.RAZORPAY_KEY_SECRET;
+  const cashfreeKeysOk =
+    !!process.env.CASHFREE_CLIENT_ID &&
+    !!process.env.CASHFREE_CLIENT_SECRET &&
+    ["TEST", "PROD"].includes(process.env.CASHFREE_ENV || "");
 
   const configItems = [
     {
@@ -77,18 +81,27 @@ export default async function SecurityPage() {
       fix: jwtSecretOk ? null : "Set JWT_SECRET in Vercel env (32+ random characters), then redeploy.",
     },
     {
+      icon: Database,
+      label: "Cashfree API keys",
+      detail: "Current online gateway. Payment sessions + server-side verification.",
+      ok: cashfreeKeysOk,
+      fix: cashfreeKeysOk
+        ? null
+        : "Set CASHFREE_CLIENT_ID, CASHFREE_CLIENT_SECRET and CASHFREE_ENV (TEST or PROD).",
+    },
+    {
       icon: Webhook,
-      label: "Razorpay webhook secret",
-      detail: "Server-to-server payment confirmation. Orders still verify via client callback without it.",
+      label: "Razorpay webhook secret (legacy)",
+      detail: "Only relevant if you roll back to Razorpay. Not used by Cashfree.",
       ok: webhookSecretOk,
-      fix: webhookSecretOk ? null : "Add RAZORPAY_WEBHOOK_SECRET (same value as in Razorpay dashboard → Webhooks).",
+      fix: webhookSecretOk ? null : "Optional while Cashfree is active.",
     },
     {
       icon: Database,
-      label: "Razorpay API keys",
-      detail: "Required for payment creation and signature verification.",
+      label: "Razorpay API keys (legacy)",
+      detail: "Only used if you switch the online gateway back to Razorpay.",
       ok: razorpayKeysOk,
-      fix: razorpayKeysOk ? null : "Set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET.",
+      fix: razorpayKeysOk ? null : "Optional while Cashfree is active.",
     },
   ];
 

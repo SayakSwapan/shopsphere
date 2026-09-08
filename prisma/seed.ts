@@ -125,13 +125,13 @@ async function main() {
       sortOrder: 1,
       question: "How do I place an order?",
       answer:
-        "Simply browse our collection and add the items you like to your cart by selecting a size and quantity. When you are ready, go to your cart, click Checkout, enter your shipping address, choose a payment method (online payment via Razorpay or Cash on Delivery, where available), and place the order. You will receive an order confirmation with your order number shortly after.",
+        "Simply browse our collection and add the items you like to your cart by selecting a size and quantity. When you are ready, go to your cart, click Checkout, enter your shipping address, choose a payment method (online payment via Cashfree or Cash on Delivery, where available), and place the order. You will receive an order confirmation with your order number shortly after.",
     },
     {
       sortOrder: 2,
       question: "What payment methods do you accept?",
       answer:
-        "We accept online payments securely through Razorpay — including UPI, credit cards, debit cards and net-banking — as well as Cash on Delivery (COD) on serviceable pincodes. The available options are shown at checkout based on your delivery address.",
+        "We accept online payments securely through Cashfree — including UPI, credit cards, debit cards and net-banking — as well as Cash on Delivery (COD) on serviceable pincodes. The available options are shown at checkout based on your delivery address.",
     },
     {
       sortOrder: 3,
@@ -389,7 +389,7 @@ async function main() {
         "<h3>1. Orders & acceptance</h3>" +
         "<ul><li>All orders are subject to acceptance and availability.</li><li>We reserve the right to cancel any order for any reason, including pricing errors, stock unavailability, or suspected fraud. If we cancel an order after payment, we will refund the full amount.</li></ul>" +
         "<h3>2. Pricing & payment</h3>" +
-        "<ul><li>All prices are displayed including or excluding applicable taxes as shown at checkout.</li><li>We accept the payment methods shown at checkout (online payments via Razorpay and Cash on Delivery where available).</li><li>For offline / special sales, alternative payment arrangements may apply.</li></ul>" +
+        "<ul><li>All prices are displayed including or excluding applicable taxes as shown at checkout.</li><li>We accept the payment methods shown at checkout (online payments via Cashfree and Cash on Delivery where available).</li><li>For offline / special sales, alternative payment arrangements may apply.</li></ul>" +
         "<h3>3. Product information</h3>" +
         "<ul><li>We make every effort to display product images, colours and descriptions accurately. Actual colours may vary slightly due to screen settings.</li></ul>" +
         "<h3>4. Coupons & promotions</h3>" +
@@ -409,7 +409,7 @@ async function main() {
         "<h2>Privacy Policy</h2>" +
         "<p>Your privacy is important to us. This policy explains how we collect, use and protect your personal information.</p>" +
         "<h3>1. Information we collect</h3>" +
-        "<ul><li><strong>Account information:</strong> your name, email, phone number, and password.</li><li><strong>Address information:</strong> shipping and billing addresses for order delivery.</li><li><strong>Payment information:</strong> payment details are processed securely by our payment partner (Razorpay). We do not store full payment card details.</li><li><strong>Refund details:</strong> bank account or UPI details you provide to receive a refund.</li><li><strong>Order data:</strong> your purchase history, return / replacement requests, and customer support interactions.</li></ul>" +
+        "<ul><li><strong>Account information:</strong> your name, email, phone number, and password.</li><li><strong>Address information:</strong> shipping and billing addresses for order delivery.</li><li><strong>Payment information:</strong> payment details are processed securely by our payment partner (Cashfree). We do not store full payment card details.</li><li><strong>Refund details:</strong> bank account or UPI details you provide to receive a refund.</li><li><strong>Order data:</strong> your purchase history, return / replacement requests, and customer support interactions.</li></ul>" +
         "<h3>2. How we use your information</h3>" +
         "<ul><li>To process and deliver your orders.</li><li>To process refunds and replacements.</li><li>To provide customer support and respond to your queries.</li><li>To send order updates and, with your consent, promotional communications.</li><li>To improve our products, services and website.</li><li>To prevent fraud and ensure a secure shopping experience.</li></ul>" +
         "<h3>3. Sharing of information</h3>" +

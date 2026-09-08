@@ -128,6 +128,10 @@ model order {
   razorpayPaymentId String?
   razorpaySignature String?
 
+  // Cashfree gateway (temporarily replacing Razorpay as the online gateway).
+  cashfreeOrderId   String?
+  cashfreePaymentId String?
+
   paidAt DateTime?
 
   // Offline due / partial payment tracking
@@ -229,8 +233,8 @@ model orderitem {
 model PaymentTransaction {
   id                String   @id @default(cuid())
   orderId           String
-  gateway           String   @default("RAZORPAY")
-  paymentMethod     String   @default("RAZORPAY")
+  gateway           String   @default("CASHFREE")
+  paymentMethod     String   @default("CASHFREE")
   grossAmount       Decimal  @db.Decimal(10, 2)
   gatewayFee        Decimal? @db.Decimal(10, 2) @default(0)
   gatewayGST        Decimal? @db.Decimal(10, 2) @default(0)
@@ -1189,6 +1193,7 @@ enum user_role {
 enum PaymentMethod {
   COD
   RAZORPAY
+  CASHFREE
   CASH
   UPI
   CARD
@@ -1407,7 +1412,7 @@ model TransactionCharge {
   expiryDate   DateTime?                       // rule expires after this date
   priority     Int      @default(0)            // higher priority = evaluated first (override sortOrder)
   gateway      String?                         // restrict to specific gateway (null = all)
-  paymentMethod String?                        // restrict to COD/RAZORPAY (null = all)
+  paymentMethod String?                        // restrict to a specific payment method (null = all)
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

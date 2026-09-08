@@ -391,7 +391,7 @@ export default function ComboOfferRoom({ offer }: { offer: ComboRoomOffer }) {
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6 lg:gap-10 items-start">
         {/* Product pool */}
         <div>
-          <div className="mb-4 flex items-center justify-between">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-sm font-black uppercase tracking-wider text-text-heading flex items-center gap-2">
               <PackagePlus size={16} className="text-primary" /> Pick up to {getCount} products
             </h2>
@@ -406,7 +406,7 @@ export default function ComboOfferRoom({ offer }: { offer: ComboRoomOffer }) {
               <p className="text-sm text-text-muted-2">No products available for this offer.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
+            <div className="grid grid-cols-2 max-[380px]:grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
               {pool.map((product) => {
                 const isSelected = selectedIds.has(product.id);
                 const inStockVariants = product.productvariant.filter((v) => Number(v.stock) > 0);
@@ -628,7 +628,12 @@ export default function ComboOfferRoom({ offer }: { offer: ComboRoomOffer }) {
         >
           <div
             className="w-full max-w-md overflow-hidden border border-border-card bg-bg-card"
-            style={{ borderRadius: "var(--t-radius-card)", boxShadow: "var(--t-shadow-card-hover)" }}
+            style={{
+              borderRadius: "var(--t-radius-card)",
+              boxShadow: "var(--t-shadow-card-hover)",
+              maxHeight: "calc(100dvh - 2rem)",
+              overflowY: "auto",
+            }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="relative">

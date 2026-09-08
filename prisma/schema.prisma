@@ -1953,3 +1953,24 @@ model ComboSale {
   @@index([orderType])
   @@index([comboOfferId, orderType])
 }
+
+/**
+ * A customer Instagram reel showcased on the home page. The thumbnail is
+ * derived from the reel's shortcode (Instagram CDN) unless an explicit
+ * `thumbnailUrl` override is provided. `views` is admin-maintained because
+ * Instagram does not expose reel view counts publicly.
+ */
+model InstagramReel {
+  id           String   @id @default(cuid())
+  caption      String?
+  reelUrl      String
+  thumbnailUrl String?
+  views        Int      @default(0)
+  sortOrder    Int      @default(0)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([isActive])
+  @@index([sortOrder])
+}

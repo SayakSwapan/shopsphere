@@ -133,9 +133,9 @@ export default function Navbar({ session, announcement, categories = [] }: Navba
             {/* ── LOGO ── */}
             <Link
               href="/"
-              className="min-w-0 shrink uppercase leading-none overflow-hidden whitespace-nowrap"
+              className="min-w-0 shrink uppercase leading-tight [overflow-wrap:anywhere]"
               style={{
-                fontSize: "clamp(1.15rem, 2.6vw, 1.85rem)",
+                fontSize: "clamp(0.9rem, 2.2vw, 1.85rem)",
                 color: themeId === "ethnic" ? "#6E1F27" : "var(--t-text-heading)",
                 letterSpacing: themeId === "ethnic" ? "0.03em" : themeId === "luxury" ? "0.05em" : "-0.03em",
                 fontWeight: themeId === "ethnic" ? 400 : themeId === "fashion" ? 700 : 900,

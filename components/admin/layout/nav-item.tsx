@@ -40,6 +40,7 @@ import {
   Award,
   Gift,
   Boxes,
+  Clapperboard,
   type LucideIcon,
 } from "lucide-react";
 
@@ -132,6 +133,7 @@ export const navItems: NavEntry[] = [
     children: [
       { title: "Coupons", href: "/admin/coupons", icon: TicketPercent },
       { title: "Banners", href: "/admin/banners", icon: Image },
+      { title: "Instagram Reels", href: "/admin/instagram-reels", icon: Clapperboard },
       { title: "Combo Offers", href: "/admin/combo-offers", icon: Boxes },
       { title: "Homepage Content", href: "/admin/home-content", icon: LayoutGrid },
       { title: "Sports Homepage", href: "/admin/sports-home-content", icon: Zap },

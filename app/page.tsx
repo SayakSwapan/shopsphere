@@ -19,6 +19,7 @@ import SportsFeaturedProducts from "@/components/store/home/sports-featured-prod
 import TrustBar from "@/components/store/home/trust-bar";
 import FeatureCards from "@/components/store/home/feature-cards";
 import ComboDealsSection from "@/components/store/home/combo-deals-section";
+import InstagramReelsSection from "@/components/store/home/instagram-reels-section";
 
 export const dynamic = "force-dynamic";
 
@@ -144,6 +145,7 @@ export default async function HomePage(props: { searchParams?: Promise<{ preview
         <SportsFeaturedProducts />
         <SportsPerks />
         <TrustBar />
+        <InstagramReelsSection />
         <SportsFooter />
       </div>
     );
@@ -345,6 +347,8 @@ export default async function HomePage(props: { searchParams?: Promise<{ preview
 
       {/* Ethnic: Artisan Banner */}
       {isEthnic && <ArtisanBanner />}
+
+      <InstagramReelsSection />
 
       <Footer />
     </div>

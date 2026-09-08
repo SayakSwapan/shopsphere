@@ -155,7 +155,7 @@ export default function SportsNavbar({
         <div className="mx-auto max-w-7xl px-4">
           <div className="flex items-center justify-between gap-3" style={{ height: 72 }}>
             {/* Logo */}
-            <Link href="/" className="flex min-w-0 shrink items-center gap-2.5 overflow-hidden">
+            <Link href="/" className="flex min-w-0 shrink items-center gap-2.5">
               <span
                 className="flex h-9 w-9 items-center justify-center max-[420px]:hidden"
                 style={{
@@ -167,10 +167,10 @@ export default function SportsNavbar({
                 <Zap size={18} fill="#0A0E13" className="text-[#0A0E13]" />
               </span>
               <span
-                className="truncate uppercase leading-none"
+                className="uppercase leading-tight [overflow-wrap:anywhere]"
                 style={{
                   fontFamily: "'Anton', sans-serif",
-                  fontSize: "clamp(1.1rem, 2.2vw, 1.6rem)",
+                  fontSize: "clamp(0.85rem, 2vw, 1.6rem)",
                   color: "#F4F3EE",
                   letterSpacing: "0.02em",
                 }}

@@ -5,7 +5,12 @@ import {
   calculateOfflineItemPricing,
   validateOfflineSellingPrice,
 } from "@/lib/pricing/offline";
-import { applyComboPricing } from "@/lib/combo-offer";
+import {
+  comboAppliesTo,
+  getActiveComboOffers,
+  priceComboReservedSet,
+} from "@/lib/combo-offer";
+import { getActivePriceBase } from "@/lib/pricing";
 import { createAdminNotification } from "@/lib/notifications";
 import {
   countEligiblePurchase,
@@ -188,11 +193,13 @@ async function resolveItem(
 // ────────────────────────────────────────────────────────────────────────────
 // Combo offer support.
 //
-// When the sale's items fully satisfy an ACTIVE combo (scope OFFLINE / BOTH),
-// the combo-managed price applies AUTOMATICALLY — the customer cannot bargain
-// those lines down. Prices are converted to the offline GST-INCLUSIVE
-// convention via `baseToPriceInclGst` (the combo engine works in pre-GST
-// bases, mirroring the online flow).
+// When the sale's items contain the REQUIRED number of DISTINCT pool products
+// of an ACTIVE combo (scope OFFLINE / BOTH), the combo-managed price applies
+// AUTOMATICALLY — the cashier picks exactly the products the customer takes
+// and the free/paid split follows the offer rule; those lines cannot be
+// bargained down. Prices are converted to the offline GST-INCLUSIVE convention
+// via `baseToPriceInclGst` (the engine works in pre-GST bases, mirroring the
+// online flow).
 // ────────────────────────────────────────────────────────────────────────────
 
 export interface OfflineComboPriceInfo {
@@ -245,50 +252,161 @@ async function computeOfflineComboAdjustmentsFromResolved(
     };
   }
 
-  const itemsInput = resolvedLines.map(({ resolved, line }) => ({
-    productId: line.productId,
-    quantity: line.quantity,
-    product: {
+  // Normalise every sale line into individual "units" (pre-GST bases mirroring
+  // the online engine) so a combo's reserved set is priced per unit.
+  type ComboUnit = { idx: number; productId: string; base: number; floor: number; reserved?: boolean };
+  const units: ComboUnit[] = [];
+  const qtyByProduct = new Map<string, number>();
+  const gstByProduct = new Map<string, number>();
+
+  resolvedLines.forEach(({ resolved, line }, idx) => {
+    const base = getActivePriceBase({
       salePrice: resolved.product.salePrice,
       finalPrice: resolved.product.finalPrice,
       sellingPrice: resolved.product.sellingPrice,
-      costPrice: resolved.product.costPrice,
-      lastSellingPrice: resolved.product.lastSellingPrice,
-      gstPercentage: resolved.product.gstPercentage,
       discountType: resolved.product.discountType,
       discountValue: resolved.product.discountValue,
       offerStart: resolved.product.offerStart,
       offerEnd: resolved.product.offerEnd,
-    },
-  }));
+    });
+    const floor = Math.max(
+      Number(resolved.product.lastSellingPrice) || 0,
+      Number(resolved.product.costPrice) || 0
+    );
+    gstByProduct.set(line.productId, resolved.product.gstPercentage);
+    qtyByProduct.set(line.productId, (qtyByProduct.get(line.productId) ?? 0) + (line.quantity || 0));
+    for (let i = 0; i < (line.quantity || 0); i++) {
+      units.push({ idx, productId: line.productId, base, floor });
+    }
+  });
 
-  const res = await applyComboPricing(itemsInput, "OFFLINE");
+  const activeCombos = (await getActiveComboOffers()).filter((c) =>
+    comboAppliesTo(c.apply, "OFFLINE")
+  );
+
+  // Subset semantics: an offer applies when the REQUIRED number of DISTINCT
+  // pool products are present in the sale (each with its required quantity) —
+  // not necessarily the full pool. All present pool units then become
+  // combo-managed for that offer.
+  const thresholdFor = (combo: (typeof activeCombos)[number]): number => {
+    if (combo.comboType === "PICK_ANY") {
+      return Math.min(Math.max(2, Number(combo.minPick) || 2), combo.items.length);
+    }
+    return Math.min(Math.max(2, Number(combo.getCount) || 2), combo.items.length);
+  };
+
+  const presentCount = (
+    combo: (typeof activeCombos)[number],
+    avail: Map<string, number>
+  ): number => {
+    let present = 0;
+    for (const it of combo.items) {
+      if ((avail.get(it.productId) ?? 0) >= (it.quantity || 1)) present++;
+    }
+    return present;
+  };
+
+  const satisfiable = activeCombos
+    .map((combo) => {
+      const need = thresholdFor(combo);
+      return {
+        combo,
+        need,
+        present: presentCount(combo, qtyByProduct),
+        ok: presentCount(combo, qtyByProduct) >= need,
+      };
+    })
+    .filter((s) => s.ok && s.combo.items.length >= 2)
+    .sort((a, b) => b.present - a.present || a.combo.sortOrder - b.combo.sortOrder);
+
+  const appliedReservations: {
+    combo: (typeof satisfiable)[number]["combo"];
+    reservedUnits: ComboUnit[];
+  }[] = [];
+
+  for (const s of satisfiable) {
+    const avail = new Map<string, number>();
+    for (const u of units) {
+      if (u.reserved) continue;
+      avail.set(u.productId, (avail.get(u.productId) ?? 0) + 1);
+    }
+    if (presentCount(s.combo, avail) < s.need) continue;
+    const poolIds = new Set(s.combo.items.map((it) => it.productId));
+    const reserved: ComboUnit[] = [];
+    for (const u of units) {
+      if (u.reserved) continue;
+      if (poolIds.has(u.productId)) {
+        u.reserved = true;
+        reserved.push(u);
+      }
+    }
+    if (reserved.length > 0) {
+      appliedReservations.push({ combo: s.combo, reservedUnits: reserved });
+    }
+  }
+
+  const payByProduct = new Map<string, number>();
+  const baseByProduct = new Map<string, number>();
+  const combosByProduct = new Map<string, { offerId: string; title: string }[]>();
+  const appliedStats: OfflineComboAdjustmentResult["applied"] = [];
+
+  for (const ar of appliedReservations) {
+    const pays = priceComboReservedSet(ar.combo, ar.reservedUnits);
+    const totalBase = ar.reservedUnits.reduce((s, u) => s + u.base, 0);
+    const paid = pays.reduce((s, p) => s + p.pay, 0);
+    ar.reservedUnits.forEach((u, i) => {
+      payByProduct.set(u.productId, (payByProduct.get(u.productId) ?? 0) + pays[i].pay);
+      baseByProduct.set(u.productId, u.base);
+      const list = combosByProduct.get(u.productId) ?? [];
+      if (!list.some((c) => c.offerId === ar.combo.id)) {
+        list.push({ offerId: ar.combo.id, title: ar.combo.title });
+      }
+      combosByProduct.set(u.productId, list);
+    });
+    appliedStats.push({
+      offerId: ar.combo.id,
+      title: ar.combo.title,
+      badge: ar.combo.badge ?? null,
+      discountBase: round2(totalBase - paid),
+      unitsSold: ar.reservedUnits.length,
+    });
+  }
 
   const byProductId: Record<string, OfflineComboPriceInfo> = {};
   let comboSavingsInclGst = 0;
 
-  res.priced.forEach((priced, idx) => {
-    const line = resolvedLines[idx];
-    if (!line) return;
-    const productId = line.line.productId;
-    const gst = line.resolved.product.gstPercentage;
-    byProductId[productId] = {
-      productId,
-      unitBase: priced.unitBase,
-      unitPriceInclGst: round2(baseToPriceInclGst(priced.unitBase, gst)),
-      discountUnitBase: priced.comboDiscountUnit,
-      combos: priced.combos,
-      isFree: priced.isFree,
-    };
-    comboSavingsInclGst +=
-      round2(baseToPriceInclGst(priced.comboDiscountUnit, gst)) *
-      (line.line.quantity || 0);
-  });
+  for (const ar of appliedReservations) {
+    const pays = priceComboReservedSet(ar.combo, ar.reservedUnits);
+    ar.reservedUnits.forEach((u, i) => {
+      comboSavingsInclGst += round2(
+        baseToPriceInclGst(round2(u.base - pays[i].pay), gstByProduct.get(u.productId) ?? 0)
+      );
+    });
+  }
+
+  for (const ar of appliedReservations) {
+    for (const u of ar.reservedUnits) {
+      const pid = u.productId;
+      if (byProductId[pid]) continue;
+      const qty = Math.max(1, qtyByProduct.get(pid) ?? 1);
+      const base = baseByProduct.get(pid) ?? 0;
+      const unitBase = round2((payByProduct.get(pid) ?? 0) / qty);
+      const discountUnitBase = round2(base - unitBase);
+      byProductId[pid] = {
+        productId: pid,
+        unitBase,
+        unitPriceInclGst: round2(baseToPriceInclGst(unitBase, gstByProduct.get(pid) ?? 0)),
+        discountUnitBase,
+        combos: combosByProduct.get(pid) ?? [],
+        isFree: unitBase <= 0,
+      };
+    }
+  }
 
   return {
     byProductId,
-    applied: res.applied,
-    comboSavingsBase: round2(res.comboSavings),
+    applied: appliedStats,
+    comboSavingsBase: round2(appliedStats.reduce((s, a) => s + a.discountBase, 0)),
     comboSavingsInclGst: round2(comboSavingsInclGst),
   };
 }

@@ -4,10 +4,9 @@ import { Package, ShieldCheck, RotateCcw, Truck, PartyPopper } from "lucide-reac
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getGstBreakdown, priceWithGst } from "@/lib/pricing";
+import { getGstBreakdown, getActivePriceBase, priceWithGst } from "@/lib/pricing";
 import { calculateShipping } from "@/lib/shipping";
 import { customizationLetterCharge, customizationUnitPrice, customizationUnitPriceWithGst } from "@/lib/print-pricing";
-import { applyComboPricing } from "@/lib/combo-offer";
 
 import NavbarWrapper from "@/components/store/layout/navbar-wrapper";
 import Footer from "@/components/store/layout/footer";
@@ -50,42 +49,32 @@ export default async function CartPage() {
   const items = cart?.cartitem ?? [];
   const itemCount = items.reduce((t, i) => t + i.quantity, 0);
 
-  // ── Combo pricing ────────────────────────────────────────────────────────
-  // Shared engine resolves active BOGO / fixed-price bundles and returns a
-  // discounted PRE-GST unit base per cart line (custom-print charges are billed
-  // at full price on top, per the combo convention).
-  const comboResult = await applyComboPricing(
-    items.map((item) => ({
-      productId: item.productId,
-      quantity: item.quantity,
-      product: {
+  // ── Unit pricing ─────────────────────────────────────────────────────────
+  // Active-offer-aware pre-GST unit base per cart line (custom-print charges
+  // are billed per piece on top). Combo offers are NOT processed here — they run
+  // exclusively through the dedicated /combo-offers → /combo-checkout flow so
+  // a normal cart order can never combine multiple offers.
+  const unitBaseByItemId = new Map<string, number>();
+  items.forEach((item) => {
+    unitBaseByItemId.set(
+      item.id,
+      getActivePriceBase({
         salePrice: item.product.salePrice,
         finalPrice: item.product.finalPrice ?? 0,
         sellingPrice: Number(item.product.sellingPrice),
-        costPrice: Number(item.product.costPrice) || 0,
-        lastSellingPrice: item.product.lastSellingPrice != null ? Number(item.product.lastSellingPrice) : null,
-        gstPercentage: Number(item.product.gstPercentage) || 0,
         discountType: item.product.discountType,
         discountValue: item.product.discountValue,
         offerStart: item.product.offerStart,
         offerEnd: item.product.offerEnd,
-      },
-    })),
-    "ONLINE"
-  );
-
-  const comboByCartItemId = new Map<string, (typeof comboResult.priced)[number]>();
-  items.forEach((item, idx) => {
-    comboByCartItemId.set(item.id, comboResult.priced[idx]);
+      })
+    );
   });
 
   let totalSelling = 0;
   let totalGst = 0;
-  let comboSavings = 0;
 
   for (const item of items) {
-    const priced = comboByCartItemId.get(item.id)!;
-    const base = priced.unitBase;
+    const base = unitBaseByItemId.get(item.id)!;
     const { gstAmount } = getGstBreakdown(
       base,
       Number(item.product.gstPercentage) || 0
@@ -101,12 +90,10 @@ export default async function CartPage() {
 
     totalSelling += (base + printUnit) * item.quantity;
     totalGst += (gstAmount + printGst) * item.quantity;
-    comboSavings += priced.comboDiscountUnit * item.quantity;
   }
 
   totalSelling = Math.round(totalSelling * 100) / 100;
   totalGst = Math.round(totalGst * 100) / 100;
-  comboSavings = Math.round(comboSavings * 100) / 100;
 
   const shippingResult = await calculateShipping(
     items.map((item) => ({
@@ -178,7 +165,6 @@ export default async function CartPage() {
             {/* ── LEFT: CART ITEMS ── */}
             <div className="space-y-4 lg:col-span-3">
               {items.map((item) => {
-                const priced = comboByCartItemId.get(item.id)!;
                 return (
                   <CartItem
                     key={item.id}
@@ -210,14 +196,6 @@ export default async function CartPage() {
                       },
                       productvariant: item.productvariant,
                     }}
-                    comboBase={priced.unitBase}
-                    comboDiscountUnit={priced.comboDiscountUnit}
-                    comboFree={priced.isFree}
-                    comboLabel={
-                      priced.combos.length > 0
-                        ? priced.combos[0].title
-                        : undefined
-                    }
                   />
                 );
               })}
@@ -243,8 +221,7 @@ export default async function CartPage() {
                 <div className="border-t border-border-subtle px-4 sm:px-6 py-4">
                   <div className="space-y-3 cart-mini-list">
                     {items.map((item) => {
-                      const priced = comboByCartItemId.get(item.id)!;
-                      const unit = priced.unitBase;
+                      const unit = unitBaseByItemId.get(item.id)!;
                       const inclUnit = priceWithGst(unit, Number(item.product.gstPercentage) || 0);
                       const printUnit = customizationUnitPriceWithGst(
                         item.customization as import("@/types/custom-print").CustomPrintData | null,
@@ -269,16 +246,6 @@ export default async function CartPage() {
                                 : ""}{" "}
                               &times; {item.quantity}
                             </p>
-                            {priced.isFree && (
-                              <p className="cart-mini-meta mt-0.5 text-xs font-bold text-primary">
-                                FREE — Combo deal
-                              </p>
-                            )}
-                            {!priced.isFree && priced.comboDiscountUnit > 0 && (
-                              <p className="cart-mini-meta mt-0.5 text-xs font-semibold text-primary">
-                                Combo deal applied
-                              </p>
-                            )}
                             {printUnit > 0 && (
                               <p className="cart-mini-meta mt-0.5 text-xs font-semibold text-primary">
                                 incl. print ₹{printUnit.toFixed(2)}
@@ -305,30 +272,6 @@ export default async function CartPage() {
                       ₹{itemTotalInclGst.toLocaleString("en-IN")}
                     </span>
                   </div>
-
-                  {comboSavings > 0 && (
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-text-muted-1 flex items-center gap-1.5">
-                        <span
-                          className="rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-wider"
-                          style={{
-                            background: "color-mix(in srgb, var(--t-primary) 15%, transparent)",
-                            color: "var(--t-primary)",
-                          }}
-                        >
-                          Combo Savings
-                        </span>
-                        {comboResult.applied.length > 0 && (
-                          <span className="text-xs text-text-muted-2">
-                            {comboResult.applied.map((a) => a.title).join(", ")}
-                          </span>
-                        )}
-                      </span>
-                      <span className="font-bold" style={{ color: "var(--t-success)" }}>
-                        −₹{comboSavings.toLocaleString("en-IN")}
-                      </span>
-                    </div>
-                  )}
 
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-text-muted-1">Delivery</span>

@@ -66,7 +66,10 @@ export async function fetchSiteName(): Promise<string> {
 }
 
 export interface InvoiceBusiness {
+  /** Storefront brand displayed everywhere — header, footer, browser tab and invoices. */
   name: string;
+  /** Optional separate legal / registered name (shown on the invoice when set). */
+  legalName?: string;
   gstin?: string;
   address?: string;
   phone?: string;
@@ -77,8 +80,15 @@ export interface InvoiceBusiness {
 export function getInvoiceBusiness(
   settings: Record<string, string>
 ): InvoiceBusiness {
+  const brand =
+    settings.site_name || settings.business_name || getSiteName(settings);
+  const legalName =
+    settings.business_name && settings.business_name !== brand
+      ? settings.business_name
+      : undefined;
   return {
-    name: settings.business_name || getSiteName(settings),
+    name: brand,
+    legalName,
     gstin: settings.gstin || undefined,
     address: settings.business_address || settings.contact_address || undefined,
     phone: settings.business_phone || settings.contact_phone || undefined,

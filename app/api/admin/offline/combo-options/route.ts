@@ -68,6 +68,7 @@ export async function GET() {
       imageUrl: offer.imageUrl,
       comboType: offer.comboType,
       customPrice: offer.customPrice != null ? Number(offer.customPrice) : null,
+      getCount: offer.getCount != null ? Number(offer.getCount) : null,
       buyCount: offer.comboType === "BOGO" ? Number(offer.buyCount) || 1 : 1,
       minPick: offer.minPick,
       products: offer.items.map((item) => {

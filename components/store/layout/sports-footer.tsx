@@ -94,7 +94,7 @@ export default async function SportsFooter() {
     getSettings(),
   ]);
 
-  const siteName = settings.site_name || "ProCourt";
+  const siteName = settings.site_name || "ShopSphere";
   const tagline =
     settings.footer_tagline ||
     "Premium sports gear for athletes who demand performance. Official kits, footwear, equipment and accessories.";

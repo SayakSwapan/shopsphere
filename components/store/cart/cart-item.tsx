@@ -54,24 +54,10 @@ interface Props {
       } | null;
     } | null;
   };
-
-  /** Combo-discounted pre-GST unit base this line should be priced at. */
-  comboBase?: number;
-  /** Per-unit combo savings (pre-GST) applied to this line. */
-  comboDiscountUnit?: number;
-  /** True when this line is free under a BOGO combo. */
-  comboFree?: boolean;
-  /** Display label of the satisfied combo offer. */
-  comboLabel?: string;
 }
 
 export default function CartItem({
   item,
-  comboBase,
-  comboDiscountUnit,
-  comboFree,
-  comboLabel,
-
 }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -81,15 +67,11 @@ export default function CartItem({
   const atMax = item.quantity >= maxStock;
 
   const gstRate = Number(item.product.gstPercentage) || 0;
-  // When a combo is applied, the displayed unit price comes from the engine;
-  // otherwise fall back to the standard effective price.
-  const unitBase = comboBase !== undefined
-    ? comboBase
-    : getEffectivePrice(
-        item.product.salePrice,
-        undefined,
-        item.product.sellingPrice
-      );
+  const unitBase = getEffectivePrice(
+    item.product.salePrice,
+    undefined,
+    item.product.sellingPrice
+  );
   const unitIncl = priceWithGst(unitBase, gstRate);
   const originalBase = getEffectivePrice(
     item.product.salePrice,
@@ -97,13 +79,7 @@ export default function CartItem({
     item.product.sellingPrice
   );
   const originalIncl = priceWithGst(originalBase, gstRate);
-  const mrpIncl = priceWithGst(
-    Number(item.product.sellingPrice || 0),
-    gstRate
-  );
-  const hasDiscount = (comboDiscountUnit ?? 0) > 0
-    ? unitIncl < mrpIncl && mrpIncl > 0
-    : unitIncl < originalIncl && originalIncl > 0;
+  const hasDiscount = unitIncl < originalIncl && originalIncl > 0;
 
   async function updateQuantity(
     quantity: number
@@ -375,34 +351,12 @@ return (
             <p className="text-xs uppercase tracking-[0.25em] text-text-muted-2">
               Price
             </p>
-            {comboLabel && (
-              <p className="mt-0.5 inline-block rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider"
-                style={{
-                  background: "color-mix(in srgb, var(--t-primary) 15%, transparent)",
-                  color: "var(--t-primary)",
-                }}>
-                {comboLabel}
-              </p>
-            )}
             <h3 className="mt-1 text-2xl sm:text-3xl font-black text-text-heading" style={{ fontFamily: "var(--t-font-heading)" }}>
               ₹{unitIncl.toLocaleString("en-IN")}
             </h3>
-            {(hasDiscount || (comboDiscountUnit ?? 0) > 0) && (
+            {hasDiscount && (
               <p className="mt-0.5 text-sm text-text-muted-2 line-through">
-                ₹{((comboDiscountUnit ?? 0) > 0 ? mrpIncl : originalIncl).toLocaleString("en-IN")}
-              </p>
-            )}
-            {comboFree && (
-              <p className="mt-1 inline-block rounded-full px-3 py-1 text-[11px] font-black uppercase tracking-wider text-white"
-                style={{ background: "var(--t-primary)" }}>
-                Free — Combo Deal
-              </p>
-            )}
-            {!comboFree && (comboDiscountUnit ?? 0) > 0 && (
-              <p className="mt-1 text-xs font-bold" style={{ color: "var(--t-success)" }}>
-                Combo deal saved ₹{(
-                  priceWithGst(comboDiscountUnit!, gstRate)
-                ).toFixed(2)} per item
+                ₹{originalIncl.toLocaleString("en-IN")}
               </p>
             )}
             {customizationUnitPrice(item.customization) > 0 && (

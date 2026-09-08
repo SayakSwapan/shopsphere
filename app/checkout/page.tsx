@@ -2,10 +2,9 @@ import { redirect } from "next/navigation";
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getGstBreakdown } from "@/lib/pricing";
+import { getGstBreakdown, getActivePriceBase } from "@/lib/pricing";
 import { calculateShipping, getPincodeInfo } from "@/lib/shipping";
 import { customizationLetterCharge, customizationUnitPrice } from "@/lib/print-pricing";
-import { applyComboPricing } from "@/lib/combo-offer";
 import { getProductPrintAvailabilityMap } from "@/lib/product-print-availability";
 import { getRestrictedCartItems } from "@/lib/product-deliverability";
 
@@ -48,38 +47,29 @@ export default async function CheckoutPage() {
 
   let subtotal = 0;
   let gst = 0;
-  let comboSavings = 0;
 
-  // Combo pricing: discounted pre-GST unit base per cart line (custom-print
-  // charges are billed at full price on top).
-  const comboResult = await applyComboPricing(
-    cart.cartitem.map((item) => ({
-      productId: item.productId,
-      quantity: item.quantity,
-      product: {
+  // Active-offer-aware pre-GST unit base per cart line (custom-print charges
+  // are billed per piece on top). Combo offers are NOT processed here — they run
+  // exclusively through the dedicated /combo-offers → /combo-checkout flow so
+  // a single order can never combine multiple offers.
+  const unitBaseByItemId = new Map<string, number>();
+  cart.cartitem.forEach((item) => {
+    unitBaseByItemId.set(
+      item.id,
+      getActivePriceBase({
         salePrice: item.product.salePrice,
         finalPrice: item.product.finalPrice ?? 0,
         sellingPrice: Number(item.product.sellingPrice),
-        costPrice: Number(item.product.costPrice) || 0,
-        lastSellingPrice: item.product.lastSellingPrice != null ? Number(item.product.lastSellingPrice) : null,
-        gstPercentage: Number(item.product.gstPercentage) || 0,
         discountType: item.product.discountType,
         discountValue: item.product.discountValue,
         offerStart: item.product.offerStart,
         offerEnd: item.product.offerEnd,
-      },
-    })),
-    "ONLINE"
-  );
-
-  const comboByCartItemId = new Map<string, (typeof comboResult.priced)[number]>();
-  cart.cartitem.forEach((item, idx) => {
-    comboByCartItemId.set(item.id, comboResult.priced[idx]);
+      })
+    );
   });
 
   for (const item of cart.cartitem) {
-    const priced = comboByCartItemId.get(item.id)!;
-    const unitBase = priced.unitBase;
+    const unitBase = unitBaseByItemId.get(item.id)!;
     const { gstAmount } = getGstBreakdown(unitBase, Number(item.product.gstPercentage) || 0);
 
     const printUnit = customizationUnitPrice(
@@ -91,12 +81,10 @@ export default async function CheckoutPage() {
 
     subtotal += (unitBase + printUnit) * item.quantity;
     gst += (gstAmount + printGst) * item.quantity;
-    comboSavings += priced.comboDiscountUnit * item.quantity;
   }
 
   subtotal = Math.round(subtotal * 100) / 100;
   gst = Math.round(gst * 100) / 100;
-  comboSavings = Math.round(comboSavings * 100) / 100;
 
   const defaultAddress = user.addresses.find((a) => a.isDefault) ?? user.addresses[0];
 
@@ -128,7 +116,6 @@ export default async function CheckoutPage() {
         addresses={user.addresses}
         items={cart.cartitem.map((item) => {
           const availability = printAvailability.get(item.productId);
-          const priced = comboByCartItemId.get(item.id)!;
           return {
             id: item.id,
             quantity: item.quantity,
@@ -154,13 +141,6 @@ export default async function CheckoutPage() {
             customPrintNumber: availability?.customPrintNumber ?? false,
             customPrintImage: availability?.customPrintImage ?? false,
             printTypes: availability?.printTypes ?? [],
-            comboBase: priced.unitBase,
-            comboDiscountUnit: priced.comboDiscountUnit,
-            comboFree: priced.isFree,
-            comboLabel:
-              priced.combos.length > 0
-                ? priced.combos[0].title
-                : undefined,
             product: {
               id: item.product.id,
               name: item.product.name,
@@ -175,8 +155,6 @@ export default async function CheckoutPage() {
         shipping={shippingResult.shipping}
         gst={gst}
         total={total}
-        comboSavings={comboSavings}
-        comboApplied={comboResult.applied.length > 0}
         pincodeInfo={pincodeInfo}
         restrictedItems={restrictedItems}
         totalWeightGrams={shippingResult.weightGrams}

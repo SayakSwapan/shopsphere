@@ -22,6 +22,7 @@ import {
   Bell,
   MessageCircle,
   Ban,
+  Store,
 } from "lucide-react";
 import dynamic from "next/dynamic";
 
@@ -692,8 +693,26 @@ const SECTIONS: Array<{
   title: string;
   description: string;
   badge?: string;
+  defaultOpen?: boolean;
   fields?: FieldDef[];
 }> = [
+  {
+    id: "brand",
+    icon: Store,
+    title: "Business Name & Branding",
+    description:
+      "The store name shown everywhere — browser tab, header, footer and printed invoices.",
+    badge: "Shown everywhere",
+    defaultOpen: true,
+    fields: [
+      {
+        key: "site_name",
+        label: "Business / Brand Name",
+        placeholder: "ProCourt",
+        hint: "Change this one field and the new name appears across the whole project: the browser tab title, the storefront header & footer, admin pages, and on every invoice.",
+      },
+    ],
+  },
   {
     id: "invoice",
     icon: FileText,
@@ -701,7 +720,12 @@ const SECTIONS: Array<{
     description: "Shown on printed invoices — GSTIN, business address, etc.",
     badge: "Invoices",
     fields: [
-      { key: "business_name", label: "Business / Legal Name", placeholder: "ShopSphere Retail Pvt. Ltd." },
+      {
+        key: "business_name",
+        label: "Legal / Registered Name (optional)",
+        placeholder: "ShopSphere Retail Pvt. Ltd.",
+        hint: "Optional separate registered name. When set, it is printed on the invoice under the brand name; leave empty to use the Business / Brand Name everywhere.",
+      },
       { key: "gstin", label: "GSTIN", placeholder: "22ABCDE1234F1Z5", hint: "15-digit GST identification number" },
       { key: "business_address", label: "Business Address", placeholder: "Shop No. 12, MG Road, Mumbai, Maharashtra 400001", type: "textarea" as const },
       { key: "business_phone", label: "Business Phone", placeholder: "+91 98765 43210" },
@@ -726,9 +750,8 @@ const SECTIONS: Array<{
     id: "footer",
     icon: LayoutPanelLeft,
     title: "Footer Content",
-    description: "Site name, tagline, and copyright text in the footer",
+    description: "Tagline and copyright text in the footer",
     fields: [
-      { key: "site_name", label: "Site Name", placeholder: "ShopSphere" },
       { key: "footer_tagline", label: "Footer Tagline", placeholder: "Premium marketplace...", type: "rich" as const },
       { key: "copyright_text", label: "Copyright Text", placeholder: "All Rights Reserved." },
     ],
@@ -787,6 +810,7 @@ const SECTIONS: Array<{
     title: "Business Hours",
     description: "Per-day hours shown on the Contact Us page",
     badge: "7 days",
+    defaultOpen: true,
   },
   {
     id: "products_display",
@@ -948,7 +972,7 @@ export default function SiteSettingsPage() {
             title={section.title}
             description={section.description}
             badge={section.badge}
-            defaultOpen={section.id === "hours"}
+            defaultOpen={section.defaultOpen ?? false}
           >
             {section.id === "hours" ? (
               <BusinessHoursEditor

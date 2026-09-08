@@ -61,10 +61,6 @@ interface CartItem {
   customPrintNumber?: boolean;
   customPrintImage?: boolean;
   printTypes?: StorePrintType[];
-  comboBase?: number;
-  comboDiscountUnit?: number;
-  comboFree?: boolean;
-  comboLabel?: string;
   product: {
     id: string;
     name: string;
@@ -77,9 +73,7 @@ interface CartItem {
 
 function inclPrice(item: CartItem): number {
   const base =
-    item.comboBase !== undefined
-      ? item.comboBase
-      : item.product.salePrice && item.product.salePrice > 0
+    item.product.salePrice && item.product.salePrice > 0
       ? item.product.salePrice
       : item.product.sellingPrice;
   const rate = item.product.gstPercentage || 0;
@@ -93,8 +87,6 @@ interface Props {
   shipping: number;
   gst: number;
   total: number;
-  comboSavings?: number;
-  comboApplied?: boolean;
   pincodeInfo: PincodeInfo | null;
   restrictedItems?: RestrictedItem[];
   totalWeightGrams: number;
@@ -108,8 +100,6 @@ export default function CheckoutClient({
   subtotal,
   shipping: initialShipping,
   gst,
-  comboSavings = 0,
-  comboApplied = false,
   pincodeInfo: initialPincodeInfo,
   restrictedItems: initialRestrictedItems = [],
   totalWeightGrams,
@@ -721,33 +711,11 @@ export default function CheckoutClient({
             </section>
           )}
 
-          {/* Coupons — disabled when a combo offer is active (no stacking) */}
-          {comboApplied ? (
-            <section
-              className="overflow-hidden border border-border-card bg-bg-card"
-              style={{ borderRadius: "var(--t-radius-card)" }}
-            >
-              <div className="flex items-center gap-3 border-b border-border-subtle px-4 sm:px-6 py-4 sm:py-5">
-                <div
-                  className="flex h-8 w-8 items-center justify-center"
-                  style={{ borderRadius: "var(--t-radius-card)", background: "color-mix(in srgb, var(--t-primary) 15%, transparent)" }}
-                >
-                  <Tag size={16} className="text-primary" />
-                </div>
-                <div>
-                  <p className="text-xs uppercase tracking-wider text-primary" style={{ fontFamily: "var(--t-font-heading)" }}>Step 3</p>
-                  <h2 className="text-lg font-bold text-text-heading">Apply Coupon</h2>
-                </div>
-              </div>
-              <div className="px-4 sm:px-6 py-4 text-sm text-text-muted-2">
-                A combo offer is applied — coupons cannot be used with combo pricing.
-              </div>
-            </section>
-          ) : (
-            <section
-              className="overflow-hidden border border-border-card bg-bg-card"
-              style={{ borderRadius: "var(--t-radius-card)" }}
-            >
+          {/* Coupons */}
+          <section
+            className="overflow-hidden border border-border-card bg-bg-card"
+            style={{ borderRadius: "var(--t-radius-card)" }}
+          >
               <div className="flex items-center gap-3 border-b border-border-subtle px-4 sm:px-6 py-4 sm:py-5">
                 <div
                   className="flex h-8 w-8 items-center justify-center"
@@ -784,28 +752,9 @@ export default function CheckoutClient({
                 )}
               </div>
             </section>
-          )}
 
-          {/* Loyalty Reward — disabled when a combo offer is active (no stacking) */}
-          {comboApplied ? (
-            <section
-              className="overflow-hidden border border-border-card bg-bg-card"
-              style={{ borderRadius: "var(--t-radius-card)" }}
-            >
-              <div className="flex items-center gap-3 border-b border-border-subtle px-4 sm:px-6 py-4 sm:py-5">
-                <div className="flex h-8 w-8 items-center justify-center" style={{ borderRadius: "var(--t-radius-card)", background: "color-mix(in srgb, var(--t-primary) 15%, transparent)" }}>
-                  <Gift size={16} className="text-primary" />
-                </div>
-                <div>
-                  <p className="text-xs uppercase tracking-wider text-primary" style={{ fontFamily: "var(--t-font-heading)" }}>Loyalty</p>
-                  <h2 className="text-lg font-bold text-text-heading">Loyalty Reward</h2>
-                </div>
-              </div>
-              <div className="px-4 sm:px-6 py-4 text-sm text-text-muted-2">
-                A combo offer is applied — loyalty rewards cannot be used with combo pricing.
-              </div>
-            </section>
-          ) : loyaltyLoading ? (
+          {/* Loyalty Reward */}
+          {loyaltyLoading ? (
             <section
               className="overflow-hidden border border-border-card bg-bg-card"
               style={{ borderRadius: "var(--t-radius-card)" }}
@@ -1117,16 +1066,6 @@ export default function CheckoutClient({
                         <p className={`checkout-mini-meta mt-0.5 text-xs text-text-muted-2`}>
                           {item.variantSize ? `Size ${item.variantSize}` : ""} &times; {item.quantity}
                         </p>
-                        {item.comboLabel && (
-                          <p className="checkout-mini-meta mt-0.5 text-xs font-bold text-primary">
-                            {item.comboLabel}
-                          </p>
-                        )}
-                        {item.comboFree && (
-                          <p className="checkout-mini-meta mt-0.5 text-xs font-bold text-primary">
-                            FREE — Combo deal
-                          </p>
-                        )}
                         {printUnitIncl > 0 && (
                           <p className="checkout-mini-meta mt-0.5 text-xs font-semibold text-primary">
                             incl. print ₹{printUnitIncl.toFixed(2)}
@@ -1191,13 +1130,6 @@ export default function CheckoutClient({
                 <span className="text-text-muted-1">Item Total</span>
                 <span className="font-medium text-text-body">₹{itemTotalInclGst.toLocaleString("en-IN")}</span>
               </div>
-
-              {comboSavings > 0 && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-text-muted-1">Combo Savings</span>
-                  <span className="font-medium" style={{ color: "var(--t-success)" }}>-₹{comboSavings.toLocaleString("en-IN")}</span>
-                </div>
-              )}
 
               {couponDiscount > 0 && (
                 <div className="flex justify-between text-sm">

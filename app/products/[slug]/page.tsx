@@ -1,7 +1,9 @@
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { getEffectivePrice, isFlatDiscount, priceWithGst } from "@/lib/pricing";
+import { getSiteSettings, getSiteName } from "@/lib/site-settings";
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 import Link from "next/link";
 import RelatedProducts from "@/components/store/related-products";
 import ProductGallery from "@/components/store/product-gallery";
@@ -81,6 +83,54 @@ type ProductWithDetails = {
   };
   productvariant: ProductVariantData[];
 };
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { slug } = await params;
+  const [product, settings] = await Promise.all([
+    prisma.product.findUnique({
+      where: { slug },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        productimage: {
+          orderBy: { createdAt: "asc" },
+          take: 1,
+          select: { url: true },
+        },
+      },
+    }),
+    getSiteSettings(),
+  ]);
+
+  const siteName = getSiteName(settings);
+  if (!product) {
+    return { title: siteName };
+  }
+
+  const shortDescription = (product.description || "")
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 160);
+  const title = `${product.name} | ${siteName}`;
+
+  return {
+    title,
+    description:
+      shortDescription || `${product.name} — shop online. Shipment across India.`,
+    openGraph: {
+      title,
+      description: shortDescription || undefined,
+      type: "website",
+      locale: "en_IN",
+      siteName,
+      images: product.productimage[0]?.url
+        ? [{ url: product.productimage[0].url }]
+        : undefined,
+    },
+  };
+}
 
 export default async function ProductPage({ params }: Props) {
   const { slug } = await params;

@@ -371,6 +371,14 @@ export default function InvoiceDocument({ order, business }: Props) {
                   </span>
                 </p>
               )}
+              {business.legalName && (
+                <p>
+                  Legal Name:{" "}
+                  <span className="font-semibold text-gray-100">
+                    {business.legalName}
+                  </span>
+                </p>
+              )}
               {business.phone && (
                 <p>
                   Phone:{" "}

@@ -215,6 +215,83 @@ function productBase(product: Record<string, unknown>): number {
   });
 }
 
+export type ComboReservedUnit = { idx?: number; base: number; floor: number };
+
+/**
+ * Prices one combo's reserved set. Returns, aligned with `reservedUnits`, the
+ * PRE-GST unit pay for each reserved unit.
+ *   • BOGO         — pay the `buyCount` MOST expensive units, the rest free
+ *                    (buyCount defaults to 1 = classic "buy 1 get N-1 free").
+ *   • PICK_ANY     — pay the single MOST expensive picked unit, every other
+ *                    picked unit FREE (same path as BOGO with buyCount fixed
+ *                    at 1).
+ *   • FIXED_PRICE  — pay exactly `customPrice` (fall back to the priciest
+ *                    unit if unset/invalid); the resulting discount is
+ *                    distributed proportionally, but each unit's pay is
+ *                    clamped to >= its floor (min sell price).
+ */
+export function priceComboReservedSet<T extends ComboReservedUnit>(
+  combo: { comboType?: string | null; buyCount?: unknown; customPrice?: unknown },
+  reservedUnits: T[]
+): { pay: number }[] {
+  const totalPrice = reservedUnits.reduce((s, u) => s + u.base, 0);
+
+  if (combo.comboType === "BOGO" || combo.comboType === "PICK_ANY") {
+    const buyCount = Math.min(
+      Math.max(1, combo.comboType === "PICK_ANY" ? 1 : Number(combo.buyCount) || 1),
+      reservedUnits.length
+    );
+    const sorted = [...reservedUnits].sort((a, b) => b.base - a.base);
+    const paySet = new Set<T>(sorted.slice(0, buyCount));
+    return reservedUnits.map((u) => ({ pay: paySet.has(u) ? u.base : 0 }));
+  }
+
+  // ── FIXED_PRICE: proportional distribution with min-sell floor ──────
+  const custom = Number(combo.customPrice);
+  const target =
+    Number.isFinite(custom) && custom > 0
+      ? custom
+      : Math.max(...reservedUnits.map((u) => u.base), 0);
+  const capped = Math.min(target, totalPrice);
+
+  // Water-fill: assign each unit its floor first, then distribute the
+  // remaining budget proportionally by (base − floor) capacity.
+  const floors = reservedUnits.map((u) => Math.min(u.floor, u.base));
+  const floorsSum = floors.reduce((s, f) => s + f, 0);
+
+  if (floorsSum <= capped && totalPrice > 0) {
+    // Feasible: distribute remaining budget proportionally above floors.
+    const remaining = Math.max(0, capped - floorsSum);
+    const capacities = reservedUnits.map((u, i) => Math.max(0, u.base - floors[i]));
+    const totalCapacity = capacities.reduce((s, c) => s + c, 0);
+
+    const pays = reservedUnits.map((u, i) => {
+      if (totalCapacity <= 0) return floors[i];
+      const share =
+        Math.round(((capacities[i] / totalCapacity) * remaining + Number.EPSILON) * 100) / 100;
+      return Math.round((floors[i] + share + Number.EPSILON) * 100) / 100;
+    });
+
+    // Round correction: ensure sum === capped (adjust last unit).
+    const paySum = pays.reduce((s, p) => s + p, 0);
+    const diff = Math.round((capped - paySum + Number.EPSILON) * 100) / 100;
+    if (diff !== 0 && pays.length > 0) pays[pays.length - 1] += diff;
+
+    return reservedUnits.map((u, i) => ({ pay: Math.max(0, pays[i]) }));
+  }
+
+  // Infeasible (floors sum > target): fall back to proportional distribution.
+  // This should not happen when the admin form validates correctly.
+  const discount = Math.max(0, totalPrice - capped);
+  return reservedUnits.map((u) => {
+    const share =
+      totalPrice <= 0
+        ? 0
+        : Math.round(((u.base / totalPrice) * discount + Number.EPSILON) * 100) / 100;
+    return { pay: Math.max(0, Math.round((u.base - share + Number.EPSILON) * 100) / 100) };
+  });
+}
+
 /**
  * Core engine: given cart items and an order type, returns per-cartitem priced
  * unit bases with combo discounts applied, plus the aggregate subtotal, GST and
@@ -362,94 +439,6 @@ export async function applyComboPricing(
     pay: number;
   }[] = [];
 
-  type ReservedUnit = (typeof units)[number];
-  type AppliedReservation = (typeof appliedReservations)[number];
-
-  // Price one combo's reserved set. Returns, aligned with `units`, the unit
-  // price the customer effectively pays for each reserved unit.
-  //   • BOGO         — pay the `buyCount` MOST expensive units, the rest free
-  //                    (buyCount defaults to 1 = classic "buy 1 get N-1 free").
-  //   • PICK_ANY     — pay the single MOST expensive picked unit, every other
-  //                    picked unit FREE (same path as BOGO with buyCount fixed
-  //                    at 1).
-  //   • FIXED_PRICE  — pay exactly `customPrice` (fall back to the priciest
-  //                    unit if unset/invalid); the resulting discount is
-  //                    distributed proportionally, but each unit's pay is
-  //                    clamped to >= its floor (min sell price).
-  const priceReservedSet = (
-    combo: AppliedReservation["combo"],
-    reservedUnits: ReservedUnit[]
-  ): { idx: number; base: number; pay: number }[] => {
-    const totalPrice = reservedUnits.reduce((s, u) => s + u.base, 0);
-
-    if (combo.comboType === "BOGO" || combo.comboType === "PICK_ANY") {
-      const buyCount = Math.min(
-        Math.max(1, combo.comboType === "PICK_ANY" ? 1 : Number(combo.buyCount) || 1),
-        reservedUnits.length
-      );
-      const sorted = [...reservedUnits].sort((a, b) => b.base - a.base);
-      const paySet = new Set<ReservedUnit>(sorted.slice(0, buyCount));
-      return reservedUnits.map((u) => ({
-        idx: u.idx,
-        base: u.base,
-        pay: paySet.has(u) ? u.base : 0,
-      }));
-    }
-
-    // ── FIXED_PRICE: proportional distribution with min-sell floor ──────
-    const custom = Number(combo.customPrice);
-    const target =
-      Number.isFinite(custom) && custom > 0
-        ? custom
-        : Math.max(...reservedUnits.map((u) => u.base), 0);
-    const capped = Math.min(target, totalPrice);
-
-    // Water-fill: assign each unit its floor first, then distribute the
-    // remaining budget proportionally by (base − floor) capacity.
-    const floors = reservedUnits.map((u) => Math.min(u.floor, u.base));
-    const floorsSum = floors.reduce((s, f) => s + f, 0);
-
-    if (floorsSum <= capped && totalPrice > 0) {
-      // Feasible: distribute remaining budget proportionally above floors.
-      const remaining = Math.max(0, capped - floorsSum);
-      const capacities = reservedUnits.map((u, i) => Math.max(0, u.base - floors[i]));
-      const totalCapacity = capacities.reduce((s, c) => s + c, 0);
-
-      const pays = reservedUnits.map((u, i) => {
-        if (totalCapacity <= 0) return floors[i];
-        const share =
-          Math.round(((capacities[i] / totalCapacity) * remaining + Number.EPSILON) * 100) / 100;
-        return Math.round((floors[i] + share + Number.EPSILON) * 100) / 100;
-      });
-
-      // Round correction: ensure sum === capped (adjust last unit).
-      const paySum = pays.reduce((s, p) => s + p, 0);
-      const diff = Math.round((capped - paySum + Number.EPSILON) * 100) / 100;
-      if (diff !== 0 && pays.length > 0) pays[pays.length - 1] += diff;
-
-      return reservedUnits.map((u, i) => ({
-        idx: u.idx,
-        base: u.base,
-        pay: Math.max(0, pays[i]),
-      }));
-    }
-
-    // Infeasible (floors sum > target): fall back to proportional distribution.
-    // This should not happen when the admin form validates correctly.
-    const discount = Math.max(0, totalPrice - capped);
-    return reservedUnits.map((u) => {
-      const share =
-        totalPrice <= 0
-          ? 0
-          : Math.round(((u.base / totalPrice) * discount + Number.EPSILON) * 100) / 100;
-      return {
-        idx: u.idx,
-        base: u.base,
-        pay: Math.max(0, Math.round((u.base - share + Number.EPSILON) * 100) / 100),
-      };
-    });
-  };
-
   const appliedStats: {
     offerId: string;
     title: string;
@@ -459,19 +448,19 @@ export async function applyComboPricing(
   }[] = [];
 
   for (const ar of appliedReservations) {
-    const pays = priceReservedSet(ar.combo, ar.reservedUnits);
+    const pays = priceComboReservedSet(ar.combo, ar.reservedUnits);
     const totalBase = ar.reservedUnits.reduce((s, u) => s + u.base, 0);
     const paid = pays.reduce((s, p) => s + p.pay, 0);
-    for (const p of pays) {
+    ar.reservedUnits.forEach((u, i) => {
       comboByUnit.push({
-        idx: p.idx,
+        idx: u.idx,
         comboOfferId: ar.combo.id,
         comboTitle: ar.combo.title,
         badge: ar.combo.badge,
-        base: p.base,
-        pay: p.pay,
+        base: u.base,
+        pay: pays[i].pay,
       });
-    }
+    });
     appliedStats.push({
       offerId: ar.combo.id,
       title: ar.combo.title,

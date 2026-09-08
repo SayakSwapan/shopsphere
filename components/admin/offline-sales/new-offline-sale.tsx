@@ -17,6 +17,7 @@ import {
   Gift,
   Sparkles,
   Lock,
+  X,
 } from "lucide-react";
 
 import { formatCurrency } from "@/lib/format";
@@ -78,6 +79,7 @@ interface ComboOfferOption {
   imageUrl?: string | null;
   comboType: "BOGO" | "PICK_ANY" | "FIXED_PRICE";
   customPrice: number | null;
+  getCount: number | null;
   buyCount: number;
   minPick?: number;
   products: ComboProduct[];
@@ -119,6 +121,120 @@ const inputCls =
 
 function round2(value: number): number {
   return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
+const comboUnitIncl = (p: ComboProduct) =>
+  round2(p.onlineSellingPrice * (1 + (p.gstPercentage || 0) / 100));
+
+/** Minimum number of distinct pool products a cashier must pick for a combo. */
+const comboPickRequired = (offer: ComboOfferOption): number => {
+  if (offer.comboType === "PICK_ANY") {
+    return Math.min(Math.max(2, Number(offer.minPick) || 2), offer.products.length);
+  }
+  return Math.min(Math.max(2, Number(offer.getCount) || 2), offer.products.length);
+};
+
+/**
+ * Live "which picked product is PAID / FREE / part of a fixed set" preview for
+ * the picker. Mirrors the server-side rule math (display only — the backend
+ * re-derives the exact prices when the order is created).
+ */
+function comboPickerRole(
+  offer: ComboOfferOption,
+  selection: Record<string, { variantId: string; quantity: number }>
+): {
+  need: number;
+  pickedCount: number;
+  qualifying: boolean;
+  byProduct: Record<string, { payInclPerUnit: number; isFree: boolean }>;
+  originalTotal: number;
+  payableTotal: number;
+} {
+  const picked = offer.products.filter((p) => selection[p.id]);
+  const need = comboPickRequired(offer);
+  const qualifying = picked.length >= need;
+
+  const byProduct: Record<string, { payInclPerUnit: number; isFree: boolean }> = {};
+
+  if (offer.comboType === "FIXED_PRICE") {
+    const baseTotal = picked.reduce(
+      (s, p) => s + (Number(p.onlineSellingPrice) || 0) * Math.max(1, p.comboQuantity || 1),
+      0
+    );
+    const target =
+      Number(offer.customPrice) > 0 ? Number(offer.customPrice) : baseTotal;
+    const capped = Math.min(target, baseTotal) || 0;
+    let payableTotal = 0;
+    for (const p of picked) {
+      const lineBase = Number(p.onlineSellingPrice) || 0;
+      const shareBase = baseTotal > 0 ? (lineBase / baseTotal) * capped : 0;
+      const shareIncl =
+        shareBase *
+        Math.max(1, p.comboQuantity || 1) *
+        (1 + (p.gstPercentage || 0) / 100);
+      payableTotal += shareIncl;
+      byProduct[p.id] = {
+        payInclPerUnit: shareIncl / Math.max(1, p.comboQuantity || 1),
+        isFree: false,
+      };
+    }
+    return {
+      need,
+      pickedCount: picked.length,
+      qualifying,
+      byProduct,
+      originalTotal: round2(
+        picked.reduce(
+          (s, p) => s + comboUnitIncl(p) * Math.max(1, p.comboQuantity || 1),
+          0
+        )
+      ),
+      payableTotal: round2(payableTotal),
+    };
+  }
+
+  // BOGO / PICK_ANY — price at unit level (pay the most expensive units).
+  const payUnitCount = Math.min(
+    offer.comboType === "PICK_ANY"
+      ? 1
+      : Math.max(1, Number(offer.buyCount) || 1),
+    picked.reduce((s, p) => s + Math.max(1, p.comboQuantity || 1), 0)
+  );
+  const units: { productId: string; unitIncl: number }[] = [];
+  for (const p of picked) {
+    for (let i = 0; i < Math.max(1, p.comboQuantity || 1); i++) {
+      units.push({ productId: p.id, unitIncl: comboUnitIncl(p) });
+    }
+  }
+  units.sort((a, b) => b.unitIncl - a.unitIncl);
+  const paidByProduct = new Map<string, number>();
+  for (const u of units.slice(0, payUnitCount)) {
+    paidByProduct.set(u.productId, (paidByProduct.get(u.productId) ?? 0) + 1);
+  }
+
+  let payableTotal = 0;
+  for (const p of picked) {
+    const paidQty = paidByProduct.get(p.id) ?? 0;
+    payableTotal += comboUnitIncl(p) * paidQty;
+    byProduct[p.id] = {
+      payInclPerUnit: paidQty > 0 ? comboUnitIncl(p) : 0,
+      isFree: paidQty === 0,
+    };
+  }
+
+  return {
+    need,
+    pickedCount: picked.length,
+    qualifying,
+    byProduct,
+    originalTotal: round2(
+      picked.reduce(
+        (s, p) => s + comboUnitIncl(p) * Math.max(1, p.comboQuantity || 1),
+        0
+      )
+    ),
+    payableTotal: round2(payableTotal),
+  };
 }
 
 function SectionHeader({
@@ -183,6 +299,12 @@ export default function NewOfflineSale() {
   >([]);
   const [comboSavingsInclGst, setComboSavingsInclGst] = useState(0);
   const [comboPreviewLoading, setComboPreviewLoading] = useState(false);
+
+  const [pickerOffer, setPickerOffer] = useState<ComboOfferOption | null>(null);
+  const [pickerSelection, setPickerSelection] = useState<
+    Record<string, { variantId: string; quantity: number }>
+  >({});
+  const [pickerSubmitting, setPickerSubmitting] = useState(false);
 
   const [useLoyaltyReward, setUseLoyaltyReward] = useState(false);
   const [loyalty, setLoyalty] = useState<{
@@ -503,36 +625,91 @@ export default function NewOfflineSale() {
     setItems((prev) => prev.filter((it) => it.key !== key));
   };
 
-  const addComboToSale = (combo: ComboOfferOption) => {
-    setItems((prev) => {
-      const next = [...prev];
-      for (const p of combo.products) {
-        const fallbackVariant = p.variants.length === 1 ? p.variants[0].id : "";
-        const existing = next.find(
-          (it) => it.product?.id === p.id && it.variantId === fallbackVariant
-        );
-        if (existing) {
-          next[next.indexOf(existing)] = {
-            ...existing,
-            quantity: existing.quantity + Math.max(1, p.comboQuantity),
-          };
-        } else {
-          const { comboQuantity: _cq, ...product } = p;
-          void _cq;
-          next.push({
-            key: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-            product: { ...product },
-            variantId: fallbackVariant,
-            customerPrice: onlineIncl(p),
-            quantity: Math.max(1, p.comboQuantity),
-          });
-        }
+  const openComboPicker = (combo: ComboOfferOption) => {
+    setPickerSelection({});
+    setPickerOffer(combo);
+  };
+
+  const closeComboPicker = () => {
+    setPickerOffer(null);
+    setPickerSelection({});
+  };
+
+  const togglePickerProduct = (product: ComboProduct) => {
+    setPickerSelection((prev) => {
+      const next = { ...prev };
+      if (next[product.id]) {
+        delete next[product.id];
+      } else {
+        next[product.id] = {
+          variantId: product.variants.length === 1 ? product.variants[0].id : "",
+          quantity: Math.max(1, product.comboQuantity),
+        };
       }
       return next;
     });
-    toast.success(
-      `Combo "${combo.title}" added — price is fixed, no negotiation.`
-    );
+  };
+
+  const updatePickerProduct = (
+    productId: string,
+    patch: { variantId?: string; quantity?: number }
+  ) => {
+    setPickerSelection((prev) => {
+      const cur = prev[productId];
+      if (!cur) return prev;
+      return { ...prev, [productId]: { ...cur, ...patch } };
+    });
+  };
+
+  const setPickerQuantity = (productId: string, quantity: number) =>
+    updatePickerProduct(productId, { quantity: Math.max(1, Number(quantity) || 1) });
+
+  const addPickedComboToSale = (offer: ComboOfferOption) => {
+    const role = comboPickerRole(offer, pickerSelection);
+    if (!role.qualifying) return;
+    setPickerSubmitting(true);
+    try {
+      setItems((prev) => {
+        const next = [...prev];
+        for (const p of offer.products) {
+          const sel = pickerSelection[p.id];
+          if (!sel) continue;
+          const fallbackVariant = p.variants.length === 1 ? p.variants[0].id : "";
+          const variantId =
+            p.variants.length > 1 ? sel.variantId || "" : fallbackVariant;
+          const qty = Math.max(1, sel.quantity || p.comboQuantity || 1);
+          const roleInfo = role.byProduct[p.id];
+          const price = roleInfo ? roleInfo.payInclPerUnit : onlineIncl(p);
+          const existing = next.find(
+            (it) => it.product?.id === p.id && it.variantId === variantId
+          );
+          if (existing) {
+            next[next.indexOf(existing)] = {
+              ...existing,
+              quantity: existing.quantity + qty,
+              customerPrice: roleInfo ? price : existing.customerPrice,
+            };
+          } else {
+            const { comboQuantity: _cq, ...product } = p;
+            void _cq;
+            next.push({
+              key: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+              product: { ...product },
+              variantId,
+              customerPrice: price,
+              quantity: qty,
+            });
+          }
+        }
+        return next;
+      });
+      toast.success(
+        `Combo "${offer.title}" added — price is fixed, no negotiation.`
+      );
+      closeComboPicker();
+    } finally {
+      setPickerSubmitting(false);
+    }
   };
 
   const comboInfoFor = (item: LineItem): ComboPriceInfo | undefined =>
@@ -836,10 +1013,10 @@ export default function NewOfflineSale() {
                     </div>
                     <button
                       type="button"
-                      onClick={() => addComboToSale(c)}
+                      onClick={() => openComboPicker(c)}
                       className="shrink-0 rounded-lg bg-amber-600/80 px-3 py-1.5 text-[11px] font-semibold text-white transition hover:bg-amber-500"
                     >
-                      Add to Sale
+                      Select Products
                     </button>
                   </div>
                   <div className="mt-2 flex flex-wrap gap-1.5">
@@ -1424,6 +1601,226 @@ export default function NewOfflineSale() {
           </section>
         </div>
       </div>
+
+      {pickerOffer &&
+        (() => {
+          const role = comboPickerRole(pickerOffer, pickerSelection);
+          return (
+            <div className="fixed inset-0 z-50 overflow-y-auto bg-black/70 p-3 sm:p-6">
+              <div className="mx-auto w-full max-w-3xl rounded-2xl border border-slate-700 bg-[#111827] shadow-2xl">
+                <div className="flex items-start justify-between gap-3 border-b border-slate-700 p-4 sm:p-5">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      {pickerOffer.badge && (
+                        <span className="rounded bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-bold text-amber-300">
+                          {pickerOffer.badge}
+                        </span>
+                      )}
+                      <span className="truncate text-base font-bold text-white">
+                        {pickerOffer.title}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-xs text-slate-400">
+                      {pickerOffer.comboType === "FIXED_PRICE" ? (
+                        `Fixed price ₹${Number(pickerOffer.customPrice ?? 0).toLocaleString("en-IN")} + GST for the whole set`
+                      ) : pickerOffer.comboType === "PICK_ANY" ? (
+                        `Pick any ${role.need}+ from the pool — pay the single priciest, every other picked item FREE`
+                      ) : (
+                        `Pay for the ${Math.max(1, pickerOffer.buyCount || 1)} most expensive — the rest of the picked set is FREE`
+                      )}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={closeComboPicker}
+                    className="shrink-0 rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-800 hover:text-white"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+
+                <div className="max-h-[55vh] overflow-y-auto p-4 sm:p-5">
+                  <div className="mb-3 flex flex-wrap items-center gap-2 text-xs">
+                    <span
+                      className={`rounded-full px-3 py-1 font-semibold ${
+                        role.qualifying
+                          ? "bg-emerald-500/10 text-emerald-400"
+                          : "bg-amber-500/10 text-amber-300"
+                      }`}
+                    >
+                      Picked {role.pickedCount} /{" "}
+                      {pickerOffer.comboType === "PICK_ANY" ? `min ${role.need}` : role.need}
+                    </span>
+                    {role.qualifying ? (
+                      <span className="rounded-full bg-emerald-500/10 px-3 py-1 font-semibold text-emerald-400">
+                        Combo price applies
+                      </span>
+                    ) : (
+                      <span className="rounded-full bg-slate-800 px-3 py-1 font-semibold text-slate-400">
+                        {pickerOffer.comboType === "PICK_ANY"
+                          ? `Add at least ${role.need} products to apply`
+                          : `Add ${role.need} products to apply the offer`}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    {pickerOffer.products.map((p) => {
+                      const sel = pickerSelection[p.id];
+                      const roleInfo = role.byProduct[p.id];
+                      const singleVariant =
+                        p.variants.length === 1 ? p.variants[0] : null;
+                      const chosenVariant =
+                        sel && sel.variantId
+                          ? p.variants.find((v) => v.id === sel.variantId)
+                          : undefined;
+                      const stock = singleVariant
+                        ? singleVariant.stock
+                        : p.variants.length > 1 && sel && sel.variantId
+                        ? chosenVariant?.stock ?? 0
+                        : p.stock;
+                      const out = stock <= 0;
+                      return (
+                        <div
+                          key={p.id}
+                          className={`rounded-xl border p-3 transition ${
+                            sel
+                              ? "border-amber-500/60 bg-amber-500/5"
+                              : "border-slate-700 bg-[#0F172A]"
+                          } ${out ? "opacity-50" : ""}`}
+                        >
+                          <div className="flex flex-wrap items-center gap-3">
+                            <button
+                              type="button"
+                              onClick={() => togglePickerProduct(p)}
+                              disabled={out}
+                              className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                            >
+                              <span
+                                className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md border ${
+                                  sel
+                                    ? "border-amber-500 bg-amber-500 text-white"
+                                    : "border-slate-600 bg-slate-800 text-transparent"
+                                }`}
+                              >
+                                <CheckCircle2 size={14} />
+                              </span>
+                              <span className="min-w-0 flex-1">
+                                <span className="block truncate text-sm font-bold text-white">
+                                  {p.name}
+                                </span>
+                                <span className="mt-0.5 block text-[11px] text-slate-400">
+                                  {formatCurrency(comboUnitIncl(p))} each ×{" "}
+                                  {Math.max(1, p.comboQuantity || 1)} · Stock {stock}
+                                </span>
+                                {sel && roleInfo && (
+                                  <span
+                                    className={`mt-1 inline-block rounded px-1.5 py-0.5 text-[10px] font-bold ${
+                                      roleInfo.isFree
+                                        ? "bg-rose-500/10 text-rose-400"
+                                        : pickerOffer.comboType === "FIXED_PRICE"
+                                        ? "bg-indigo-500/10 text-indigo-300"
+                                        : "bg-emerald-500/10 text-emerald-400"
+                                    }`}
+                                  >
+                                    {roleInfo.isFree
+                                      ? "FREE"
+                                      : pickerOffer.comboType === "FIXED_PRICE"
+                                      ? `Set share ${formatCurrency(roleInfo.payInclPerUnit)}`
+                                      : `Pay ${formatCurrency(roleInfo.payInclPerUnit)}`}
+                                  </span>
+                                )}
+                              </span>
+                            </button>
+
+                            {p.variants.length > 1 && (
+                              <select
+                                value={sel?.variantId ?? ""}
+                                onChange={(e) =>
+                                  updatePickerProduct(p.id, { variantId: e.target.value })
+                                }
+                                className={inputCls}
+                              >
+                                <option value="">Primary / No variant</option>
+                                {p.variants.map((v) => (
+                                  <option key={v.id} value={v.id} disabled={v.stock <= 0}>
+                                    {v.genderName} / {v.sizeName} ({v.sku}) — stock {v.stock}
+                                  </option>
+                                ))}
+                              </select>
+                            )}
+
+                            {sel && (
+                              <div className="flex items-center gap-1.5">
+                                <label className="text-[11px] text-slate-500">Qty</label>
+                                <input
+                                  type="number"
+                                  min={1}
+                                  max={Math.max(1, stock)}
+                                  value={sel.quantity}
+                                  onChange={(e) =>
+                                    setPickerQuantity(p.id, Number(e.target.value) || 1)
+                                  }
+                                  className="h-9 w-16 rounded-lg border border-slate-700 bg-[#0F172A] px-2 text-sm text-white outline-none focus:border-indigo-500"
+                                />
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-end justify-between gap-3 border-t border-slate-700 p-4 sm:p-5">
+                  <div className="text-sm">
+                    <div className="flex items-baseline gap-2 text-slate-300">
+                      <span className="text-[11px] uppercase tracking-wide text-slate-500">
+                        Payable
+                      </span>
+                      <span className="text-lg font-bold text-white">
+                        {formatCurrency(role.payableTotal)}
+                      </span>
+                      <span className="text-[11px] text-slate-500">incl. GST</span>
+                    </div>
+                    {role.qualifying && role.originalTotal - role.payableTotal > 0 && (
+                      <p className="mt-1 text-xs font-semibold text-emerald-400">
+                        Customer saves {formatCurrency(role.originalTotal - role.payableTotal)}
+                      </p>
+                    )}
+                    {!role.qualifying && (
+                      <p className="mt-1 text-xs text-slate-500">
+                        Not enough products picked — items would be charged at regular prices.
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={closeComboPicker}
+                      className="rounded-lg bg-slate-800 px-4 py-2.5 text-sm font-semibold text-slate-300 transition hover:bg-slate-700"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => addPickedComboToSale(pickerOffer)}
+                      disabled={!role.qualifying || pickerSubmitting}
+                      className="inline-flex items-center gap-2 rounded-lg bg-amber-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-amber-500 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      {pickerSubmitting ? (
+                        <Loader2 size={15} className="animate-spin" />
+                      ) : (
+                        <CheckCircle2 size={15} />
+                      )}
+                      Add Picked to Sale
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
     </div>
   );
 }

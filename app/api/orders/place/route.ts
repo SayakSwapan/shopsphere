@@ -1,12 +1,11 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getGstBreakdown } from "@/lib/pricing";
+import { getGstBreakdown, getActivePriceBase } from "@/lib/pricing";
 import { calculateShipping } from "@/lib/shipping";
 import { createAdminNotification } from "@/lib/notifications";
 import { customizationLetterCharge, customizationUnitPrice } from "@/lib/print-pricing";
 import { getRestrictedCartItems } from "@/lib/product-deliverability";
 import { calculateLoyaltyDiscount, redeemLoyaltyReward, getLoyaltyProgram } from "@/lib/loyalty";
-import { applyComboPricing } from "@/lib/combo-offer";
 import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 
@@ -96,38 +95,29 @@ export async function POST(req: Request) {
 
     let subtotal = 0;
     let gst = 0;
-    let comboSavings = 0;
 
-    // Combo pricing: discounted pre-GST unit base per cart line (custom-print
-    // charges are billed at full price on top).
-    const comboResult = await applyComboPricing(
-      user.cart.cartitem.map((item) => ({
-        productId: item.productId,
-        quantity: item.quantity,
-        product: {
+    // Active-offer-aware pre-GST unit base per cart line (custom-print charges
+    // are billed per piece on top). Combo offers are NOT processed on the normal
+    // checkout path — they run exclusively through the dedicated
+    // /combo-offers → /combo-checkout flow so one order = one combo offer.
+    const unitBaseByItemId = new Map<string, number>();
+    user.cart.cartitem.forEach((item) => {
+      unitBaseByItemId.set(
+        item.id,
+        getActivePriceBase({
           salePrice: item.product.salePrice,
           finalPrice: item.product.finalPrice ?? 0,
           sellingPrice: Number(item.product.sellingPrice),
-          costPrice: Number(item.product.costPrice) || 0,
-          lastSellingPrice: item.product.lastSellingPrice != null ? Number(item.product.lastSellingPrice) : null,
-          gstPercentage: Number(item.product.gstPercentage) || 0,
           discountType: item.product.discountType,
           discountValue: item.product.discountValue,
           offerStart: item.product.offerStart,
           offerEnd: item.product.offerEnd,
-        },
-      })),
-      "ONLINE"
-    );
-
-    const comboByCartItemId = new Map<string, (typeof comboResult.priced)[number]>();
-    user.cart.cartitem.forEach((item, idx) => {
-      comboByCartItemId.set(item.id, comboResult.priced[idx]);
+        })
+      );
     });
 
     for (const item of user.cart.cartitem) {
-      const priced = comboByCartItemId.get(item.id)!;
-      const unitBase = priced.unitBase;
+      const unitBase = unitBaseByItemId.get(item.id)!;
       const { gstAmount } = getGstBreakdown(unitBase, Number(item.product.gstPercentage) || 0);
 
       // Custom print charge (pre-GST) is billed per piece, so multiply by qty.
@@ -140,12 +130,10 @@ export async function POST(req: Request) {
 
       subtotal += (unitBase + printUnit) * item.quantity;
       gst += (gstAmount + printGst) * item.quantity;
-      comboSavings += priced.comboDiscountUnit * item.quantity;
     }
 
     subtotal = Math.round(subtotal * 100) / 100;
     gst = Math.round(gst * 100) / 100;
-    comboSavings = Math.round(comboSavings * 100) / 100;
 
     let discount = 0;
     let couponFreeShipping = false;
@@ -205,23 +193,6 @@ export async function POST(req: Request) {
 
     const total = subtotal - discount - loyaltyDiscount + shipping + gst;
 
-    // Combo offers are exclusive — they never stack with a coupon code or a
-    // loyalty reward. If a combo actually applied AND another campaign discount
-    // would ALSO apply, reject the order rather than silently double-discount.
-    if (
-      comboResult.applied.length > 0 &&
-      (discount > 0 || loyaltyDiscount > 0)
-    ) {
-      return NextResponse.json(
-        {
-          success: false,
-          message:
-            "A combo offer is already applied to this order. Combo offers cannot be combined with coupon codes or loyalty rewards.",
-        },
-        { status: 400 }
-      );
-    }
-
     const transactionFee = 0;
 
     const order = await prisma.order.create({
@@ -236,7 +207,6 @@ export async function POST(req: Request) {
         gst,
         shipping,
         discount,
-        comboDiscount: comboSavings || null,
         couponId: couponId ?? null,
         loyaltyPurchaseCounted: false,
         loyaltyRewardApplied: loyaltyDiscount > 0,
@@ -256,8 +226,7 @@ export async function POST(req: Request) {
     });
 
     for (const item of user.cart.cartitem) {
-      const priced = comboByCartItemId.get(item.id)!;
-      const sellingPrice = priced.unitBase;
+      const sellingPrice = unitBaseByItemId.get(item.id)!;
       const costPrice = Number(item.product.costPrice);
       const gstPct = Number(item.product.gstPercentage) || 0;
       const { gstAmount } = getGstBreakdown(sellingPrice, gstPct);
@@ -278,7 +247,6 @@ export async function POST(req: Request) {
           costPriceSnapshot: costPrice,
           gstSnapshot: Math.round(gstAmount * 100) / 100,
           discountSnapshot: item.quantity === 0 ? 0 : Math.round((discount / user.cart.cartitem.length) * 100) / 100,
-          comboDiscountSnapshot: Math.round(priced.comboDiscountUnit * 100) / 100,
           variantSku: item.productvariant?.sku ?? null,
           variantSize: item.productvariant?.size?.sizeName ?? null,
           variantGender: item.productvariant?.gender?.name ?? null,
@@ -295,22 +263,6 @@ export async function POST(req: Request) {
       await prisma.product.updateMany({
         where: { id: item.productId, stock: { gte: item.quantity } },
         data: { totalSold: { increment: item.quantity }, stock: { decrement: item.quantity } },
-      });
-    }
-
-    // Combo finance tracking: snapshot the applied offers onto the order so the
-    // admin can attribute combo revenue / discount per offer (and online share).
-    if (comboResult.applied.length > 0) {
-      await prisma.comboSale.createMany({
-        data: comboResult.applied.map((a) => ({
-          id: randomUUID(),
-          orderId: order.id,
-          orderType: "ONLINE",
-          comboOfferId: a.offerId,
-          title: a.title,
-          unitsSold: a.unitsSold,
-          discountBase: a.discountBase,
-        })),
       });
     }
 

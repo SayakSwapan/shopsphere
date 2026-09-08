@@ -250,6 +250,14 @@ export default function OfflineInvoice({
                   </span>
                 </p>
               )}
+              {business.legalName && (
+                <p>
+                  Legal Name:{" "}
+                  <span className="font-semibold text-gray-100">
+                    {business.legalName}
+                  </span>
+                </p>
+              )}
               {business.phone && (
                 <p>
                   Phone:{" "}

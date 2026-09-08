@@ -66,6 +66,12 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
         : body.comboType === "PICK_ANY"
         ? "PICK_ANY"
         : "BOGO";
+    const allowedPaymentMethods =
+      body.allowedPaymentMethods === "ONLINE_ONLY"
+        ? "ONLINE_ONLY"
+        : body.allowedPaymentMethods === "COD_ONLY"
+        ? "COD_ONLY"
+        : "BOTH";
     const buyCount = Number(body.buyCount) || 1;
     const poolSize = body.items.length;
     const totalUnits = body.items.reduce(
@@ -148,6 +154,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
           getCount,
           minPick: comboType === "PICK_ANY" ? minPick : 2,
           apply: body.apply || "BOTH",
+          allowedPaymentMethods,
           isActive: body.isActive ?? true,
           sortOrder: body.sortOrder ?? 0,
           highlightOnHome: body.highlightOnHome ?? true,

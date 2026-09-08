@@ -132,6 +132,7 @@ export default function ComboOfferForm({ mode, id }: Props) {
     minPick: "2",
     customPrice: "",
     apply: "BOTH",
+    allowedPaymentMethods: "BOTH",
     isActive: true,
     highlightOnHome: true,
     sortOrder: 0,
@@ -408,6 +409,7 @@ export default function ComboOfferForm({ mode, id }: Props) {
           minPick: data.minPick ? String(data.minPick) : "2",
           customPrice: data.customPrice ? String(data.customPrice) : "",
           apply: data.apply || "BOTH",
+          allowedPaymentMethods: data.allowedPaymentMethods || "BOTH",
           isActive: data.isActive ?? true,
           highlightOnHome: data.highlightOnHome ?? true,
           sortOrder: data.sortOrder ?? 0,
@@ -767,6 +769,22 @@ export default function ComboOfferForm({ mode, id }: Props) {
                 <option value="OFFLINE">Offline (POS) only</option>
               </select>
             </div>
+          </div>
+
+          <div>
+            <label className={labelCls}>Allowed Payment Methods (at combo checkout)</label>
+            <select
+              value={form.allowedPaymentMethods}
+              onChange={(e) => push({ allowedPaymentMethods: e.target.value })}
+              className={inputCls}
+            >
+              <option value="BOTH">COD & Online both</option>
+              <option value="ONLINE_ONLY">Online (Cashfree) only</option>
+              <option value="COD_ONLY">Cash On Delivery only</option>
+            </select>
+            <p className="mt-1 text-xs text-slate-500">
+              Controls which payment options customers see on the dedicated combo checkout page.
+            </p>
           </div>
 
           {form.comboType === "BOGO" && (

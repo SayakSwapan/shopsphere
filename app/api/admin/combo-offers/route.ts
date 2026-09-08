@@ -63,6 +63,12 @@ export async function POST(req: Request) {
         : body.comboType === "PICK_ANY"
         ? "PICK_ANY"
         : "BOGO";
+    const allowedPaymentMethods =
+      body.allowedPaymentMethods === "ONLINE_ONLY"
+        ? "ONLINE_ONLY"
+        : body.allowedPaymentMethods === "COD_ONLY"
+        ? "COD_ONLY"
+        : "BOTH";
     const buyCount = Number(body.buyCount) || 1;
     const poolSize = body.items.length;
     const totalUnits = items.reduce((s: number, q: number) => s + q, 0);
@@ -135,6 +141,7 @@ export async function POST(req: Request) {
         getCount,
         minPick: comboType === "PICK_ANY" ? minPick : 2,
         apply: body.apply || "BOTH",
+        allowedPaymentMethods,
         isActive: body.isActive ?? true,
         sortOrder: body.sortOrder ?? 0,
         highlightOnHome: body.highlightOnHome ?? true,

@@ -88,6 +88,7 @@ interface OfferMeta {
   buyCount: number;
   getCount: number;
   customPrice: number | null;
+  allowedPaymentMethods: "BOTH" | "ONLINE_ONLY" | "COD_ONLY";
 }
 
 interface Props {
@@ -149,6 +150,13 @@ export default function ComboCheckoutClient({ addresses, offerSlug }: Props) {
         if (cancelled) return;
         if (data.success && data.offer) {
           setOffer(data.offer);
+          // If the offer forbids the default online method, fall back to COD.
+          if (
+            data.offer.allowedPaymentMethods === "COD_ONLY" &&
+            method === "CASHFREE"
+          ) {
+            setMethod("COD");
+          }
           setSelections(stored);
         } else {
           setSelections(stored);
@@ -231,6 +239,14 @@ export default function ComboCheckoutClient({ addresses, offerSlug }: Props) {
   const codAvailable = shipping?.deliverable ? shipping.allowCod : true;
   const onlineAvailable = shipping?.deliverable ? shipping.allowOnline : true;
 
+  // Offer-level payment method restriction (BOTH / ONLINE_ONLY / COD_ONLY).
+  const offerAllowsCod =
+    !offer || offer.allowedPaymentMethods === "BOTH" || offer.allowedPaymentMethods === "COD_ONLY";
+  const offerAllowsOnline =
+    !offer || offer.allowedPaymentMethods === "BOTH" || offer.allowedPaymentMethods === "ONLINE_ONLY";
+  const showOnline = onlineAvailable && offerAllowsOnline;
+  const showCod = codAvailable && offerAllowsCod;
+
   // ── Order placement ──
   const placeOrder = useCallback(async () => {
     if (!complete) return;
@@ -276,6 +292,10 @@ export default function ComboCheckoutClient({ addresses, offerSlug }: Props) {
         router.push(`/order-success?id=${data.orderId}`);
         return;
       }
+
+      // Release the button spinner before the Cashfree modal takes over — the
+      // modal has its own loading UI so the page shouldn't show one too.
+      setPlacing(false);
 
       const { openCashfreeCheckout } = await import("@/lib/cashfree-checkout");
       const { redirect } = await openCashfreeCheckout(data.payment_session_id);
@@ -479,7 +499,7 @@ export default function ComboCheckoutClient({ addresses, offerSlug }: Props) {
               </div>
 
               <div className="space-y-3 p-4 sm:p-6">
-                {onlineAvailable && (
+                {showOnline && (
                   <button
                     onClick={() => setMethod("CASHFREE")}
                     className="w-full border p-5 text-left transition"
@@ -506,7 +526,7 @@ export default function ComboCheckoutClient({ addresses, offerSlug }: Props) {
                   </button>
                 )}
 
-                {codAvailable ? (
+                {showCod ? (
                   <button
                     onClick={() => setMethod("COD")}
                     className="w-full border p-5 text-left transition"
@@ -540,7 +560,7 @@ export default function ComboCheckoutClient({ addresses, offerSlug }: Props) {
                   </div>
                 )}
 
-                {!onlineAvailable && !codAvailable && (
+                {!showOnline && !showCod && (
                   <p
                     className="px-4 py-3 text-sm text-danger"
                     style={{ borderRadius: "var(--t-radius-input)", background: "color-mix(in srgb, var(--t-danger) 10%, transparent)" }}

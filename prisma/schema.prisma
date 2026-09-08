@@ -1855,6 +1855,19 @@ enum ComboOfferApply {
 }
 
 /**
+ * Payment methods the dedicated combo checkout may offer for this offer.
+ * Independent of `apply` (which controls the auto-combo cart/POS engine):
+ *   BOTH        -> online + COD both allowed
+ *   ONLINE_ONLY -> online (Cashfree) only
+ *   COD_ONLY    -> cash on delivery only
+ */
+enum ComboPaymentMethod {
+  BOTH
+  ONLINE_ONLY
+  COD_ONLY
+}
+
+/**
  * A bundle offer an admin creates. It links together 2+ products (same or
  * different categories). The customer sees it on the home page in two styled
  * sections and on the product details page for every product it contains.
@@ -1900,6 +1913,9 @@ model ComboOffer {
   // the cart actually contains); it only drives the customer combo offer pages
   // and the dedicated combo checkout.
   getCount    Int              @default(2)
+  // Payment methods allowed at the dedicated combo checkout (COD / online /
+  // both). Independent of `apply`.
+  allowedPaymentMethods ComboPaymentMethod @default(BOTH)
   // End-state tracking: when an offer is auto-deactivated (time expired or a
   // product sold out) the system records why so the admin panel can display it.
   endReason   String?          @db.VarChar(20) // TIME_ENDED | STOCK_OUT | MANUAL

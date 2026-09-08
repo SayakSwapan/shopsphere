@@ -525,6 +525,10 @@ export default function CheckoutClient({
       const data = await res.json();
       if (!res.ok) { toast.error(data.message ?? "Unable to start payment."); return; }
 
+      // Release the button before the Cashfree modal takes over — the modal
+      // has its own loading UI so the page shouldn't show one too.
+      setLoading(false);
+
       const { openCashfreeCheckout } = await import("@/lib/cashfree-checkout");
       const { redirect } = await openCashfreeCheckout(data.payment_session_id);
       if (!redirect) {

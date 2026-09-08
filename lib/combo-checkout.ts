@@ -30,7 +30,7 @@ import { getRestrictedCartItems } from "@/lib/product-deliverability";
 import { calcTransactionFee } from "@/lib/finance/transaction-charge.service";
 import { createAdminNotification } from "@/lib/notifications";
 import { createPaymentSession } from "@/lib/payment/cashfree";
-import type { ComboOfferType } from "@prisma/client";
+import type { ComboOfferType, ComboPaymentMethod } from "@prisma/client";
 
 export class ComboCheckoutError extends Error {
   status: number;
@@ -150,6 +150,7 @@ type FullCombo = {
   minPick: number | null;
   getCount: number;
   customPrice: string | number | null;
+  allowedPaymentMethods: ComboPaymentMethod;
 } & { items: { product: ProductWithVariants }[] };
 
 /** Number of products the customer must select in the dedicated combo flow. */
@@ -229,9 +230,49 @@ export async function getPublicComboOffer(
     minPick: offer.minPick,
     getCount: offer.getCount,
     customPrice: offer.customPrice === null ? null : Number(offer.customPrice),
+    allowedPaymentMethods: offer.allowedPaymentMethods,
     items: offer.items.map((it) => ({
       product: it.product as unknown as ProductWithVariants,
     })),
+  };
+}
+
+/**
+ * Lightweight offer-meta fetch (no product images / variants). Used by the
+ * combo-checkout slug route where only scalar fields are needed — the pricing
+ * route re-fetches the full payload on its own.
+ */
+export async function getPublicComboOfferMeta(slug: string) {
+  const now = new Date();
+  const offer = await prisma.comboOffer.findFirst({
+    where: {
+      slug,
+      isActive: true,
+      AND: [
+        { OR: [{ startDate: null }, { startDate: { lte: now } }] },
+        { OR: [{ endDate: null }, { endDate: { gte: now } }] },
+      ],
+    },
+    select: {
+      id: true,
+      slug: true,
+      title: true,
+      badge: true,
+      comboType: true,
+      buyCount: true,
+      minPick: true,
+      getCount: true,
+      customPrice: true,
+      allowedPaymentMethods: true,
+    },
+  });
+  if (!offer) return null;
+  return {
+    ...offer,
+    getCount: offer.comboType === "PICK_ANY"
+      ? Math.max(2, Number(offer.minPick) || 2)
+      : Math.max(2, Number(offer.getCount) || 2),
+    customPrice: offer.customPrice != null ? Number(offer.customPrice) : null,
   };
 }
 
@@ -643,6 +684,7 @@ export async function createComboOrder(input: CreateComboOrderInput): Promise<Co
     minPick: offer.minPick,
     getCount: offer.getCount,
     customPrice: offer.customPrice === null ? null : Number(offer.customPrice),
+    allowedPaymentMethods: offer.allowedPaymentMethods,
     items: offer.items.map((it) => ({ product: it.product as unknown as ProductWithVariants })),
   };
 
@@ -670,6 +712,15 @@ export async function createComboOrder(input: CreateComboOrderInput): Promise<Co
   }
   if (input.paymentMethod === "COD" && !pincodeInfo.allowCod) {
     throw new ComboCheckoutError("COD is not available at this pincode. Please pay online.");
+  }
+
+  // Enforce the offer's configured payment methods (COD / online / both).
+  const allowed = offer.allowedPaymentMethods;
+  if (input.paymentMethod === "COD" && allowed === "ONLINE_ONLY") {
+    throw new ComboCheckoutError("This offer only accepts online payment.");
+  }
+  if (input.paymentMethod === "CASHFREE" && allowed === "COD_ONLY") {
+    throw new ComboCheckoutError("This offer only accepts Cash on Delivery.");
   }
 
   const shippingResult = await calculateShipping(

@@ -46,7 +46,17 @@ export async function POST(req: Request) {
         return NextResponse.json({ success: true, orderId: order.id });
       }
 
-      const payment = await fetchPayment(order.id);
+      // Cashfree's payment status API is eventually-consistent: the record may
+      // take 1-3 seconds to appear after the modal closes. Poll a few times
+      // before giving up.
+      let payment = await fetchPayment(order.id);
+      if (!isPaymentSuccessful(payment, Number(order.totalAmount))) {
+        for (let attempt = 0; attempt < 4; attempt++) {
+          await new Promise((resolve) => setTimeout(resolve, 1500));
+          payment = await fetchPayment(order.id);
+          if (isPaymentSuccessful(payment, Number(order.totalAmount))) break;
+        }
+      }
       if (!isPaymentSuccessful(payment, Number(order.totalAmount))) {
         return NextResponse.json(
           { success: false, message: "Payment is not confirmed by Cashfree." },

@@ -67,10 +67,21 @@ export default async function SecurityPage() {
   const jwtSecretOk = !!process.env.JWT_SECRET && process.env.JWT_SECRET.length >= 32;
   const webhookSecretOk = !!process.env.RAZORPAY_WEBHOOK_SECRET;
   const razorpayKeysOk = !!process.env.RAZORPAY_KEY_ID && !!process.env.RAZORPAY_KEY_SECRET;
+
+  const cashfreeEnv = (process.env.CASHFREE_ENV ?? "").toUpperCase();
+  const cashfreeSdkMode =
+    process.env.NEXT_PUBLIC_CASHFREE_ENV === "production" ? "production" : "sandbox";
   const cashfreeKeysOk =
     !!process.env.CASHFREE_CLIENT_ID &&
     !!process.env.CASHFREE_CLIENT_SECRET &&
-    ["TEST", "PROD"].includes(process.env.CASHFREE_ENV || "");
+    ["TEST", "PROD"].includes(cashfreeEnv);
+
+  const mask = (value: string | undefined, keep: number): string => {
+    if (!value) return "not set";
+    return value.length <= keep * 2
+      ? "****"
+      : `${value.slice(0, keep)}…${value.slice(-3)}`;
+  };
 
   const configItems = [
     {
@@ -201,6 +212,53 @@ export default async function SecurityPage() {
               </span>
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* Cashfree runtime readout */}
+      <div className="bg-[#111827] border border-[#1E293B] rounded-xl mb-6 overflow-hidden">
+        <div className="px-4 py-3 border-b border-[#1E293B]">
+          <h2 className="text-sm font-semibold text-white">Cashfree gateway runtime</h2>
+        </div>
+        <div className="px-4 py-3 space-y-2 text-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-slate-500">Server gateway env (CASHFREE_ENV)</span>
+            <span className="font-mono font-semibold text-white flex items-center gap-2">
+              {cashfreeEnv || <span className="text-red-400">NOT SET</span>}
+              {cashfreeEnv === "PROD" && <span className="text-[10px] bg-emerald-500/15 text-emerald-400 px-2 py-0.5 rounded-full">LIVE</span>}
+              {cashfreeEnv === "TEST" && <span className="text-[10px] bg-amber-500/15 text-amber-400 px-2 py-0.5 rounded-full">SANDBOX</span>}
+            </span>
+          </div>
+          <div className="flex items-center justify-between border-t border-[#1E293B] pt-2">
+            <span className="text-slate-500">API base (server → Cashfree)</span>
+            <span className="font-mono text-xs text-slate-300">
+              {cashfreeEnv === "PROD" ? "https://api.cashfree.com" : "https://sandbox.cashfree.com"}
+            </span>
+          </div>
+          <div className="flex items-center justify-between border-t border-[#1E293B] pt-2">
+            <span className="text-slate-500">Client SDK mode (baked at build)</span>
+            <span className="font-mono text-xs text-slate-300">{cashfreeSdkMode}</span>
+          </div>
+          <div className="flex items-center justify-between border-t border-[#1E293B] pt-2">
+            <span className="text-slate-500">Client/Server mode match</span>
+            {(cashfreeEnv === "PROD" && cashfreeSdkMode === "production") ||
+            (cashfreeEnv === "TEST" && cashfreeSdkMode === "sandbox") ? (
+              <span className="text-[10px] bg-emerald-500/15 text-emerald-400 px-2 py-0.5 rounded-full">MATCH ✓</span>
+            ) : (
+              <span className="text-[10px] bg-red-500/15 text-red-400 px-2 py-0.5 rounded-full">MISMATCH ✕</span>
+            )}
+          </div>
+          <div className="flex items-center justify-between border-t border-[#1E293B] pt-2">
+            <span className="text-slate-500">Client ID / Secret (masked)</span>
+            <span className="font-mono text-xs text-slate-300">
+              {mask(process.env.CASHFREE_CLIENT_ID, 7)} / {mask(process.env.CASHFREE_CLIENT_SECRET, 4)}
+            </span>
+          </div>
+          <p className="text-xs text-slate-500 pt-1">
+            If this shows TEST/SANDBOX, the whole payment flow (popup + verification) runs on
+            Cashfree's sandbox — real money is never charged and orders are invisible to the
+            production account. To go live set CASHFREE_ENV=PROD and the live API keys in Vercel.
+          </p>
         </div>
       </div>
 

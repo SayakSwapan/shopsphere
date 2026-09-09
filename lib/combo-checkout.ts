@@ -29,7 +29,7 @@ import { calculateShipping, getPincodeInfo } from "@/lib/shipping";
 import { getRestrictedCartItems } from "@/lib/product-deliverability";
 import { calcTransactionFee } from "@/lib/finance/transaction-charge.service";
 import { createAdminNotification } from "@/lib/notifications";
-import { createPaymentSession } from "@/lib/payment/cashfree";
+import { createPaymentSession, cashfreeClientMode } from "@/lib/payment/cashfree";
 import type { ComboOfferType, ComboPaymentMethod } from "@prisma/client";
 
 export class ComboCheckoutError extends Error {
@@ -626,6 +626,7 @@ export interface ComboOrderResult {
   success?: boolean;
   // Online (Cashfree) only
   payment_session_id?: string;
+  cashfreeMode?: "production" | "sandbox";
   dbOrderId?: string;
   amount?: number;
   currency?: string;
@@ -913,6 +914,7 @@ export async function createComboOrder(input: CreateComboOrderInput): Promise<Co
     orderNumber: order.orderNumber,
     paymentMethod: "CASHFREE",
     payment_session_id: paymentSession.paymentSessionId,
+    cashfreeMode: cashfreeClientMode(),
     dbOrderId: order.id,
     amount: paymentSession.amount,
     currency: paymentSession.currency,

@@ -30,10 +30,24 @@ export function cashfreeEnabled(): boolean {
   );
 }
 
+export function isCashfreeProd(): boolean {
+  return process.env.CASHFREE_ENV === "PROD";
+}
+
 function cashfreeBaseUrl(): string {
-  return process.env.CASHFREE_ENV === "PROD"
+  return isCashfreeProd()
     ? "https://api.cashfree.com"
     : "https://sandbox.cashfree.com";
+}
+
+/**
+ * The mode the client SDK must load in to open the popup for a session that
+ * THIS server created. Returned with every session so the client browser
+ * never has to guess from its own (often missing) NEXT_PUBLIC_ env var — the
+ * #1 cause of "the Cashfree popup never opens" on fresh deployments.
+ */
+export function cashfreeClientMode(): "production" | "sandbox" {
+  return isCashfreeProd() ? "production" : "sandbox";
 }
 
 function cashfreeHeaders(): Record<string, string> {

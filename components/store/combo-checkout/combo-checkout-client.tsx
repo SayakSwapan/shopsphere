@@ -298,7 +298,10 @@ export default function ComboCheckoutClient({ addresses, offerSlug }: Props) {
       setPlacing(false);
 
       const { openCashfreeCheckout } = await import("@/lib/cashfree-checkout");
-      const { redirect } = await openCashfreeCheckout(data.payment_session_id);
+      const { redirect } = await openCashfreeCheckout(
+        data.payment_session_id,
+        data.cashfreeMode
+      );
       if (!redirect) {
         toast.error("Payment cancelled.");
         return;
@@ -320,8 +323,13 @@ export default function ComboCheckoutClient({ addresses, offerSlug }: Props) {
       } catch {
         toast.error("Payment verification failed.");
       }
-    } catch {
-      toast.error("Something went wrong.");
+    } catch (err) {
+      console.error("[combo-checkout] payment flow error", err);
+      toast.error(
+        err instanceof Error && err.message
+          ? err.message
+          : "Something went wrong."
+      );
     } finally {
       setPlacing(false);
     }

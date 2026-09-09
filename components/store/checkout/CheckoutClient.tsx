@@ -530,7 +530,10 @@ export default function CheckoutClient({
       setLoading(false);
 
       const { openCashfreeCheckout } = await import("@/lib/cashfree-checkout");
-      const { redirect } = await openCashfreeCheckout(data.payment_session_id);
+      const { redirect } = await openCashfreeCheckout(
+        data.payment_session_id,
+        data.cashfreeMode
+      );
       if (!redirect) {
         toast.error("Payment cancelled.");
         return;
@@ -548,8 +551,13 @@ export default function CheckoutClient({
       } else {
         toast.error(verifyData.message ?? "Payment verification failed.");
       }
-    } catch {
-      toast.error("Something went wrong.");
+    } catch (error) {
+      console.error("[checkout] payment flow error", error);
+      toast.error(
+        error instanceof Error && error.message
+          ? error.message
+          : "Something went wrong."
+      );
     } finally {
       setLoading(false);
     }

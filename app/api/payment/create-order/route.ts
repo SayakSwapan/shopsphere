@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { createPaymentSession, CashfreeError } from "@/lib/payment/cashfree";
+import { createPaymentSession, CashfreeError, cashfreeClientMode } from "@/lib/payment/cashfree";
 import { getGstBreakdown, getActivePriceBase } from "@/lib/pricing";
 import { calculateShipping } from "@/lib/shipping";
 import { calcTransactionFee } from "@/lib/finance/transaction-charge.service";
@@ -307,6 +307,7 @@ export async function POST(req: Request) {
       dbOrderId: order.id,
       orderId: order.id,
       payment_session_id: paymentSession.paymentSessionId,
+      cashfreeMode: cashfreeClientMode(),
       amount: paymentSession.amount,
       currency: paymentSession.currency,
       customer: { name: address.fullName, email: user.email, contact: address.phone },

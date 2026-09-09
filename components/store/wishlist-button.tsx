@@ -2,14 +2,14 @@
 
 import { Heart } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useOptionalAuthModal } from "@/components/auth/auth-context";
 
 interface Props {
   productId: string;
 }
 
 export default function WishlistButton({ productId }: Props) {
-  const router = useRouter();
+  const authModal = useOptionalAuthModal();
   const [wishlisted, setWishlisted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [checked, setChecked] = useState(false);
@@ -64,7 +64,7 @@ export default function WishlistButton({ productId }: Props) {
       });
 
       if (response.status === 401) {
-        router.push("/login");
+        authModal?.openAuth("login");
         return;
       }
 

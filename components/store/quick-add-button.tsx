@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { ShoppingCart } from "lucide-react";
+import { useOptionalAuthModal } from "@/components/auth/auth-context";
 
 interface Props {
   productId: string;
@@ -11,6 +12,7 @@ interface Props {
 
 export default function QuickAddButton({ productId, variantId }: Props) {
   const [loading, setLoading] = useState(false);
+  const authModal = useOptionalAuthModal();
 
   async function handleClick() {
     if (!variantId) {
@@ -26,6 +28,10 @@ export default function QuickAddButton({ productId, variantId }: Props) {
         body: JSON.stringify({ productId, productVariantId: variantId, quantity: 1 }),
       });
       const data = await res.json();
+      if (res.status === 401) {
+        authModal?.openAuth("login");
+        throw new Error("Please login to add to cart");
+      }
       if (!res.ok || !data.success) throw new Error(data.message || "Failed to add");
       window.dispatchEvent(new Event("cart-updated"));
       toast.success("Added to Cart");

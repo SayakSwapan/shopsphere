@@ -2,7 +2,7 @@
 
 import { Heart } from "lucide-react";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useOptionalAuthModal } from "@/components/auth/auth-context";
 import { useSession } from "next-auth/react";
 
 interface Props {
@@ -10,13 +10,13 @@ interface Props {
 }
 
 export default function AddToWishlist({ productId }: Props) {
-  const router = useRouter();
   const { data: session } = useSession();
+  const authModal = useOptionalAuthModal();
   const [loading, setLoading] = useState(false);
 
   const addToWishlist = async () => {
     if (!session?.user) {
-      router.push("/login");
+      authModal?.openAuth("login");
       return;
     }
 
@@ -30,7 +30,7 @@ export default function AddToWishlist({ productId }: Props) {
       });
 
       if (response.status === 401) {
-        router.push("/login");
+        authModal?.openAuth("login");
         return;
       }
 

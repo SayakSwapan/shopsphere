@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
+import { useOptionalAuthModal } from "@/components/auth/auth-context";
 import type { CustomPrintData } from "@/types/custom-print";
 
 interface Props {
@@ -21,6 +22,7 @@ export default function AddToCartButton({
 }: Props) {
   const [loading, setLoading] =
     useState(false);
+  const authModal = useOptionalAuthModal();
 
   const addToCart =
     async () => {
@@ -48,6 +50,11 @@ export default function AddToCartButton({
           );
 
         const data = await response.json();
+
+        if (response.status === 401) {
+          authModal?.openAuth("login");
+          throw new Error("Please login to add to cart");
+        }
 
         if (!response.ok || !data.success) {
           throw new Error(

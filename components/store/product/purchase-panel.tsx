@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { useOptionalAuthModal } from "@/components/auth/auth-context";
 import {
   Zap,
   ShieldCheck,
@@ -78,6 +79,7 @@ export default function ProductPurchasePanel({
   reviews,
 }: Props) {
   const router = useRouter();
+  const authModal = useOptionalAuthModal();
   const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [isBuying, setIsBuying] = useState(false);
@@ -174,6 +176,10 @@ export default function ProductPurchasePanel({
         }),
       });
       const data = await response.json();
+      if (response.status === 401) {
+        authModal?.openAuth("login");
+        throw new Error("Please login to continue");
+      }
       if (!response.ok || !data.success)
         throw new Error(data.message || "Unable to checkout");
       router.push("/checkout");

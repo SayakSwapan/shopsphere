@@ -1,5 +1,6 @@
 import { getAdminSession } from "@/lib/admin-auth";
 import { prisma } from "@/lib/prisma";
+import { invalidateSiteSettingsCache } from "@/lib/site-settings";
 import { NextResponse } from "next/server";
 
 export async function GET() {
@@ -42,6 +43,7 @@ export async function PUT(req: Request) {
       })
     );
     await Promise.all(upserts);
+    invalidateSiteSettingsCache();
     return NextResponse.json({ success: true });
   } catch {
     return NextResponse.json({ error: "Failed to save" }, { status: 500 });

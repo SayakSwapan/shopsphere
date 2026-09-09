@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { Minus, Plus, ShoppingCart } from "lucide-react";
+import { useOptionalAuthModal } from "@/components/auth/auth-context";
 import { getEffectivePrice, isFlatDiscount, isPercentDiscount, priceWithGst } from "@/lib/pricing";
 
 interface Variant {
@@ -58,6 +59,7 @@ export default function ComboQuickAddCard({ product, requiredQuantity = 1 }: Pro
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(requiredQuantity);
   const [loading, setLoading] = useState(false);
+  const authModal = useOptionalAuthModal();
 
   const gstRate = Number(product.gstPercentage || 0);
 
@@ -164,6 +166,10 @@ export default function ComboQuickAddCard({ product, requiredQuantity = 1 }: Pro
         }),
       });
       const data = await res.json();
+      if (res.status === 401) {
+        authModal?.openAuth("login");
+        throw new Error("Please login to add to cart");
+      }
       if (!res.ok || !data.success) throw new Error(data.message || "Failed to add to cart");
       window.dispatchEvent(new Event("cart-updated"));
       toast.success(quantity > 1 ? `${quantity} items added to Cart` : "Added to Cart");

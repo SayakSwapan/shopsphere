@@ -1,5 +1,6 @@
 import { cache } from "react";
 import { prisma } from "@/lib/prisma";
+import { TtlCache } from "@/lib/ttl-cache";
 
 export const SITE_DEFAULT_SETTINGS: Record<string, string> = {
   site_name: "ShopSphere",
@@ -35,20 +36,29 @@ export const SITE_DEFAULT_SETTINGS: Record<string, string> = {
   offline_reminder_hours: "24",
 };
 
+const settingsCache = new TtlCache<Record<string, string>>(60_000);
+
 export const getSiteSettings = cache(async (): Promise<Record<string, string>> => {
-  try {
-    const rows = await prisma.siteSetting.findMany({
-      select: { key: true, value: true },
-    });
-    const settings: Record<string, string> = { ...SITE_DEFAULT_SETTINGS };
-    for (const row of rows) {
-      settings[row.key] = row.value;
+  return settingsCache.get(async () => {
+    try {
+      const rows = await prisma.siteSetting.findMany({
+        select: { key: true, value: true },
+      });
+      const settings: Record<string, string> = { ...SITE_DEFAULT_SETTINGS };
+      for (const row of rows) {
+        settings[row.key] = row.value;
+      }
+      return settings;
+    } catch {
+      return { ...SITE_DEFAULT_SETTINGS };
     }
-    return settings;
-  } catch {
-    return { ...SITE_DEFAULT_SETTINGS };
-  }
+  });
 });
+
+/** Drop the cached copy so the next read re-fetches from the database. */
+export function invalidateSiteSettingsCache(): void {
+  settingsCache.clear();
+}
 
 export function getSiteName(settings: Record<string, string>): string {
   return settings.site_name || SITE_DEFAULT_SETTINGS.site_name;

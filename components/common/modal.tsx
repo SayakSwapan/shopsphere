@@ -76,7 +76,8 @@ export default function Modal({
           flex
           items-center
           justify-center
-          p-5
+          p-3
+          sm:p-5
           "
         >
           {/* Overlay */}

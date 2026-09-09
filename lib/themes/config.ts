@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { cache } from "react";
+import { TtlCache } from "@/lib/ttl-cache";
 
 export type ThemeId = "sports" | "fashion" | "ethnic" | "luxury";
 
@@ -57,19 +58,28 @@ export const themeList: ThemeTokens[] = [
   luxuryTheme,
 ];
 
+const activeThemeCache = new TtlCache<ThemeId>(60_000);
+
 export const getActiveTheme = cache(async (): Promise<ThemeId> => {
-  try {
-    const setting = await prisma.siteSetting.findUnique({
-      where: { key: "active_theme" },
-    });
-    if (setting && setting.value in themes) {
-      return setting.value as ThemeId;
+  return activeThemeCache.get(async () => {
+    try {
+      const setting = await prisma.siteSetting.findUnique({
+        where: { key: "active_theme" },
+      });
+      if (setting && setting.value in themes) {
+        return setting.value as ThemeId;
+      }
+    } catch {
+      // DB not ready, fall back to default
     }
-  } catch {
-    // DB not ready, fall back to default
-  }
-  return "luxury";
+    return "luxury";
+  });
 });
+
+/** Drop the cached copy so the next read re-fetches from the database. */
+export function invalidateActiveThemeCache(): void {
+  activeThemeCache.clear();
+}
 
 export async function setActiveTheme(themeId: ThemeId): Promise<void> {
   await prisma.siteSetting.upsert({
@@ -82,4 +92,5 @@ export async function setActiveTheme(themeId: ThemeId): Promise<void> {
       label: "Active Store Theme",
     },
   });
+  invalidateActiveThemeCache();
 }

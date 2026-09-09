@@ -1,7 +1,7 @@
 "use client";
 
 import { Heart } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useOptionalAuthModal } from "@/components/auth/auth-context";
 import { useSession } from "next-auth/react";
 
 interface Props {
@@ -9,15 +9,15 @@ interface Props {
 }
 
 export default function AddToWishlistCard({ productId }: Props) {
-  const router = useRouter();
   const { data: session } = useSession();
+  const authModal = useOptionalAuthModal();
 
   const addWishlist = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
 
     if (!session?.user) {
-      router.push("/login");
+      authModal?.openAuth("login");
       return;
     }
 

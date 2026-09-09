@@ -4,6 +4,7 @@ import { ShoppingBag } from "lucide-react";
 import {
     useState,
 } from "react";
+import { useOptionalAuthModal } from "@/components/auth/auth-context";
 
 interface Props {
     productId: string;
@@ -14,6 +15,7 @@ export default function CartButton({
 }: Props) {
     const [loading, setLoading] =
         useState(false);
+    const authModal = useOptionalAuthModal();
 
     async function addToCart() {
         try {
@@ -36,6 +38,11 @@ export default function CartButton({
                         ),
                     }
                 );
+
+            if (response.status === 401) {
+                authModal?.openAuth("login");
+                return;
+            }
 
             if (!response.ok)
                 return;

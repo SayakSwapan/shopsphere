@@ -76,7 +76,7 @@ export default function AuthModal() {
           />
         </button>
 
-        <div className="relative z-10 max-h-[calc(100dvh-3rem)] overflow-y-auto p-6 sm:p-10">
+        <div className="relative z-10 max-h-[calc(100dvh-2rem)] sm:max-h-[calc(100dvh-3rem)] overflow-y-auto p-5 sm:p-10">
 
           <p
             className="text-xs uppercase tracking-[0.35em]"

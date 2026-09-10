@@ -11,6 +11,7 @@ import { customizationLetterCharge, customizationUnitPrice } from "@/lib/print-p
 import { getRestrictedCartItems } from "@/lib/product-deliverability";
 import { createAdminNotification } from "@/lib/notifications";
 import { getLoyaltyProgram, calculateLoyaltyDiscount } from "@/lib/loyalty";
+import { cancelAbandonedPaymentOrders } from "@/lib/orders/abandoned";
 
 export async function POST(req: Request) {
   try {
@@ -196,6 +197,11 @@ export async function POST(req: Request) {
     // (they are keyed on gateway "RAZORPAY" in the admin).
     const txFeeResult = await calcTransactionFee(total, "RAZORPAY", "CASHFREE");
     const transactionFee = txFeeResult.fee;
+
+    // A new checkout starting means any earlier online payment session this
+    // customer never completed is abandoned — cancel it so it stops cluttering
+    // the customer's order list and the admin archived orders.
+    await cancelAbandonedPaymentOrders(user.id);
 
     const order = await prisma.order.create({
       data: {

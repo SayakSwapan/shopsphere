@@ -30,6 +30,7 @@ import { getRestrictedCartItems } from "@/lib/product-deliverability";
 import { calcTransactionFee } from "@/lib/finance/transaction-charge.service";
 import { createAdminNotification } from "@/lib/notifications";
 import { createPaymentSession, cashfreeClientMode } from "@/lib/payment/cashfree";
+import { cancelAbandonedPaymentOrders } from "@/lib/orders/abandoned";
 import type { ComboOfferType, ComboPaymentMethod } from "@prisma/client";
 
 export class ComboCheckoutError extends Error {
@@ -755,6 +756,11 @@ export async function createComboOrder(input: CreateComboOrderInput): Promise<Co
     txFeeResult = await calcTransactionFee(total, "RAZORPAY", "CASHFREE");
     transactionFee = txFeeResult.fee;
   }
+
+  // A new combo checkout starting means any earlier online payment session this
+  // customer never completed is abandoned — cancel it so it stops cluttering
+  // the customer's order list and the admin archived orders.
+  await cancelAbandonedPaymentOrders(input.userId);
 
   const order = await prisma.order.create({
     data: {

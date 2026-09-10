@@ -25,7 +25,16 @@ export default async function OrdersPage() {
   }
 
   const rawOrders = await prisma.order.findMany({
-    where: { userId: user.id },
+    where: {
+      userId: user.id,
+      // Hide abandoned online checkouts (payment created but never succeeded).
+      // Paid/cancelled-after-payment and COD orders still show so customers can
+      // track or follow up on anything they actually purchased.
+      NOT: {
+        paymentMethod: { in: ["RAZORPAY", "CASHFREE"] },
+        paymentStatus: { in: ["PENDING", "FAILED"] },
+      },
+    },
     include: {
       coupon: {
         select: {

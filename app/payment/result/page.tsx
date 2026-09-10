@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { prisma } from "@/lib/prisma";
 import { markOrderPaid } from "@/lib/payment-fulfillment";
+import { cancelAbandonedOrder } from "@/lib/orders/abandoned";
 import {
   fetchPayment,
   fetchOrderStatus,
@@ -91,8 +92,10 @@ export default async function PaymentResultPage({ searchParams }: Props) {
     redirect(`/order-success?id=${orderId}`);
   }
 
-  // Payment not confirmed (cancelled, failed, or still pending). Send the user
-  // back to checkout — the order was created as PENDING and the cart is intact,
-  // so they can simply retry.
+  // The buyer returned without a confirmed payment (cancelled/failed/abandoned).
+  // Close the order so it doesn't keep showing in the customer's orders or the
+  // admin archived list, then send them back to checkout where the cart is
+  // intact and they can simply retry.
+  await cancelAbandonedOrder(orderId);
   redirect(`/checkout?paymentStatus=not_confirmed&orderId=${orderId}`);
 }

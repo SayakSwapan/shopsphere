@@ -249,13 +249,16 @@ export async function fetchOrderStatus(orderId: string): Promise<CashfreePayment
 
 /**
  * True when Cashfree reports a successful capture for at least the amount we
- * billed. Paid MORE than billed is allowed (some gateways pass customer
- * surcharges on top of the order amount); never LESS.
+ * billed. Accepts either a SUCCESS payment attempt, or the order-level "PAID"
+ * status returned by the Get Order endpoint. Paid MORE than billed is allowed
+ * (some gateways pass customer surcharges on top of the order amount), never LESS.
  */
 export function isPaymentSuccessful(payment: CashfreePayment | null, expectedAmount: number): boolean {
   if (!payment) return false;
+  const isConfirmed =
+    payment.status === "SUCCESS" || payment.status === "PAID";
   return (
-    payment.status === "SUCCESS" &&
+    isConfirmed &&
     payment.amount >= Math.round(expectedAmount * 100) / 100 - 0.01
   );
 }

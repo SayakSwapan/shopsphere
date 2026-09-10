@@ -115,43 +115,42 @@ export default function SportsNavbar({
           <div className="flex items-center justify-between gap-3" style={{ height: 72 }}>
             {/* Logo */}
             <Link href="/" className="flex min-w-0 shrink items-center gap-2.5">
-              {siteLogo ? (
+              {siteLogo && (
                 <SiteLogo
                   src={siteLogo}
                   alt={siteName}
                   height={44}
                   className="max-[420px]:hidden"
                 />
-              ) : (
-                <>
-                  <span
-                    className="flex h-9 w-9 items-center justify-center max-[420px]:hidden"
-                    style={{
-                      background: "var(--sports-volt)",
-                      borderRadius: "var(--t-radius-button)",
-                      boxShadow: "0 2px 12px rgba(203,255,62,0.35)",
-                    }}
-                  >
-                    <Zap size={18} fill="#0A0E13" className="text-[#0A0E13]" />
-                  </span>
-                  <FitText
-                    baseSize={26}
-                    minSize={12}
-                    maxWidth={230}
-                    className="uppercase leading-none"
-                    style={{
-                      fontFamily: "'Anton', sans-serif",
-                      color: "#F4F3EE",
-                      letterSpacing: "0.02em",
-                    }}
-                  >
-                    {brandHead}
-                    {brandAccent && (
-                      <span style={{ color: "var(--sports-volt)" }}>{brandAccent}</span>
-                    )}
-                  </FitText>
-                </>
               )}
+              {!siteLogo && (
+                <span
+                  className="flex h-9 w-9 items-center justify-center max-[420px]:hidden"
+                  style={{
+                    background: "var(--sports-volt)",
+                    borderRadius: "var(--t-radius-button)",
+                    boxShadow: "0 2px 12px rgba(203,255,62,0.35)",
+                  }}
+                >
+                  <Zap size={18} fill="#0A0E13" className="text-[#0A0E13]" />
+                </span>
+              )}
+              <FitText
+                baseSize={26}
+                minSize={12}
+                maxWidth={230}
+                className="uppercase leading-none"
+                style={{
+                  fontFamily: "'Anton', sans-serif",
+                  color: "#F4F3EE",
+                  letterSpacing: "0.02em",
+                }}
+              >
+                {brandHead}
+                {brandAccent && (
+                  <span style={{ color: "var(--sports-volt)" }}>{brandAccent}</span>
+                )}
+              </FitText>
             </Link>
 
             {/* Desktop nav */}

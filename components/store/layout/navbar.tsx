@@ -142,18 +142,19 @@ export default function Navbar({ session, announcement }: NavbarProps) {
                 fontFamily: themeId === "ethnic" ? "'Marcellus', serif" : "var(--t-font-heading)",
               }}
             >
-              {siteLogo ? (
-              <SiteLogo
-                src={siteLogo}
-                alt={siteName}
-                height={themeId === "luxury" ? 40 : 44}
-                className="shrink uppercase"
-              />
-            ) : (
-              <FitText baseSize={30} minSize={12} maxWidth={260}>
-                <SiteBrand name={siteName} />
-              </FitText>
-            )}
+              <div className="flex items-center gap-3 min-w-0">
+                {siteLogo && (
+                  <SiteLogo
+                    src={siteLogo}
+                    alt={siteName}
+                    height={themeId === "luxury" ? 40 : 44}
+                    className="shrink"
+                  />
+                )}
+                <FitText baseSize={30} minSize={12} maxWidth={260}>
+                  <SiteBrand name={siteName} />
+                </FitText>
+              </div>
             </Link>
 
             {/* ── NAV LINKS (desktop) ── */}

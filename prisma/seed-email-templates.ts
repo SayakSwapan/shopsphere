@@ -152,6 +152,104 @@ const EMAIL_TEMPLATES = [
 </div>`,
   },
   {
+    templateKey: "order_confirmation_paid",
+    templateName: "Order Confirmation (Paid)",
+    subject: "Order #{{orderNumber}} confirmed — payment received",
+    description: "Sent to the customer after an online payment is confirmed",
+    placeholders: "{{customerName}},{{orderNumber}},{{orderDate}},{{paymentMethod}},{{paymentStatus}},{{itemsTable}},{{subtotal}},{{gst}},{{shipping}},{{discount}},{{total}},{{shippingName}},{{shippingAddress}},{{shippingPhone}},{{customerEmail}},{{messageHeadline}},{{messageBody}},{{supportEmail}}",
+    body: `<div style="background:#0A0F1E;color:#ffffff;padding:48px 40px;font-family:Arial,Helvetica,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border:none;">
+    <tr><td>{{logoBlock}}</td></tr>
+  </table>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;background:#111827;border-radius:16px;overflow:hidden;border:none;">
+    <tr><td style="padding:36px 32px;">
+      <p style="color:#8892A4;font-size:13px;text-transform:uppercase;letter-spacing:3px;margin:0 0 12px 0;">Payment Received</p>
+      <h2 style="color:#ffffff;font-size:22px;margin:0 0 8px 0;">Hello, {{customerName}}</h2>
+      <p style="color:#8892A4;font-size:14px;line-height:1.7;margin:0 0 28px 0;">{{messageBody}}</p>
+      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;background:rgba(245,166,35,0.06);border:1px solid rgba(245,166,35,0.15);border-radius:12px;margin-bottom:24px;border-top:none;border-left:none;border-right:none;">
+        <tr><td style="padding:24px;">
+          <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border:none;">
+            <tr><td style="padding:6px 0;"><p style="color:#8892A4;font-size:13px;margin:0;">Order Number</p></td><td style="padding:6px 0;text-align:right;"><p style="color:#F5A623;font-size:14px;font-weight:bold;margin:0;">#{{orderNumber}}</p></td></tr>
+            <tr><td style="padding:6px 0;"><p style="color:#8892A4;font-size:13px;margin:0;">Order Date</p></td><td style="padding:6px 0;text-align:right;"><p style="color:#ffffff;font-size:14px;margin:0;">{{orderDate}}</p></td></tr>
+            <tr><td style="padding:6px 0;"><p style="color:#8892A4;font-size:13px;margin:0;">Payment</p></td><td style="padding:6px 0;text-align:right;"><p style="color:#ffffff;font-size:14px;margin:0;">{{paymentMethod}}</p></td></tr>
+            <tr><td style="padding:6px 0;"><p style="color:#8892A4;font-size:13px;margin:0;">Payment Status</p></td><td style="padding:6px 0;text-align:right;"><p style="color:#34D399;font-size:14px;font-weight:bold;margin:0;">{{paymentStatus}}</p></td></tr>
+            <tr><td style="padding:6px 0;"><p style="color:#8892A4;font-size:13px;margin:0;">Order Total</p></td><td style="padding:6px 0;text-align:right;"><p style="color:#ffffff;font-size:16px;font-weight:bold;margin:0;">{{total}}</p></td></tr>
+          </table>
+        </td></tr>
+      </table>
+      <p style="color:#8892A4;font-size:13px;text-transform:uppercase;letter-spacing:3px;margin:0 0 12px 0;">Order Summary</p>
+      {{itemsTable}}
+      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border:none;margin-top:16px;">
+        <tr><td style="padding:6px 0;"><p style="color:#8892A4;font-size:13px;margin:0;">Subtotal (excl. GST)</p></td><td style="padding:6px 0;text-align:right;"><p style="color:#ffffff;font-size:14px;margin:0;">{{subtotal}}</p></td></tr>
+        <tr><td style="padding:6px 0;"><p style="color:#8892A4;font-size:13px;margin:0;">GST</p></td><td style="padding:6px 0;text-align:right;"><p style="color:#ffffff;font-size:14px;margin:0;">{{gst}}</p></td></tr>
+        <tr><td style="padding:6px 0;"><p style="color:#8892A4;font-size:13px;margin:0;">Shipping</p></td><td style="padding:6px 0;text-align:right;"><p style="color:#ffffff;font-size:14px;margin:0;">{{shipping}}</p></td></tr>
+        <tr><td style="padding:6px 0;"><p style="color:#8892A4;font-size:13px;margin:0;">Discount</p></td><td style="padding:6px 0;text-align:right;"><p style="color:#34D399;font-size:14px;margin:0;">{{discount}}</p></td></tr>
+        <tr><td style="padding:6px 0;border-top:1px solid rgba(255,255,255,0.08);"><p style="color:#ffffff;font-size:16px;font-weight:bold;margin:0;">Total</p></td><td style="padding:6px 0;border-top:1px solid rgba(255,255,255,0.08);text-align:right;"><p style="color:#F5A623;font-size:18px;font-weight:bold;margin:0;">{{total}}</p></td></tr>
+      </table>
+      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border:none;margin-top:28px;">
+        <tr><td>
+          <p style="color:#8892A4;font-size:13px;text-transform:uppercase;letter-spacing:3px;margin:0 0 12px 0;">Shipping To</p>
+          <p style="color:#ffffff;font-size:14px;line-height:1.7;margin:0 0 4px 0;">{{shippingName}}</p>
+          <p style="color:#8892A4;font-size:13px;line-height:1.7;margin:0;">{{shippingAddress}}</p>
+          <p style="color:#8892A4;font-size:13px;line-height:1.7;margin:4px 0 0 0;">Phone: {{shippingPhone}}</p>
+        </td></tr>
+      </table>
+      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border:none;border-top:1px solid rgba(255,255,255,0.06);margin-top:28px;"><tr><td style="padding-top:24px;"><p style="color:#8892A4;font-size:12px;margin:0;">This confirmation was sent to <strong style="color:#ffffff;">{{customerEmail}}</strong>.</p></td></tr></table>
+    </td></tr>
+  </table>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border:none;margin-top:32px;"><tr><td align="center"><p style="color:#3A4455;font-size:11px;margin:0;">Questions about your order? Contact us at <strong style="color:#F5A623;">{{supportEmail}}</strong>.</p><p style="color:#3A4455;font-size:11px;margin:8px 0 0 0;">&copy; {{year}} {{siteName}}. All rights reserved.</p></td></tr></table>
+</div>`,
+  },
+  {
+    templateKey: "order_confirmation_cod",
+    templateName: "Order Confirmation (COD)",
+    subject: "Order #{{orderNumber}} confirmed",
+    description: "Sent to the customer right after a Cash-on-Delivery order is placed",
+    placeholders: "{{customerName}},{{orderNumber}},{{orderDate}},{{paymentMethod}},{{paymentStatus}},{{itemsTable}},{{subtotal}},{{gst}},{{shipping}},{{discount}},{{total}},{{shippingName}},{{shippingAddress}},{{shippingPhone}},{{customerEmail}},{{messageHeadline}},{{messageBody}},{{supportEmail}}",
+    body: `<div style="background:#0A0F1E;color:#ffffff;padding:48px 40px;font-family:Arial,Helvetica,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border:none;">
+    <tr><td>{{logoBlock}}</td></tr>
+  </table>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;background:#111827;border-radius:16px;overflow:hidden;border:none;">
+    <tr><td style="padding:36px 32px;">
+      <p style="color:#8892A4;font-size:13px;text-transform:uppercase;letter-spacing:3px;margin:0 0 12px 0;">Order Confirmed</p>
+      <h2 style="color:#ffffff;font-size:22px;margin:0 0 8px 0;">Hello, {{customerName}}</h2>
+      <p style="color:#8892A4;font-size:14px;line-height:1.7;margin:0 0 28px 0;">{{messageBody}}</p>
+      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;background:rgba(245,166,35,0.06);border:1px solid rgba(245,166,35,0.15);border-radius:12px;margin-bottom:24px;border-top:none;border-left:none;border-right:none;">
+        <tr><td style="padding:24px;">
+          <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border:none;">
+            <tr><td style="padding:6px 0;"><p style="color:#8892A4;font-size:13px;margin:0;">Order Number</p></td><td style="padding:6px 0;text-align:right;"><p style="color:#F5A623;font-size:14px;font-weight:bold;margin:0;">#{{orderNumber}}</p></td></tr>
+            <tr><td style="padding:6px 0;"><p style="color:#8892A4;font-size:13px;margin:0;">Order Date</p></td><td style="padding:6px 0;text-align:right;"><p style="color:#ffffff;font-size:14px;margin:0;">{{orderDate}}</p></td></tr>
+            <tr><td style="padding:6px 0;"><p style="color:#8892A4;font-size:13px;margin:0;">Payment</p></td><td style="padding:6px 0;text-align:right;"><p style="color:#ffffff;font-size:14px;margin:0;">{{paymentMethod}}</p></td></tr>
+            <tr><td style="padding:6px 0;"><p style="color:#8892A4;font-size:13px;margin:0;">Payment Status</p></td><td style="padding:6px 0;text-align:right;"><p style="color:#F5A623;font-size:14px;font-weight:bold;margin:0;">{{paymentStatus}}</p></td></tr>
+            <tr><td style="padding:6px 0;"><p style="color:#8892A4;font-size:13px;margin:0;">Total Payable on Delivery</p></td><td style="padding:6px 0;text-align:right;"><p style="color:#ffffff;font-size:16px;font-weight:bold;margin:0;">{{total}}</p></td></tr>
+          </table>
+        </td></tr>
+      </table>
+      <p style="color:#8892A4;font-size:13px;text-transform:uppercase;letter-spacing:3px;margin:0 0 12px 0;">Order Summary</p>
+      {{itemsTable}}
+      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border:none;margin-top:16px;">
+        <tr><td style="padding:6px 0;"><p style="color:#8892A4;font-size:13px;margin:0;">Subtotal (excl. GST)</p></td><td style="padding:6px 0;text-align:right;"><p style="color:#ffffff;font-size:14px;margin:0;">{{subtotal}}</p></td></tr>
+        <tr><td style="padding:6px 0;"><p style="color:#8892A4;font-size:13px;margin:0;">GST</p></td><td style="padding:6px 0;text-align:right;"><p style="color:#ffffff;font-size:14px;margin:0;">{{gst}}</p></td></tr>
+        <tr><td style="padding:6px 0;"><p style="color:#8892A4;font-size:13px;margin:0;">Shipping</p></td><td style="padding:6px 0;text-align:right;"><p style="color:#ffffff;font-size:14px;margin:0;">{{shipping}}</p></td></tr>
+        <tr><td style="padding:6px 0;"><p style="color:#8892A4;font-size:13px;margin:0;">Discount</p></td><td style="padding:6px 0;text-align:right;"><p style="color:#34D399;font-size:14px;margin:0;">{{discount}}</p></td></tr>
+        <tr><td style="padding:6px 0;border-top:1px solid rgba(255,255,255,0.08);"><p style="color:#ffffff;font-size:16px;font-weight:bold;margin:0;">Total</p></td><td style="padding:6px 0;border-top:1px solid rgba(255,255,255,0.08);text-align:right;"><p style="color:#F5A623;font-size:18px;font-weight:bold;margin:0;">{{total}}</p></td></tr>
+      </table>
+      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border:none;margin-top:28px;">
+        <tr><td>
+          <p style="color:#8892A4;font-size:13px;text-transform:uppercase;letter-spacing:3px;margin:0 0 12px 0;">Shipping To</p>
+          <p style="color:#ffffff;font-size:14px;line-height:1.7;margin:0 0 4px 0;">{{shippingName}}</p>
+          <p style="color:#8892A4;font-size:13px;line-height:1.7;margin:0;">{{shippingAddress}}</p>
+          <p style="color:#8892A4;font-size:13px;line-height:1.7;margin:4px 0 0 0;">Phone: {{shippingPhone}}</p>
+        </td></tr>
+      </table>
+      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border:none;border-top:1px solid rgba(255,255,255,0.06);margin-top:28px;"><tr><td style="padding-top:24px;"><p style="color:#8892A4;font-size:12px;margin:0;">Please keep <strong style="color:#F5A623;">{{total}}</strong> ready in cash when the delivery partner arrives. This confirmation was sent to <strong style="color:#ffffff;">{{customerEmail}}</strong>.</p></td></tr></table>
+    </td></tr>
+  </table>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border:none;margin-top:32px;"><tr><td align="center"><p style="color:#3A4455;font-size:11px;margin:0;">Questions about your order? Contact us at <strong style="color:#F5A623;">{{supportEmail}}</strong>.</p><p style="color:#3A4455;font-size:11px;margin:8px 0 0 0;">&copy; {{year}} {{siteName}}. All rights reserved.</p></td></tr></table>
+</div>`,
+  },
+  {
     templateKey: "order_shipped",
     templateName: "Order Shipped",
     subject: "Your Order #{{orderNumber}} Has Shipped!",

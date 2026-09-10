@@ -134,6 +134,10 @@ model order {
 
   paidAt DateTime?
 
+  // Atomic-claim guard so order-confirmation emails are sent exactly once per
+  // order even if a payment callback/webhook is retried (see markOrderPaid).
+  confirmationEmailSent Boolean @default(false)
+
   // Offline due / partial payment tracking
   paidAmount          Decimal  @default(0) @db.Decimal(10, 2)
   dueAmount           Decimal  @default(0) @db.Decimal(10, 2)

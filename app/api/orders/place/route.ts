@@ -6,6 +6,7 @@ import { createAdminNotification } from "@/lib/notifications";
 import { customizationLetterCharge, customizationUnitPrice } from "@/lib/print-pricing";
 import { getRestrictedCartItems } from "@/lib/product-deliverability";
 import { calculateLoyaltyDiscount, redeemLoyaltyReward, getLoyaltyProgram } from "@/lib/loyalty";
+import { sendOrderConfirmationEmail } from "@/lib/email/order-emails";
 import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 
@@ -323,6 +324,12 @@ export async function POST(req: Request) {
       createdById: user.id,
       notifyKey: "notify_on_order",
     }).catch(console.error);
+
+    // Email the customer their COD order confirmation (fire-and-forget, deduped
+    // atomically on the order's confirmationEmailSent flag).
+    void sendOrderConfirmationEmail({ orderId: order.id, type: "COD" }).catch(
+      console.error
+    );
 
     return NextResponse.json({ success: true, orderId: order.id, paymentMethod });
   } catch (error) {

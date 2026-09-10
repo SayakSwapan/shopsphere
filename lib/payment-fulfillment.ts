@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { createAdminNotification } from "@/lib/notifications";
 import { countEligiblePurchase, redeemLoyaltyReward } from "@/lib/loyalty";
+import { sendOrderConfirmationEmail } from "@/lib/email/order-emails";
 
 /**
  * Shared, idempotent post-payment fulfillment used by BOTH the client
@@ -204,6 +205,13 @@ export async function markOrderPaid(
       source: "ONLINE",
     }).catch(console.error);
   }
+
+  // Email the customer the paid order confirmation (fire-and-forget). The
+  // atomic PENDING→PAID claim above means this code path runs exactly once,
+  // and the confirmationEmailSent flag is the second dedupe safety net.
+  void sendOrderConfirmationEmail({ orderId: order.id, type: "PAID" }).catch(
+    console.error
+  );
 
   return { processed: true };
 }

@@ -31,6 +31,7 @@ import { calcTransactionFee } from "@/lib/finance/transaction-charge.service";
 import { createAdminNotification } from "@/lib/notifications";
 import { createPaymentSession, cashfreeClientMode } from "@/lib/payment/cashfree";
 import { cancelAbandonedPaymentOrders } from "@/lib/orders/abandoned";
+import { sendOrderConfirmationEmail } from "@/lib/email/order-emails";
 import type { ComboOfferType, ComboPaymentMethod } from "@prisma/client";
 
 export class ComboCheckoutError extends Error {
@@ -869,6 +870,12 @@ export async function createComboOrder(input: CreateComboOrderInput): Promise<Co
       createdById: user.id,
       notifyKey: "notify_on_order",
     }).catch(console.error);
+
+    // Email the customer their combo COD confirmation (fire-and-forget, deduped
+    // atomically on the order's confirmationEmailSent flag).
+    void sendOrderConfirmationEmail({ orderId: order.id, type: "COD" }).catch(
+      console.error
+    );
 
     return { orderId: order.id, orderNumber: order.orderNumber, paymentMethod: "COD", success: true };
   }

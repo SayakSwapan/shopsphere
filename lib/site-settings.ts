@@ -28,6 +28,12 @@ export const SITE_DEFAULT_SETTINGS: Record<string, string> = {
   business_phone: "+91 98765 43210",
   business_email: "support@shopsphere.com",
   invoice_notes: "Goods once sold will not be taken back or exchanged unless defective.",
+  // Email identity used on every outgoing transactional email (OTP, order
+  // confirmations, replies). Empty values fall back to the business default /
+  // SMTP `EMAIL_USER` / `site_name`.
+  email_sender_name: "",
+  email_sender_email: "",
+  email_support_email: "",
   // Offline sale (POS) return / refund policy — admin-generated text shown on
   // invoices for due / part-payment offline sales.
   offline_no_return_policy:
@@ -134,5 +140,39 @@ export function getOfflinePolicy(settings: Record<string, string>): OfflinePolic
     noReturnEnabled: settings.offline_no_return_policy_enabled !== "false",
     dueHeader: settings.offline_due_header || "NO RETURNS / REFUND",
     reminderHours: Number(settings.offline_reminder_hours) || 24,
+  };
+}
+
+export interface EmailIdentity {
+  /** Display name shown as the email sender (fallback: site_name). */
+  senderName: string;
+  /** From address (fallback: SMTP `EMAIL_USER`, then business/contact email). */
+  senderEmail: string;
+  /** Address customers are told to contact (fallback: contact/business email). */
+  supportEmail: string;
+}
+
+/**
+ * Resolves the project identity used in the envelope + footer of every
+ * outgoing transactional email. Never hardcodes a store name or address:
+ * admins configure it under Admin → Site Settings → Email Identity.
+ */
+export function getEmailIdentity(settings: Record<string, string>): EmailIdentity {
+  const siteName = getSiteName(settings);
+  const senderEmail =
+    settings.email_sender_email?.trim() ||
+    process.env.EMAIL_USER ||
+    settings.business_email?.trim() ||
+    settings.contact_email?.trim() ||
+    "";
+  const supportEmail =
+    settings.email_support_email?.trim() ||
+    settings.contact_email?.trim() ||
+    settings.business_email?.trim() ||
+    senderEmail;
+  return {
+    senderName: settings.email_sender_name?.trim() || siteName,
+    senderEmail,
+    supportEmail,
   };
 }

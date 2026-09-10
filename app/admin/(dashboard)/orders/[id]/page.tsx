@@ -19,6 +19,7 @@ import {
 import PageContainer from "@/components/admin/common/page-container";
 import OrderStatusSelect from "@/components/admin/orders/order-status-select";
 import OrderTrackingUrl from "@/components/admin/orders/order-tracking-url";
+import OrderTestEmailSection from "@/components/admin/orders/order-test-email-section";
 import ShippingLabelButton from "@/components/admin/orders/shipping-label-button";
 import type { ShippingLabelData } from "@/lib/shipping-label-pdf";
 import InvoiceDocument from "@/components/invoice/invoice-document";
@@ -571,6 +572,12 @@ export default async function OrderDetailsPage({
           <OrderTrackingUrl
             orderId={order.id}
             currentTrackingUrl={order.trackingUrl}
+          />
+
+          <OrderTestEmailSection
+            orderId={order.id}
+            customerEmail={order.user.email}
+            paymentMethod={order.paymentMethod}
           />
 
         </div>

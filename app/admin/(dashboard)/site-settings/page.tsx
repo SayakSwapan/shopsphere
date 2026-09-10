@@ -25,6 +25,7 @@ import {
   Store,
   Upload,
   X,
+  Mail,
 } from "lucide-react";
 import dynamic from "next/dynamic";
 
@@ -307,6 +308,71 @@ function BrandEditor({
         value={siteName}
         onChange={onSiteName}
       />
+    </div>
+  );
+}
+
+/* ─── Email Identity Editor ─── */
+function EmailIdentityEditor({
+  settings,
+  updateField,
+}: {
+  settings: Settings;
+  updateField: (k: string, v: string) => void;
+}) {
+  const fields = [
+    {
+      key: "email_sender_name",
+      label: "Sender / Display Name",
+      placeholder: "ProCourt",
+      hint: "Shown as the sender name on every email (OTP, order confirmations, support replies). Leave empty to use the Business / Brand Name.",
+    },
+    {
+      key: "email_sender_email",
+      label: "Sender / From Email",
+      type: "email" as const,
+      placeholder: "support@shopsphere.com",
+      hint: "The address emails are sent from. Must be the authenticated Gmail account (or an alias of it) configured in EMAIL_USER, otherwise delivery will be rejected. Leave empty to use EMAIL_USER.",
+    },
+    {
+      key: "email_support_email",
+      label: "Support / Contact Email",
+      type: "email" as const,
+      placeholder: "support@shopsphere.com",
+      hint: "The address customers are told to reply/contact in email footers. Falls back to the Contact Information email when empty.",
+    },
+  ];
+
+  return (
+    <div className="space-y-5">
+      {fields.map((f) => {
+        const value = settings[f.key] || "";
+        const invalid =
+          f.type === "email" &&
+          value.trim() !== "" &&
+          !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+        return (
+          <div key={f.key} className="space-y-1.5">
+            <label className="block text-sm font-medium text-slate-300">{f.label}</label>
+            {f.hint && <p className="text-[11px] text-slate-500">{f.hint}</p>}
+            <input
+              type={f.type ?? "text"}
+              value={value}
+              onChange={(e) => updateField(f.key, e.target.value)}
+              placeholder={f.placeholder}
+              className={`w-full bg-[#0A0F1E] border ${invalid ? "border-red-500/60" : "border-[#1E293B]"} text-white rounded-lg px-4 py-2.5 text-sm focus:border-amber-500/50 outline-none`}
+            />
+            {invalid && (
+              <p className="text-[11px] text-red-400">Enter a valid email address or leave it empty.</p>
+            )}
+          </div>
+        );
+      })}
+      <p className="text-[11px] text-slate-600">
+        SMTP credentials (<code className="text-amber-400/70">EMAIL_USER</code> /{" "}
+        <code className="text-amber-400/70">EMAIL_PASS</code>) stay in your environment
+        variables and are never exposed to the browser.
+      </p>
     </div>
   );
 }
@@ -912,6 +978,13 @@ const SECTIONS: Array<{
     ],
   },
   {
+    id: "email_identity",
+    icon: Mail,
+    title: "Email Identity",
+    description: "Sender name/email and support contact used on every outgoing email (OTP, order confirmations, support replies).",
+    badge: "Emails",
+  },
+  {
     id: "hours",
     icon: Clock,
     title: "Business Hours",
@@ -1081,7 +1154,12 @@ export default function SiteSettingsPage() {
             badge={section.badge}
             defaultOpen={section.defaultOpen ?? false}
           >
-            {section.id === "hours" ? (
+            {section.id === "email_identity" ? (
+              <EmailIdentityEditor
+                settings={settings}
+                updateField={updateField}
+              />
+            ) : section.id === "hours" ? (
               <BusinessHoursEditor
                 value={settings.business_hours || ""}
                 onChange={(val) => updateField("business_hours", val)}

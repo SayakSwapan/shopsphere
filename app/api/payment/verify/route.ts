@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { markOrderPaid } from "@/lib/payment-fulfillment";
 import { safeCompare } from "@/lib/security";
-import { fetchPayment, isPaymentSuccessful, CashfreeError } from "@/lib/payment/cashfree";
+import { fetchPayment, fetchOrderStatus, isPaymentSuccessful, CashfreeError } from "@/lib/payment/cashfree";
 
 /**
  * Payment verification.
@@ -38,29 +38,49 @@ export async function POST(req: Request) {
         return NextResponse.json({ success: false, message: "Order not found." }, { status: 404 });
       }
 
+      const orderId = order.id;
+      const expectedAmount = Math.round(Number(order.totalAmount) * 100) / 100;
+
       if (order.paymentMethod !== "CASHFREE") {
         return NextResponse.json({ success: false, message: "Order is not a Cashfree order." }, { status: 400 });
       }
 
       if (order.paymentStatus === "PAID") {
-        return NextResponse.json({ success: true, orderId: order.id });
+        return NextResponse.json({ success: true, orderId });
+      }
+
+      // Combines two independent Cashfree signals: a SUCCESS payment attempt
+      // (scanning all attempts, not just the first) and the authoritative
+      // order status (PAID). Either confirming the full billed amount is enough.
+      async function confirmPayment(): Promise<{ confirmed: boolean; paymentId: string | null }> {
+        const payment = await fetchPayment(orderId);
+        let confirmed = isPaymentSuccessful(payment, expectedAmount);
+        let paymentId = payment?.paymentId ?? null;
+
+        if (!confirmed) {
+          const orderStatus = await fetchOrderStatus(orderId);
+          if (orderStatus && isPaymentSuccessful(orderStatus, expectedAmount)) {
+            confirmed = true;
+            if (!paymentId) paymentId = orderStatus.paymentId;
+          }
+        }
+        return { confirmed, paymentId };
       }
 
       // Cashfree's payment status API is eventually-consistent: the record may
-      // take 1-3 seconds to appear after the modal closes. Poll a few times
-      // before giving up.
-      let payment = await fetchPayment(order.id);
-      console.log("[cashfree verify] first fetch for order", order.id, "=>", JSON.stringify(payment));
-      if (!isPaymentSuccessful(payment, Number(order.totalAmount))) {
-        for (let attempt = 0; attempt < 4; attempt++) {
-          await new Promise((resolve) => setTimeout(resolve, 1500));
-          payment = await fetchPayment(order.id);
-          console.log(`[cashfree verify] poll ${attempt + 1} for order ${order.id} =>`, JSON.stringify(payment));
-          if (isPaymentSuccessful(payment, Number(order.totalAmount))) break;
+      // take a few seconds to appear after the modal closes. Poll before giving up.
+      let result = await confirmPayment();
+      console.log("[cashfree verify] first check for order", orderId, "=>", JSON.stringify(result));
+      if (!result.confirmed) {
+        for (let attempt = 0; attempt < 6; attempt++) {
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+          result = await confirmPayment();
+          console.log(`[cashfree verify] poll ${attempt + 1} for order ${orderId} =>`, JSON.stringify(result));
+          if (result.confirmed) break;
         }
       }
-      console.log("[cashfree verify] final for order", order.id, "=>", JSON.stringify(payment), "expected", Number(order.totalAmount));
-      if (!isPaymentSuccessful(payment, Number(order.totalAmount))) {
+      console.log("[cashfree verify] final for order", orderId, "=>", JSON.stringify(result), "expected", expectedAmount);
+      if (!result.confirmed) {
         return NextResponse.json(
           { success: false, message: "Payment is not confirmed by Cashfree." },
           { status: 400 }
@@ -68,12 +88,12 @@ export async function POST(req: Request) {
       }
 
       const { processed } = await markOrderPaid(
-        order.id,
-        payment!.paymentId,
+        orderId,
+        result.paymentId ?? orderId,
         "cashfree:verify"
       );
 
-      return NextResponse.json({ success: true, orderId: order.id, processed });
+      return NextResponse.json({ success: true, orderId, processed });
     }
 
     // ── Razorpay path (legacy) ──

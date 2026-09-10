@@ -196,8 +196,10 @@ export async function fetchPayment(orderId: string): Promise<CashfreePayment | n
       ? ((raw as { data: CashfreePaymentRaw[] }).data)
       : [];
   console.log("[cashfree.fetchPayment] raw response for", orderId, JSON.stringify(raw).slice(0, 1000));
-  // Cashfree returns attempts newest-first; pick the most recent one.
-  const latest = payments[0];
+  // Attempt order is NOT guaranteed newest-first. Never rely on the first
+  // entry: pick a successful attempt if one exists, otherwise the most recent.
+  const successAttempt = payments.find((p) => p.payment_status === "SUCCESS");
+  const latest = successAttempt ?? payments[payments.length - 1];
   if (!latest) return null;
 
   return {
@@ -212,13 +214,48 @@ export async function fetchPayment(orderId: string): Promise<CashfreePayment | n
 }
 
 /**
- * True when Cashfree reports the order as successfully paid, AND the paid
- * amount matches what we billed. Used to authorise fulfillment.
+ * Fetch the order's own status from Cashfree. This is the authoritative
+ * signal: Cashfree sets `order_status` to "PAID" only when the full order
+ * amount has been captured (independent of payment-attempt ordering).
+ */
+export async function fetchOrderStatus(orderId: string): Promise<CashfreePayment | null> {
+  let data: unknown;
+  try {
+    data = await cashfreeFetch(
+      `/pg/orders/${encodeURIComponent(orderId)}`
+    );
+  } catch (err) {
+    console.error("[cashfree.fetchOrderStatus] API error for", orderId, err);
+    throw err;
+  }
+  const raw = data as {
+    order_id?: string;
+    order_status?: string;
+    order_amount?: string | number;
+    cf_order_id?: string;
+  };
+  console.log("[cashfree.fetchOrderStatus] raw response for", orderId, JSON.stringify(raw).slice(0, 1000));
+  if (!raw || typeof raw !== "object" || !raw.order_status) return null;
+
+  return {
+    paymentId: raw.order_id ?? orderId,
+    orderId: raw.order_id ?? orderId,
+    amount: Number(raw.order_amount ?? 0),
+    status: raw.order_status,
+    method: null,
+    captured: raw.order_status === "PAID",
+  };
+}
+
+/**
+ * True when Cashfree reports a successful capture for at least the amount we
+ * billed. Paid MORE than billed is allowed (some gateways pass customer
+ * surcharges on top of the order amount); never LESS.
  */
 export function isPaymentSuccessful(payment: CashfreePayment | null, expectedAmount: number): boolean {
   if (!payment) return false;
   return (
     payment.status === "SUCCESS" &&
-    Math.abs(payment.amount - Math.round(expectedAmount * 100) / 100) <= 0.01
+    payment.amount >= Math.round(expectedAmount * 100) / 100 - 0.01
   );
 }

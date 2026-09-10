@@ -12,7 +12,8 @@ import { useTheme } from "@/lib/themes/theme-provider";
 import SearchBar from "@/components/store/search-bar";
 import SiteBrand from "@/components/brand/site-brand";
 import FitText from "@/components/brand/fit-text";
-import { useSiteName } from "@/components/store/site-settings-provider";
+import SiteLogo from "@/components/brand/site-logo";
+import { useSiteName, useSiteLogo } from "@/components/store/site-settings-provider";
 import SportsNavbar from "./sports-navbar";
 
 interface NavbarProps {
@@ -29,6 +30,7 @@ export default function Navbar({ session, announcement }: NavbarProps) {
   const { openAuth } = useAuthModal();
   const { themeId } = useTheme();
   const siteName = useSiteName();
+  const siteLogo = useSiteLogo();
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -140,9 +142,18 @@ export default function Navbar({ session, announcement }: NavbarProps) {
                 fontFamily: themeId === "ethnic" ? "'Marcellus', serif" : "var(--t-font-heading)",
               }}
             >
+              {siteLogo ? (
+              <SiteLogo
+                src={siteLogo}
+                alt={siteName}
+                height={themeId === "luxury" ? 40 : 44}
+                className="shrink uppercase"
+              />
+            ) : (
               <FitText baseSize={30} minSize={12} maxWidth={260}>
                 <SiteBrand name={siteName} />
               </FitText>
+            )}
             </Link>
 
             {/* ── NAV LINKS (desktop) ── */}

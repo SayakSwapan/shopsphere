@@ -13,7 +13,7 @@ import SessionProvider from "@/components/providers/session-provider";
 import RootThemeShell from "@/components/store/theme/root-theme-shell";
 import { SiteSettingsProvider } from "@/components/store/site-settings-provider";
 import { getActiveTheme } from "@/lib/themes/config";
-import { getSiteSettings, getSiteName } from "@/lib/site-settings";
+import { getSiteSettings, getSiteName, getSiteLogo } from "@/lib/site-settings";
 import { auth } from "@/lib/auth";
 
 const geistSans = Geist({
@@ -36,9 +36,11 @@ export async function generateMetadata(): Promise<Metadata> {
   try {
     const settings = await getSiteSettings();
     const siteName = getSiteName(settings);
+    const logo = getSiteLogo(settings);
     return {
       title: siteName,
       description: `Shop at ${siteName} for premium fashion, footwear and lifestyle products.`,
+      icons: logo ? { icon: [{ url: logo, type: "image/png" }] } : undefined,
     };
   } catch {
     return {

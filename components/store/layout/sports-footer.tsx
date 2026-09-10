@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import SiteLogo from "@/components/brand/site-logo";
 import {
   Globe,
   Share2,
@@ -95,6 +96,7 @@ export default async function SportsFooter() {
   ]);
 
   const siteName = settings.site_name || "ShopSphere";
+  const siteLogo = (settings.site_logo || "").trim();
   const tagline =
     settings.footer_tagline ||
     "Premium sports gear for athletes who demand performance. Official kits, footwear, equipment and accessories.";
@@ -186,24 +188,30 @@ export default async function SportsFooter() {
           {/* Brand column */}
           <div className="sm:col-span-2 lg:col-span-2">
             <Link href="/" className="inline-flex items-center gap-2">
-              <span
-                className="flex h-9 w-9 items-center justify-center"
-                style={{
-                  background: "var(--sports-volt)",
-                  borderRadius: "var(--t-radius-button)",
-                }}
-              >
-                <Zap size={18} fill="#0A0E13" className="text-[#0A0E13]" />
-              </span>
-              <span
-                className="text-2xl font-normal uppercase"
-                style={{ fontFamily: "'Anton', sans-serif", color: "#F4F3EE" }}
-              >
-                {brandHead}
-                {brandAccent && (
-                  <span style={{ color: "var(--sports-volt)" }}>{brandAccent}</span>
-                )}
-              </span>
+              {siteLogo ? (
+                <SiteLogo src={siteLogo} alt={siteName} height={42} />
+              ) : (
+                <>
+                  <span
+                    className="flex h-9 w-9 items-center justify-center"
+                    style={{
+                      background: "var(--sports-volt)",
+                      borderRadius: "var(--t-radius-button)",
+                    }}
+                  >
+                    <Zap size={18} fill="#0A0E13" className="text-[#0A0E13]" />
+                  </span>
+                  <span
+                    className="text-2xl font-normal uppercase"
+                    style={{ fontFamily: "'Anton', sans-serif", color: "#F4F3EE" }}
+                  >
+                    {brandHead}
+                    {brandAccent && (
+                      <span style={{ color: "var(--sports-volt)" }}>{brandAccent}</span>
+                    )}
+                  </span>
+                </>
+              )}
             </Link>
             <p
               className="mt-4 max-w-sm text-sm leading-relaxed"

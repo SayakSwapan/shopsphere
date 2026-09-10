@@ -351,12 +351,28 @@ export default function InvoiceDocument({ order, business }: Props) {
       <div style={{ background: "#111827" }} className="px-6 py-4 sm:px-8">
         <div className="flex items-start justify-between gap-6">
           <div className="max-w-[55%]">
-            <h1
-              className="text-2xl font-black uppercase tracking-tight"
-              style={{ color: PRIMARY }}
-            >
-              {business.name}
-            </h1>
+            {business.logo ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={business.logo}
+                alt={business.name}
+                style={{
+                  display: "block",
+                  height: 56,
+                  maxWidth: 220,
+                  objectFit: "contain",
+                  objectPosition: "left",
+                  marginBottom: 10,
+                }}
+              />
+            ) : (
+              <h1
+                className="text-2xl font-black uppercase tracking-tight"
+                style={{ color: PRIMARY }}
+              >
+                {business.name}
+              </h1>
+            )}
             {business.address && (
               <p className="mt-1 whitespace-pre-line text-xs leading-relaxed text-gray-300">
                 {business.address}

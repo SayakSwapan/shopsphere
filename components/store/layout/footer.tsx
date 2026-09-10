@@ -8,10 +8,11 @@ import {
   ExternalLink,
   Play,
 } from "lucide-react";
-import { getSiteSettings } from "@/lib/site-settings";
+import { getSiteSettings, getSiteLogo } from "@/lib/site-settings";
 import { getActiveTheme } from "@/lib/themes/config";
 import { prisma } from "@/lib/prisma";
 import SiteBrand from "@/components/brand/site-brand";
+import SiteLogo from "@/components/brand/site-logo";
 import SportsFooter from "@/components/store/layout/sports-footer";
 
 async function getFooterLinks() {
@@ -65,6 +66,7 @@ export default async function Footer() {
   }
 
   const siteName = s.site_name || "ShopSphere";
+  const siteLogo = getSiteLogo(s);
   const tagline = s.footer_tagline || "Premium marketplace for fashion, footwear, accessories and lifestyle products.";
   const copyrightText = s.copyright_text || "All Rights Reserved.";
   const socialLinks = [
@@ -121,12 +123,16 @@ export default async function Footer() {
           {/* Brand */}
           <div className="col-span-2 md:col-span-4 lg:col-span-1">
             <Link href="/" className="inline-block">
-              <h2
-                className="text-2xl font-black text-text-heading"
-                style={{ fontFamily: "var(--t-font-heading)" }}
-              >
-                <SiteBrand name={siteName} />
-              </h2>
+              {siteLogo ? (
+                <SiteLogo src={siteLogo} alt={siteName} height={40} />
+              ) : (
+                <h2
+                  className="text-2xl font-black text-text-heading"
+                  style={{ fontFamily: "var(--t-font-heading)" }}
+                >
+                  <SiteBrand name={siteName} />
+                </h2>
+              )}
             </Link>
             <p className="mt-4 text-sm text-text-muted-1 leading-relaxed max-w-xs">
               {tagline}

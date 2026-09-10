@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext } from "react";
-import { SITE_DEFAULT_SETTINGS, getSiteName } from "@/lib/site-settings";
+import { SITE_DEFAULT_SETTINGS, getSiteName, getSiteLogo } from "@/lib/site-settings";
 
 const SiteSettingsContext = createContext<Record<string, string>>(
   SITE_DEFAULT_SETTINGS
@@ -27,4 +27,8 @@ export function useSiteSettings(): Record<string, string> {
 
 export function useSiteName(): string {
   return getSiteName(useSiteSettings());
+}
+
+export function useSiteLogo(): string {
+  return getSiteLogo(useSiteSettings());
 }

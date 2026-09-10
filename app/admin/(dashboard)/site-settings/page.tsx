@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { toast } from "sonner";
 import {
   Save,
@@ -23,6 +23,8 @@ import {
   MessageCircle,
   Ban,
   Store,
+  Upload,
+  X,
 } from "lucide-react";
 import dynamic from "next/dynamic";
 
@@ -200,6 +202,111 @@ function FieldInput({
           placeholder={field.placeholder}
         />
       )}
+    </div>
+  );
+}
+
+/* ─── Brand (Name + Logo) Editor ─── */
+function BrandEditor({
+  siteName,
+  logo,
+  onSiteName,
+  onLogoChange,
+}: {
+  siteName: string;
+  logo: string;
+  onSiteName: (v: string) => void;
+  onLogoChange: (v: string) => void;
+}) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body: form });
+      const data = await res.json();
+      if (!res.ok || !data.url) throw new Error("upload failed");
+      onLogoChange(data.url);
+      toast.success("Logo uploaded");
+    } catch {
+      toast.error("Logo upload failed");
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  }
+
+  return (
+    <div className="space-y-5">
+      <div className="space-y-1.5">
+        <label className="block text-sm font-medium text-slate-300">Logo</label>
+        <p className="text-[11px] text-slate-500">
+          Optional. Upload a transparent PNG (square, ~512x512px, logo about 70-80% of the frame). It replaces the text brand in the header, footer and on invoices. Leave empty to keep showing the site name.
+        </p>
+        <div className="flex items-center gap-4">
+          <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-[#1E293B] bg-[#0A0F1E]">
+            {logo ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={logo}
+                alt="Logo preview"
+                style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }}
+              />
+            ) : (
+              <span className="px-2 text-center text-[10px] uppercase tracking-wider text-slate-600">
+                No logo
+              </span>
+            )}
+          </div>
+          <div className="space-y-2">
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              disabled={uploading}
+              className="flex items-center gap-2 rounded-lg border border-[#1E293B] px-4 py-2 text-sm text-slate-300 transition-colors hover:border-slate-600 hover:text-white disabled:opacity-50"
+            >
+              {uploading ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : (
+                <Upload size={14} />
+              )}
+              {uploading ? "Uploading\u2026" : logo ? "Replace Logo" : "Upload Logo"}
+            </button>
+            {logo && (
+              <button
+                type="button"
+                onClick={() => onLogoChange("")}
+                className="flex items-center gap-2 text-sm text-red-400 transition-colors hover:text-red-300"
+              >
+                <X size={14} /> Remove Logo
+              </button>
+            )}
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/png,image/webp,image/svg+xml"
+              className="hidden"
+              onChange={handleFile}
+            />
+          </div>
+        </div>
+      </div>
+
+      <FieldInput
+        field={{
+          key: "site_name",
+          label: "Business / Brand Name",
+          placeholder: "ProCourt",
+          hint: "Change this one field and the new name appears across the whole project: the browser tab title, the storefront header & footer, admin pages, and on every invoice.",
+        }}
+        value={siteName}
+        onChange={onSiteName}
+      />
     </div>
   );
 }
@@ -981,6 +1088,13 @@ export default function SiteSettingsPage() {
               />
             ) : section.id === "footer_links" ? (
               <FooterLinksEditor />
+            ) : section.id === "brand" ? (
+              <BrandEditor
+                siteName={settings.site_name || ""}
+                logo={settings.site_logo || ""}
+                onSiteName={(val) => updateField("site_name", val)}
+                onLogoChange={(val) => updateField("site_logo", val)}
+              />
             ) : section.id === "admin_notifications" ? (
               <div>
                 {/* Workflow guide */}

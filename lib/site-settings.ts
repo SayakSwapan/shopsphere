@@ -4,6 +4,7 @@ import { TtlCache } from "@/lib/ttl-cache";
 
 export const SITE_DEFAULT_SETTINGS: Record<string, string> = {
   site_name: "ShopSphere",
+  site_logo: "",
   footer_tagline:
     "Premium marketplace for fashion, footwear, accessories and lifestyle products.",
   copyright_text: "All Rights Reserved.",
@@ -64,6 +65,10 @@ export function getSiteName(settings: Record<string, string>): string {
   return settings.site_name || SITE_DEFAULT_SETTINGS.site_name;
 }
 
+export function getSiteLogo(settings: Record<string, string>): string {
+  return (settings.site_logo || "").trim();
+}
+
 export async function fetchSiteName(): Promise<string> {
   try {
     const row = await prisma.siteSetting.findUnique({
@@ -78,6 +83,8 @@ export async function fetchSiteName(): Promise<string> {
 export interface InvoiceBusiness {
   /** Storefront brand displayed everywhere — header, footer, browser tab and invoices. */
   name: string;
+  /** Uploaded transparent site logo; rendered on the invoice header when set. */
+  logo?: string;
   /** Optional separate legal / registered name (shown on the invoice when set). */
   legalName?: string;
   gstin?: string;
@@ -98,6 +105,7 @@ export function getInvoiceBusiness(
       : undefined;
   return {
     name: brand,
+    logo: getSiteLogo(settings) || undefined,
     legalName,
     gstin: settings.gstin || undefined,
     address: settings.business_address || settings.contact_address || undefined,

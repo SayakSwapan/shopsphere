@@ -17,9 +17,10 @@ import NavbarAuth from "../auth/navbar-auth";
 import UserMenu from "../auth/user-menu";
 import { useAuthModal } from "@/components/auth/auth-context";
 import { useTheme } from "@/lib/themes/theme-provider";
-import { useSiteName } from "@/components/store/site-settings-provider";
+import { useSiteName, useSiteLogo } from "@/components/store/site-settings-provider";
 import SearchBar from "@/components/store/search-bar";
 import FitText from "@/components/brand/fit-text";
+import SiteLogo from "@/components/brand/site-logo";
 
 const QUICK_LINKS = [
   { href: "/", label: "Home" },
@@ -52,6 +53,7 @@ export default function SportsNavbar({
   const { openAuth } = useAuthModal();
   const { themeId } = useTheme();
   const siteName = useSiteName();
+  const siteLogo = useSiteLogo();
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -113,32 +115,43 @@ export default function SportsNavbar({
           <div className="flex items-center justify-between gap-3" style={{ height: 72 }}>
             {/* Logo */}
             <Link href="/" className="flex min-w-0 shrink items-center gap-2.5">
-              <span
-                className="flex h-9 w-9 items-center justify-center max-[420px]:hidden"
-                style={{
-                  background: "var(--sports-volt)",
-                  borderRadius: "var(--t-radius-button)",
-                  boxShadow: "0 2px 12px rgba(203,255,62,0.35)",
-                }}
-              >
-                <Zap size={18} fill="#0A0E13" className="text-[#0A0E13]" />
-              </span>
-              <FitText
-                baseSize={26}
-                minSize={12}
-                maxWidth={230}
-                className="uppercase leading-none"
-                style={{
-                  fontFamily: "'Anton', sans-serif",
-                  color: "#F4F3EE",
-                  letterSpacing: "0.02em",
-                }}
-              >
-                {brandHead}
-                {brandAccent && (
-                  <span style={{ color: "var(--sports-volt)" }}>{brandAccent}</span>
-                )}
-              </FitText>
+              {siteLogo ? (
+                <SiteLogo
+                  src={siteLogo}
+                  alt={siteName}
+                  height={44}
+                  className="max-[420px]:hidden"
+                />
+              ) : (
+                <>
+                  <span
+                    className="flex h-9 w-9 items-center justify-center max-[420px]:hidden"
+                    style={{
+                      background: "var(--sports-volt)",
+                      borderRadius: "var(--t-radius-button)",
+                      boxShadow: "0 2px 12px rgba(203,255,62,0.35)",
+                    }}
+                  >
+                    <Zap size={18} fill="#0A0E13" className="text-[#0A0E13]" />
+                  </span>
+                  <FitText
+                    baseSize={26}
+                    minSize={12}
+                    maxWidth={230}
+                    className="uppercase leading-none"
+                    style={{
+                      fontFamily: "'Anton', sans-serif",
+                      color: "#F4F3EE",
+                      letterSpacing: "0.02em",
+                    }}
+                  >
+                    {brandHead}
+                    {brandAccent && (
+                      <span style={{ color: "var(--sports-volt)" }}>{brandAccent}</span>
+                    )}
+                  </FitText>
+                </>
+              )}
             </Link>
 
             {/* Desktop nav */}

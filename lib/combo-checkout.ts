@@ -616,6 +616,8 @@ export interface CreateComboOrderInput {
   addressId: string;
   paymentMethod: "COD" | "CASHFREE";
   useLoyaltyReward?: boolean;
+  /** Site origin (scheme://host) used to build the Cashfree return_url. */
+  returnUrlBase?: string;
 }
 
 export interface ComboOrderResult {
@@ -886,6 +888,9 @@ export async function createComboOrder(input: CreateComboOrderInput): Promise<Co
     orderId: order.id,
     amount: total,
     note: order.orderNumber,
+    redirectUrl: input.returnUrlBase
+      ? `${input.returnUrlBase}/payment/result?orderId=${order.id}`
+      : undefined,
     customer: {
       customerId: user.id,
       customerName: address.fullName,

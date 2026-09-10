@@ -525,32 +525,16 @@ export default function CheckoutClient({
       const data = await res.json();
       if (!res.ok) { toast.error(data.message ?? "Unable to start payment."); return; }
 
-      // Release the button before the Cashfree modal takes over — the modal
-      // has its own loading UI so the page shouldn't show one too.
+      // Release the button before the Cashfree checkout page takes over — the
+      // hosted page has its own loading UI so the page shouldn't show one too.
       setLoading(false);
 
       const { openCashfreeCheckout } = await import("@/lib/cashfree-checkout");
-      const { redirect } = await openCashfreeCheckout(
-        data.payment_session_id,
-        data.cashfreeMode
-      );
-      if (!redirect) {
-        toast.error("Payment cancelled.");
-        return;
-      }
-
-      const verify = await fetch("/api/payment/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ orderId: data.dbOrderId }),
-      });
-      const verifyData = await verify.json();
-      if (verifyData.success) {
-        toast.success("Payment Successful");
-        router.push(`/order-success?id=${verifyData.orderId}`);
-      } else {
-        toast.error(verifyData.message ?? "Payment verification failed.");
-      }
+      // Redirects the CURRENT tab to the Cashfree checkout page. After the
+      // payment completes, Cashfree sends the browser back to
+      // /payment/result?orderId=..., which verifies the order and shows the
+      // success page. Nothing to handle here.
+      await openCashfreeCheckout(data.payment_session_id, data.cashfreeMode);
     } catch (error) {
       console.error("[checkout] payment flow error", error);
       toast.error(

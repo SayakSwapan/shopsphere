@@ -39,12 +39,18 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, message: "User not found." }, { status: 404 });
     }
 
+    const proto = req.headers.get("x-forwarded-proto") ?? "http";
+    const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host");
+
     const result = await createComboOrder({
       userId: user.id,
       offerSlug,
       selections,
       addressId,
       paymentMethod,
+      returnUrlBase: paymentMethod === "CASHFREE"
+        ? `${proto}://${host}`
+        : undefined,
     });
 
     return NextResponse.json({ success: true, ...result });

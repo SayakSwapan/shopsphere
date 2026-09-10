@@ -2,18 +2,20 @@
  * Cashfree Payment Gateway — server-side client (temporarily replacing
  * Razorpay as the online gateway).
  *
- * Flow:
+* Flow:
  *  1. createPaymentSession()  → /pg/orders → payment_session_id
- *  2. Client opens the Cashfree checkout modal with that session id
- *  3. On modal close, the server verifies the outcome by calling
- *     fetchPayment(orderId) — we never trust an amount/signature reported
- *     by the browser; the order is only marked PAID when Cashfree's own
- *     API returns a SUCCESS payment for our order id.
+ *  2. Client opens the Cashfree hosted checkout (redirectTarget: "self") with
+ *     that session id — the CURRENT tab navigates to Cashfree's page.
+ *  3. After payment the browser is redirected back to the merchant
+ *     `redirectUrl` (/payment/result), which verifies the outcome server-side
+ *     by calling fetchPayment()/fetchOrderStatus() — we never trust an
+ *     amount/signature reported by the browser; the order is only marked PAID
+ *     when Cashfree's own API returns a SUCCESS/PAID status for our order id.
  *
  * Env vars:
  *  CASHFREE_CLIENT_ID       API key (test_: prefixes for sandbox)
  *  CASHFREE_CLIENT_SECRET   API secret
-* CASHFREE_ENV             "TEST" or "PROD"
+ * CASHFREE_ENV             "TEST" or "PROD"
  */
 export class CashfreeError extends Error {
   status: number;
@@ -140,6 +142,8 @@ export async function createPaymentSession(input: {
   amount: number;
   customer: CashfreeCustomer;
   note?: string;
+  /** Absolute URL the buyer is sent back to after the Cashfree checkout page. */
+  redirectUrl?: string;
 }): Promise<CashfreeSession> {
   const amount = Math.round(Number(input.amount) * 100) / 100;
   const body = {
@@ -147,6 +151,9 @@ export async function createPaymentSession(input: {
     order_amount: amount,
     order_currency: "INR",
     order_note: input.note ?? "Order Payment",
+    order_meta: input.redirectUrl
+      ? { return_url: input.redirectUrl }
+      : undefined,
     customer_details: {
       customer_id: input.customer.customerId,
       customer_name: input.customer.customerName,

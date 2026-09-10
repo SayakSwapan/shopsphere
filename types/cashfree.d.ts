@@ -10,7 +10,8 @@ declare module "@cashfreepayments/cashfree-js" {
 
   export interface CashfreeCheckoutOptions {
     paymentSessionId: string;
-    redirectTarget: "modal";
+    /** "modal" opens a popup; "self" navigates the current tab to the hosted page. */
+    redirectTarget: "modal" | "self";
   }
 
   export interface CashfreeSDK {

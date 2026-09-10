@@ -275,10 +275,13 @@ export async function POST(req: Request) {
     // Our db order id doubles as the Cashfree order id (unique + matches
     // Cashfree's allowed order_id charset), which lets us verify payment
     // status server-side without any extra lookup.
+    const proto = req.headers.get("x-forwarded-proto") ?? "http";
+    const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host");
     const paymentSession = await createPaymentSession({
       orderId: order.id,
       amount: total,
       note: order.orderNumber,
+      redirectUrl: `${proto}://${host}/payment/result?orderId=${order.id}`,
       customer: {
         customerId: user.id,
         customerName: address.fullName,

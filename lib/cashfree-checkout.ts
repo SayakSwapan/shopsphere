@@ -1,25 +1,22 @@
 import { load } from "@cashfreepayments/cashfree-js";
 
-export interface CashfreeCheckoutResult {
-  /** True when the Cashfree payment page was completed and the modal closed. */
-  redirect: boolean;
-}
-
 /**
- * Opens the Cashfree hosted checkout modal for a payment session.
+ * Launches the Cashfree hosted checkout for a payment session.
  *
- * The return value only tells us the modal closed — payment truth always comes
- * from the server-side verify call (Cashfree payments API), never from here.
+ * `redirectTarget: "self"` keeps the buyer on the SAME tab — the current
+ * window navigates to Cashfree's checkout page instead of a popup/new tab.
+ * Once the payment completes (or is cancelled), Cashfree redirects the
+ * browser back to the merchant return_url we set when creating the session
+ * (/payment/result?orderId=...), where the server verifies the outcome.
  *
  * `mode` is REQUIRED and must exactly match the environment that created the
  * session server-side (`cashfreeClientMode()`). Passing `"sandbox"` for a
- * production session (or vice-versa) makes Cashfree refuse to launch the
- * popup. Fallback to NEXT_PUBLIC_CASHFREE_ENV is kept only as a last resort.
+ * production session (or vice-versa) makes Cashfree refuse to load the SDK.
  */
 export async function openCashfreeCheckout(
   paymentSessionId: string,
   mode: "production" | "sandbox"
-): Promise<CashfreeCheckoutResult> {
+): Promise<{ redirect: boolean }> {
   if (!paymentSessionId) {
     throw new Error(
       "Payment session is missing. Please go back and try again."
@@ -38,22 +35,24 @@ export async function openCashfreeCheckout(
   } catch (err) {
     console.error("[cashfree-checkout] SDK load failed", err);
     throw new Error(
-      "The payment window could not be loaded. Please allow scripts from sdk.cashfree.com (or disable your ad blocker) and try again."
+      "The payment page could not be loaded. Please allow scripts from sdk.cashfree.com (or disable your ad blocker) and try again."
     );
   }
 
   try {
-    const result = await cashfree.checkout({
+    await cashfree.checkout({
       paymentSessionId,
-      redirectTarget: "modal",
+      redirectTarget: "self",
     });
-    return { redirect: Boolean(result?.redirect) };
+    // With redirectTarget "self" the browser is already being navigated to the
+    // Cashfree checkout page; the order outcome is confirmed by /payment/result.
+    return { redirect: true };
   } catch (err) {
     console.error("[cashfree-checkout] checkout failed", err);
     const message =
       err instanceof Error && err.message
         ? err.message
-        : "The payment window failed to open.";
+        : "The payment page failed to open.";
     throw new Error(`Payment window error: ${message}`);
   }
 }

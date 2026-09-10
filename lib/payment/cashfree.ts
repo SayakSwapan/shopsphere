@@ -187,9 +187,15 @@ export async function fetchPayment(orderId: string): Promise<CashfreePayment | n
     console.error("[cashfree.fetchPayment] API error for", orderId, err);
     throw err;
   }
-  const raw = data as { data?: CashfreePaymentRaw[] };
+  // Cashfree returns a plain JSON array for this endpoint. Some API versions /
+  // sandbox responses nest it under a `data` key — accept both defensively.
+  const raw = data as unknown;
+  const payments: CashfreePaymentRaw[] = Array.isArray(raw)
+    ? (raw as CashfreePaymentRaw[])
+    : Array.isArray((raw as { data?: unknown })?.data)
+      ? ((raw as { data: CashfreePaymentRaw[] }).data)
+      : [];
   console.log("[cashfree.fetchPayment] raw response for", orderId, JSON.stringify(raw).slice(0, 1000));
-  const payments: CashfreePaymentRaw[] = Array.isArray(raw?.data) ? raw.data : [];
   // Cashfree returns attempts newest-first; pick the most recent one.
   const latest = payments[0];
   if (!latest) return null;

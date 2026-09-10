@@ -869,6 +869,22 @@ export async function createComboOrder(input: CreateComboOrderInput): Promise<Co
       entityId: order.id,
       createdById: user.id,
       notifyKey: "notify_on_order",
+      orderSummary: {
+        orderId: order.id,
+        orderNumber: order.orderNumber,
+        customerName: address.fullName,
+        customerPhone: address.phone,
+        customerEmail: user.email,
+        items: priced.items.map((item) => ({
+          name: item.productName,
+          variant: [item.variantGender, item.variantSize ? `Size: ${item.variantSize}` : null].filter(Boolean).join(" · ") || undefined,
+          qty: item.quantity,
+          price: round2(item.payBase + getGstBreakdown(item.payBase, item.gstRate).gstAmount) * item.quantity,
+        })),
+        total,
+        paymentMethod: "COD",
+        shippingAddress: [address.fullName, address.addressLine1, address.addressLine2, `${address.city}, ${address.state} — ${address.pincode}`].filter(Boolean).join("\n"),
+      },
     }).catch(console.error);
 
     // Email the customer their combo COD confirmation (fire-and-forget, deduped

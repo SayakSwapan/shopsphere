@@ -323,6 +323,22 @@ export async function POST(req: Request) {
       entityId: order.id,
       createdById: user.id,
       notifyKey: "notify_on_order",
+      orderSummary: {
+        orderId: order.id,
+        orderNumber: order.orderNumber,
+        customerName: address.fullName,
+        customerPhone: address.phone,
+        customerEmail: user.email,
+        items: user.cart.cartitem.map((item) => ({
+          name: item.product.name,
+          variant: [item.productvariant?.gender?.name, item.productvariant?.size?.sizeName ? `Size: ${item.productvariant.size.sizeName}` : null].filter(Boolean).join(" · ") || undefined,
+          qty: item.quantity,
+          price: (unitBaseByItemId.get(item.id)! + customizationUnitPrice(item.customization as import("@/types/custom-print").CustomPrintData | null)) * item.quantity,
+        })),
+        total,
+        paymentMethod: "COD",
+        shippingAddress: [address.fullName, address.addressLine1, address.addressLine2, `${address.city}, ${address.state} — ${address.pincode}`].filter(Boolean).join("\n"),
+      },
     }).catch(console.error);
 
     // Email the customer their COD order confirmation (fire-and-forget, deduped

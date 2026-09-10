@@ -21,7 +21,9 @@ export async function markOrderPaid(
   const order = await prisma.order.findFirst({
     where: { id: orderId },
     include: {
-      orderitem: true,
+      orderitem: {
+        include: { product: { select: { name: true } } },
+      },
 
       user: {
         include: {
@@ -164,6 +166,23 @@ export async function markOrderPaid(
     entityType: "ORDER",
     entityId: order.id,
     notifyKey: "notify_on_order",
+    orderSummary: {
+      orderId: order.id,
+      orderNumber: order.orderNumber,
+      customerName: order.fullName,
+      customerPhone: order.phone,
+      customerEmail: order.user?.email ?? undefined,
+      items: order.orderitem.map((item) => ({
+        name: item.product.name,
+        variant: [item.variantGender, item.variantSize ? `Size: ${item.variantSize}` : null].filter(Boolean).join(" · ") || undefined,
+        qty: item.quantity,
+        price: Number(item.total),
+      })),
+      total: Number(order.totalAmount),
+      paymentMethod: order.paymentMethod,
+      paymentStatus: "PAID",
+      shippingAddress: [order.fullName, order.addressLine1, order.addressLine2, `${order.city}, ${order.state} — ${order.pincode}`].filter(Boolean).join("\n"),
+    },
   }).catch(console.error);
 
   // If the customer redeemed a loyalty reward on this verified order, consume

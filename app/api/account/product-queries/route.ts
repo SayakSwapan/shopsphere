@@ -86,6 +86,18 @@ export async function POST(request: Request) {
     });
 
     try {
+      const userInfo = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { name: true, email: true, phone: true },
+      });
+
+      const orderNumber = orderId
+        ? await prisma.order.findUnique({
+            where: { id: orderId },
+            select: { orderNumber: true },
+          })
+        : null;
+
       await createAdminNotification({
         title: "New Product Query",
         message: `${subjectText} — ${messageText.slice(0, 100)}`,
@@ -93,6 +105,15 @@ export async function POST(request: Request) {
         entityType: "PRODUCT_QUERY",
         entityId: query.id,
         notifyKey: "notify_on_query",
+        telegramDetails: [
+          `👤 Name: ${userInfo?.name || "N/A"}`,
+          `📧 Email: ${userInfo?.email || "N/A"}`,
+          ...(userInfo?.phone ? [`📱 Phone: ${userInfo.phone}`] : []),
+          ...(orderNumber ? [`📦 Order: ${orderNumber.orderNumber}`] : []),
+          ``,
+          `📝 Subject: ${subjectText}`,
+          `📄 Message: ${messageText}`,
+        ],
       });
     } catch (e) {
       console.error("Failed to notify admins about product query:", e);

@@ -86,6 +86,16 @@ interface CreateNotificationParams {
   createdById?: string;
   notifyKey?: string;
   orderSummary?: OrderSummaryForNotification;
+  /** Extra key/value detail lines appended to the Telegram message (e.g. contact form fields). */
+  telegramDetails?: string[];
+}
+
+function buildSimpleTelegramMessage(title: string, message: string, details?: string[]): string {
+  const parts = [`🔔 <b>${escapeTelegramHtml(title)}</b>`, "", escapeTelegramHtml(message)];
+  if (details && details.length > 0) {
+    parts.push("", ...details.map(escapeTelegramHtml));
+  }
+  return parts.join("\n");
 }
 
 export async function createAdminNotification(params: CreateNotificationParams) {
@@ -123,7 +133,7 @@ export async function createAdminNotification(params: CreateNotificationParams) 
   if (isTelegramConfigured()) {
     const telegramMsg = params.orderSummary
       ? buildTelegramOrderMessage(params.orderSummary)
-      : `🔔 <b>${escapeTelegramHtml(params.title)}</b>\n\n${escapeTelegramHtml(params.message)}`;
+      : buildSimpleTelegramMessage(params.title, params.message, params.telegramDetails);
     sendTelegramMessage(telegramMsg).catch(() => {});
   }
 

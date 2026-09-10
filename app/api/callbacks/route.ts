@@ -30,10 +30,11 @@ export async function POST(request: NextRequest) {
 
     const cleanPhone = phone.replace(/[^\d+]/g, "");
 
+    let productName: string | null = null;
     if (productId) {
       const product = await prisma.product.findUnique({
         where: { id: productId },
-        select: { id: true },
+        select: { id: true, name: true },
       });
       if (!product) {
         return NextResponse.json(
@@ -41,6 +42,7 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
       }
+      productName = product.name;
     }
 
     const recent = await prisma.callbackRequest.findFirst({
@@ -80,6 +82,13 @@ export async function POST(request: NextRequest) {
         entityType: "CALLBACK_REQUEST",
         entityId: callback.id,
         notifyKey: "notify_on_contact",
+        telegramDetails: [
+          `👤 Name: ${callback.name}`,
+          `📱 Phone: ${callback.phone}`,
+        ].concat(
+          productName ? [`🛍️ Product: ${productName}`] : [],
+          callback.message ? ["", `📄 Message: ${callback.message}`] : []
+        ),
       });
     } catch (e) {
       console.error("Failed to notify admins about callback request:", e);

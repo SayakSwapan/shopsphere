@@ -74,6 +74,14 @@ export async function POST(request: NextRequest) {
         entityType: "CONTACT_MESSAGE",
         entityId: contactMessage.id,
         notifyKey: "notify_on_contact",
+        telegramDetails: [
+          `👤 Name: ${contactMessage.name}`,
+          `📧 Email: ${contactMessage.email}`,
+          `📱 Phone: ${contactMessage.phone || "Not provided"}`,
+          ``,
+          `📝 Subject: ${contactMessage.subject}`,
+          `📄 Message: ${contactMessage.message}`,
+        ],
       });
     } catch (e) {
       console.error("Failed to notify admins about contact message:", e);

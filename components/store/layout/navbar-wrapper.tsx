@@ -17,25 +17,11 @@ async function getAnnouncement() {
   }
 }
 
-async function getCategories() {
-  try {
-    return await prisma.category.findMany({
-      where: { isActive: true },
-      orderBy: { sortOrder: "asc" },
-      select: { id: true, name: true, slug: true, image: true },
-      take: 12,
-    });
-  } catch {
-    return [];
-  }
-}
-
 export default async function NavbarWrapper() {
-  const [session, announcement, categories] = await Promise.all([
+  const [session, announcement] = await Promise.all([
     auth(),
     getAnnouncement(),
-    getCategories(),
   ]);
 
-  return <Navbar session={session} announcement={announcement} categories={categories} />;
+  return <Navbar session={session} announcement={announcement} />;
 }

@@ -114,7 +114,7 @@ export default function SportsNavbar({
         <div className="mx-auto max-w-7xl px-4">
           <div className="flex items-center justify-between gap-3" style={{ height: 72 }}>
             {/* Logo */}
-            <Link href="/" className="flex min-w-0 shrink items-center gap-2.5">
+            <Link href="/" className="flex min-w-0 shrink items-center gap-2.5 overflow-hidden">
               {siteLogo && (
                 <SiteLogo
                   src={siteLogo}
@@ -137,7 +137,7 @@ export default function SportsNavbar({
               )}
               <FitText
                 baseSize={26}
-                minSize={12}
+                minSize={11}
                 maxWidth={230}
                 className="uppercase leading-none"
                 style={{
@@ -177,7 +177,7 @@ export default function SportsNavbar({
               </div>
 
               <button
-                className="xl:hidden p-3"
+                className="xl:hidden p-2.5 sm:p-3"
                 style={{ color: "#9A9D9F" }}
                 onClick={() => setSearchOpen(!searchOpen)}
                 aria-label="Toggle search"
@@ -187,7 +187,7 @@ export default function SportsNavbar({
 
               <Link
                 href="/wishlist"
-                className="relative p-3"
+                className="relative p-2.5 sm:p-3"
                 style={{ color: "#9A9D9F" }}
                 aria-label="Wishlist"
               >
@@ -231,7 +231,7 @@ export default function SportsNavbar({
               </Link>
 
               <button
-                className="lg:hidden p-3"
+                className="lg:hidden p-2.5 sm:p-3"
                 style={{ color: "#F4F3EE" }}
                 onClick={() => setMenuOpen(!menuOpen)}
                 aria-label="Toggle menu"

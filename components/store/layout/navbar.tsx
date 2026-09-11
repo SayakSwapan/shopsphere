@@ -142,16 +142,16 @@ export default function Navbar({ session, announcement }: NavbarProps) {
                 fontFamily: themeId === "ethnic" ? "'Marcellus', serif" : "var(--t-font-heading)",
               }}
             >
-              <div className="flex items-center gap-3 min-w-0">
+              <div className="flex items-center gap-2.5 min-w-0 overflow-hidden">
                 {siteLogo && (
                   <SiteLogo
                     src={siteLogo}
                     alt={siteName}
                     height={themeId === "luxury" ? 40 : 44}
-                    className="shrink"
+                    className="shrink max-[420px]:hidden"
                   />
                 )}
-                <FitText baseSize={30} minSize={12} maxWidth={260}>
+                <FitText baseSize={30} minSize={11} maxWidth={260}>
                   <SiteBrand name={siteName} />
                 </FitText>
               </div>
@@ -188,7 +188,7 @@ export default function Navbar({ session, announcement }: NavbarProps) {
 
               {/* Search icon (mobile) */}
               <button
-                className="xl:hidden p-3 transition-colors"
+                className="xl:hidden p-2.5 sm:p-3 transition-colors"
                 style={{
                   color: "var(--t-text-muted-1)",
                   borderRadius: "var(--t-radius-button)",
@@ -202,7 +202,7 @@ export default function Navbar({ session, announcement }: NavbarProps) {
               {/* Wishlist */}
               <Link
                 href="/wishlist"
-                className="relative p-3 transition-colors"
+                className="relative p-2.5 sm:p-3 transition-colors"
                 style={{
                   color: "var(--t-text-muted-1)",
                   borderRadius: "var(--t-radius-button)",
@@ -255,7 +255,7 @@ export default function Navbar({ session, announcement }: NavbarProps) {
 
               {/* Hamburger (mobile) */}
               <button
-                className="lg:hidden p-3 transition-colors"
+                className="lg:hidden p-2.5 sm:p-3 transition-colors"
                 style={{
                   color: "var(--t-text-muted-1)",
                   borderRadius: "var(--t-radius-button)",

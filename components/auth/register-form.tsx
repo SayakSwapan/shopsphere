@@ -6,12 +6,12 @@ import {
   Eye,
   EyeOff,
   Loader2,
-  CheckCircle2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { useOptionalAuthModal } from "./auth-context";
 import { getLoginRedirect } from "@/lib/login-redirect";
+import PasswordHints, { passwordRulesValid } from "./password-hints";
 
 export default function RegisterForm() {
   const router = useRouter();
@@ -27,13 +27,6 @@ export default function RegisterForm() {
     password: "",
     confirmPassword: "",
   });
-
-  const passwordStrength =
-    form.password.length >= 10
-      ? "Strong"
-      : form.password.length >= 6
-      ? "Medium"
-      : "Weak";
 
   function updateField(key: keyof typeof form, value: string) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -166,29 +159,7 @@ export default function RegisterForm() {
               {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
           </div>
-          <div className="mt-2 flex items-center gap-2 text-sm">
-            <CheckCircle2
-              size={15}
-              className={
-                passwordStrength === "Strong"
-                  ? "text-success"
-                  : passwordStrength === "Medium"
-                  ? "text-accent"
-                  : "text-danger"
-              }
-            />
-            <span
-              className={
-                passwordStrength === "Strong"
-                  ? "text-success"
-                  : passwordStrength === "Medium"
-                  ? "text-accent"
-                  : "text-danger"
-              }
-            >
-              {passwordStrength} Password
-            </span>
-          </div>
+          {form.password.length > 0 && <PasswordHints password={form.password} />}
         </div>
 
         <div>
@@ -211,10 +182,13 @@ export default function RegisterForm() {
               {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
           </div>
+          {form.confirmPassword.length > 0 && form.password !== form.confirmPassword && (
+            <p className="mt-1 text-xs text-danger">Passwords do not match</p>
+          )}
         </div>
 
         <button
-          disabled={loading}
+          disabled={loading || !passwordRulesValid(form.password) || form.password !== form.confirmPassword}
           className="flex h-12 w-full items-center justify-center rounded-xl font-bold transition disabled:opacity-60"
           style={{ background: "var(--t-primary)", color: "var(--t-button-text)" }}
         >

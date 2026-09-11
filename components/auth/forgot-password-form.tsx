@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Loader2, Eye, EyeOff, ArrowLeft, Mail, ShieldCheck, Lock } from "lucide-react";
 import { toast } from "sonner";
+import PasswordHints, { passwordRulesValid } from "./password-hints";
 
 type Step = "email" | "otp" | "reset";
 
@@ -57,8 +58,8 @@ export default function ForgotPasswordForm({ onBack }: Props) {
   async function handleResetPassword(e: React.FormEvent) {
     e.preventDefault();
 
-    if (newPassword.length < 6) {
-      toast.error("Password must be at least 6 characters.");
+    if (!passwordRulesValid(newPassword)) {
+      toast.error("Password must be at least 8 characters with one uppercase, one lowercase, and one special character.");
       return;
     }
 
@@ -240,45 +241,7 @@ export default function ForgotPasswordForm({ onBack }: Props) {
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
             </div>
-            {newPassword.length > 0 && (
-              <div className="mt-2 flex gap-1">
-                {[1, 2, 3].map((i) => (
-                  <div
-                    key={i}
-                    className="h-1 flex-1 rounded-full transition-colors"
-                    style={{
-                      background:
-                        newPassword.length >= i * 4
-                          ? newPassword.length >= 10
-                            ? "var(--t-success)"
-                            : newPassword.length >= 6
-                            ? "var(--t-primary)"
-                            : "var(--t-danger)"
-                          : "var(--t-border-subtle)",
-                    }}
-                  />
-                ))}
-              </div>
-            )}
-            {newPassword.length > 0 && (
-              <p
-                className="mt-1 text-xs font-medium"
-                style={{
-                  color:
-                    newPassword.length >= 10
-                      ? "var(--t-success)"
-                      : newPassword.length >= 6
-                      ? "var(--t-primary)"
-                      : "var(--t-danger)",
-                }}
-              >
-                {newPassword.length >= 10
-                  ? "Strong"
-                  : newPassword.length >= 6
-                  ? "Medium"
-                  : "Weak — at least 6 characters"}
-              </p>
-            )}
+            {newPassword.length > 0 && <PasswordHints password={newPassword} />}
           </div>
 
           <div>
@@ -300,7 +263,7 @@ export default function ForgotPasswordForm({ onBack }: Props) {
 
           <button
             type="submit"
-            disabled={loading || newPassword.length < 6 || newPassword !== confirmPassword}
+            disabled={loading || !passwordRulesValid(newPassword) || newPassword !== confirmPassword}
             className="flex h-12 w-full items-center justify-center rounded-xl font-bold transition disabled:opacity-60"
             style={{ background: "var(--t-primary)", color: "var(--t-button-text)" }}
           >

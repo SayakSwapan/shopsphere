@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { Lock, Eye, EyeOff, Save, Loader2 } from "lucide-react";
+import PasswordHints, { passwordRulesValid } from "@/components/auth/password-hints";
 
 interface Props {
   hasPassword: boolean;
@@ -31,8 +32,8 @@ export default function PasswordForm({ hasPassword }: Props) {
       return;
     }
 
-    if (form.newPassword.length < 6) {
-      toast.error("New password must be at least 6 characters");
+    if (!passwordRulesValid(form.newPassword)) {
+      toast.error("Password must be at least 8 characters with one uppercase, one lowercase, and one special character");
       return;
     }
 
@@ -157,6 +158,7 @@ export default function PasswordForm({ hasPassword }: Props) {
             {showNew ? <EyeOff size={16} /> : <Eye size={16} />}
           </button>
         </div>
+        {form.newPassword.length > 0 && <PasswordHints password={form.newPassword} />}
       </div>
 
       <div>
@@ -174,11 +176,14 @@ export default function PasswordForm({ hasPassword }: Props) {
           className="w-full px-4 py-3 text-sm outline-none focus:border-primary transition-colors"
           style={inputStyle}
         />
+        {form.confirmPassword.length > 0 && form.newPassword !== form.confirmPassword && (
+          <p className="mt-1 text-xs text-danger">Passwords do not match</p>
+        )}
       </div>
 
       <button
         type="submit"
-        disabled={loading}
+        disabled={loading || !passwordRulesValid(form.newPassword) || form.newPassword !== form.confirmPassword}
         className="flex items-center gap-2 px-6 py-3 text-sm font-bold transition bg-primary text-button-text hover:opacity-90 disabled:opacity-60"
         style={{ borderRadius: "var(--t-radius-button)", fontFamily: "var(--t-font-heading)" }}
       >

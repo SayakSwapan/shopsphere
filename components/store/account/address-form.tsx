@@ -1,6 +1,6 @@
 "use client";
 
-import {  useState } from "react";
+import { useState, useEffect } from "react";
 import { X } from "lucide-react";
 import { toast } from "sonner";
 
@@ -131,93 +131,89 @@ const [form, setForm] = useState(initialForm);
     }
   }
 
+  // Lock body scroll while modal is open, close on Escape.
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+
+    return () => {
+      document.body.style.overflow = prev;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [onClose]);
+
   return (
-    <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
-
-      <div className="w-full max-w-3xl border border-border-card bg-bg-page" style={{ borderRadius: "var(--t-radius-card)" }}>
-
-        <div className="flex items-center justify-between p-6" style={{ borderBottom: "1px solid var(--t-border-subtle)" }}>
-
-          <h2 className="text-2xl font-bold text-text-heading" style={{ fontFamily: "var(--t-font-heading)" }}>
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 p-0 sm:p-4"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label={address ? "Edit address" : "Add new address"}
+    >
+      <div
+        className="flex w-full max-w-2xl flex-col overflow-hidden bg-bg-page border border-border-card shadow-2xl"
+        style={{ borderRadius: "var(--t-radius-card)", maxHeight: "min(92dvh, 42rem)" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header — fixed at top */}
+        <div
+          className="flex shrink-0 items-center justify-between gap-3 px-4 py-4 sm:px-6"
+          style={{ borderBottom: "1px solid var(--t-border-subtle)" }}
+        >
+          <h2
+            className="text-lg sm:text-xl font-black text-text-heading"
+            style={{ fontFamily: "var(--t-font-heading)" }}
+          >
             {address ? "Edit Address" : "Add Address"}
           </h2>
-
-          <button onClick={onClose} className="p-2">
-            <X className="text-text-heading" />
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border transition hover:bg-bg-card"
+            style={{ borderColor: "var(--t-border-card)" }}
+          >
+            <X size={20} className="text-text-heading" />
           </button>
-
         </div>
 
-        <div className="grid md:grid-cols-2 gap-5 p-6">
+        {/* Scrollable body — flex-1 + min-h-0 lets this fill remaining
+            height so overflow-y-auto kicks in for tall forms. */}
+        <div
+          className="flex-1 min-h-0 overflow-y-auto overscroll-contain"
+          style={{ padding: "clamp(1rem, 4vw, 1.5rem)" }}
+        >
+          <div className="grid gap-5 md:grid-cols-2">
+            <Input label="Full Name" value={form.fullName} onChange={(v) => change("fullName", v)} />
+            <Input label="Phone" value={form.phone} onChange={(v) => change("phone", v)} />
+            <Input label="Address Line 1" value={form.addressLine1} onChange={(v) => change("addressLine1", v)} />
+            <Input label="Address Line 2" value={form.addressLine2} onChange={(v) => change("addressLine2", v)} />
+            <Input label="City" value={form.city} onChange={(v) => change("city", v)} />
+            <Input label="State" value={form.state} onChange={(v) => change("state", v)} />
+            <Input label="Pincode" value={form.pincode} onChange={(v) => change("pincode", v)} />
+            <Input label="Country" value={form.country} onChange={(v) => change("country", v)} />
+          </div>
 
-          <Input
-            label="Full Name"
-            value={form.fullName}
-            onChange={(v) => change("fullName", v)}
-          />
-
-          <Input
-            label="Phone"
-            value={form.phone}
-            onChange={(v) => change("phone", v)}
-          />
-
-          <Input
-            label="Address Line 1"
-            value={form.addressLine1}
-            onChange={(v) => change("addressLine1", v)}
-          />
-
-          <Input
-            label="Address Line 2"
-            value={form.addressLine2}
-            onChange={(v) => change("addressLine2", v)}
-          />
-
-          <Input
-            label="City"
-            value={form.city}
-            onChange={(v) => change("city", v)}
-          />
-
-          <Input
-            label="State"
-            value={form.state}
-            onChange={(v) => change("state", v)}
-          />
-
-          <Input
-            label="Pincode"
-            value={form.pincode}
-            onChange={(v) => change("pincode", v)}
-          />
-
-          <Input
-            label="Country"
-            value={form.country}
-            onChange={(v) => change("country", v)}
-          />
-
-        </div>
-
-        <div className="px-6">
-
-          <label className="flex items-center gap-3 text-text-heading">
-
+          <label className="mt-5 flex items-center gap-3 text-sm font-medium text-text-heading">
             <input
               type="checkbox"
               checked={form.isDefault}
               onChange={(e) => change("isDefault", e.target.checked)}
+              className="h-4 w-4"
             />
-
             Make Default Address
-
           </label>
-
         </div>
 
-        <div className="flex justify-end gap-3 p-6">
-
+        {/* Footer — sticky at bottom so Save is always reachable */}
+        <div
+          className="flex shrink-0 items-center justify-end gap-3 px-4 py-4 sm:px-6"
+          style={{ borderTop: "1px solid var(--t-border-subtle)" }}
+        >
           <button
             onClick={onClose}
             className="border border-border-card px-5 py-2.5 text-text-heading"
@@ -225,20 +221,16 @@ const [form, setForm] = useState(initialForm);
           >
             Cancel
           </button>
-
           <button
             disabled={loading}
             onClick={saveAddress}
-            className="px-6 py-2.5 font-bold bg-primary text-button-text"
-            style={{ borderRadius: "var(--t-radius-button)", fontFamily: "var(--t-font-heading)" }}
+            className="px-6 py-2.5 font-bold bg-primary text-button-text transition disabled:opacity-60"
+            style={{ borderRadius: "var(--t-radius-button)", fontFamily: "var(--t-font-heading)", minHeight: 44 }}
           >
-            {loading ? "Saving..." : "Save Address"}
+            {loading ? "Saving..." : address ? "Update Address" : "Save Address"}
           </button>
-
         </div>
-
       </div>
-
     </div>
   );
 }

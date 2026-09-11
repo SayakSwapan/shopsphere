@@ -65,7 +65,7 @@ export default function AddressModal({
         className="flex w-full max-w-lg flex-col overflow-hidden bg-bg-page border border-border-card shadow-2xl"
         style={{
           borderRadius: "var(--t-radius-card)",
-          maxHeight: "min(90dvh, 42rem)",
+          maxHeight: "min(92dvh, 42rem)",
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -90,8 +90,14 @@ export default function AddressModal({
           </button>
         </div>
 
-        {/* Body — scrolls independently on small screens */}
-        <div className="overflow-y-auto overscroll-contain px-4 py-4 sm:px-6 sm:py-6">
+        {/* Body — flex-1 + min-h-0 lets this div shrink inside the flex
+            column so overflow-y-auto actually kicks in when content is tall.
+            overscroll-contain prevents the page behind from scrolling when
+            the user reaches the top or bottom of this scroll area. */}
+        <div
+          className="flex-1 min-h-0 overflow-y-auto overscroll-contain"
+          style={{ padding: "clamp(1rem, 4vw, 1.5rem)" }}
+        >
           <AddressForm
             address={address}
             onSuccess={() => {

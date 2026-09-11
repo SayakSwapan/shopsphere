@@ -185,6 +185,7 @@ export default function ProductForm({
       customPrintImage: false,
       customPrintTypeIds: [],
       restrictedPincodes: [],
+      allowedPaymentMethods: "BOTH",
 
       metaTitle: "",
 
@@ -316,6 +317,7 @@ export default function ProductForm({
       customPrintImage: (product as { customPrintImage?: boolean }).customPrintImage ?? false,
       customPrintTypeIds: (product as { printTypes?: { id: string }[] }).printTypes?.map((pt) => pt.id) ?? [],
       restrictedPincodes: (product as { restrictedPincodes?: string[] }).restrictedPincodes ?? [],
+      allowedPaymentMethods: (product as { allowedPaymentMethods?: string }).allowedPaymentMethods ?? "BOTH",
 
       stock: product.stock,
       lowStockAlert: product.lowStockAlert,

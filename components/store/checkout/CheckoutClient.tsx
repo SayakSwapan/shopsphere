@@ -66,6 +66,7 @@ interface CartItem {
     sellingPrice: number;
     salePrice?: number;
     gstPercentage: number;
+    allowedPaymentMethods?: "BOTH" | "ONLINE_ONLY" | "COD_ONLY" | string;
     productimage: { url: string }[];
   };
 }
@@ -281,12 +282,43 @@ export default function CheckoutClient({
     [items, customizationDraft]
   );
 
-  // COD is never selectable while any item carries custom printing — derive the
-  // effective method so an already-selected COD falls back to ONLINE.
-  const effectiveMethod = hasCustomisation && method === "COD" ? "ONLINE" : method;
+  // Per-product payment-method permissions set by the admin. Offline (POS)
+  // sales are always allowed, so only online COD / online-payment matter here.
+  const productsAllowCod = useMemo(
+    () =>
+      items.every(
+        (i) =>
+          !i.product.allowedPaymentMethods ||
+          i.product.allowedPaymentMethods === "BOTH" ||
+          i.product.allowedPaymentMethods === "COD_ONLY"
+      ),
+    [items]
+  );
 
-  const codAvailable = (pincodeInfo?.allowCod ?? true) && !hasCustomisation;
-  const onlineAvailable = pincodeInfo?.allowOnline ?? true;
+  const productsAllowOnline = useMemo(
+    () =>
+      items.every(
+        (i) =>
+          !i.product.allowedPaymentMethods ||
+          i.product.allowedPaymentMethods === "BOTH" ||
+          i.product.allowedPaymentMethods === "ONLINE_ONLY"
+      ),
+    [items]
+  );
+
+  // Never leave the user on a method their cart can't use — derive the
+  // effective method so an already-selected choice falls back to the allowed one.
+  const effectiveMethod =
+    method === "COD" && (hasCustomisation || !productsAllowCod)
+      ? "ONLINE"
+      : method === "ONLINE" && !productsAllowOnline
+        ? "COD"
+        : method;
+
+  const codAvailable =
+    (pincodeInfo?.allowCod ?? true) && !hasCustomisation && productsAllowCod;
+  const onlineAvailable =
+    (pincodeInfo?.allowOnline ?? true) && productsAllowOnline;
 
   const cartProductIds = useMemo(
     () => items.map((i) => i.product.id).join(","),
@@ -924,7 +956,7 @@ export default function CheckoutClient({
                 </button>
               )}
 
-              {hasCustomisation ? (
+              {hasCustomisation || !productsAllowCod ? (
                 <button
                   type="button"
                   disabled
@@ -939,7 +971,9 @@ export default function CheckoutClient({
                     <div>
                       <p className="font-bold text-text-heading">Cash On Delivery</p>
                       <p className="text-sm text-text-muted-1">
-                        Unavailable for items with custom printing — please pay online
+                        {hasCustomisation
+                          ? "Unavailable for items with custom printing — please pay online"
+                          : "COD is not available for one or more items in your cart — please pay online"}
                       </p>
                     </div>
                     <div

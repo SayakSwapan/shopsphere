@@ -89,6 +89,8 @@ interface OfferMeta {
   getCount: number;
   customPrice: number | null;
   allowedPaymentMethods: "BOTH" | "ONLINE_ONLY" | "COD_ONLY";
+  productAllowsCod: boolean;
+  productAllowsOnline: boolean;
 }
 
 interface Props {
@@ -150,12 +152,16 @@ export default function ComboCheckoutClient({ addresses, offerSlug }: Props) {
         if (cancelled) return;
         if (data.success && data.offer) {
           setOffer(data.offer);
-          // If the offer forbids the default online method, fall back to COD.
+          // If the offer or its products forbid the default online method, fall back to COD.
           if (
-            data.offer.allowedPaymentMethods === "COD_ONLY" &&
+            (data.offer.allowedPaymentMethods === "COD_ONLY" ||
+              data.offer.productAllowsOnline === false) &&
             method === "CASHFREE"
           ) {
             setMethod("COD");
+          }
+          if (data.offer.productAllowsCod === false && method === "COD") {
+            setMethod("CASHFREE");
           }
           setSelections(stored);
         } else {
@@ -244,8 +250,11 @@ export default function ComboCheckoutClient({ addresses, offerSlug }: Props) {
     !offer || offer.allowedPaymentMethods === "BOTH" || offer.allowedPaymentMethods === "COD_ONLY";
   const offerAllowsOnline =
     !offer || offer.allowedPaymentMethods === "BOTH" || offer.allowedPaymentMethods === "ONLINE_ONLY";
-  const showOnline = onlineAvailable && offerAllowsOnline;
-  const showCod = codAvailable && offerAllowsCod;
+  // Per-product payment-method permissions (admin-set on each product).
+  const productsAllowCod = !offer || offer.productAllowsCod !== false;
+  const productsAllowOnline = !offer || offer.productAllowsOnline !== false;
+  const showOnline = onlineAvailable && offerAllowsOnline && productsAllowOnline;
+  const showCod = codAvailable && offerAllowsCod && productsAllowCod;
 
   // ── Order placement ──
   const placeOrder = useCallback(async () => {

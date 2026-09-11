@@ -70,6 +70,21 @@ export async function POST(req: Request) {
       );
     }
 
+    // Per-product payment-method permission — a product configured as online-only
+    // can never be paid by COD.
+    const productBlocksCod = user.cart.cartitem.some(
+      (item) => item.product.allowedPaymentMethods === "ONLINE_ONLY"
+    );
+    if (productBlocksCod) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "COD is not available for one or more items in your cart. Please use online payment.",
+        },
+        { status: 400 }
+      );
+    }
+
     // Multi-level stock revalidation at order time. The cart-add/update checks
     // can go stale between browsing and checkout, so re-verify against the
     // CURRENT database stock before taking the money / reserving inventory.

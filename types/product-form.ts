@@ -82,4 +82,8 @@ export interface ProductFormValues {
 
   // Pincodes where this product is NOT deliverable. Empty = deliverable everywhere.
   restrictedPincodes: string[];
+
+  // Online payment methods allowed for this product (offline/POS always allowed).
+  // "BOTH" | "ONLINE_ONLY" | "COD_ONLY"
+  allowedPaymentMethods: string;
 }

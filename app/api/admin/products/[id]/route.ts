@@ -123,6 +123,13 @@ export async function PUT(
               typeof pincode === "string" && /^\d{6}$/.test(pincode)
           ),
 
+          allowedPaymentMethods:
+            body.allowedPaymentMethods === "ONLINE_ONLY"
+              ? "ONLINE_ONLY"
+              : body.allowedPaymentMethods === "COD_ONLY"
+                ? "COD_ONLY"
+                : "BOTH",
+
           categoryId: body.categoryId,
 
           sizeChartId: body.sizeChartId || null,

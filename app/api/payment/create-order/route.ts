@@ -77,6 +77,21 @@ export async function POST(req: Request) {
       );
     }
 
+    // Per-product payment-method permission — a product configured as COD-only
+    // can never be paid online.
+    const productBlocksOnline = user.cart.cartitem.some(
+      (item) => item.product.allowedPaymentMethods === "COD_ONLY"
+    );
+    if (productBlocksOnline) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Online payment is not available for one or more items in your cart. Please choose Cash on Delivery instead.",
+        },
+        { status: 400 }
+      );
+    }
+
     // Multi-level stock revalidation at checkout init. Cart-add/update checks
     // can go stale, so verify against CURRENT database stock before creating
     // the payment order. The fulfillment step re-guards with conditional

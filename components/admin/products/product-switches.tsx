@@ -67,6 +67,26 @@ export default function ProductSwitches({
 
       </div>
 
+      <div className="mt-6 border-t border-slate-700 pt-6">
+        <label className="block">
+          <span className="text-slate-300">
+            Online Payment Methods
+            <FieldHint text="Choose which payment options customers can use for this product on the online store. Offline (POS) sales are always allowed regardless of this setting." />
+          </span>
+          <select
+            {...register("allowedPaymentMethods")}
+            className="mt-2 w-full rounded-xl border border-slate-700 bg-[#0B1220] px-3 py-2.5 text-sm text-white outline-none focus:border-amber-500"
+          >
+            <option value="BOTH">COD &amp; Online both</option>
+            <option value="ONLINE_ONLY">Online payment only</option>
+            <option value="COD_ONLY">Cash On Delivery only</option>
+          </select>
+          <p className="mt-2 text-xs text-slate-500">
+            Offline / in-store sales are always available for every product.
+          </p>
+        </label>
+      </div>
+
     </div>
   );
 }

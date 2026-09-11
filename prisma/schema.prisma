@@ -282,6 +282,19 @@ model offlinepayment {
   @@index([createdAt])
 }
 
+/**
+ * Payment methods the online store may offer for a product. Offline (POS)
+ * sales are always allowed independently of this.
+ *   BOTH        -> online + COD both allowed
+ *   ONLINE_ONLY -> online (Cashfree) only
+ *   COD_ONLY    -> cash on delivery only
+ */
+enum ProductPaymentMethod {
+  BOTH
+  ONLINE_ONLY
+  COD_ONLY
+}
+
 model product {
   id             String           @id
   name           String
@@ -330,6 +343,10 @@ model product {
 
   // Pincodes where this product cannot be delivered. Empty = deliverable everywhere.
   restrictedPincodes String[] @default([])
+
+  // Which payment methods the online store may offer for this product. Offline
+  // (POS) sales are always allowed regardless of this value.
+  allowedPaymentMethods ProductPaymentMethod @default(BOTH)
 
   cartitem       cartitem[]
   orderitem      orderitem[]

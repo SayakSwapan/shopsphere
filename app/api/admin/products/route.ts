@@ -157,6 +157,13 @@ export async function POST(req: Request) {
               typeof pincode === "string" && /^\d{6}$/.test(pincode)
           ),
 
+          allowedPaymentMethods:
+            body.allowedPaymentMethods === "ONLINE_ONLY"
+              ? "ONLINE_ONLY"
+              : body.allowedPaymentMethods === "COD_ONLY"
+                ? "COD_ONLY"
+                : "BOTH",
+
           status: body.status,
           isFeatured: body.isFeatured,
           isTrending: body.isTrending,

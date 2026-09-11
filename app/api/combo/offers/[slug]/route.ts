@@ -28,6 +28,8 @@ export async function GET(_req: Request, { params }: RouteContext) {
         getCount: offer.getCount,
         customPrice: offer.customPrice,
         allowedPaymentMethods: offer.allowedPaymentMethods,
+        productAllowsCod: offer.productAllowsCod,
+        productAllowsOnline: offer.productAllowsOnline,
       },
     });
   } catch (error) {

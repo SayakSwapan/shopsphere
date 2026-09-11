@@ -266,15 +266,44 @@ export async function getPublicComboOfferMeta(slug: string) {
       getCount: true,
       customPrice: true,
       allowedPaymentMethods: true,
+      items: {
+        select: {
+          product: { select: { allowedPaymentMethods: true } },
+        },
+      },
     },
   });
   if (!offer) return null;
+
+  // Aggregation helper so we don't leak the items join below.
+  const products = (offer.items ?? []).map((it) => it.product);
+  const productAllowsCod = products.every(
+    (p) =>
+      !p.allowedPaymentMethods ||
+      p.allowedPaymentMethods === "BOTH" ||
+      p.allowedPaymentMethods === "COD_ONLY"
+  );
+  const productAllowsOnline = products.every(
+    (p) =>
+      !p.allowedPaymentMethods ||
+      p.allowedPaymentMethods === "BOTH" ||
+      p.allowedPaymentMethods === "ONLINE_ONLY"
+  );
+
   return {
-    ...offer,
+    id: offer.id,
+    slug: offer.slug,
+    title: offer.title,
+    badge: offer.badge,
+    comboType: offer.comboType,
+    buyCount: offer.buyCount,
     getCount: offer.comboType === "PICK_ANY"
       ? Math.max(2, Number(offer.minPick) || 2)
       : Math.max(2, Number(offer.getCount) || 2),
     customPrice: offer.customPrice != null ? Number(offer.customPrice) : null,
+    allowedPaymentMethods: offer.allowedPaymentMethods,
+    productAllowsCod,
+    productAllowsOnline,
   };
 }
 
@@ -726,6 +755,28 @@ export async function createComboOrder(input: CreateComboOrderInput): Promise<Co
   }
   if (input.paymentMethod === "CASHFREE" && allowed === "COD_ONLY") {
     throw new ComboCheckoutError("This offer only accepts Cash on Delivery.");
+  }
+
+  // Per-product payment-method permissions (admin-set on each product). A
+  // COD-only product can never be paid online, even inside a combo, and an
+  // online-only product can never be paid by COD.
+  const selectedProductIds = new Set(
+    input.selections.map((s) => s.productId)
+  );
+  const selectedProducts = fullOffer.items
+    .filter((it) => selectedProductIds.has(it.product.id))
+    .map((it) => it.product as { allowedPaymentMethods?: string });
+  const productBlocksCod = selectedProducts.some(
+    (p) => p.allowedPaymentMethods === "ONLINE_ONLY"
+  );
+  const productBlocksOnline = selectedProducts.some(
+    (p) => p.allowedPaymentMethods === "COD_ONLY"
+  );
+  if (input.paymentMethod === "COD" && productBlocksCod) {
+    throw new ComboCheckoutError("COD is not available for one or more products in this offer. Please use online payment.");
+  }
+  if (input.paymentMethod === "CASHFREE" && productBlocksOnline) {
+    throw new ComboCheckoutError("Online payment is not available for one or more products in this offer. Please use Cash on Delivery.");
   }
 
   const shippingResult = await calculateShipping(

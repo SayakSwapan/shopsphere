@@ -152,6 +152,7 @@ export default async function CheckoutPage() {
               sellingPrice: Number(item.product.sellingPrice),
               salePrice: Number(item.product.salePrice ?? 0),
               gstPercentage: Number(item.product.gstPercentage) || 0,
+              allowedPaymentMethods: item.product.allowedPaymentMethods,
               productimage: item.product.productimage,
             },
           };

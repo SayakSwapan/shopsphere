@@ -75,9 +75,11 @@ async function basePlaceholders(): Promise<{
   const settings = await getSiteSettings();
   const siteName = getSiteName(settings);
   const siteLogo = getSiteLogo(settings);
+  const tagline =
+    settings.footer_tagline?.trim() || "Premium Fashion & Lifestyle";
   const logoBlock = siteLogo
-    ? `<img src="${escapeEmailHtml(siteLogo)}" alt="${escapeEmailHtml(siteName)}" width="140" style="max-width:180px;max-height:64px;object-fit:contain;" />`
-    : `<h1 style="color:#F5A623;font-size:28px;margin:0 0 8px 0;">${escapeEmailHtml(siteName)}</h1><p style="color:#8892A4;font-size:13px;margin:0 0 32px 0;">Premium Fashion &amp; Lifestyle</p>`;
+    ? `<img src="${escapeEmailHtml(siteLogo)}" alt="${escapeEmailHtml(siteName)}" width="140" style="max-width:200px;max-height:64px;object-fit:contain;display:inline-block;" />`
+    : `<h1 style="color:#111827;font-size:28px;font-weight:800;margin:0 0 4px 0;">${escapeEmailHtml(siteName)}</h1><p style="color:#6B7280;font-size:13px;margin:0;">${escapeEmailHtml(tagline)}</p>`;
   return {
     siteName,
     storeName: siteName,

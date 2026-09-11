@@ -173,37 +173,37 @@ function buildItemsTable(order: OrderForEmail): string {
         .join(" · ");
       const customLine =
         cust || item.customization?.imageUrl
-          ? `<p style="margin:2px 0 0 0;font-size:12px;color:#F5A623;">Custom print: ${escapeEmailHtml(cust || "Design")}</p>`
+          ? `<p style="margin:2px 0 0 0;font-size:12px;color:#B45309;">Custom print: ${escapeEmailHtml(cust || "Design")}</p>`
           : "";
       const img = item.product.productimage[0]?.url;
       const imgHtml = img
         ? `<img src="${escapeEmailHtml(img)}" width="56" height="56" alt="" style="border-radius:8px;object-fit:cover;vertical-align:middle;" />`
-        : `<span style="display:inline-block;width:56px;height:56px;border-radius:8px;background:#1E293B;"></span>`;
+        : `<span style="display:inline-block;width:56px;height:56px;border-radius:8px;background:#F1F5F9;"></span>`;
 
       return `<tr>
-        <td style="padding:12px 12px 12px 0;border-bottom:1px solid rgba(255,255,255,0.06);">
+        <td style="padding:12px 12px 12px 0;border-bottom:1px solid #EDF0F5;">
           <table cellpadding="0" cellspacing="0" border="0" style="border:none;"><tr>
             <td style="padding-right:12px;vertical-align:middle;">${imgHtml}</td>
             <td style="vertical-align:middle;">
-              <a href="${productUrl}" style="margin:0;font-size:14px;color:#ffffff;font-weight:bold;text-decoration:none;">${productName}</a>
-              ${variant ? `<p style="margin:2px 0 0 0;font-size:12px;color:#8892A4;">${escapeEmailHtml(variant)}</p>` : ""}
+              <a href="${productUrl}" style="margin:0;font-size:14px;color:#111827;font-weight:bold;text-decoration:none;">${productName}</a>
+              ${variant ? `<p style="margin:2px 0 0 0;font-size:12px;color:#6B7280;">${escapeEmailHtml(variant)}</p>` : ""}
               ${customLine}
             </td>
           </tr></table>
         </td>
-        <td align="center" style="padding:12px;border-bottom:1px solid rgba(255,255,255,0.06);color:#8892A4;font-size:13px;">${item.quantity}</td>
-        <td align="right" style="padding:12px;border-bottom:1px solid rgba(255,255,255,0.06);color:#8892A4;font-size:13px;white-space:nowrap;">${formatCurrency(item.price)}</td>
-        <td align="right" style="padding:12px 0 12px 12px;border-bottom:1px solid rgba(255,255,255,0.06);color:#ffffff;font-size:14px;font-weight:bold;white-space:nowrap;">${formatCurrency(item.total)}</td>
+        <td align="center" style="padding:12px;border-bottom:1px solid #EDF0F5;color:#4B5563;font-size:13px;">${item.quantity}</td>
+        <td align="right" style="padding:12px;border-bottom:1px solid #EDF0F5;color:#4B5563;font-size:13px;white-space:nowrap;">${formatCurrency(item.price)}</td>
+        <td align="right" style="padding:12px 0 12px 12px;border-bottom:1px solid #EDF0F5;color:#111827;font-size:14px;font-weight:bold;white-space:nowrap;">${formatCurrency(item.total)}</td>
       </tr>`;
     })
     .join("");
 
   return `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border:none;">
     <thead><tr>
-      <th align="left" style="padding:0 0 8px 0;font-size:11px;color:#8892A4;text-transform:uppercase;letter-spacing:2px;">Item</th>
-      <th align="center" style="padding:0 0 8px 0;font-size:11px;color:#8892A4;text-transform:uppercase;letter-spacing:2px;">Qty</th>
-      <th align="right" style="padding:0 0 8px 0;font-size:11px;color:#8892A4;text-transform:uppercase;letter-spacing:2px;">Price</th>
-      <th align="right" style="padding:0 0 8px 0;font-size:11px;color:#8892A4;text-transform:uppercase;letter-spacing:2px;">Total</th>
+      <th align="left" style="padding:0 0 8px 0;font-size:11px;color:#9AA4B2;text-transform:uppercase;letter-spacing:2px;">Item</th>
+      <th align="center" style="padding:0 0 8px 0;font-size:11px;color:#9AA4B2;text-transform:uppercase;letter-spacing:2px;">Qty</th>
+      <th align="right" style="padding:0 0 8px 0;font-size:11px;color:#9AA4B2;text-transform:uppercase;letter-spacing:2px;">Price</th>
+      <th align="right" style="padding:0 0 8px 0;font-size:11px;color:#9AA4B2;text-transform:uppercase;letter-spacing:2px;">Total</th>
     </tr></thead>
     <tbody>${rows}</tbody>
   </table>`;
@@ -281,47 +281,47 @@ export function buildOrderEmailData(
 }
 
 function buildOrderFallbackBody(): string {
-  return `<div style="background:#0A0F1E;color:#ffffff;padding:48px 40px;font-family:Arial,Helvetica,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border:none;">
-    <tr><td>{{logoBlock}}</td></tr>
-  </table>
-  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;background:#111827;border-radius:16px;overflow:hidden;border:none;">
-    <tr><td style="padding:36px 32px;">
-      <p style="color:#8892A4;font-size:13px;text-transform:uppercase;letter-spacing:3px;margin:0 0 12px 0;">Order Confirmation</p>
-      <h2 style="color:#ffffff;font-size:22px;margin:0 0 8px 0;">Hello, {{customerName}}</h2>
-      <p style="color:#8892A4;font-size:14px;line-height:1.7;margin:0 0 28px 0;">{{messageBody}}</p>
-      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;background:rgba(245,166,35,0.06);border:1px solid rgba(245,166,35,0.15);border-radius:12px;margin-bottom:24px;border-top:none;border-left:none;border-right:none;">
-        <tr><td style="padding:24px;">
-          <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border:none;">
-            <tr><td style="padding:6px 0;"><p style="color:#8892A4;font-size:13px;margin:0;">Order Number</p></td><td style="padding:6px 0;text-align:right;"><p style="color:#F5A623;font-size:14px;font-weight:bold;margin:0;">#{{orderNumber}}</p></td></tr>
-            <tr><td style="padding:6px 0;"><p style="color:#8892A4;font-size:13px;margin:0;">Order Date</p></td><td style="padding:6px 0;text-align:right;"><p style="color:#ffffff;font-size:14px;margin:0;">{{orderDate}}</p></td></tr>
-            <tr><td style="padding:6px 0;"><p style="color:#8892A4;font-size:13px;margin:0;">Payment</p></td><td style="padding:6px 0;text-align:right;"><p style="color:#ffffff;font-size:14px;margin:0;">{{paymentMethod}}</p></td></tr>
-            <tr><td style="padding:6px 0;"><p style="color:#8892A4;font-size:13px;margin:0;">Payment Status</p></td><td style="padding:6px 0;text-align:right;"><p style="color:#34D399;font-size:14px;font-weight:bold;margin:0;">{{paymentStatus}}</p></td></tr>
-            <tr><td style="padding:6px 0;"><p style="color:#8892A4;font-size:13px;margin:0;">Order Total</p></td><td style="padding:6px 0;text-align:right;"><p style="color:#ffffff;font-size:16px;font-weight:bold;margin:0;">{{total}}</p></td></tr>
-          </table>
-        </td></tr>
-      </table>
-      <p style="color:#8892A4;font-size:13px;text-transform:uppercase;letter-spacing:3px;margin:0 0 12px 0;">Order Summary</p>
-      {{itemsTable}}
-      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border:none;margin-top:16px;">
-        <tr><td style="padding:6px 0;"><p style="color:#8892A4;font-size:13px;margin:0;">Subtotal (excl. GST)</p></td><td style="padding:6px 0;text-align:right;"><p style="color:#ffffff;font-size:14px;margin:0;">{{subtotal}}</p></td></tr>
-        <tr><td style="padding:6px 0;"><p style="color:#8892A4;font-size:13px;margin:0;">GST</p></td><td style="padding:6px 0;text-align:right;"><p style="color:#ffffff;font-size:14px;margin:0;">{{gst}}</p></td></tr>
-        <tr><td style="padding:6px 0;"><p style="color:#8892A4;font-size:13px;margin:0;">Shipping</p></td><td style="padding:6px 0;text-align:right;"><p style="color:#ffffff;font-size:14px;margin:0;">{{shipping}}</p></td></tr>
-        <tr><td style="padding:6px 0;"><p style="color:#8892A4;font-size:13px;margin:0;">Discount</p></td><td style="padding:6px 0;text-align:right;"><p style="color:#34D399;font-size:14px;margin:0;">{{discount}}</p></td></tr>
-        <tr><td style="padding:6px 0;border-top:1px solid rgba(255,255,255,0.08);"><p style="color:#ffffff;font-size:16px;font-weight:bold;margin:0;">Total</p></td><td style="padding:6px 0;border-top:1px solid rgba(255,255,255,0.08);text-align:right;"><p style="color:#F5A623;font-size:18px;font-weight:bold;margin:0;">{{total}}</p></td></tr>
-      </table>
-      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border:none;margin-top:28px;">
-        <tr><td>
-          <p style="color:#8892A4;font-size:13px;text-transform:uppercase;letter-spacing:3px;margin:0 0 12px 0;">Shipping To</p>
-          <p style="color:#ffffff;font-size:14px;line-height:1.7;margin:0 0 4px 0;">{{shippingName}}</p>
-          <p style="color:#8892A4;font-size:13px;line-height:1.7;margin:0;">{{shippingAddress}}</p>
-          <p style="color:#8892A4;font-size:13px;line-height:1.7;margin:4px 0 0 0;">Phone: {{shippingPhone}}</p>
-        </td></tr>
-      </table>
-      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border:none;border-top:1px solid rgba(255,255,255,0.06);margin-top:28px;"><tr><td style="padding-top:24px;"><p style="color:#8892A4;font-size:12px;margin:0;">This confirmation was sent to <strong style="color:#ffffff;">{{customerEmail}}</strong>.</p></td></tr></table>
-    </td></tr>
-  </table>
-  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border:none;margin-top:32px;"><tr><td align="center"><p style="color:#3A4455;font-size:11px;margin:0;">Questions about your order? Contact us at <strong style="color:#F5A623;">{{supportEmail}}</strong>.</p><p style="color:#3A4455;font-size:11px;margin:8px 0 0 0;">&copy; {{year}} {{siteName}}. All rights reserved.</p></td></tr></table>
+  return `<div style="background:#F2F4F8;padding:32px 16px;font-family:Arial,Helvetica,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center">
+    <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;margin:0 auto;">
+      <tr><td style="background:#F59E0B;height:6px;font-size:0;line-height:0;border-radius:16px 16px 0 0;">&nbsp;</td></tr>
+      <tr><td align="center" style="background:#FFFFFF;border-left:1px solid #E5E9F0;border-right:1px solid #E5E9F0;padding:32px 32px 24px 32px;">{{logoBlock}}</td></tr>
+      <tr><td style="background:#FFFFFF;border-left:1px solid #E5E9F0;border-right:1px solid #E5E9F0;border-bottom:1px solid #E5E9F0;border-radius:0 0 16px 16px;padding:0 32px 36px 32px;">
+        <p style="color:#B45309;font-size:11px;text-transform:uppercase;letter-spacing:2px;margin:0 0 8px 0;">{{messageHeadline}}</p>
+        <h2 style="color:#111827;font-size:22px;font-weight:800;margin:0 0 8px 0;">Hello, {{customerName}}</h2>
+        <p style="color:#4B5563;font-size:14px;line-height:1.7;margin:0 0 24px 0;">{{messageBody}}</p>
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#ECFDF5;border:1px solid #A7F3D0;border-radius:12px;margin:0 0 24px 0;">
+          <tr><td style="padding:20px 24px;">
+            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border:none;">
+              <tr><td style="padding:6px 0;"><p style="color:#6B7280;font-size:13px;margin:0;">Order Number</p></td><td style="padding:6px 0;text-align:right;"><p style="color:#B45309;font-size:14px;font-weight:bold;margin:0;">#{{orderNumber}}</p></td></tr>
+              <tr><td style="padding:6px 0;"><p style="color:#6B7280;font-size:13px;margin:0;">Order Date</p></td><td style="padding:6px 0;text-align:right;"><p style="color:#111827;font-size:14px;margin:0;">{{orderDate}}</p></td></tr>
+              <tr><td style="padding:6px 0;"><p style="color:#6B7280;font-size:13px;margin:0;">Payment</p></td><td style="padding:6px 0;text-align:right;"><p style="color:#111827;font-size:14px;margin:0;">{{paymentMethod}}</p></td></tr>
+              <tr><td style="padding:6px 0;"><p style="color:#6B7280;font-size:13px;margin:0;">Payment Status</p></td><td style="padding:6px 0;text-align:right;"><p style="color:#059669;font-size:14px;font-weight:bold;margin:0;">{{paymentStatus}}</p></td></tr>
+              <tr><td style="padding:6px 0;"><p style="color:#6B7280;font-size:13px;margin:0;">Order Total</p></td><td style="padding:6px 0;text-align:right;"><p style="color:#111827;font-size:16px;font-weight:bold;margin:0;">{{total}}</p></td></tr>
+            </table>
+          </td></tr>
+        </table>
+        <p style="color:#9AA4B2;font-size:11px;text-transform:uppercase;letter-spacing:2px;margin:28px 0 10px 0;">Order Summary</p>
+        {{itemsTable}}
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border:none;margin-top:16px;">
+          <tr><td style="padding:6px 0;"><p style="color:#6B7280;font-size:13px;margin:0;">Subtotal (excl. GST)</p></td><td style="padding:6px 0;text-align:right;"><p style="color:#111827;font-size:14px;margin:0;">{{subtotal}}</p></td></tr>
+          <tr><td style="padding:6px 0;"><p style="color:#6B7280;font-size:13px;margin:0;">GST</p></td><td style="padding:6px 0;text-align:right;"><p style="color:#111827;font-size:14px;margin:0;">{{gst}}</p></td></tr>
+          <tr><td style="padding:6px 0;"><p style="color:#6B7280;font-size:13px;margin:0;">Shipping</p></td><td style="padding:6px 0;text-align:right;"><p style="color:#111827;font-size:14px;margin:0;">{{shipping}}</p></td></tr>
+          <tr><td style="padding:6px 0;"><p style="color:#6B7280;font-size:13px;margin:0;">Discount</p></td><td style="padding:6px 0;text-align:right;"><p style="color:#059669;font-size:14px;margin:0;">{{discount}}</p></td></tr>
+          <tr><td style="padding:10px 0 6px 0;border-top:1px solid #EDF0F5;"><p style="color:#111827;font-size:16px;font-weight:bold;margin:0;">Total</p></td><td style="padding:10px 0 6px 0;border-top:1px solid #EDF0F5;text-align:right;"><p style="color:#B45309;font-size:18px;font-weight:800;margin:0;">{{total}}</p></td></tr>
+        </table>
+        <p style="color:#9AA4B2;font-size:11px;text-transform:uppercase;letter-spacing:2px;margin:28px 0 10px 0;">Shipping To</p>
+        <p style="color:#111827;font-size:14px;font-weight:bold;line-height:1.6;margin:0 0 4px 0;">{{shippingName}}</p>
+        <p style="color:#6B7280;font-size:13px;line-height:1.7;margin:0;">{{shippingAddress}}</p>
+        <p style="color:#6B7280;font-size:13px;line-height:1.7;margin:4px 0 0 0;">Phone: {{shippingPhone}}</p>
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-top:1px solid #EDF0F5;margin-top:28px;"><tr><td style="padding-top:20px;"><p style="color:#6B7280;font-size:12px;margin:0;">This confirmation was sent to <strong style="color:#111827;">{{customerEmail}}</strong>.</p></td></tr></table>
+      </td></tr>
+      <tr><td align="center" style="padding:24px 16px 0 16px;">
+        <p style="color:#6B7280;font-size:12px;line-height:1.6;margin:0 0 6px 0;">Questions about your order? Contact us at <a href="mailto:{{supportEmail}}" style="color:#B45309;text-decoration:underline;">{{supportEmail}}</a>.</p>
+        <p style="color:#9AA4B2;font-size:11px;margin:0;">&copy; {{year}} {{siteName}}. All rights reserved.</p>
+      </td></tr>
+    </table>
+  </td></tr></table>
 </div>`;
 }
 

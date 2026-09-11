@@ -9,15 +9,15 @@ interface Props {
 }
 
 const STYLE = {
-  heading1: "color:#ffffff;font-size:24px;font-weight:bold;margin:0 0 12px 0;",
-  heading2: "color:#F5A623;font-size:18px;font-weight:bold;margin:0 0 8px 0;",
-  paragraph: "color:#8892A4;font-size:14px;line-height:1.7;margin:0 0 16px 0;",
-  button: "display:inline-block;background:#F5A623;color:#0A0F1E;font-weight:bold;font-size:14px;padding:14px 40px;border-radius:12px;text-decoration:none;",
-  divider: "border:none;border-top:1px solid rgba(255,255,255,0.06);margin:24px 0;",
+  heading1: "color:#111827;font-size:24px;font-weight:800;margin:0 0 12px 0;",
+  heading2: "color:#B45309;font-size:18px;font-weight:bold;margin:0 0 8px 0;",
+  paragraph: "color:#4B5563;font-size:14px;line-height:1.7;margin:0 0 16px 0;",
+  button: "display:inline-block;background:#111827;color:#FFFFFF;font-weight:bold;font-size:14px;padding:14px 40px;border-radius:12px;text-decoration:none;",
+  divider: "border:none;border-top:1px solid #EDF0F5;margin:24px 0;",
   spacer: "height:24px;",
-  link: "color:#F5A623;text-decoration:underline;",
-  bold: "color:#ffffff;font-weight:bold;",
-  muted: "color:#8892A4;font-size:13px;",
+  link: "color:#B45309;text-decoration:underline;",
+  bold: "color:#111827;font-weight:bold;",
+  muted: "color:#6B7280;font-size:13px;",
 };
 
 const BLOCKS: { label: string; icon: typeof Type; html: string }[] = [

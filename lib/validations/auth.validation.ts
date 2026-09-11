@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { passwordSchema } from "./password";
 
 export const registerSchema = z
   .object({
@@ -15,12 +16,7 @@ export const registerSchema = z
       .optional()
       .or(z.literal("")),
 
-    password: z
-      .string()
-      .min(
-        6,
-        "Password must be at least 6 characters"
-      ),
+    password: passwordSchema,
 
     confirmPassword: z
       .string()
@@ -32,10 +28,5 @@ export const loginSchema = z.object({
     .string()
     .email("Invalid email"),
 
-  password: z
-    .string()
-    .min(
-      6,
-      "Password must be at least 6 characters"
-    ),
+  password: passwordSchema,
 });

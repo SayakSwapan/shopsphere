@@ -49,6 +49,9 @@ _tmp_query.ts
 nike1.html
 shopsphere-dump.sql
 
+# DB wipe backups (contain customer PII — never commit)
+/backups/
+
 # editor / ai tooling
 .claude/
 .qodo/

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
+import { passwordRulesValid, getPasswordError } from "@/lib/validations/password";
 
 export async function PUT(request: NextRequest) {
   try {
@@ -23,9 +24,22 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    if (typeof newPassword !== "string" || newPassword.length < 6) {
+    if (typeof newPassword !== "string") {
       return NextResponse.json(
-        { success: false, message: "New password must be at least 6 characters" },
+        {
+          success: false,
+          message: "New password is required",
+        },
+        { status: 400 }
+      );
+    }
+
+    if (!passwordRulesValid(newPassword)) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: getPasswordError(newPassword) ?? "New password does not meet the required rules",
+        },
         { status: 400 }
       );
     }

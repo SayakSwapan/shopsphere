@@ -1,33 +1,25 @@
 "use client";
 
 import { Check } from "lucide-react";
+import { PASSWORD_RULES } from "@/lib/validations/password";
+
+export { passwordRulesValid } from "@/lib/validations/password";
 
 /**
  * Visual checklist that tells the customer exactly which password rules
  * are satisfied. Used by register, password-change and reset-password forms.
  *
- * Rules:
+ * Rules (shared with server validation in lib/validations/password.ts):
  *  - at least 8 characters
  *  - at least 1 uppercase letter (A-Z)
  *  - at least 1 lowercase letter (a-z)
  *  - at least 1 special character (!@#$%^&*… etc.)
  */
 
-const RULES = [
-  { test: (p: string) => p.length >= 8, label: "At least 8 characters" },
-  { test: (p: string) => /[A-Z]/.test(p), label: "One uppercase letter" },
-  { test: (p: string) => /[a-z]/.test(p), label: "One lowercase letter" },
-  { test: (p: string) => /[^A-Za-z0-9]/.test(p), label: "One special character" },
-];
-
-export function passwordRulesValid(pw: string): boolean {
-  return RULES.every((r) => r.test(pw));
-}
-
 export default function PasswordHints({ password }: { password: string }) {
   return (
     <ul className="mt-2 grid grid-cols-1 gap-x-4 gap-y-1.5 sm:grid-cols-2">
-      {RULES.map((rule) => {
+      {PASSWORD_RULES.map((rule) => {
         const met = rule.test(password);
         return (
           <li

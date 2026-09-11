@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { sendPasswordResetSuccessEmail } from "@/lib/mail";
 import { rateLimit, safeCompare } from "@/lib/security";
+import { passwordRulesValid, getPasswordError } from "@/lib/validations/password";
 
 export async function POST(req: Request) {
   try {
@@ -15,11 +16,12 @@ export async function POST(req: Request) {
       );
     }
 
-    if (newPassword.length < 6) {
+    if (typeof newPassword !== "string" || !passwordRulesValid(newPassword)) {
       return NextResponse.json(
         {
           success: false,
-          message: "Password must be at least 6 characters.",
+          message:
+            getPasswordError(newPassword) ?? "Password does not meet the required rules.",
         },
         { status: 400 }
       );

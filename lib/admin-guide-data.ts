@@ -15,6 +15,7 @@ import {
   Mail,
   Settings,
   ShieldCheck,
+  Search,
 } from "lucide-react";
 
 import type { WorkflowDiagramData } from "@/components/admin/guides/workflow-diagram";
@@ -1556,6 +1557,77 @@ export const guideSections: GuideSection[] = [
           },
         ],
       },
+    ],
+  },
+  {
+    id: "seo",
+    icon: Search,
+    title: "Search Engine Optimisation (SEO)",
+    description:
+      "Everything the store already does to rank on Google — and the day-to-day admin habits that keep rankings climbing. This is the 'keep ranking' playbook: what to fill in, why it matters, and the routine checks.",
+    steps: [
+      {
+        title: "How this store is structured for Google",
+        detail:
+          "trinovasports.com is built so Google can read it in four layers. (1) A sitemap (/sitemap.xml) lists every product, combo offer and category page so crawlers find new pages fast — it regenerates automatically every 12 hours. (2) robots.txt (/robots.txt) tells Google what to crawl and hides private pages (cart, checkout, account, admin). (3) Every page sends proper <title>, meta description, canonical URL and Open Graph tags. (4) Structured data (JSON-LD) tells Google exactly what each page is — a Product with price/stock/reviews, a BreadcrumbList, an Organization, or an FAQ list — which unlocks rich results.",
+      },
+      {
+        title: "Phase 1 — Keep the technical foundation healthy",
+        detail:
+          "These were built once; you mostly verify them. On any product page, right-click → 'View Page Source' and confirm you see: a <title>, a meta description, a canonical link pointing to /products/{slug}, and an /sitemap.xml with your product URLs. If you ever deploy on a new domain, update NEXT_PUBLIC_SITE_URL in Vercel → Settings → Environment Variables (the sitemap and canonicals read it) and re-deploy.",
+      },
+      {
+        title: "Phase 2 — Write good per-product SEO (most important daily habit)",
+        detail:
+          "Go to Admin → Products → click Edit on a product → scroll to the 'SEO' section. Fill in: Meta Title (the exact sentence a searcher should see, e.g. 'Adidas Running Shoes for Men — Buy Online in India', under ~60 characters), Meta Description (a 140–155 character summary with a buying hook), and Meta Keywords. If these are empty, Google instead uses the product name + first 160 characters of the description, which is weaker. Every new product you add should get its own SEO title and description before you publish it.",
+      },
+      {
+        title: "Phase 3 — Categories are landing pages now",
+        detail:
+          "Every active category automatically gets its own page at /category/{slug} with its own title, description, breadcrumbs and item list — these are your main keyword landing pages. Keep category names descriptive (e.g. 'Running', 'Training', 'Footwear'). Keep categories focused: the more products in one category, the stronger that page ranks for it. Add categories with the customer's search terms in mind, not internal department names.",
+      },
+      {
+        title: "Phase 4 — Collect customer reviews (they help ranking)",
+        detail:
+          "Product ratings are fed directly into Google as structured data (AggregateRating). One product with 20 four-star reviews can outrank identical products from bigger stores purely on rich-result appearance. Encourage reviews after every delivered order. Moderate them under Admin → Reviews — a steady stream of recent, genuine reviews is a ranking signal you fully control.",
+      },
+      {
+        title: "Phase 5 — Keep product descriptions original and useful",
+        detail:
+          "The description on each product becomes the page's visible content. Write 200–400 words of genuinely useful copy per product (material, fit, sizing, use case, care) rather than one boilerplate paragraph reused everywhere. Google penalises duplicated content — do not copy the same description across many products.",
+      },
+      {
+        title: "Phase 6 — Images matter for search",
+        detail:
+          "Product images are read by Google through their alt text. The store already uses the product name as the alt text on gallery images. Best practice per product: make the first/cover image a clean single-product shot on a plain background, and keep the product name accurate so image search can drive traffic. Do not use text-within-image files as your cover (Google can't read the words).",
+      },
+      {
+        title: "Phase 7 — Link everything together",
+        detail:
+          "Internal links spread 'ranking power'. The homepage, category pages and product pages already cross-link automatically (category chips, related products, combo sections). When you write promo banners or footer links, point them at /category/{slug} pages and /products pages rather than /products?category=... query links — the clean URLs are the indexed ones.",
+      },
+      {
+        title: "Phase 8 — Connect Google Search Console & Analytics",
+        detail:
+          "In Vercel → Settings → Environment Variables add NEXT_PUBLIC_GA4_ID (from GA4 → Admin → Data Streams, the 'G-XXXXXX' measurement ID) and NEXT_PUBLIC_GSC_ID (Google Search Console → your property → Settings → Verification details → Google site tag). Redeploy. Then in Search Console submit https://trinovasports.com/sitemap.xml under Sitemaps. Watch the 'Performance' report each week for queries, clicks and impressions.",
+      },
+      {
+        title: "Weekly 5-minute SEO routine",
+        detail:
+          "(1) Search Console → Performance: note your top 10 queries and which pages they land on. (2) Fix anything broken: Search Console → Indexing alerts, or the 'Pages' report for pages marked 'Not indexed'. (3) Add one product with strong SEO fields if any best-seller lacks them. (4) Check /sitemap.xml loads and includes your newest product. (5) Reply to or approve waiting reviews. That routine compounds.",
+      },
+      {
+        title: "What NOT to do",
+        detail:
+          "Don't stuff keywords into titles or descriptions (Google penalises it). Don't buy low-quality backlinks or participate in link farms. Don't duplicate product descriptions. Don't delete and re-create products with the same slug (breaks indexed URLs); edit in place instead. Don't toggle products 'status' off for best-sellers (removes them from the sitemap and drops their Google rankings).",
+      },
+    ],
+    tips: [
+      "Rankings are earned in months, not days. Consistency beats spike efforts — one well-optimised product a week outperforms a weekend bulk edit.",
+      "Google indexes the 'status = active' products only. Keep stock accurate so pages don't say Out of Stock for long — availability is part of your rich result.",
+      "The fastest organic win for an Indian sports store is usually 'Brand + Category + India' long-tail keywords in product titles, e.g. 'Nike Phantom Football Boots — Buy Online India'.",
+      "Product slugs are auto-generated from names. Name products the exact way buyers search (e.g. 'Adidas Predator Football Boot' not 'AD-PRED-FB-24').",
+      "Search Console data lags by 1–3 days and only counts after verification — set it up early, not after you want data.",
     ],
   },
 ];

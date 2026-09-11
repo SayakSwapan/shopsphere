@@ -8,6 +8,7 @@ import "leaflet/dist/leaflet.css";
 
 import AuthModal from "@/components/auth/auth-modal";
 import LoadingOverlay from "@/components/store/loading-overlay";
+import Analytics from "@/components/analytics/analytics";
 import { AuthProviderContext } from "@/components/auth/auth-context";
 import SessionProvider from "@/components/providers/session-provider";
 import RootThemeShell from "@/components/store/theme/root-theme-shell";
@@ -45,6 +46,9 @@ export async function generateMetadata(): Promise<Metadata> {
       },
       description: `Shop at ${siteName} for premium fashion, footwear and lifestyle products.`,
       icons: logo ? { icon: [{ url: logo, type: "image/png" }] } : undefined,
+      verification: process.env.NEXT_PUBLIC_GSC_ID
+        ? { google: process.env.NEXT_PUBLIC_GSC_ID }
+        : undefined,
       openGraph: {
         type: "website",
         locale: "en_IN",
@@ -123,6 +127,7 @@ export default async function RootLayout({
           </SessionProvider>
         </SiteSettingsProvider>
 
+        <Analytics />
         <Toaster position="top-center" richColors />
       </body>
     </html>

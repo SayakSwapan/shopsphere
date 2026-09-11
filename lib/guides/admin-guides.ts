@@ -107,9 +107,10 @@ export const adminGuides: PageGuide[] = [
     title: "Edit Product",
     steps: [
       { title: "Modify details", detail: "Update any product field: name, description, price, stock, images, category, gender, or sizes." },
-      { title: "Manage images", detail: "Upload new images or remove existing ones. The first image is used as the product thumbnail." },
+      { title: "SEO fields", detail: "Fill in the SEO section (Meta Title, Meta Description, Meta Keywords). If empty, Google falls back to the product name and the first 160 characters of the description — a weaker result. Use a customer-search phrase for the title and a 140-155 character description with a buying hook." },
+      { title: "Manage images", detail: "Upload new images or remove existing ones. The first image is used as the product thumbnail and the alt text is the product name." },
       { title: "Update return policy", detail: "Change the returnable/replaceable settings and update the return/replace window if needed." },
-      { title: "Save changes", detail: "Click 'Update Product' to save. Changes reflect immediately on the storefront." },
+      { title: "Save changes", detail: "Click 'Update Product' to save. Changes reflect immediately on the storefront, and the sitemap picks up the page within 12 hours." },
     ],
   },
   {

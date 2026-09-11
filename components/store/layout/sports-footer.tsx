@@ -74,10 +74,10 @@ const TRUST_BADGES = [
 ];
 
 const FALLBACK_SHOP = [
-  { label: "Running", href: "/products?category=running" },
-  { label: "Training", href: "/products?category=training" },
-  { label: "Footwear", href: "/products?category=footwear" },
-  { label: "Sale", href: "/products?category=sale" },
+  { label: "Running", href: "/category/running" },
+  { label: "Training", href: "/category/training" },
+  { label: "Footwear", href: "/category/footwear" },
+  { label: "Sale", href: "/category/sale" },
 ];
 
 const FALLBACK_SUPPORT = [
@@ -165,7 +165,7 @@ export default async function SportsFooter() {
                 <ArrowRight size={16} />
               </Link>
               <Link
-                href="/products?category=sale"
+                href="/category/sale"
                 className="inline-flex items-center gap-2 px-7 py-3.5 text-sm font-black uppercase transition-colors hover:bg-white/[0.06]"
                 style={{
                   border: "1px solid rgba(255,255,255,0.18)",

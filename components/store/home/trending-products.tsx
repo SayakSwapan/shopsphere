@@ -94,7 +94,7 @@ export default async function TrendingProducts() {
             {categories.map((cat) => (
               <Link
                 key={cat.id}
-                href={`/products?category=${cat.slug}`}
+                href={`/category/${cat.slug}`}
                 className="px-4 py-2 text-[11px] font-black uppercase tracking-wider whitespace-nowrap shrink-0 transition-all duration-200"
                 style={{
                   background: "var(--t-bg-card)",

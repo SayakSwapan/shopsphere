@@ -17,7 +17,7 @@ interface Props {
 }
 
 const menuItems = [
-  { href: "/account/profile", label: "My Profile", icon: User },
+  { href: "/account", label: "My Profile", icon: User },
   { href: "/account/orders", label: "My Orders", icon: Package },
   { href: "/wishlist", label: "My Wishlist", icon: Heart },
 ];

@@ -10,7 +10,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = getSiteUrl();
   const now = new Date();
 
-  const [products, combos] = await Promise.all([
+  const [products, combos, categories] = await Promise.all([
     prisma.product.findMany({
       where: { status: true },
       select: {
@@ -31,6 +31,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         slug: true,
         updatedAt: true,
       },
+    }),
+    prisma.category.findMany({
+      where: { isActive: true },
+      select: { slug: true, updatedAt: true },
+      orderBy: { sortOrder: "asc" },
     }),
   ]);
 
@@ -60,5 +65,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7,
   }));
 
-  return [...staticPages, ...productPages, ...comboPages];
+  const categoryPages: MetadataRoute.Sitemap = categories.map((c) => ({
+    url: `${baseUrl}/category/${c.slug}`,
+    lastModified: c.updatedAt,
+    changeFrequency: "weekly" as const,
+    priority: 0.7,
+  }));
+
+  return [...staticPages, ...productPages, ...categoryPages, ...comboPages];
 }

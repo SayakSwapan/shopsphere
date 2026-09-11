@@ -12,6 +12,7 @@ interface Props {
   reviewRating: number;
   brand?: string;
   categoryName: string;
+  categorySlug: string;
 }
 
 export default function ProductJsonLd({
@@ -26,6 +27,7 @@ export default function ProductJsonLd({
   reviewRating,
   brand,
   categoryName,
+  categorySlug,
 }: Props) {
   const baseUrl = getSiteUrl();
   const url = `${baseUrl}/products/${slug}`;
@@ -73,7 +75,7 @@ export default function ProductJsonLd({
         "@type": "ListItem",
         position: 2,
         name: categoryName,
-        item: `${baseUrl}/products?category=${encodeURIComponent(categoryName)}`,
+        item: `${baseUrl}/category/${encodeURIComponent(categorySlug)}`,
       },
       {
         "@type": "ListItem",

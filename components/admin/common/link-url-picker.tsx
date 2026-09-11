@@ -55,7 +55,7 @@ export default function LinkUrlPicker({
       ...STATIC_OPTIONS,
       ...categories.map((c) => ({
         label: `Category — ${c.name}`,
-        value: `/products?category=${c.slug}`,
+        value: `/category/${c.slug}`,
       })),
     ],
     [categories]
@@ -106,7 +106,7 @@ export default function LinkUrlPicker({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           className="mt-2 w-full bg-[#0A0F1E] border border-[#1E293B] text-white rounded-lg px-4 py-2.5 text-sm focus:border-amber-500/50 outline-none"
-          placeholder="/products?category=Panjabi or https://example.com"
+          placeholder="/category/running or https://example.com"
         />
       )}
 

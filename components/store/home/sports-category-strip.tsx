@@ -73,7 +73,7 @@ export default async function SportsCategoryStrip() {
           {categories.map((cat, i) => (
             <Link
               key={cat.id}
-              href={`/products?category=${cat.slug}`}
+              href={`/category/${cat.slug}`}
               className="group relative h-52 overflow-hidden transition-all duration-300 hover:-translate-y-1.5 sm:h-60"
               style={{
                 background: "#11161D",

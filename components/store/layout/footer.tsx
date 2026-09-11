@@ -34,9 +34,9 @@ async function getFooterLinks() {
 
 const FALLBACK_SHOP = [
   { label: "All Products", href: "/products" },
-  { label: "New Arrivals", href: "/products?category=new-arrivals" },
-  { label: "Trending", href: "/products?category=trending" },
-  { label: "Featured", href: "/products?category=featured" },
+  { label: "New Arrivals", href: "/category/new-arrivals" },
+  { label: "Trending", href: "/category/trending" },
+  { label: "Featured", href: "/category/featured" },
 ];
 
 const FALLBACK_CUSTOMER = [

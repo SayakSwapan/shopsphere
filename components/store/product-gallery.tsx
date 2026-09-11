@@ -1,15 +1,17 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 
 interface Props {
   images: {
     id: string;
     url: string;
   }[];
+  productName?: string;
 }
 
-export default function ProductGallery({ images }: Props) {
+export default function ProductGallery({ images, productName }: Props) {
   const [selectedImage, setSelectedImage] = useState(
     images?.[0]?.url || "/placeholder.png"
   );
@@ -34,6 +36,8 @@ export default function ProductGallery({ images }: Props) {
     );
   }
 
+  const altText = productName || "Product image";
+
   return (
     <div className="space-y-4">
       {/* Main Image */}
@@ -46,9 +50,12 @@ export default function ProductGallery({ images }: Props) {
           boxShadow: "0 35px 120px rgba(0,0,0,0.12)",
         }}
       >
-        <img
+        <Image
           src={selectedImage}
-          alt="Product"
+          alt={altText}
+          width={800}
+          height={800}
+          unoptimized
           className="relative h-72 w-full object-cover transition duration-500 group-hover:scale-105 sm:h-90 md:h-140"
         />
       </div>
@@ -70,9 +77,12 @@ export default function ProductGallery({ images }: Props) {
                   boxShadow: isActive ? "0 8px 30px color-mix(in srgb, var(--t-primary) 15%, transparent)" : "none",
                 }}
               >
-                <img
+                <Image
                   src={image.url}
-                  alt="Thumbnail"
+                  alt={`${altText} — thumbnail`}
+                  width={200}
+                  height={200}
+                  unoptimized
                   className="h-16 w-full object-cover transition duration-300 hover:scale-105 sm:h-20 md:h-24"
                 />
               </button>

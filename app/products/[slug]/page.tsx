@@ -278,6 +278,7 @@ export default async function ProductPage({ params }: Props) {
         reviewCount={reviewCount}
         reviewRating={reviewAverage}
         categoryName={product.category.name}
+        categorySlug={product.category.slug}
       />
 
       <div className="pointer-events-none fixed inset-0 -z-10" style={{ background: "color-mix(in srgb, var(--t-primary) 3%, transparent)", opacity: 0.3 }} />
@@ -304,7 +305,7 @@ export default async function ProductPage({ params }: Props) {
             </Link>
             <span style={{ color: "var(--t-text-muted-3)" }}>/</span>
             <Link
-              href={`/products?category=${product.category.slug}`}
+              href={`/category/${product.category.slug}`}
               className="transition hover:text-primary"
               style={{ color: "var(--t-text-muted-2)" }}
             >
@@ -378,7 +379,7 @@ export default async function ProductPage({ params }: Props) {
                   )}
                 </div>
               )}
-              <ProductGallery images={product.productimage} />
+              <ProductGallery images={product.productimage} productName={product.name} />
             </div>
 
             {/* Info column */}
@@ -389,7 +390,7 @@ export default async function ProductPage({ params }: Props) {
                   <div className="flex-1 min-w-0">
                     <div className="flex flex-wrap items-center gap-3 mb-3">
                       <Link
-                        href={`/products?category=${product.category.slug}`}
+                        href={`/category/${product.category.slug}`}
                         className="pd-chip text-[10px] font-black uppercase tracking-[0.2em]"
                         style={{ color: "var(--t-primary)" }}
                       >

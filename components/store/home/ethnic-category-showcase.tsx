@@ -55,7 +55,7 @@ export default async function EthnicCategoryShowcase() {
           {categories.map((cat, idx) => (
             <Link
               key={cat.id}
-              href={`/products?category=${cat.slug}`}
+              href={`/category/${cat.slug}`}
               className="group text-center"
             >
               {/* Arched Image Container */}

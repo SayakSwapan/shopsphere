@@ -71,7 +71,7 @@ export default async function CategoryQuickLinks() {
           {categories.map((cat, idx) => (
             <Link
               key={cat.id}
-              href={`/products?category=${cat.slug}`}
+              href={`/category/${cat.slug}`}
               className={`group relative overflow-hidden ${cardHeight(count)} flex flex-col justify-end transition-all duration-500 hover:shadow-2xl hover:-translate-y-1`}
               style={{
                 borderRadius: "var(--t-radius-card)",

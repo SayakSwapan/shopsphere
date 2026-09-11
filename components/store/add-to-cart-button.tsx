@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { useOptionalAuthModal } from "@/components/auth/auth-context";
 import type { CustomPrintData } from "@/types/custom-print";
@@ -23,12 +23,16 @@ export default function AddToCartButton({
   const [loading, setLoading] =
     useState(false);
   const authModal = useOptionalAuthModal();
+  // Hard guard so a fast double-tap can't fire two POSTs before React
+  // flushes the disabled state.
+  const inflightRef = useRef(false);
 
   const addToCart =
     async () => {
-      if (disabled || !productVariantId) return;
+      if (disabled || !productVariantId || inflightRef.current) return;
 
       try {
+        inflightRef.current = true;
         setLoading(true);
 
         const response =
@@ -53,7 +57,7 @@ export default function AddToCartButton({
 
         if (response.status === 401) {
           authModal?.openAuth("login");
-          throw new Error("Please login to add to cart");
+          return; // modal opens instead of a toast
         }
 
         if (!response.ok || !data.success) {
@@ -74,6 +78,7 @@ export default function AddToCartButton({
             "Failed to add cart"
         );
       } finally {
+        inflightRef.current = false;
         setLoading(false);
       }
     };

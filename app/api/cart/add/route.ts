@@ -33,11 +33,14 @@ export async function POST(req: Request) {
       );
     }
 
-    const variant = await prisma.productvariant.findUnique({
-      where: {
-        id: productVariantId,
-      },
-    });
+    const [variant, user] = await Promise.all([
+      prisma.productvariant.findUnique({
+        where: { id: productVariantId },
+      }),
+      prisma.user.findUnique({
+        where: { email: session.user.email },
+      }),
+    ]);
 
     if (!variant || variant.productId !== productId) {
       return NextResponse.json(
@@ -89,12 +92,6 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
-
-    const user = await prisma.user.findUnique({
-      where: {
-        email: session.user.email,
-      },
-    });
 
     if (!user) {
       return NextResponse.json(

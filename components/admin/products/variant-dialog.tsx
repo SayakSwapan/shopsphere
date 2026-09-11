@@ -196,11 +196,11 @@ if (
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 p-0 sm:p-4">
 
-      <div className="w-[650px] rounded-2xl bg-[#111827] p-7 shadow-2xl">
+      <div className="flex max-h-[92dvh] w-full max-w-[650px] flex-col overflow-hidden rounded-2xl bg-[#111827] shadow-2xl">
 
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-6 flex shrink-0 items-center justify-between border-b border-slate-700 px-6 pb-4 pt-6 sm:px-7">
 
           <h2 className="text-xl font-bold text-white">
 
@@ -213,6 +213,8 @@ if (
           <button
             type="button"
             onClick={closeDialog}
+            aria-label="Close"
+            className="flex h-10 w-10 items-center justify-center rounded-xl transition hover:bg-slate-800"
           >
             <X
               className="text-white"
@@ -221,6 +223,8 @@ if (
           </button>
 
         </div>
+
+        <div className="overflow-y-auto overscroll-contain px-6 py-4 sm:px-7">
 
         <div className="grid grid-cols-2 gap-5">
 
@@ -395,6 +399,10 @@ if (
               ? "Update Variant"
               : "Add Variant"}
           </button>
+
+        </div>
+
+        <div className="h-4" />
 
         </div>
 

@@ -188,7 +188,7 @@ export default function Navbar({ session, announcement }: NavbarProps) {
 
               {/* Search icon (mobile) */}
               <button
-                className="xl:hidden p-1.5 sm:p-3 transition-colors"
+                className="xl:hidden p-3 transition-colors"
                 style={{
                   color: "var(--t-text-muted-1)",
                   borderRadius: "var(--t-radius-button)",
@@ -202,7 +202,7 @@ export default function Navbar({ session, announcement }: NavbarProps) {
               {/* Wishlist */}
               <Link
                 href="/wishlist"
-                className="relative p-1.5 sm:p-3 transition-colors"
+                className="relative p-3 transition-colors"
                 style={{
                   color: "var(--t-text-muted-1)",
                   borderRadius: "var(--t-radius-button)",
@@ -255,7 +255,7 @@ export default function Navbar({ session, announcement }: NavbarProps) {
 
               {/* Hamburger (mobile) */}
               <button
-                className="lg:hidden p-1.5 sm:p-3 transition-colors"
+                className="lg:hidden p-3 transition-colors"
                 style={{
                   color: "var(--t-text-muted-1)",
                   borderRadius: "var(--t-radius-button)",

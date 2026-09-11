@@ -13,7 +13,7 @@ export default function TableSearch({
 }: Props) {
   return (
     <div
-      className="flex items-center rounded-xl px-4 h-12 w-80"
+      className="flex items-center rounded-xl px-4 h-12 w-full sm:w-80"
       style={{
         background: "#111827",
       }}

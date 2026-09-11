@@ -177,7 +177,7 @@ export default function SportsNavbar({
               </div>
 
               <button
-                className="xl:hidden p-1.5 sm:p-3"
+                className="xl:hidden p-3"
                 style={{ color: "#9A9D9F" }}
                 onClick={() => setSearchOpen(!searchOpen)}
                 aria-label="Toggle search"
@@ -187,7 +187,7 @@ export default function SportsNavbar({
 
               <Link
                 href="/wishlist"
-                className="relative p-1.5 sm:p-3"
+                className="relative p-3"
                 style={{ color: "#9A9D9F" }}
                 aria-label="Wishlist"
               >
@@ -231,7 +231,7 @@ export default function SportsNavbar({
               </Link>
 
               <button
-                className="lg:hidden p-1.5 sm:p-3"
+                className="lg:hidden p-3"
                 style={{ color: "#F4F3EE" }}
                 onClick={() => setMenuOpen(!menuOpen)}
                 aria-label="Toggle menu"

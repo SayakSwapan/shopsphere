@@ -41,8 +41,8 @@ function TableShell({
       }}
     >
       {(title || toolbar) && (
-        <div className="flex items-center justify-between border-b border-slate-700 px-4 py-5 sm:px-6">
-          <div>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-700 px-4 py-5 sm:px-6">
+          <div className="min-w-0">
             {title && (
               <h2 className="text-xl font-bold text-white">{title}</h2>
             )}
@@ -50,7 +50,7 @@ function TableShell({
               <p className="mt-1 text-sm text-slate-400">{subtitle}</p>
             )}
           </div>
-          {toolbar}
+          <div className="flex flex-wrap items-center gap-2">{toolbar}</div>
         </div>
       )}
       {children}

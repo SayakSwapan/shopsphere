@@ -131,9 +131,25 @@ export default function CheckoutClient({
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [savingCustomizeId, setSavingCustomizeId] = useState<string | null>(null);
   const [expandedCustomizeId, setExpandedCustomizeId] = useState<string | null>(null);
+  // Hard request guard for the payment/order mutation — prevents a second
+  // order + payment session from being created even if a double tap slips
+  // through before React flushes the disabled state.
+  const paymentInFlightRef = useRef(false);
   const customizeSavedRef = useRef<Record<string, boolean>>({});
   const customizeTimerRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const customizeSaveInflightRef = useRef<Record<string, Promise<void>>>({});
+
+  // Warm up the Cashfree SDK as soon as the checkout mounts so "Proceed to
+  // Payment" opens the hosted page without a cold script-load round trip.
+  useEffect(() => {
+    const mode: "production" | "sandbox" =
+      process.env.NEXT_PUBLIC_CASHFREE_ENV === "production"
+        ? "production"
+        : "sandbox";
+    import("@/lib/cashfree-checkout").then(({ preloadCashfree }) => {
+      preloadCashfree(mode);
+    });
+  }, []);
 
   // Optimistic customisation being typed right now. Keeps the order summary in
   // sync with the personalise section instantly, before the debounced save +
@@ -465,6 +481,7 @@ export default function CheckoutClient({
   }
 
   async function placeOrder() {
+    if (paymentInFlightRef.current) return;
     if (!selectedAddressId) {
       toast.error("Please select an address.");
       return;
@@ -489,6 +506,7 @@ export default function CheckoutClient({
     }
 
     setLoading(true);
+    paymentInFlightRef.current = true;
     try {
       // Persist any in-progress personalisation first so the payment amount
       // (and COD availability) reflects the custom print charge.
@@ -543,6 +561,7 @@ export default function CheckoutClient({
           : "Something went wrong."
       );
     } finally {
+      paymentInFlightRef.current = false;
       setLoading(false);
     }
   }
@@ -1007,10 +1026,19 @@ export default function CheckoutClient({
               <button
                 onClick={placeOrder}
                 disabled={loading || deliveryBlocked}
-                className="w-full py-4 text-lg font-black uppercase tracking-wider transition-colors bg-primary hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-                style={{ borderRadius: "var(--t-radius-button)", color: "var(--t-bg-page)", fontFamily: "var(--t-font-heading)" }}
+                className="inline-flex w-full items-center justify-center gap-2 py-4 text-lg font-black uppercase tracking-wider transition-colors bg-primary hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                style={{ borderRadius: "var(--t-radius-button)", color: "var(--t-bg-page)", fontFamily: "var(--t-font-heading)", minHeight: 56 }}
               >
-                {loading ? "Processing..." : effectiveMethod === "ONLINE" ? "Proceed To Payment" : "Place Order"}
+                {loading ? (
+                  <>
+                    <Loader2 size={20} className="animate-spin" />
+                    {effectiveMethod === "ONLINE" ? "Creating Payment..." : "Placing Order..."}
+                  </>
+                ) : effectiveMethod === "ONLINE" ? (
+                  "Proceed To Payment"
+                ) : (
+                  "Place Order"
+                )}
               </button>
             </div>
           </section>

@@ -148,6 +148,10 @@ function VerifyEmailContent() {
             <input
               type="text"
               required
+              autoFocus
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              name="otp"
               value={otp}
               onChange={(e) => {
                 const val = e.target.value.replace(/\D/g, "").slice(0, 6);

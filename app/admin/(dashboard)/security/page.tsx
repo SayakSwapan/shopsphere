@@ -256,7 +256,7 @@ export default async function SecurityPage() {
           </div>
           <p className="text-xs text-slate-500 pt-1">
             If this shows TEST/SANDBOX, the whole payment flow (popup + verification) runs on
-            Cashfree's sandbox — real money is never charged and orders are invisible to the
+            Cashfree&apos;s sandbox — real money is never charged and orders are invisible to the
             production account. To go live set CASHFREE_ENV=PROD and the live API keys in Vercel.
           </p>
         </div>

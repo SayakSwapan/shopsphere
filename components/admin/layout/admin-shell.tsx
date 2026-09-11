@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import AdminSidebar from "./admin-sidebar";
 import AdminTopbar from "./admin-topbar";
 import Breadcrumb from "../breadcrumb";
@@ -18,6 +18,25 @@ export default function AdminShell({
   };
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Lock the page behind while the mobile drawer is open so the body never
+  // scrolls off the overlay, and close the drawer with Escape.
+  useEffect(() => {
+    if (!sidebarOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setSidebarOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [sidebarOpen]);
 
   return (
     <LoadingProvider>

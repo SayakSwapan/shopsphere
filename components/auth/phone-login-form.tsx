@@ -200,6 +200,7 @@ export default function PhoneLoginForm({ onBack }: { onBack: () => void }) {
           </span>
           <input
             type="tel"
+            inputMode="tel"
             required
             value={phone}
             onChange={(e) => setPhone(e.target.value.replace(/\D/g, ""))}

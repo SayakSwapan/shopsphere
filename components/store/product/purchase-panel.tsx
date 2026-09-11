@@ -164,6 +164,11 @@ export default function ProductPurchasePanel({
       toast.error("This size is out of stock");
       return;
     }
+    if (selectedVariant.stock < quantity) {
+      toast.error(`Only ${selectedVariant.stock} units available in this size`);
+      setQuantity(Math.max(1, selectedVariant.stock));
+      return;
+    }
     setIsBuying(true);
     try {
       const response = await fetch("/api/cart/add", {
@@ -177,15 +182,20 @@ export default function ProductPurchasePanel({
       });
       const data = await response.json();
       if (response.status === 401) {
+        setIsBuying(false);
         authModal?.openAuth("login");
-        throw new Error("Please login to continue");
+        return;
       }
       if (!response.ok || !data.success)
         throw new Error(data.message || "Unable to checkout");
+
+      // Keep the cart badge in sync, then go straight to checkout. The
+      // navigation is a soft client transition — no full reload, no
+      // Product-Details → Product-Details flash.
+      window.dispatchEvent(new Event("cart-updated"));
       router.push("/checkout");
     } catch (error) {
       toast.error((error as Error).message || "Failed to start checkout.");
-    } finally {
       setIsBuying(false);
     }
   };

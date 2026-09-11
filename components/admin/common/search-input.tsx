@@ -18,7 +18,7 @@ export default function TableSearch({
   placeholder,
 }: Props) {
   return (
-    <div className="relative w-80">
+    <div className="relative w-full sm:w-80">
 
       <Search
         size={18}

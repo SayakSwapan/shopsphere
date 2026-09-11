@@ -112,7 +112,7 @@ export default function ReviewsTable({ initialReviews }: Props) {
 
   return (
     <div className="space-y-4">
-      <div className="relative w-80">
+      <div className="relative w-full sm:w-80">
         <Search size={18} className="absolute left-4 top-3.5 text-slate-500" />
         <input
           value={search}

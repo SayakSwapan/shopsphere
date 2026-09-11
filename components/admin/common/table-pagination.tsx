@@ -17,7 +17,7 @@ export default function TablePagination({
   onPrev,
 }: Props) {
   return (
-    <div className="flex items-center justify-between">
+    <div className="flex items-center justify-between gap-3 flex-wrap">
 
       <p className="text-sm text-slate-400">
         Page {page} of {totalPages}

@@ -10,8 +10,15 @@ import { calcTransactionFee } from "@/lib/finance/transaction-charge.service";
 import { customizationLetterCharge, customizationUnitPrice } from "@/lib/print-pricing";
 import { getRestrictedCartItems } from "@/lib/product-deliverability";
 import { createAdminNotification } from "@/lib/notifications";
-import { getLoyaltyProgram, calculateLoyaltyDiscount } from "@/lib/loyalty";
+import { getLoyaltyProgram, calculateLoyaltyDiscountForProgram } from "@/lib/loyalty";
 import { cancelAbandonedPaymentOrders } from "@/lib/orders/abandoned";
+
+interface CouponResolution {
+  discount: number;
+  couponFreeShipping: boolean;
+  valid: boolean;
+  firstOrderOnly?: boolean;
+}
 
 export async function POST(req: Request) {
   try {
@@ -20,32 +27,42 @@ export async function POST(req: Request) {
     if (!session?.user?.email) {
       return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
     }
+    const userEmail = session.user.email;
 
     const { addressId, couponId, useLoyaltyReward } = await req.json();
     if (!addressId) return NextResponse.json({ success: false, message: "Address is required." }, { status: 400 });
 
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-      include: {
-        cart: {
-          include: {
-            cartitem: {
-              include: {
-                product: true,
-                productvariant: { include: { size: true, gender: true } },
+    // ── Wave 1: independent lookups run in parallel (user+cart, address with
+    //    ownership check via the caller's email). ────────────────────────────
+    const [user, address] = await Promise.all([
+      prisma.user.findUnique({
+        where: { email: userEmail },
+        include: {
+          cart: {
+            include: {
+              cartitem: {
+                include: {
+                  product: true,
+                  productvariant: { include: { size: true, gender: true } },
+                },
               },
             },
           },
         },
-      },
-    });
+      }),
+      prisma.address.findFirst({
+        where: { id: addressId, user: { email: userEmail } },
+      }),
+    ]);
 
     if (!user) return NextResponse.json({ success: false, message: "User not found." }, { status: 404 });
+    if (!address) return NextResponse.json({ success: false, message: "Address not found." }, { status: 404 });
     if (!user.cart || user.cart.cartitem.length === 0) return NextResponse.json({ success: false, message: "Cart is empty." }, { status: 400 });
 
-    // Ownership check: the shipping address must belong to the caller.
-    const address = await prisma.address.findFirst({ where: { id: addressId, userId: user.id } });
-    if (!address) return NextResponse.json({ success: false, message: "Address not found." }, { status: 404 });
+    // A new checkout starting means any earlier online payment session this
+    // customer never completed is abandoned — cancel it so it stops cluttering
+    // the customer's order list and the admin archived orders.
+    await cancelAbandonedPaymentOrders(user.id);
 
     // Never trust the client — block any product that is explicitly restricted
     // from being delivered to this pincode.
@@ -85,6 +102,9 @@ export async function POST(req: Request) {
       );
     }
 
+    const cartItems = user.cart.cartitem;
+    const cartItemCount = cartItems.length;
+
     let subtotal = 0;
     let gst = 0;
 
@@ -93,7 +113,7 @@ export async function POST(req: Request) {
     // checkout path — they run exclusively through the dedicated
     // /combo-offers → /combo-checkout flow so one order = one combo offer.
     const unitBaseByItemId = new Map<string, number>();
-    user.cart.cartitem.forEach((item) => {
+    cartItems.forEach((item) => {
       unitBaseByItemId.set(
         item.id,
         getActivePriceBase({
@@ -108,7 +128,7 @@ export async function POST(req: Request) {
       );
     });
 
-    for (const item of user.cart.cartitem) {
+    for (const item of cartItems) {
       const unitPrice = unitBaseByItemId.get(item.id)!;
       const { gstAmount } = getGstBreakdown(unitPrice, Number(item.product.gstPercentage) || 0);
 
@@ -127,60 +147,77 @@ export async function POST(req: Request) {
     subtotal = Math.round(subtotal * 100) / 100;
     gst = Math.round(gst * 100) / 100;
 
-    let discount = 0;
-    let shipping = 0;
-    let couponFreeShipping = false;
+    const shippingItems = cartItems.map((item) => ({
+      quantity: item.quantity,
+      product: {
+        weight: item.product.weight,
+        salePrice: Number(item.product.salePrice || 0),
+        sellingPrice: Number(item.product.sellingPrice),
+      },
+    }));
 
-    if (couponId) {
-      const coupon = await prisma.coupon.findUnique({ where: { id: couponId } });
+    // ── Wave 2: coupon validation (when provided) + the shipping-rule AND
+    //    loyalty-program reads run together (they don't depend on each other;
+    //    the coupon task resolves first synchronously when unused). ─────────
+    const couponTask: Promise<CouponResolution> = couponId
+      ? (async () => {
+          const coupon = await prisma.coupon.findUnique({ where: { id: couponId } });
 
-      if (coupon && coupon.isActive && coupon.startDate <= new Date() && coupon.endDate >= new Date()) {
-        if (!coupon.usageLimit || coupon.usedCount < coupon.usageLimit) {
-          const previousUsage = await prisma.couponUsage.count({ where: { couponId, userId: user.id } });
-          if (previousUsage < coupon.perUserLimit) {
-            if (!coupon.minimumOrder || subtotal >= Number(coupon.minimumOrder)) {
-              if (coupon.firstOrderOnly) {
-                const totalOrders = await prisma.order.count({ where: { userId: user.id, paymentStatus: "PAID" } });
-                if (totalOrders > 0) {
-                  return NextResponse.json({ success: false, message: "Coupon valid only for first order." }, { status: 400 });
-                }
-              }
-
-              if (coupon.discountType === "FLAT") {
-                discount = Number(coupon.discountValue);
-              } else {
-                discount = subtotal * Number(coupon.discountValue) / 100;
-              }
-              if (coupon.maxDiscount && discount > Number(coupon.maxDiscount)) discount = Number(coupon.maxDiscount);
-              if (discount > subtotal) discount = subtotal;
-              couponFreeShipping = coupon.freeShipping;
-            }
+          if (!coupon || !coupon.isActive || coupon.startDate > new Date() || coupon.endDate < new Date()) {
+            return { discount: 0, couponFreeShipping: false, valid: false };
           }
-        }
-      }
+          if (coupon.usageLimit && coupon.usedCount >= coupon.usageLimit) {
+            return { discount: 0, couponFreeShipping: false, valid: false };
+          }
+
+          const [previousUsage, totalOrders] = await Promise.all([
+            prisma.couponUsage.count({ where: { couponId, userId: user.id } }),
+            coupon.firstOrderOnly
+              ? prisma.order.count({ where: { userId: user.id, paymentStatus: "PAID" } })
+              : Promise.resolve(0),
+          ]);
+
+          if (previousUsage >= coupon.perUserLimit) {
+            return { discount: 0, couponFreeShipping: false, valid: false };
+          }
+          if (coupon.firstOrderOnly && totalOrders > 0) {
+            return { discount: 0, couponFreeShipping: false, valid: false, firstOrderOnly: true };
+          }
+          if (!coupon.minimumOrder || subtotal >= Number(coupon.minimumOrder)) {
+            let d = coupon.discountType === "FLAT"
+              ? Number(coupon.discountValue)
+              : subtotal * Number(coupon.discountValue) / 100;
+            if (coupon.maxDiscount && d > Number(coupon.maxDiscount)) d = Number(coupon.maxDiscount);
+            if (d > subtotal) d = subtotal;
+            return { discount: Number(d.toFixed(2)), couponFreeShipping: coupon.freeShipping, valid: true };
+          }
+          return { discount: 0, couponFreeShipping: false, valid: false };
+        })()
+      : Promise.resolve({ discount: 0, couponFreeShipping: false, valid: false });
+
+    const [couponResult, shippingResult, loyaltyProgram] = await Promise.all([
+      couponTask,
+      couponId
+        ? couponTask.then((c) =>
+            calculateShipping(shippingItems, c.couponFreeShipping, subtotal)
+          )
+        : calculateShipping(shippingItems, false, subtotal),
+      getLoyaltyProgram(),
+    ]);
+
+    if (couponResult.firstOrderOnly) {
+      return NextResponse.json({ success: false, message: "Coupon valid only for first order." }, { status: 400 });
     }
 
-    const shippingResult = await calculateShipping(
-      user.cart.cartitem.map((item) => ({
-        quantity: item.quantity,
-        product: {
-          weight: item.product.weight,
-          salePrice: Number(item.product.salePrice || 0),
-          sellingPrice: Number(item.product.sellingPrice),
-        },
-      })),
-      couponFreeShipping,
-      subtotal
-    );
-    shipping = shippingResult.shipping;
+    const couponDiscount = couponResult.valid ? couponResult.discount : 0;
+    const shipping = shippingResult.shipping;
 
     // Loyalty reward discount (backend-calculated, never trusted from client).
     let loyaltyDiscount = 0;
     let loyaltyRewardId: string | null = null;
-    const loyaltyProgram = await getLoyaltyProgram();
     if (loyaltyProgram.isActive && useLoyaltyReward !== false) {
-      const orderValueBasis = subtotal + gst + shipping - discount;
-      const loyaltyCalc = await calculateLoyaltyDiscount(user.id, orderValueBasis);
+      const orderValueBasis = subtotal + gst + shipping - couponDiscount;
+      const loyaltyCalc = await calculateLoyaltyDiscountForProgram(loyaltyProgram, user.id, orderValueBasis);
       if (loyaltyCalc.applicable && loyaltyCalc.discountAmount > 0) {
         loyaltyDiscount = loyaltyCalc.discountAmount;
         const loyalty = await prisma.customerLoyalty.findUnique({
@@ -190,92 +227,102 @@ export async function POST(req: Request) {
       }
     }
 
-    const total = subtotal - discount - loyaltyDiscount + shipping + gst;
+    const total = subtotal - couponDiscount - loyaltyDiscount + shipping + gst;
 
     // Cashfree is the online gateway for now. Keep matching the existing
     // Razorpay transaction-charge rules so online fee rules keep applying
     // (they are keyed on gateway "RAZORPAY" in the admin).
-    const txFeeResult = await calcTransactionFee(total, "RAZORPAY", "CASHFREE");
-    const transactionFee = txFeeResult.fee;
+    const finalTxFee = await calcTransactionFee(total, "RAZORPAY", "CASHFREE");
+    const transactionFee = finalTxFee.fee;
 
-    // A new checkout starting means any earlier online payment session this
-    // customer never completed is abandoned — cancel it so it stops cluttering
-    // the customer's order list and the admin archived orders.
-    await cancelAbandonedPaymentOrders(user.id);
+    // ── Create the order + items + payment record in ONE interactive
+    //    transaction (previously: order create + N sequential item inserts +
+    //    payment-transaction insert = N+2 round trips). createMany batches
+    //    the order-item rows into a single statement. ──────────────────────
+    const orderId = randomUUID();
 
-    const order = await prisma.order.create({
-      data: {
-        id: randomUUID(),
-        orderNumber: "ORD" + Date.now(),
-        userId: user.id,
-        totalAmount: total,
-        transactionFee,
-        subtotal,
-        gst,
-        shipping,
-        discount,
-        couponId: couponId ?? null,
-        loyaltyPurchaseCounted: false,
-        loyaltyRewardApplied: loyaltyDiscount > 0,
-        loyaltyRewardId,
-        loyaltyDiscountAmount: loyaltyDiscount > 0 ? loyaltyDiscount : null,
-        status: "PENDING",
-        paymentMethod: "CASHFREE",
-        paymentStatus: "PENDING",
-        addressLine1: address.addressLine1,
-        addressLine2: address.addressLine2,
-        city: address.city,
-        state: address.state,
-        country: address.country,
-        pincode: address.pincode,
-        fullName: address.fullName,
-        phone: address.phone,
-      },
-    });
-
-    for (const item of user.cart.cartitem) {
-      const sellingPrice = unitBaseByItemId.get(item.id)!;
-      const costPrice = Number(item.product.costPrice);
-      const gstPct = Number(item.product.gstPercentage) || 0;
-      const { gstAmount } = getGstBreakdown(sellingPrice, gstPct);
-      const printUnit = customizationUnitPrice(
-        item.customization as import("@/types/custom-print").CustomPrintData | null
-      );
-
-      await prisma.orderitem.create({
+    const order = await prisma.$transaction(async (tx) => {
+      const created = await tx.order.create({
         data: {
-          id: randomUUID(),
-          orderId: order.id,
-          productId: item.productId,
-          quantity: item.quantity,
-          price: sellingPrice,
-          total: (sellingPrice + printUnit) * item.quantity,
-          sellingPriceSnapshot: sellingPrice,
-          mrpSnapshot: Number(item.product.sellingPrice),
-          costPriceSnapshot: costPrice,
-          gstSnapshot: Math.round(gstAmount * 100) / 100,
-          discountSnapshot: item.quantity > 0 ? Math.round((discount / user.cart.cartitem.length) * 100) / 100 : 0,
-          variantSku: item.productvariant?.sku ?? null,
-          variantSize: item.productvariant?.size?.sizeName ?? null,
-          variantGender: item.productvariant?.gender?.name ?? null,
-          customization: item.customization ?? undefined,
+          id: orderId,
+          orderNumber: "ORD" + Date.now(),
+          userId: user.id,
+          totalAmount: total,
+          transactionFee,
+          subtotal,
+          gst,
+          shipping,
+          discount: couponDiscount,
+          couponId: couponId ?? null,
+          loyaltyPurchaseCounted: false,
+          loyaltyRewardApplied: loyaltyDiscount > 0,
+          loyaltyRewardId,
+          loyaltyDiscountAmount: loyaltyDiscount > 0 ? loyaltyDiscount : null,
+          status: "PENDING",
+          paymentMethod: "CASHFREE",
+          paymentStatus: "PENDING",
+          addressLine1: address.addressLine1,
+          addressLine2: address.addressLine2,
+          city: address.city,
+          state: address.state,
+          country: address.country,
+          pincode: address.pincode,
+          fullName: address.fullName,
+          phone: address.phone,
         },
       });
-    }
 
-    await prisma.paymentTransaction.create({
-      data: {
-        id: randomUUID(),
-        orderId: order.id,
-        gateway: "CASHFREE",
-        paymentMethod: "CASHFREE",
-        grossAmount: total,
-        gatewayFee: txFeeResult.fee,
-        gatewayGST: txFeeResult.gst,
-        netSettlement: Math.round((total - txFeeResult.totalCharge) * 100) / 100,
-        settlementStatus: "PENDING",
-        paymentStatus: "PENDING",
-      },
+      const discountPerLine =
+        couponDiscount > 0
+          ? Math.round((couponDiscount / Math.max(1, cartItemCount)) * 100) / 100
+          : 0;
+
+      await tx.orderitem.createMany({
+        data: cartItems.map((item) => {
+          const sellingPrice = unitBaseByItemId.get(item.id)!;
+          const costPrice = Number(item.product.costPrice);
+          const gstPct = Number(item.product.gstPercentage) || 0;
+          const { gstAmount } = getGstBreakdown(sellingPrice, gstPct);
+          const printUnit = customizationUnitPrice(
+            item.customization as import("@/types/custom-print").CustomPrintData | null
+          );
+
+          return {
+            id: randomUUID(),
+            orderId: created.id,
+            productId: item.productId,
+            quantity: item.quantity,
+            price: sellingPrice,
+            total: Math.round((sellingPrice + printUnit) * item.quantity * 100) / 100,
+            sellingPriceSnapshot: sellingPrice,
+            mrpSnapshot: Number(item.product.sellingPrice),
+            costPriceSnapshot: costPrice,
+            gstSnapshot: Math.round(gstAmount * 100) / 100,
+            discountSnapshot: discountPerLine,
+            variantSku: item.productvariant?.sku ?? null,
+            variantSize: item.productvariant?.size?.sizeName ?? null,
+            variantGender: item.productvariant?.gender?.name ?? null,
+            customization: item.customization ?? undefined,
+          };
+        }),
+      });
+
+      await tx.paymentTransaction.create({
+        data: {
+          id: randomUUID(),
+          orderId: created.id,
+          gateway: "CASHFREE",
+          paymentMethod: "CASHFREE",
+          grossAmount: total,
+          gatewayFee: finalTxFee.fee,
+          gatewayGST: finalTxFee.gst,
+          netSettlement: Math.round((total - finalTxFee.totalCharge) * 100) / 100,
+          settlementStatus: "PENDING",
+          paymentStatus: "PENDING",
+        },
+      });
+
+      return created;
     });
 
     // Our db order id doubles as the Cashfree order id (unique + matches

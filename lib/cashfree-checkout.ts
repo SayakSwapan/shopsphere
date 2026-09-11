@@ -1,5 +1,28 @@
 import { load } from "@cashfreepayments/cashfree-js";
 
+let preloadPromise: Promise<void> | null = null;
+
+/**
+ * Starts loading the Cashfree SDK in the background so the hosted checkout
+ * can open with no extra network round-trip when the buyer taps
+ * "Proceed to Payment". Safe to call anytime — it is idempotent and never
+ * throws to the caller.
+ */
+export function preloadCashfree(
+  mode: "production" | "sandbox"
+): Promise<void> {
+  if (!preloadPromise) {
+    preloadPromise = load({ mode })
+      .then(() => undefined)
+      .catch((err) => {
+        // The real error shows when the checkout is actually opened.
+        console.error("[cashfree-checkout] preload failed", err);
+        preloadPromise = null; // allow a retry during the real open
+      });
+  }
+  return preloadPromise;
+}
+
 /**
  * Launches the Cashfree hosted checkout for a payment session.
  *
@@ -31,6 +54,10 @@ export async function openCashfreeCheckout(
 
   let cashfree;
   try {
+    // Reuse the background-preloaded SDK when available, otherwise load it
+    // right away. Either way the buyer is no longer stuck waiting on a
+    // cold script fetch after the session is already created.
+    if (preloadPromise) await preloadPromise;
     cashfree = await load({ mode: effectiveMode });
   } catch (err) {
     console.error("[cashfree-checkout] SDK load failed", err);

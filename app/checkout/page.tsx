@@ -20,26 +20,31 @@ export default async function CheckoutPage() {
     redirect("/login?redirectTo=/checkout");
   }
 
-  const user = await prisma.user.findUnique({
-    where: { email: session.user.email },
-    include: { addresses: true },
-  });
+  const userEmail = session.user.email;
+
+  // Load the customer (with addresses) and the cart in parallel — both key
+  // on the session email, so there's no reason to wait on one before the other.
+  const [user, cart] = await Promise.all([
+    prisma.user.findUnique({
+      where: { email: userEmail },
+      include: { addresses: true },
+    }),
+    prisma.cart.findFirst({
+      where: { user: { email: userEmail } },
+      include: {
+        cartitem: {
+          include: {
+            product: { include: { productimage: true } },
+            productvariant: { include: { size: true } },
+          },
+        },
+      },
+    }),
+  ]);
 
   if (!user) {
     redirect("/login?redirectTo=/checkout");
   }
-
-  const cart = await prisma.cart.findUnique({
-    where: { userId: user.id },
-    include: {
-      cartitem: {
-        include: {
-          product: { include: { productimage: true } },
-          productvariant: { include: { size: true } },
-        },
-      },
-    },
-  });
 
   if (!cart || cart.cartitem.length === 0) {
     redirect("/cart");

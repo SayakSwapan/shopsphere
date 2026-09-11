@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { ShoppingCart } from "lucide-react";
 import { useOptionalAuthModal } from "@/components/auth/auth-context";
@@ -12,14 +12,18 @@ interface Props {
 
 export default function QuickAddButton({ productId, variantId }: Props) {
   const [loading, setLoading] = useState(false);
+  const inflightRef = useRef(false);
   const authModal = useOptionalAuthModal();
 
   async function handleClick() {
+    if (inflightRef.current) return;
+
     if (!variantId) {
       toast.error("This product is out of stock");
       return;
     }
 
+    inflightRef.current = true;
     setLoading(true);
     try {
       const res = await fetch("/api/cart/add", {
@@ -30,7 +34,7 @@ export default function QuickAddButton({ productId, variantId }: Props) {
       const data = await res.json();
       if (res.status === 401) {
         authModal?.openAuth("login");
-        throw new Error("Please login to add to cart");
+        return; // modal opens instead of a toast
       }
       if (!res.ok || !data.success) throw new Error(data.message || "Failed to add");
       window.dispatchEvent(new Event("cart-updated"));
@@ -38,6 +42,7 @@ export default function QuickAddButton({ productId, variantId }: Props) {
     } catch (e) {
       toast.error((e as Error).message || "Failed to add to cart");
     } finally {
+      inflightRef.current = false;
       setLoading(false);
     }
   }

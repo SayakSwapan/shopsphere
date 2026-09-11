@@ -353,6 +353,19 @@ export async function calculateLoyaltyDiscount(
   orderAmount: number
 ): Promise<LoyaltyDiscountCalculation> {
   const program = await getLoyaltyProgram();
+  return calculateLoyaltyDiscountForProgram(program, customerId, orderAmount);
+}
+
+/**
+ * Same as `calculateLoyaltyDiscount` but accepts an already-loaded program so
+ * callers that already have the config (e.g. the checkout payment-creation
+ * path) avoid a redundant DB read.
+ */
+export async function calculateLoyaltyDiscountForProgram(
+  program: LoyaltyProgramConfig,
+  customerId: string,
+  orderAmount: number
+): Promise<LoyaltyDiscountCalculation> {
   if (!program.isActive) {
     return { applicable: false, discountAmount: 0, eligibleAmount: 0, reason: "Loyalty program is inactive" };
   }

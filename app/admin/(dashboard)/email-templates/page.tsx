@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Search, Mail } from "lucide-react";
+import { Search, Mail, Eye } from "lucide-react";
+import EmailPreviewModal from "@/components/admin/email-templates/email-preview-modal";
 
 interface Template {
   id: string;
@@ -20,6 +21,7 @@ export default function EmailTemplatesPage() {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [preview, setPreview] = useState<{ subject: string; body: string } | null>(null);
 
   useEffect(() => {
     fetchTemplates();
@@ -50,6 +52,16 @@ export default function EmailTemplatesPage() {
     if (!confirm(`Delete template "${name}"?`)) return;
     const res = await fetch(`/api/admin/email-templates/${id}`, { method: "DELETE" });
     if (res.ok) fetchTemplates();
+  }
+
+  async function openPreview(id: string) {
+    try {
+      const res = await fetch(`/api/admin/email-templates/${id}`);
+      const t = await res.json();
+      setPreview({ subject: t.subject, body: t.body });
+    } catch {
+      // silent
+    }
   }
 
   const filtered = templates.filter(
@@ -137,6 +149,12 @@ export default function EmailTemplatesPage() {
                     <td className="px-6 py-5">
                       <div className="flex gap-2">
                         <button
+                          onClick={() => openPreview(t.id)}
+                          className="flex items-center gap-1.5 rounded-lg bg-amber-500/15 px-3 py-2 text-sm text-amber-400 hover:bg-amber-500/25 transition"
+                        >
+                          <Eye size={14} /> Preview
+                        </button>
+                        <button
                           onClick={() => router.push(`/admin/email-templates/${t.id}`)}
                           className="rounded-lg bg-slate-700 px-3 py-2 text-sm text-white hover:bg-slate-600"
                         >
@@ -157,6 +175,15 @@ export default function EmailTemplatesPage() {
           </table>
         </div>
       </div>
+
+      {preview && (
+        <EmailPreviewModal
+          subject={preview.subject}
+          body={preview.body}
+          open
+          onClose={() => setPreview(null)}
+        />
+      )}
     </div>
   );
 }

@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import EmailBodyEditor from "./email-body-editor";
+import EmailPreviewModal from "./email-preview-modal";
 
 interface Props {
   initialData?: {
@@ -53,6 +54,7 @@ export default function TemplateForm({ initialData }: Props) {
   });
 
   const subjectRef = useRef<HTMLInputElement>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   function updateField(key: string, value: string | boolean) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -209,6 +211,13 @@ export default function TemplateForm({ initialData }: Props) {
 
         <div className="mt-8 flex gap-4">
           <button
+            onClick={() => setPreviewOpen(true)}
+            disabled={!form.body}
+            className="rounded-xl bg-slate-700 px-8 py-4 font-bold text-white transition hover:bg-slate-600 disabled:opacity-50"
+          >
+            Preview
+          </button>
+          <button
             onClick={handleSubmit}
             disabled={loading}
             className="rounded-xl bg-amber-500 px-8 py-4 font-bold text-black transition hover:bg-amber-400 disabled:opacity-50"
@@ -223,6 +232,15 @@ export default function TemplateForm({ initialData }: Props) {
           </button>
         </div>
       </div>
+
+      {previewOpen && (
+        <EmailPreviewModal
+          subject={form.subject}
+          body={form.body}
+          open
+          onClose={() => setPreviewOpen(false)}
+        />
+      )}
     </div>
   );
 }

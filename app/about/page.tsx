@@ -2,8 +2,16 @@ import { prisma } from "@/lib/prisma";
 import Footer from "@/components/store/layout/footer";
 import NavbarWrapper from "@/components/store/layout/navbar-wrapper";
 import { ShieldCheck, Truck, RotateCcw, Heart } from "lucide-react";
+import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "About Us",
+  description:
+    "Learn about our premium marketplace — quality-checked products, fast delivery, easy returns and a commitment to excellence.",
+  alternates: { canonical: "/about" },
+};
 
 async function getSettings() {
   try {

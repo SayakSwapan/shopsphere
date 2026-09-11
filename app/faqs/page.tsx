@@ -2,9 +2,24 @@ import { prisma } from "@/lib/prisma";
 import Footer from "@/components/store/layout/footer";
 import NavbarWrapper from "@/components/store/layout/navbar-wrapper";
 import FaqSearchList from "@/components/store/faq/faq-search-list";
+import FaqJsonLd from "@/components/seo/faq-json-ld";
 import { MessageCircleQuestion, Headset } from "lucide-react";
+import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "FAQs",
+  description:
+    "Quick, clear answers to the questions customers ask us most about orders, payments, delivery, returns and refunds.",
+  openGraph: {
+    title: "FAQs",
+    description:
+      "Quick, clear answers to the questions customers ask us most about orders, payments, delivery, returns and refunds.",
+    type: "website",
+    locale: "en_IN",
+  },
+};
 
 export default async function FaqsPage() {
   const faqs = await prisma.faq.findMany({
@@ -17,6 +32,12 @@ export default async function FaqsPage() {
       className="min-h-screen bg-bg-page"
       style={{ color: "var(--t-text-heading)" }}
     >
+      <FaqJsonLd
+        faqs={faqs.slice(0, 20).map((faq) => ({
+          question: faq.question,
+          answer: faq.answer,
+        }))}
+      />
       <NavbarWrapper />
 
       {/* Hero */}

@@ -1,5 +1,13 @@
 import Footer from "@/components/store/layout/footer";
 import NavbarWrapper from "@/components/store/layout/navbar-wrapper";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Privacy Policy",
+  description:
+    "How we collect, use and protect your personal data when you shop with us.",
+  alternates: { canonical: "/privacy" },
+};
 
 export default function PrivacyPage() {
   return (

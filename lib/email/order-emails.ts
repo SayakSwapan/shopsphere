@@ -18,6 +18,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { formatCurrency, formatDate } from "@/lib/format";
+import { getSiteUrl } from "@/lib/seo";
 import {
   sendTemplatedEmail,
   escapeEmailHtml,
@@ -157,7 +158,7 @@ function buildItemsTable(order: OrderForEmail): string {
   const rows = order.orderitem
     .map((item) => {
       const productName = escapeEmailHtml(item.product.name);
-      const productUrl = `/product/${item.product.slug}`;
+      const productUrl = `${getSiteUrl()}/products/${item.product.slug}`;
       const variant = [
         item.variantGender,
         item.variantSize ? `Size: ${item.variantSize}` : null,

@@ -1,6 +1,14 @@
 import { prisma } from "@/lib/prisma";
 import Footer from "@/components/store/layout/footer";
 import NavbarWrapper from "@/components/store/layout/navbar-wrapper";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Terms & Conditions",
+  description:
+    "Read the terms and conditions that govern your use of our website and purchases.",
+  alternates: { canonical: "/terms" },
+};
 
 export default async function TermsPage() {
   const policies = await prisma.policy.findMany({

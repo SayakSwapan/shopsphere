@@ -2,6 +2,23 @@ import { prisma } from "@/lib/prisma";
 import NavbarWrapper from "@/components/store/layout/navbar-wrapper";
 import Footer from "@/components/store/layout/footer";
 import ProductsContent from "@/components/store/products/products-content";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Products",
+  description:
+    "Explore premium sportswear, jerseys, footwear, lifestyle apparel and exclusive collections. Free shipping across India on eligible orders.",
+  alternates: {
+    canonical: "/products",
+  },
+  openGraph: {
+    title: "Products",
+    description:
+      "Explore premium sportswear, jerseys, footwear, lifestyle apparel and exclusive collections. Free shipping across India on eligible orders.",
+    type: "website",
+    locale: "en_IN",
+  },
+};
 
 interface ProductsPageProps {
   searchParams: Promise<{

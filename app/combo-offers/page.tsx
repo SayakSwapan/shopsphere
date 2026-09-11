@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Gift, ArrowRight, TicketPercent } from "lucide-react";
+import type { Metadata } from "next";
 
 import { prisma } from "@/lib/prisma";
 
@@ -7,6 +8,13 @@ import NavbarWrapper from "@/components/store/layout/navbar-wrapper";
 import Footer from "@/components/store/layout/footer";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Combo Offers",
+  description:
+    "Grab unbeatable bundle deals — pick the products you love and pay only for the highest-priced ones. Every other item is free.",
+  alternates: { canonical: "/combo-offers" },
+};
 
 const TYPE_LABEL: Record<string, string> = {
   BOGO: "Buy X Get Y",

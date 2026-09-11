@@ -92,7 +92,7 @@ function requestBrowserNotificationPermission() {
 function showBrowserNotification(title: string, body: string) {
   if ("Notification" in window && Notification.permission === "granted") {
     try {
-      new Notification(title, { body, icon: "/favicon.ico", tag: "admin-notif" });
+      new Notification(title, { body, icon: "/icon.svg", tag: "admin-notif" });
     } catch {}
   }
 }

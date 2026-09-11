@@ -18,6 +18,7 @@ import NavbarWrapper from "@/components/store/layout/navbar-wrapper";
 import ShareButton from "@/components/store/share-button";
 import SizeChartButton from "@/components/store/product/size-chart-button";
 import PdpComboSection from "@/components/store/product/pdp-combo-section";
+import ProductJsonLd from "@/components/seo/product-json-ld";
 import { ArrowUpRight, RotateCcw, RefreshCw, Info, Home, Star, LayoutGrid, Sparkles } from "lucide-react";
 
 interface Props {
@@ -93,6 +94,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         id: true,
         name: true,
         description: true,
+        metaTitle: true,
+        metaDescription: true,
         productimage: {
           orderBy: { createdAt: "asc" },
           take: 1,
@@ -113,15 +116,21 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     .replace(/\s+/g, " ")
     .trim()
     .slice(0, 160);
-  const title = `${product.name} | ${siteName}`;
+  const title = product.metaTitle || `${product.name} | ${siteName}`;
+  const description =
+    product.metaDescription ||
+    shortDescription ||
+    `${product.name} — shop online. Shipment across India.`;
 
   return {
     title,
-    description:
-      shortDescription || `${product.name} — shop online. Shipment across India.`,
+    description: description.slice(0, 160),
+    alternates: {
+      canonical: `/products/${slug}`,
+    },
     openGraph: {
       title,
-      description: shortDescription || undefined,
+      description: description.slice(0, 160) || undefined,
       type: "website",
       locale: "en_IN",
       siteName,
@@ -259,6 +268,17 @@ export default async function ProductPage({ params }: Props) {
 
   return (
     <div className="min-h-screen bg-bg-page font-sans antialiased">
+      <ProductJsonLd
+        name={product.name}
+        description={product.description}
+        slug={product.slug}
+        imageUrl={product.productimage[0]?.url}
+        price={displayPrice}
+        availability={inStock ? "InStock" : "OutOfStock"}
+        reviewCount={reviewCount}
+        reviewRating={reviewAverage}
+        categoryName={product.category.name}
+      />
 
       <div className="pointer-events-none fixed inset-0 -z-10" style={{ background: "color-mix(in srgb, var(--t-primary) 3%, transparent)", opacity: 0.3 }} />
 

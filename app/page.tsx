@@ -3,10 +3,12 @@ import Footer from "@/components/store/layout/footer";
 import SportsFooter from "@/components/store/layout/sports-footer";
 import ProductCard from "@/components/store/product-card";
 import Link from "next/link";
+import type { Metadata } from "next";
 import NavbarWrapper from "@/components/store/layout/navbar-wrapper";
 import HeroSlider from "@/components/store/home/hero-slider";
 import { ShieldCheck, Truck, RotateCcw, Check } from "lucide-react";
 import { getActiveTheme, type ThemeId } from "@/lib/themes/config";
+import { getSiteSettings, getSiteName } from "@/lib/site-settings";
 import MotifDivider from "@/components/store/home/motif-divider";
 import EthnicCategoryShowcase from "@/components/store/home/ethnic-category-showcase";
 import ArtisanBanner from "@/components/store/home/artisan-banner";
@@ -20,8 +22,25 @@ import TrustBar from "@/components/store/home/trust-bar";
 import FeatureCards from "@/components/store/home/feature-cards";
 import ComboDealsSection from "@/components/store/home/combo-deals-section";
 import InstagramReelsSection from "@/components/store/home/instagram-reels-section";
+import OrganizationJsonLd from "@/components/seo/organization-json-ld";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const settings = await getSiteSettings();
+  const siteName = getSiteName(settings);
+  return {
+    title: siteName,
+    description: `Shop at ${siteName} for premium sportswear, fashion, footwear and lifestyle products shipped across India.`,
+    openGraph: {
+      title: siteName,
+      description: `Shop at ${siteName} for premium sportswear, fashion, footwear and lifestyle products shipped across India.`,
+      type: "website",
+      locale: "en_IN",
+      siteName,
+    },
+  };
+}
 
 async function fetchHomeData() {
   const rawTheme = await getActiveTheme();
@@ -136,6 +155,7 @@ export default async function HomePage(props: { searchParams?: Promise<{ preview
   if (isSports) {
     return (
       <div className="min-h-screen bg-bg-page sports-page">
+        <OrganizationJsonLd />
         {isPreview && <ThemePreviewOverride themeId={activeTheme} />}
         <NavbarWrapper />
         <HeroSlider banners={banners} />
@@ -153,6 +173,7 @@ export default async function HomePage(props: { searchParams?: Promise<{ preview
 
   return (
     <div className="min-h-screen bg-bg-page">
+      <OrganizationJsonLd />
       {isPreview && <ThemePreviewOverride themeId={activeTheme} />}
       <NavbarWrapper />
 

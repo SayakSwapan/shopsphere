@@ -1,6 +1,14 @@
 import NavbarWrapper from "@/components/store/layout/navbar-wrapper";
 import Footer from "@/components/store/layout/footer";
 import ContactForm from "@/components/store/contact/contact-form";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Contact Us",
+  description:
+    "Get in touch with our support team for order help, product questions, returns and more. We're ready to assist you.",
+  alternates: { canonical: "/contact" },
+};
 
 export default function ContactPage() {
   return (

@@ -1,5 +1,13 @@
 import Footer from "@/components/store/layout/footer";
 import NavbarWrapper from "@/components/store/layout/navbar-wrapper";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Returns & Replacements",
+  description:
+    "Everything you need to know about returning or replacing an item — return windows, conditions and how to start a return.",
+  alternates: { canonical: "/returns" },
+};
 
 export default function ReturnsPage() {
   return (

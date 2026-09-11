@@ -38,14 +38,42 @@ export async function generateMetadata(): Promise<Metadata> {
     const siteName = getSiteName(settings);
     const logo = getSiteLogo(settings);
     return {
-      title: siteName,
+      metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || "https://trinovasports.com"),
+      title: {
+        template: `%s | ${siteName}`,
+        default: siteName,
+      },
       description: `Shop at ${siteName} for premium fashion, footwear and lifestyle products.`,
       icons: logo ? { icon: [{ url: logo, type: "image/png" }] } : undefined,
+      openGraph: {
+        type: "website",
+        locale: "en_IN",
+        siteName,
+        title: siteName,
+        description: `Shop at ${siteName} for premium fashion, footwear and lifestyle products.`,
+      },
+      twitter: {
+        card: "summary_large_image",
+      },
     };
   } catch {
     return {
-      title: "ShopSphere",
+      metadataBase: new URL("https://trinovasports.com"),
+      title: {
+        template: "%s | ShopSphere",
+        default: "ShopSphere",
+      },
       description: "Premium sportswear, sneakers & fashion",
+      openGraph: {
+        type: "website",
+        locale: "en_IN",
+        siteName: "ShopSphere",
+        title: "ShopSphere",
+        description: "Premium sportswear, sneakers & fashion",
+      },
+      twitter: {
+        card: "summary_large_image",
+      },
     };
   }
 }

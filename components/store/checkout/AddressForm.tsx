@@ -122,7 +122,7 @@ export default function AddressForm({
     "w-full p-4 outline-none focus:border-primary transition-colors placeholder:text-text-muted-3";
 
   return (
-    <div className="grid gap-5">
+    <div className="grid gap-5 px-4 py-4 sm:px-6 sm:py-6">
       <input
         placeholder="Full Name"
         value={form.fullName}
@@ -215,20 +215,29 @@ export default function AddressForm({
         Make Default Address
       </label>
 
-      <button
-        type="button"
-        disabled={loading}
-        onClick={submit}
-        className="flex w-full items-center justify-center gap-2 py-4 font-black uppercase tracking-wider transition bg-primary text-button-text hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-        style={{ borderRadius: "var(--t-radius-button)", fontFamily: "var(--t-font-heading)", minHeight: 52 }}
+      {/* Sticky footer keeps the Save button on screen while scrolling the
+          form (and above the on-screen keyboard) on small screens. The
+          negative margins counter the padded root so the strip spans the
+          full popup width and sits flush against the bottom edge. */}
+      <div
+        className="sticky bottom-0 -mx-4 -mb-4 bg-bg-page px-4 pb-4 pt-3 sm:-mx-6 sm:-mb-6 sm:px-6 sm:pb-6 sm:pt-4"
+        style={{ borderTop: "1px solid var(--t-border-subtle)" }}
       >
-        {loading && <Loader2 size={18} className="animate-spin" />}
-        {loading
-          ? "Saving..."
-          : address
-          ? "Update Address"
-          : "Save Address"}
-      </button>
+        <button
+          type="button"
+          disabled={loading}
+          onClick={submit}
+          className="flex w-full items-center justify-center gap-2 py-4 font-black uppercase tracking-wider transition bg-primary text-button-text hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+          style={{ borderRadius: "var(--t-radius-button)", fontFamily: "var(--t-font-heading)", minHeight: 52 }}
+        >
+          {loading && <Loader2 size={18} className="animate-spin" />}
+          {loading
+            ? "Saving..."
+            : address
+            ? "Update Address"
+            : "Save Address"}
+        </button>
+      </div>
     </div>
   );
 }

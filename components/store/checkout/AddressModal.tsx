@@ -55,7 +55,7 @@ export default function AddressModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 p-0 sm:p-4"
+      className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center bg-black/70 p-0 sm:p-4"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
@@ -93,11 +93,10 @@ export default function AddressModal({
         {/* Body — flex-1 + min-h-0 lets this div shrink inside the flex
             column so overflow-y-auto actually kicks in when content is tall.
             overscroll-contain prevents the page behind from scrolling when
-            the user reaches the top or bottom of this scroll area. */}
-        <div
-          className="flex-1 min-h-0 overflow-y-auto overscroll-contain"
-          style={{ padding: "clamp(1rem, 4vw, 1.5rem)" }}
-        >
+            the user reaches the top or bottom of this scroll area. Padding
+            lives in AddressForm so the sticky Save button can sit flush with
+            the bottom edge. */}
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
           <AddressForm
             address={address}
             onSuccess={() => {

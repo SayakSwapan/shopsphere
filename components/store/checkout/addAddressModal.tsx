@@ -88,7 +88,7 @@ export default function AddAddressModal({
             </div>
 
             {/* Body — scrolls independently on small screens */}
-            <div className="overflow-y-auto overscroll-contain px-4 py-4 sm:px-6 sm:py-6">
+            <div className="overflow-y-auto overscroll-contain">
               <AddressForm
                 onSuccess={() => {
                   onClose();

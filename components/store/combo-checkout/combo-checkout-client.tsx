@@ -236,6 +236,10 @@ export default function ComboCheckoutClient({ addresses, offerSlug }: Props) {
     selections!.length === getCount &&
     pricingState === "success" &&
     summary !== null;
+  // The full checkout grid (address + payment + summary) is only rendered for
+  // a ready, complete combo — only then show the mobile sticky CTA bar.
+  const showStickyBar =
+    ready && (getCount === null || selections!.length === getCount);
 
   const shippingCost = shipping?.deliverable ? shipping.shipping ?? 0 : null;
   const payTotal = summary
@@ -327,7 +331,7 @@ export default function ComboCheckoutClient({ addresses, offerSlug }: Props) {
 
   // ── Render ──
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+    <div className="max-w-7xl mx-auto px-4 pt-8 pb-32 sm:px-6 sm:pt-12 sm:pb-32 lg:pb-12">
       <div className="mb-8">
         <button
           type="button"
@@ -582,22 +586,24 @@ export default function ComboCheckoutClient({ addresses, offerSlug }: Props) {
                   </p>
                 )}
 
-                <button
-                  onClick={placeOrder}
-                  disabled={placing || !complete || pricingState !== "success" || !shipping?.deliverable}
-                  className="w-full py-4 text-lg font-black uppercase tracking-wider transition-colors bg-primary hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-                  style={{ borderRadius: "var(--t-radius-button)", color: "var(--t-bg-page)", fontFamily: "var(--t-font-heading)" }}
-                >
-                  {placing ? (
-                    <>
-                      <Loader2 size={17} className="animate-spin" /> Processing...
-                    </>
-                  ) : pricingState === "loading"
-                    ? "Checking availability..."
-                    : method === "CASHFREE"
-                    ? "Proceed To Payment"
-                    : "Place Order"}
-                </button>
+                <div className="hidden lg:block">
+                  <button
+                    onClick={placeOrder}
+                    disabled={placing || !complete || pricingState !== "success" || !shipping?.deliverable}
+                    className="w-full py-4 text-lg font-black uppercase tracking-wider transition-colors bg-primary hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                    style={{ borderRadius: "var(--t-radius-button)", color: "var(--t-bg-page)", fontFamily: "var(--t-font-heading)" }}
+                  >
+                    {placing ? (
+                      <>
+                        <Loader2 size={17} className="animate-spin" /> Processing...
+                      </>
+                    ) : pricingState === "loading"
+                      ? "Checking availability..."
+                      : method === "CASHFREE"
+                      ? "Proceed To Payment"
+                      : "Place Order"}
+                  </button>
+                </div>
               </div>
             </section>
           </div>
@@ -677,6 +683,49 @@ export default function ComboCheckoutClient({ addresses, offerSlug }: Props) {
                 )}
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mobile (below lg) sticky bottom bar — keeps the payable total + CTA
+          always visible on small screens, same as the main checkout */}
+      {showStickyBar && (
+        <div
+          className="fixed inset-x-0 bottom-0 z-50 border-t border-border-card bg-bg-card lg:hidden"
+          style={{
+            boxShadow: "0 -4px 16px color-mix(in srgb, var(--t-text-heading) 12%, transparent)",
+            paddingBottom: "env(safe-area-inset-bottom)",
+          }}
+        >
+          <div className="flex items-center gap-3 px-4 py-3 sm:px-6">
+            <div className="min-w-0 flex-1">
+              <p
+                className="text-[10px] font-bold uppercase tracking-wider text-text-muted-1"
+                style={{ fontFamily: "var(--t-font-heading)" }}
+              >
+                Payable Amount
+              </p>
+              <p
+                className="text-xl font-black text-text-heading"
+                style={{ fontFamily: "var(--t-font-heading)" }}
+              >
+                {pricingState === "loading" ? "—" : formatCurrency(payTotal)}
+              </p>
+            </div>
+            <button
+              onClick={placeOrder}
+              disabled={placing || !complete || pricingState !== "success" || !shipping?.deliverable}
+              className="inline-flex flex-shrink-0 items-center justify-center gap-2 px-5 text-sm font-black uppercase tracking-wider transition-colors bg-primary hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+              style={{ borderRadius: "var(--t-radius-button)", color: "var(--t-bg-page)", fontFamily: "var(--t-font-heading)", minHeight: 48 }}
+            >
+              {placing ? (
+                <Loader2 size={18} className="animate-spin" />
+              ) : pricingState === "loading"
+                ? "Checking..."
+                : method === "CASHFREE"
+                ? "Proceed To Payment"
+                : "Place Order"}
+            </button>
           </div>
         </div>
       )}

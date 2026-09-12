@@ -599,7 +599,7 @@ export default function CheckoutClient({
   }
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:py-12 lg:px-6">
+    <div className="mx-auto max-w-7xl px-4 pb-32 pt-8 sm:pb-32 sm:pt-12 lg:px-6 lg:pb-12">
       <div className="mb-8 sm:mb-10">
         <h1
           className="text-3xl font-black sm:text-4xl lg:text-5xl text-text-heading"
@@ -1057,23 +1057,25 @@ export default function CheckoutClient({
                 </div>
               </div>
 
-              <button
-                onClick={placeOrder}
-                disabled={loading || deliveryBlocked}
-                className="inline-flex w-full items-center justify-center gap-2 py-4 text-lg font-black uppercase tracking-wider transition-colors bg-primary hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-                style={{ borderRadius: "var(--t-radius-button)", color: "var(--t-bg-page)", fontFamily: "var(--t-font-heading)", minHeight: 56 }}
-              >
-                {loading ? (
-                  <>
-                    <Loader2 size={20} className="animate-spin" />
-                    {effectiveMethod === "ONLINE" ? "Creating Payment..." : "Placing Order..."}
-                  </>
-                ) : effectiveMethod === "ONLINE" ? (
-                  "Proceed To Payment"
-                ) : (
-                  "Place Order"
-                )}
-              </button>
+              <span className="hidden lg:block">
+                <button
+                  onClick={placeOrder}
+                  disabled={loading || deliveryBlocked}
+                  className="inline-flex w-full items-center justify-center gap-2 py-4 text-lg font-black uppercase tracking-wider transition-colors bg-primary hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                  style={{ borderRadius: "var(--t-radius-button)", color: "var(--t-bg-page)", fontFamily: "var(--t-font-heading)", minHeight: 56 }}
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 size={20} className="animate-spin" />
+                      {effectiveMethod === "ONLINE" ? "Creating Payment..." : "Placing Order..."}
+                    </>
+                  ) : effectiveMethod === "ONLINE" ? (
+                    "Proceed To Payment"
+                  ) : (
+                    "Place Order"
+                  )}
+                </button>
+              </span>
             </div>
           </section>
         </div>
@@ -1299,6 +1301,47 @@ export default function CheckoutClient({
               ))}
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Mobile (below lg) sticky bottom bar — keeps the total + proceed/place CTA always
+          visible on small screens (Flipkart/Amazon style) */}
+      <div
+        className="fixed inset-x-0 bottom-0 z-50 border-t border-border-card bg-bg-card lg:hidden"
+        style={{
+          boxShadow: "0 -4px 16px color-mix(in srgb, var(--t-text-heading) 12%, transparent)",
+          paddingBottom: "env(safe-area-inset-bottom)",
+        }}
+      >
+        <div className="flex items-center gap-3 px-4 py-3 sm:px-6">
+          <div className="min-w-0 flex-1">
+            <p
+              className="text-[10px] font-bold uppercase tracking-wider text-text-muted-1"
+              style={{ fontFamily: "var(--t-font-heading)" }}
+            >
+              Payable Amount
+            </p>
+            <p
+              className="text-xl font-black text-text-heading"
+              style={{ fontFamily: "var(--t-font-heading)" }}
+            >
+              ₹{finalTotal.toLocaleString("en-IN")}
+            </p>
+          </div>
+          <button
+            onClick={placeOrder}
+            disabled={loading || deliveryBlocked}
+            className="inline-flex flex-shrink-0 items-center justify-center gap-2 px-5 text-sm font-black uppercase tracking-wider transition-colors bg-primary hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            style={{ borderRadius: "var(--t-radius-button)", color: "var(--t-bg-page)", fontFamily: "var(--t-font-heading)", minHeight: 48 }}
+          >
+            {loading ? (
+              <Loader2 size={18} className="animate-spin" />
+            ) : effectiveMethod === "ONLINE" ? (
+              "Proceed To Payment"
+            ) : (
+              "Place Order"
+            )}
+          </button>
         </div>
       </div>
 

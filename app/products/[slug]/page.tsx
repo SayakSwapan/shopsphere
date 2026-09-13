@@ -8,6 +8,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import RelatedProducts from "@/components/store/related-products";
 import ProductGallery from "@/components/store/product-gallery";
+import WishlistButton from "@/components/store/wishlist-button";
 import Footer from "@/components/store/layout/footer";
 import ProductPurchasePanel from "@/components/store/product/purchase-panel";
 import PincodeChecker from "@/components/store/product/pincode-checker";
@@ -322,6 +323,11 @@ export default async function ProductPage({ params }: Props) {
                   )}
                 </div>
               )}
+              {/* Wishlist lives on top of the image on mobile (desktop keeps it
+                  next to Add to Cart inside the purchase panel) */}
+              <div className="absolute right-3 top-3 z-10 sm:hidden">
+                <WishlistButton productId={product.id} />
+              </div>
               <ProductGallery images={product.productimage} productName={product.name} />
             </div>
 
@@ -611,6 +617,10 @@ export default async function ProductPage({ params }: Props) {
       </Suspense>
 
       <Footer />
+
+      {/* Spacer so the last content can scroll clear of the mobile sticky
+          Add to Cart / Buy Now bar */}
+      <div className="h-20 sm:hidden" aria-hidden="true" />
     </div>
   );
 }

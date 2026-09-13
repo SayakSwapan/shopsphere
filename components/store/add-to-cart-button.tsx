@@ -5,6 +5,49 @@ import { toast } from "sonner";
 import { useOptionalAuthModal } from "@/components/auth/auth-context";
 import type { CustomPrintData } from "@/types/custom-print";
 
+interface AddToCartPayload {
+  productId: string;
+  productVariantId: string;
+  quantity: number;
+  customization?: CustomPrintData | null;
+}
+
+type AddToCartOutcome =
+  | { ok: true }
+  | { ok: false; status: number; message?: string };
+
+/**
+ * Shared add-to-cart network call. Used by AddToCartButton and the mobile
+ * sticky bar on the product page so both flows hit the exact same endpoint
+ * with the same payload shape.
+ */
+export async function addToCartRequest(
+  payload: AddToCartPayload
+): Promise<AddToCartOutcome> {
+  try {
+    const response = await fetch("/api/cart/add", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await response.json();
+    if (!response.ok || !data.success) {
+      return {
+        ok: false,
+        status: response.status,
+        message: data.message || "Failed to add to cart.",
+      };
+    }
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      status: 0,
+      message: (error as Error).message || "Failed to add to cart",
+    };
+  }
+}
+
 interface Props {
   productId: string;
   productVariantId?: string | null;
@@ -35,48 +78,21 @@ export default function AddToCartButton({
         inflightRef.current = true;
         setLoading(true);
 
-        const response =
-          await fetch(
-            "/api/cart/add",
-            {
-              method: "POST",
-              headers: {
-                "Content-Type":
-                  "application/json",
-              },
-              body: JSON.stringify({
-                productId,
-                productVariantId,
-                quantity,
-                customization,
-              }),
-            }
-          );
+        const result = await addToCartRequest({
+          productId,
+          productVariantId,
+          quantity,
+          customization,
+        });
 
-        const data = await response.json();
-
-        if (response.status === 401) {
+        if (result.ok) {
+          window.dispatchEvent(new Event("cart-updated"));
+          toast.success("Added to Cart");
+        } else if (result.status === 401) {
           authModal?.openAuth("login");
-          return; // modal opens instead of a toast
+        } else {
+          toast.error(result.message || "Failed to add to cart.");
         }
-
-        if (!response.ok || !data.success) {
-          throw new Error(
-            data.message ||
-              "Failed to add to cart."
-          );
-        }
-
-        window.dispatchEvent(
-          new Event("cart-updated")
-        );
-
-        toast.success("Added to Cart");
-      } catch (error) {
-        toast.error(
-          (error as Error).message ||
-            "Failed to add cart"
-        );
       } finally {
         inflightRef.current = false;
         setLoading(false);

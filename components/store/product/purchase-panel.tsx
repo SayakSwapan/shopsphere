@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useOptionalAuthModal } from "@/components/auth/auth-context";
@@ -13,11 +13,13 @@ import {
   Minus,
   Plus,
   Loader2,
+  ShoppingBag,
 } from "lucide-react";
-import AddToCartButton from "@/components/store/add-to-cart-button";
+import AddToCartButton, { addToCartRequest } from "@/components/store/add-to-cart-button";
 import WishlistButton from "@/components/store/wishlist-button";
 import OfferCountdown from "@/components/store/product/offer-countdown";
 import ReviewHighlights from "@/components/store/product/review-highlights";
+import SizeSelectionSheet from "@/components/store/product/size-selection-sheet";
 
 interface VariantSize {
   sizeName?: string | null;
@@ -83,6 +85,15 @@ export default function ProductPurchasePanel({
   const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [isBuying, setIsBuying] = useState(false);
+  const [isAdding, setIsAdding] = useState(false);
+  // Mobile-only size bottom sheet state. `pendingAction` remembers whether the
+  // customer tapped Add to Cart or Buy Now so the sheet can auto-continue that
+  // flow once a size is picked.
+  const [sizeSheetOpen, setSizeSheetOpen] = useState(false);
+  const [pendingAction, setPendingAction] = useState<"add" | "buy" | null>(null);
+  // Hard guard so a fast double-tap can't fire two cart POSTs before React
+  // flushes the disabled state (mirrors AddToCartButton's inflightRef).
+  const addInFlightRef = useRef(false);
 
   const filteredVariants = useMemo(
     () =>
@@ -150,9 +161,53 @@ export default function ProductPurchasePanel({
       selectedVariant ? Math.min(selectedVariant.stock, q + 1) : 1
     );
 
-  const handleBuyNow = async () => {
+  // Add to cart. `variant` lets the size bottom sheet continue the flow with the
+  // freshly picked size without waiting for a re-render to derive it.
+  const runAddToCart = async (variant?: ProductVariant) => {
+    const target = variant ?? selectedVariant;
+    if (addInFlightRef.current) return;
+
+    if (!target) {
+      if (needsSizeSelection) {
+        setPendingAction("add");
+        setSizeSheetOpen(true);
+      } else {
+        toast.error("This item is currently unavailable");
+      }
+      return;
+    }
+    if (target.stock <= 0) {
+      toast.error("This size is out of stock");
+      return;
+    }
+
+    try {
+      addInFlightRef.current = true;
+      setIsAdding(true);
+      const result = await addToCartRequest({
+        productId,
+        productVariantId: target.id,
+        quantity,
+      });
+
+      if (result.ok) {
+        window.dispatchEvent(new Event("cart-updated"));
+        toast.success("Added to Cart");
+      } else if (result.status === 401) {
+        authModal?.openAuth("login");
+      } else {
+        toast.error(result.message || "Failed to add to cart.");
+      }
+    } finally {
+      addInFlightRef.current = false;
+      setIsAdding(false);
+    }
+  };
+
+  const runBuyNow = async (variant?: ProductVariant) => {
+    const target = variant ?? selectedVariant;
     if (isBuying) return;
-    if (!selectedVariant) {
+    if (!target) {
       toast.error(
         needsSizeSelection
           ? "Please select a size to continue"
@@ -160,13 +215,13 @@ export default function ProductPurchasePanel({
       );
       return;
     }
-    if (selectedVariant.stock <= 0) {
+    if (target.stock <= 0) {
       toast.error("This size is out of stock");
       return;
     }
-    if (selectedVariant.stock < quantity) {
-      toast.error(`Only ${selectedVariant.stock} units available in this size`);
-      setQuantity(Math.max(1, selectedVariant.stock));
+    if (target.stock < quantity) {
+      toast.error(`Only ${target.stock} units available in this size`);
+      setQuantity(Math.max(1, target.stock));
       return;
     }
     setIsBuying(true);
@@ -177,7 +232,7 @@ export default function ProductPurchasePanel({
         body: JSON.stringify({
           productId,
           quantity,
-          productVariantId: selectedVariant.id,
+          productVariantId: target.id,
         }),
       });
       const data = await response.json();
@@ -200,7 +255,43 @@ export default function ProductPurchasePanel({
     }
   };
 
+  // Mobile sticky bar handlers — if the product needs a size and none is
+  // picked yet, open the bottom sheet instead of failing silently. Otherwise
+  // the requested flow runs immediately.
+  const handleStickyAdd = () => {
+    if (needsSizeSelection && !selectedVariant) {
+      setPendingAction("add");
+      setSizeSheetOpen(true);
+      return;
+    }
+    runAddToCart();
+  };
+
+  const handleStickyBuy = () => {
+    if (needsSizeSelection && !selectedVariant) {
+      setPendingAction("buy");
+      setSizeSheetOpen(true);
+      return;
+    }
+    runBuyNow();
+  };
+
+  // Runs when the customer picks a size inside the bottom sheet — the action
+  // they originally tapped continues automatically, no second tap needed.
+  const handleSizeSelected = (variantId: string) => {
+    const variant = filteredVariants.find((v) => v.id === variantId);
+    const action = pendingAction;
+    setSelectedVariantId(variantId);
+    setQuantity(1);
+    setPendingAction(null);
+    setSizeSheetOpen(false);
+    if (action === "buy") runBuyNow(variant);
+    else if (action === "add") runAddToCart(variant);
+  };
+
   const canPurchase = Boolean(selectedVariant && selectedVariant.stock > 0);
+  const anyInStockVariant = filteredVariants.some((v) => v.stock > 0);
+  const busy = isAdding || isBuying;
 
   const policies = [
     {
@@ -397,8 +488,8 @@ export default function ProductPurchasePanel({
           </div>
         )}
 
-        {/* Quantity selector */}
-        <div className="border-t px-5 py-4" style={{ borderColor: "var(--t-border-subtle)" }}>
+        {/* Quantity selector (desktop/tablet only — mobile manages quantity via the cart) */}
+        <div className="hidden border-t px-5 py-4 sm:block" style={{ borderColor: "var(--t-border-subtle)" }}>
           <div className="flex items-center justify-between">
             <p className="text-sm font-bold" style={{ color: "var(--t-text-heading)" }}>
               Quantity
@@ -448,8 +539,8 @@ export default function ProductPurchasePanel({
           </div>
         </div>
 
-        {/* CTAs */}
-          <div className="flex flex-col gap-3 px-5 pb-5 sm:flex-row">
+        {/* CTAs (desktop/tablet only — mobile uses the sticky bottom bar) */}
+          <div className="hidden flex-col gap-3 px-5 pb-5 sm:flex sm:flex-row">
             <div className="flex flex-1 gap-3 min-w-0">
               <div className="flex-1 min-w-0">
                 <AddToCartButton
@@ -465,7 +556,7 @@ export default function ProductPurchasePanel({
           <button
             type="button"
             disabled={isBuying || !selectedVariant || selectedVariant.stock <= 0}
-            onClick={handleBuyNow}
+            onClick={() => runBuyNow()}
             className="pd-btn-primary w-full py-5 font-black uppercase text-xs tracking-wider sm:w-auto sm:flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
             style={!canPurchase ? { opacity: 0.6 } : undefined}
           >
@@ -495,6 +586,72 @@ export default function ProductPurchasePanel({
           </div>
         ))}
       </div>
+
+      {/*
+        Mobile sticky action bar — keeps Add to Cart + Buy Now one-thumb
+        accessible while scrolling through info, reviews and related products.
+        If a real size is required and none is picked yet, the tapped action
+        opens the size bottom sheet and continues automatically after picking.
+      */}
+      <div
+        className="fixed inset-x-0 bottom-0 z-50 border-t border-border-card bg-bg-card sm:hidden"
+        style={{
+          boxShadow: "0 -4px 16px color-mix(in srgb, var(--t-text-heading) 12%, transparent)",
+          paddingBottom: "env(safe-area-inset-bottom)",
+        }}
+      >
+        <div className="flex items-stretch gap-3 px-4 py-3">
+          <button
+            type="button"
+            onClick={handleStickyAdd}
+            disabled={busy || !anyInStockVariant}
+            className="flex flex-1 items-center justify-center gap-2 py-3.5 text-xs font-black uppercase tracking-wider transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+            style={{
+              borderRadius: "var(--t-radius-button)",
+              fontFamily: "var(--t-font-heading)",
+              border: "1.5px solid var(--t-primary)",
+              color: "var(--t-primary)",
+              background: "var(--t-bg-card)",
+            }}
+          >
+            {isAdding ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : (
+              <ShoppingBag size={16} />
+            )}
+            {isAdding ? "Adding…" : "Add to Cart"}
+          </button>
+          <button
+            type="button"
+            onClick={handleStickyBuy}
+            disabled={busy || !anyInStockVariant}
+            className="pd-btn-primary w-full flex-1 py-3.5 font-black uppercase text-xs tracking-wider disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {isBuying ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : (
+              <Zap size={16} />
+            )}
+            {isBuying ? "Processing…" : "Buy Now"}
+          </button>
+        </div>
+      </div>
+
+      {/* Mobile size-picker bottom sheet */}
+      <SizeSelectionSheet
+        open={sizeSheetOpen}
+        onClose={() => {
+          setSizeSheetOpen(false);
+          setPendingAction(null);
+        }}
+        options={filteredVariants.map((v) => ({
+          id: v.id,
+          sizeName: v.size?.sizeName,
+          stock: v.stock,
+        }))}
+        selectedVariantId={selectedVariantId}
+        onSelect={handleSizeSelected}
+      />
     </div>
   );
 }

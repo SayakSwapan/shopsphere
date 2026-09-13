@@ -30,7 +30,21 @@ export default function ProductDetailsLoading() {
                     "color-mix(in srgb, var(--t-text-muted-3) 22%, var(--t-bg-card-nested, var(--t-bg-card)))",
                 }}
               />
-              <div className="mt-3 grid grid-cols-4 gap-2 md:grid-cols-5 md:gap-3">
+              <div className="mt-2.5 flex items-center justify-center gap-1.5 sm:hidden" aria-hidden="true">
+                <div
+                  className="animate-pulse h-1.5 w-6 rounded-full"
+                  style={{ background: "color-mix(in srgb, var(--t-text-muted-3) 30%, var(--t-bg-card-nested, var(--t-bg-card)))" }}
+                />
+                <div
+                  className="animate-pulse h-1.5 w-2 rounded-full"
+                  style={{ background: "color-mix(in srgb, var(--t-text-muted-3) 30%, var(--t-bg-card-nested, var(--t-bg-card)))" }}
+                />
+                <div
+                  className="animate-pulse h-1.5 w-2 rounded-full"
+                  style={{ background: "color-mix(in srgb, var(--t-text-muted-3) 30%, var(--t-bg-card-nested, var(--t-bg-card)))" }}
+                />
+              </div>
+              <div className="mt-3 hidden grid-cols-4 gap-2 sm:grid md:grid-cols-5 md:gap-3">
                 {Array.from({ length: 5 }).map((_, i) => (
                   <div
                     key={i}
@@ -86,7 +100,7 @@ export default function ProductDetailsLoading() {
                   </div>
                 </div>
 
-                <div className="px-5 py-5 space-y-4">
+                <div className="hidden px-5 py-5 space-y-4 sm:block">
                   <div className="flex items-center justify-between">
                     <PdpSkeletonBlock className="h-4 w-20" />
                     <PdpSkeletonBlock className="h-3 w-28" />
@@ -98,7 +112,7 @@ export default function ProductDetailsLoading() {
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-3 px-5 pb-5 sm:flex-row border-t border-border-subtle pt-4">
+                <div className="hidden flex-col gap-3 px-5 pb-5 sm:flex sm:flex-row border-t border-border-subtle pt-4">
                   <PdpSkeletonBlock className="h-14 flex-1" radius="var(--t-radius-button)" />
                   <PdpSkeletonBlock className="h-14 flex-1" radius="var(--t-radius-button)" />
                 </div>

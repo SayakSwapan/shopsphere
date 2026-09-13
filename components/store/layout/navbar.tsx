@@ -142,18 +142,25 @@ export default function Navbar({ session, announcement }: NavbarProps) {
                 fontFamily: themeId === "ethnic" ? "'Marcellus', serif" : "var(--t-font-heading)",
               }}
             >
-              <div className="flex items-center gap-2.5 min-w-0 overflow-hidden">
+              <div className="flex min-w-0 flex-1 items-center gap-2.5 overflow-hidden">
                 {siteLogo && (
                   <SiteLogo
                     src={siteLogo}
                     alt={siteName}
                     height={themeId === "luxury" ? 40 : 44}
-                    className="shrink max-[420px]:hidden"
+                    className="hidden shrink sm:block"
                   />
                 )}
-                <FitText baseSize={30} minSize={11} maxWidth={260}>
-                  <SiteBrand name={siteName} />
-                </FitText>
+                <span className="min-w-0 flex-1">
+                  <FitText
+                    baseSize={30}
+                    minSize={13}
+                    maxWidth={600}
+                    className="block truncate uppercase leading-none"
+                  >
+                    <SiteBrand name={siteName} />
+                  </FitText>
+                </span>
               </div>
             </Link>
 

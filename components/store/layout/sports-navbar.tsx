@@ -120,12 +120,12 @@ export default function SportsNavbar({
                   src={siteLogo}
                   alt={siteName}
                   height={44}
-                  className="max-[420px]:hidden"
+                  className="hidden sm:block"
                 />
               )}
               {!siteLogo && (
                 <span
-                  className="flex h-9 w-9 items-center justify-center max-[420px]:hidden"
+                  className="hidden h-9 w-9 items-center justify-center sm:flex"
                   style={{
                     background: "var(--sports-volt)",
                     borderRadius: "var(--t-radius-button)",
@@ -135,22 +135,24 @@ export default function SportsNavbar({
                   <Zap size={18} fill="#0A0E13" className="text-[#0A0E13]" />
                 </span>
               )}
-              <FitText
-                baseSize={26}
-                minSize={11}
-                maxWidth={230}
-                className="uppercase leading-none"
-                style={{
-                  fontFamily: "'Anton', sans-serif",
-                  color: "#F4F3EE",
-                  letterSpacing: "0.02em",
-                }}
-              >
-                {brandHead}
-                {brandAccent && (
-                  <span style={{ color: "var(--sports-volt)" }}>{brandAccent}</span>
-                )}
-              </FitText>
+              <span className="min-w-0 flex-1">
+                <FitText
+                  baseSize={26}
+                  minSize={13}
+                  maxWidth={600}
+                  className="block truncate uppercase leading-none"
+                  style={{
+                    fontFamily: "'Anton', sans-serif",
+                    color: "#F4F3EE",
+                    letterSpacing: "0.02em",
+                  }}
+                >
+                  {brandHead}
+                  {brandAccent && (
+                    <span style={{ color: "var(--sports-volt)" }}>{brandAccent}</span>
+                  )}
+                </FitText>
+              </span>
             </Link>
 
             {/* Desktop nav */}

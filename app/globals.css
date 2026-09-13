@@ -1386,16 +1386,20 @@ PRODUCT DETAILS — THEMED DECORATIONS (pd-*)
   text-align: right;
 }
 
-/* Size selector chip (themed) */
+/* Size selector chip (themed) — square tile, size text only */
 .pd-size-btn {
-  position: relative;
-  padding: 12px 20px;
+  min-width: 52px;
+  height: 52px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
   font-size: 0.875rem;
   font-weight: 600;
   border: 1px solid var(--t-border-card);
   background: var(--t-bg-card-nested);
   color: var(--t-text-heading);
-  border-radius: var(--t-radius-button);
+  border-radius: 0;
   transition: all 0.2s ease;
   cursor: pointer;
 }
@@ -1424,11 +1428,11 @@ PRODUCT DETAILS — THEMED DECORATIONS (pd-*)
 }
 [data-theme="sports"] .pd-size-btn,
 [data-theme="sports"] .pd-size-btn[data-selected="true"] {
-  border-radius: 999px;
+  border-radius: 0;
 }
 [data-theme="fashion"] .pd-size-btn,
 [data-theme="fashion"] .pd-size-btn[data-selected="true"] {
-  border-radius: 999px;
+  border-radius: 0;
   border: 1px dashed rgba(201, 169, 110, 0.7);
 }
 

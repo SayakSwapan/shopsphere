@@ -8,7 +8,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import RelatedProducts from "@/components/store/related-products";
 import ProductGallery from "@/components/store/product-gallery";
-import WishlistButton from "@/components/store/wishlist-button";
 import Footer from "@/components/store/layout/footer";
 import ProductPurchasePanel from "@/components/store/product/purchase-panel";
 import PincodeChecker from "@/components/store/product/pincode-checker";
@@ -17,8 +16,6 @@ import ProductReviews from "@/components/store/reviews/product-reviews";
 import CallbackRequest from "@/components/store/product/callback-request";
 import ProductSectionAccordion from "@/components/store/product/section-accordion";
 import NavbarWrapper from "@/components/store/layout/navbar-wrapper";
-import ShareButton from "@/components/store/share-button";
-import SizeChartButton from "@/components/store/product/size-chart-button";
 import PdpComboSection from "@/components/store/product/pdp-combo-section";
 import ProductJsonLd from "@/components/seo/product-json-ld";
 import { RelatedProductsSkeleton, ComboSectionSkeleton } from "@/components/ui/skeleton";
@@ -323,12 +320,12 @@ export default async function ProductPage({ params }: Props) {
                   )}
                 </div>
               )}
-              {/* Wishlist lives on top of the image on mobile (desktop keeps it
-                  next to Add to Cart inside the purchase panel) */}
-              <div className="absolute right-3 top-3 z-10 sm:hidden">
-                <WishlistButton productId={product.id} />
-              </div>
-              <ProductGallery images={product.productimage} productName={product.name} />
+              {/* Wishlist + Share live on the product image itself (bottom-right) */}
+              <ProductGallery
+                images={product.productimage}
+                productName={product.name}
+                productId={product.id}
+              />
             </div>
 
             {/* Info column */}
@@ -357,9 +354,6 @@ export default async function ProductPage({ params }: Props) {
                     >
                       {product.name}
                     </h1>
-                  </div>
-                  <div className="flex-shrink-0">
-                    <ShareButton productName={product.name} />
                   </div>
                 </div>
 
@@ -405,18 +399,14 @@ export default async function ProductPage({ params }: Props) {
                 reviews={serializedReviews}
               />
 
-              {/* Size info + chart */}
-              <div className="pd-card px-4 sm:px-6 py-4 flex flex-wrap items-center gap-3">
-                <SizeChartButton productId={product.id} />
-                <span className="hidden sm:block text-xs" style={{ color: "var(--t-text-muted-3)" }}>
-                  |
-                </span>
-                <span className="text-xs font-medium" style={{ color: "var(--t-text-muted-1)" }}>
-                  {realSizes.length > 0
-                    ? `Available sizes: ${realSizes.join(", ")}`
-                    : "Standard size"}
-                </span>
-              </div>
+              {/* Available sizes (the size chart now lives in the Select Size header) */}
+              {realSizes.length > 0 && (
+                <div className="pd-card px-4 sm:px-6 py-4 flex flex-wrap items-center gap-3">
+                  <span className="text-xs font-medium" style={{ color: "var(--t-text-muted-1)" }}>
+                    Available sizes: {realSizes.join(", ")}
+                  </span>
+                </div>
+              )}
 
               {/* Low stock banner */}
               {lowStock && (

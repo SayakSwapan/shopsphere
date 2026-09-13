@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { X, Check } from "lucide-react";
+import { X } from "lucide-react";
 
 interface SizeOption {
   id: string;
@@ -108,21 +108,9 @@ export default function SizeSelectionSheet({
                   disabled={isOOS}
                   onClick={() => onSelect(option.id)}
                   data-selected={isSelected ? "true" : "false"}
-                  className="pd-size-btn relative"
+                  className="pd-size-btn"
                 >
-                  <span>{option.sizeName || "—"}</span>
-                  {isOOS && (
-                    <span className="block text-[10px] font-normal mt-0.5">
-                      Sold out
-                    </span>
-                  )}
-                  {isSelected && (
-                    <Check
-                      size={14}
-                      className="absolute -top-1.5 -right-1.5 rounded-full p-0.5"
-                      style={{ background: "var(--t-primary)", color: "var(--t-button-text, #fff)" }}
-                    />
-                  )}
+                  {option.sizeName || "—"}
                 </button>
               );
             })}

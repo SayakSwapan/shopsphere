@@ -9,14 +9,13 @@ import {
   ShieldCheck,
   Truck,
   RotateCcw,
-  Check,
   Minus,
   Plus,
   Loader2,
   ShoppingBag,
 } from "lucide-react";
 import AddToCartButton, { addToCartRequest } from "@/components/store/add-to-cart-button";
-import WishlistButton from "@/components/store/wishlist-button";
+import SizeChartButton from "@/components/store/product/size-chart-button";
 import OfferCountdown from "@/components/store/product/offer-countdown";
 import ReviewHighlights from "@/components/store/product/review-highlights";
 import SizeSelectionSheet from "@/components/store/product/size-selection-sheet";
@@ -128,8 +127,6 @@ export default function ProductPurchasePanel({
     (v) => !isFreeSize(v.size?.sizeName)
   );
   const needsSizeSelection = hasRealSizes && filteredVariants.length > 1;
-
-  const maxStock = useMemo(() => Math.max(...filteredVariants.map((v) => v.stock), 0), [filteredVariants]);
 
   // For sizeless products the variant is chosen automatically (first in-stock),
   // so the customer can add-to-cart / buy-now without picking a size.
@@ -364,18 +361,8 @@ export default function ProductPurchasePanel({
                 <p className="text-sm font-bold" style={{ color: "var(--t-text-heading)" }}>
                   Select Size
                 </p>
-                {selectedVariant && (
-                  <span className="text-xs font-medium" style={{ color: "var(--t-success)" }}>
-                    <Check size={12} className="inline mr-1" />
-                    {selectedVariant.stock} in stock
-                  </span>
-                )}
+                <SizeChartButton productId={productId} />
               </div>
-              {selectedVariant && (
-                <p className="text-xs mt-1" style={{ color: "var(--t-text-muted-2)" }}>
-                  Size {selectedVariant.size?.sizeName} selected
-                </p>
-              )}
             </div>
 
             <div className="px-5 pb-5">
@@ -383,8 +370,6 @@ export default function ProductPurchasePanel({
                 {filteredVariants.map((variant) => {
                   const isSelected = variant.id === selectedVariantId;
                   const isOOS = variant.stock < 1;
-                  const isLowStock =
-                    !isOOS && variant.stock <= Math.min(5, maxStock);
 
                   return (
                     <button
@@ -398,27 +383,7 @@ export default function ProductPurchasePanel({
                       data-selected={isSelected ? "true" : "false"}
                       className="pd-size-btn"
                     >
-                      <span>{variant.size?.sizeName || "—"}</span>
-                      {isOOS && (
-                        <span className="block text-[10px] font-normal mt-0.5">
-                          Sold out
-                        </span>
-                      )}
-                      {isLowStock && !isSelected && (
-                        <span
-                          className="block text-[10px] font-normal mt-0.5"
-                          style={{ color: "color-mix(in srgb, var(--t-primary) 70%, transparent)" }}
-                        >
-                          Only {variant.stock} left
-                        </span>
-                      )}
-                      {isSelected && (
-                        <Check
-                          size={14}
-                          className="absolute -top-1.5 -right-1.5 rounded-full p-0.5"
-                          style={{ background: "var(--t-primary)", color: "var(--t-button-text, #fff)" }}
-                        />
-                      )}
+                      {variant.size?.sizeName || "—"}
                     </button>
                   );
                 })}
@@ -541,8 +506,7 @@ export default function ProductPurchasePanel({
 
         {/* CTAs (desktop/tablet only — mobile uses the sticky bottom bar) */}
           <div className="hidden flex-col gap-3 px-5 pb-5 sm:flex sm:flex-row">
-            <div className="flex flex-1 gap-3 min-w-0">
-              <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-0">
                 <AddToCartButton
                   productId={productId}
                   productVariantId={selectedVariant?.id}
@@ -550,8 +514,6 @@ export default function ProductPurchasePanel({
                   disabled={!canPurchase || isBuying}
                 />
               </div>
-              <WishlistButton productId={productId} />
-            </div>
 
           <button
             type="button"

@@ -2,6 +2,8 @@
 
 import { useRef, useState } from "react";
 import Image from "next/image";
+import WishlistButton from "@/components/store/wishlist-button";
+import ShareIconButton from "@/components/store/share-icon-button";
 
 interface Props {
   images: {
@@ -9,9 +11,10 @@ interface Props {
     url: string;
   }[];
   productName?: string;
+  productId: string;
 }
 
-export default function ProductGallery({ images, productName }: Props) {
+export default function ProductGallery({ images, productName, productId }: Props) {
   const [selectedImage, setSelectedImage] = useState(
     images?.[0]?.url || "/placeholder.png"
   );
@@ -78,32 +81,42 @@ export default function ProductGallery({ images, productName }: Props) {
       {/* MOBILE (< sm): compact swipe gallery — no thumbnail grid */}
       {images.length > 1 ? (
         <div className="sm:hidden">
-          <div
-            ref={trackRef}
-            onScroll={handleScroll}
-            className="flex items-center gap-2 overflow-x-auto snap-x snap-mandatory scroll-smooth"
-            style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}
-          >
-            {images.map((image) => (
-              <div
-                key={image.id}
-                className="relative shrink-0 snap-start"
-                style={{
-                  ...imageStyle,
-                  width: "calc(100% - 48px)",
-                  boxShadow: "0 35px 120px rgba(0,0,0,0.12)",
-                }}
-              >
-                <Image
-                  src={image.url}
-                  alt={altText}
-                  width={800}
-                  height={800}
-                  unoptimized
-                  className="h-72 w-full object-cover select-none"
-                />
-              </div>
-            ))}
+          {/* Relative wrapper so the wishlist/share overlay stays pinned over
+              the image area while the carousel swipes underneath. */}
+          <div className="relative">
+            <div
+              ref={trackRef}
+              onScroll={handleScroll}
+              className="flex items-center gap-2 overflow-x-auto snap-x snap-mandatory scroll-smooth"
+              style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}
+            >
+              {images.map((image) => (
+                <div
+                  key={image.id}
+                  className="relative shrink-0 snap-start"
+                  style={{
+                    ...imageStyle,
+                    width: "calc(100% - 48px)",
+                    boxShadow: "0 35px 120px rgba(0,0,0,0.12)",
+                  }}
+                >
+                  <Image
+                    src={image.url}
+                    alt={altText}
+                    width={800}
+                    height={800}
+                    unoptimized
+                    className="h-72 w-full object-cover select-none"
+                  />
+                </div>
+              ))}
+            </div>
+
+            {/* Wishlist + Share — bottom-right of the image for visibility */}
+            <div className="absolute bottom-3 right-3 z-10 flex gap-2">
+              <WishlistButton productId={productId} />
+              <ShareIconButton productName={productName} />
+            </div>
           </div>
 
           {/* Dots + counter */}
@@ -149,6 +162,10 @@ export default function ProductGallery({ images, productName }: Props) {
               unoptimized
               className="h-72 w-full object-cover"
             />
+            <div className="absolute bottom-3 right-3 z-10 flex gap-2">
+              <WishlistButton productId={productId} />
+              <ShareIconButton productName={productName} />
+            </div>
           </div>
         </div>
       )}
@@ -172,6 +189,11 @@ export default function ProductGallery({ images, productName }: Props) {
             unoptimized
             className="relative h-72 w-full object-cover transition duration-500 group-hover:scale-105 sm:h-90 md:h-140"
           />
+          {/* Wishlist + Share — bottom-right of the image */}
+          <div className="absolute bottom-3 right-3 z-10 flex gap-2">
+            <WishlistButton productId={productId} />
+            <ShareIconButton productName={productName} />
+          </div>
         </div>
 
         {images.length > 1 && (

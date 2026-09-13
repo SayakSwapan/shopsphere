@@ -3,13 +3,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { MapPin, CreditCard, Truck, Tag, ShieldCheck, BadgeCheck, Package, Minus, Plus, Trash2, Pencil, ChevronDown, Loader2, TriangleAlert, PartyPopper, Gift, Sparkles } from "lucide-react";
+import { MapPin, X, Truck, Tag, ShieldCheck, BadgeCheck, Package, Minus, Plus, Trash2, Pencil, ChevronDown, Loader2, TriangleAlert, PartyPopper, Gift, Sparkles } from "lucide-react";
 import { customizationUnitPrice, customizationUnitPriceWithGst } from "@/lib/print-pricing";
 import type { CustomPrintData } from "@/types/custom-print";
 import Modal from "@/components/common/modal";
 
 import AddressSection from "./addressSection";
 import PaymentMethodSheet from "./PaymentMethodSheet";
+import PaymentChooser from "./PaymentChooser";
 import CouponSelector from "./CouponSelector";
 import CustomPrintSection, { StorePrintType } from "@/components/store/product/custom-print-section";
 import type { Coupon } from "@/types/coupon";
@@ -130,6 +131,7 @@ export default function CheckoutClient({
   const [showRestrictedPopup, setShowRestrictedPopup] = useState(initialRestrictedItems.length > 0);
   const [method, setMethod] = useState<"COD" | "ONLINE">("ONLINE");
   const [showPaymentPicker, setShowPaymentPicker] = useState(false);
+  const [showCouponModal, setShowCouponModal] = useState(false);
   const [loading, setLoading] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [savingCustomizeId, setSavingCustomizeId] = useState<string | null>(null);
@@ -764,170 +766,7 @@ export default function CheckoutClient({
             </section>
           )}
 
-          {/* Coupons */}
-          <section
-            className="overflow-hidden border border-border-card bg-bg-card"
-            style={{ borderRadius: "var(--t-radius-card)" }}
-          >
-              <div className="flex items-center gap-3 border-b border-border-subtle px-4 sm:px-6 py-4 sm:py-5">
-                <div
-                  className="flex h-8 w-8 items-center justify-center"
-                  style={{ borderRadius: "var(--t-radius-card)", background: "color-mix(in srgb, var(--t-primary) 15%, transparent)" }}
-                >
-                  <Tag size={16} className="text-primary" />
-                </div>
-                <div>
-                  <p className="text-xs uppercase tracking-wider text-primary" style={{ fontFamily: "var(--t-font-heading)" }}>Step 3</p>
-                  <h2 className="text-lg font-bold text-text-heading">Apply Coupon</h2>
-                </div>
-              </div>
-              <div className="p-4 sm:p-6">
-                <CouponSelector
-                  subtotal={subtotal}
-                  selectedCoupon={selectedCoupon}
-                  onSelect={setSelectedCoupon}
-                />
-                {selectedCoupon && (
-                  <div
-                    className="mt-4 flex items-center justify-between border px-4 py-3"
-                    style={{
-                      borderRadius: "var(--t-radius-input)",
-                      borderColor: "color-mix(in srgb, var(--t-success) 30%, transparent)",
-                      background: "color-mix(in srgb, var(--t-success) 5%, transparent)",
-                    }}
-                  >
-                    <div>
-                      <p className="text-sm font-bold" style={{ color: "var(--t-success)" }}>{selectedCoupon.code}</p>
-                      <p className="text-xs text-text-muted-2">{selectedCoupon.title}</p>
-                    </div>
-                    <button onClick={() => setSelectedCoupon(null)} className="text-xs font-medium text-danger hover:opacity-80">Remove</button>
-                  </div>
-                )}
-              </div>
-            </section>
-
-          {/* Loyalty Reward */}
-          {loyaltyLoading ? (
-            <section
-              className="overflow-hidden border border-border-card bg-bg-card"
-              style={{ borderRadius: "var(--t-radius-card)" }}
-            >
-              <div className="flex items-center gap-3 border-b border-border-subtle px-4 sm:px-6 py-4 sm:py-5">
-                <div className="flex h-8 w-8 items-center justify-center" style={{ borderRadius: "var(--t-radius-card)", background: "color-mix(in srgb, var(--t-primary) 15%, transparent)" }}>
-                  <Gift size={16} className="text-primary" />
-                </div>
-                <div>
-                  <p className="text-xs uppercase tracking-wider text-primary" style={{ fontFamily: "var(--t-font-heading)" }}>Loyalty</p>
-                  <h2 className="text-lg font-bold text-text-heading">Checking your reward…</h2>
-                </div>
-              </div>
-            </section>
-          ) : loyalty?.loyalty?.hasAvailableReward ? (
-            <section
-              className="overflow-hidden border border-border-card bg-bg-card"
-              style={{ borderRadius: "var(--t-radius-card)" }}
-            >
-              <div className="flex items-center gap-3 border-b border-border-subtle px-4 sm:px-6 py-4 sm:py-5">
-                <div className="flex h-8 w-8 items-center justify-center" style={{ borderRadius: "var(--t-radius-card)", background: "color-mix(in srgb, var(--t-primary) 15%, transparent)" }}>
-                  <Gift size={16} className="text-primary" />
-                </div>
-                <div>
-                  <p className="text-xs uppercase tracking-wider text-primary" style={{ fontFamily: "var(--t-font-heading)" }}>Reward Available</p>
-                  <h2 className="text-lg font-bold text-text-heading">
-                    {loyalty.loyalty.badgeName || "Your Loyalty Reward"}
-                  </h2>
-                </div>
-                <span className="ml-auto rounded-full px-3 py-1 text-xs font-bold" style={{ background: "color-mix(in srgb, var(--t-success) 15%, transparent)", color: "var(--t-success)" }}>
-                  Ready to use
-                </span>
-              </div>
-              <div className="p-4 sm:p-6">
-                <p className="text-sm text-text-muted-1">
-                  {loyalty.loyalty.discountType === "PERCENTAGE"
-                    ? `Save ${loyalty.loyalty.discountValue}% on this order`
-                    : `Save ₹${loyalty.loyalty.discountValue} on this order`}
-                  {" "}with your earned reward.
-                </p>
-                <div className="mt-4 space-y-2.5">
-                  <button
-                    onClick={() => setUseLoyaltyReward(true)}
-                    className="w-full px-4 py-3 text-left font-bold transition"
-                    style={{
-                      borderRadius: "var(--t-radius-input)",
-                      border: useLoyaltyReward ? "2px solid var(--t-primary)" : "1px solid var(--t-border-card)",
-                      background: useLoyaltyReward ? "color-mix(in srgb, var(--t-primary) 10%, var(--t-bg-card-nested))" : "var(--t-bg-card-nested)",
-                      color: "var(--t-text-heading)",
-                    }}
-                  >
-                    <span className="flex items-center gap-2">
-                      <RadioDot active={useLoyaltyReward} />
-                      Use Reward Now — save{" "}
-                      <span className="text-primary">
-                        ₹{(loyaltyDiscount || 0).toLocaleString("en-IN")}
-                      </span>
-                    </span>
-                    <span className="mt-0.5 block text-xs font-normal text-text-muted-2">
-                      Applies the discount to this order
-                    </span>
-                  </button>
-                  <button
-                    onClick={() => setUseLoyaltyReward(false)}
-                    className="w-full px-4 py-3 text-left font-bold transition"
-                    style={{
-                      borderRadius: "var(--t-radius-input)",
-                      border: !useLoyaltyReward ? "2px solid var(--t-primary)" : "1px solid var(--t-border-card)",
-                      background: !useLoyaltyReward ? "color-mix(in srgb, var(--t-primary) 10%, var(--t-bg-card-nested))" : "var(--t-bg-card-nested)",
-                      color: "var(--t-text-heading)",
-                    }}
-                  >
-                    <span className="flex items-center gap-2">
-                      <RadioDot active={!useLoyaltyReward} />
-                      Save Reward for Later
-                    </span>
-                    <span className="mt-0.5 block text-xs font-normal text-text-muted-2">
-                      Keep the reward for your next purchase
-                    </span>
-                  </button>
-                </div>
-              </div>
-            </section>
-          ) : (
-            loyalty?.loyalty && (
-              <section
-                className="overflow-hidden border border-border-card bg-bg-card"
-                style={{ borderRadius: "var(--t-radius-card)" }}
-              >
-                <div className="flex items-center gap-3 border-b border-border-subtle px-4 sm:px-6 py-4 sm:py-5">
-                  <div className="flex h-8 w-8 items-center justify-center" style={{ borderRadius: "var(--t-radius-card)", background: "color-mix(in srgb, var(--t-primary) 15%, transparent)" }}>
-                    <Sparkles size={16} className="text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-xs uppercase tracking-wider text-primary" style={{ fontFamily: "var(--t-font-heading)" }}>Loyalty</p>
-                    <h2 className="text-lg font-bold text-text-heading">Earn a Reward</h2>
-                  </div>
-                </div>
-                <div className="p-4 sm:p-6">
-                  <p className="text-sm text-text-muted-1">
-                    {loyalty.loyalty.currentPurchaseCount} of {loyalty.loyalty.requiredPurchases} qualifying purchases collected.{" "}
-                    <span className="font-semibold text-text-heading">
-                      {loyalty.loyalty.requiredPurchases - loyalty.loyalty.currentPurchaseCount} to go!
-                    </span>
-                  </p>
-                  <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-bg-card-nested">
-                    <div
-                      className="h-full rounded-full"
-                      style={{
-                        width: `${Math.min(100, (loyalty.loyalty.currentPurchaseCount / loyalty.loyalty.requiredPurchases) * 100)}%`,
-                        background: "var(--t-primary)",
-                      }}
-                    />
-                  </div>
-                </div>
-              </section>
-            )
-          )}
-
-          {/* Payment */}
+          {/* Coupons — compact, popup-style. Functionality unchanged. */}
           <section
             className="overflow-hidden border border-border-card bg-bg-card"
             style={{ borderRadius: "var(--t-radius-card)" }}
@@ -937,163 +776,58 @@ export default function CheckoutClient({
                 className="flex h-8 w-8 items-center justify-center"
                 style={{ borderRadius: "var(--t-radius-card)", background: "color-mix(in srgb, var(--t-primary) 15%, transparent)" }}
               >
-                <CreditCard size={16} className="text-primary" />
+                <Tag size={16} className="text-primary" />
               </div>
               <div>
-                <p className="text-xs uppercase tracking-wider text-primary" style={{ fontFamily: "var(--t-font-heading)" }}>Step 4</p>
-                <h2 className="text-lg font-bold text-text-heading">Payment Method</h2>
+                <p className="text-xs uppercase tracking-wider text-primary" style={{ fontFamily: "var(--t-font-heading)" }}>Step 3</p>
+                <h2 className="text-lg font-bold text-text-heading">Coupon</h2>
               </div>
             </div>
-            <div className="space-y-3 p-4 sm:p-6">
-              {onlineAvailable && (
-                <button
-                  onClick={() => setMethod("ONLINE")}
-                  className="w-full border p-5 text-left transition"
-                  style={{
-                    borderRadius: "var(--t-radius-card)",
-                    borderColor: effectiveMethod === "ONLINE" ? "var(--t-primary)" : "var(--t-border-card)",
-                    background: effectiveMethod === "ONLINE" ? "color-mix(in srgb, var(--t-primary) 10%, var(--t-bg-card))" : "var(--t-bg-card-nested)",
-                  }}
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-bold text-text-heading">Online Payment</p>
-                      <p className="text-sm text-text-muted-1">UPI / Cards / Net Banking / Wallets</p>
-                    </div>
-                    <div
-                      className="h-5 w-5 border-2"
-                      style={{
-                        borderRadius: "50%",
-                        borderColor: effectiveMethod === "ONLINE" ? "var(--t-primary)" : "var(--t-text-muted-3)",
-                        background: effectiveMethod === "ONLINE" ? "var(--t-primary)" : "transparent",
-                      }}
-                    />
-                  </div>
-                </button>
-              )}
-
-              {hasCustomisation || !productsAllowCod ? (
+            <div className="p-4 sm:p-6">
+              <div className="flex items-center justify-between gap-3">
                 <button
                   type="button"
-                  disabled
-                  className="w-full cursor-not-allowed border p-5 text-left opacity-60"
-                  style={{
-                    borderRadius: "var(--t-radius-card)",
-                    borderColor: "var(--t-border-card)",
-                    background: "var(--t-bg-card-nested)",
-                  }}
+                  onClick={() => setShowCouponModal(true)}
+                  className="inline-flex min-w-0 flex-1 items-center justify-center gap-2 px-4 py-3.5 text-sm font-black uppercase tracking-wider transition bg-bg-card-nested hover:opacity-90"
+                  style={{ borderRadius: "var(--t-radius-button)", fontFamily: "var(--t-font-heading)" }}
                 >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-bold text-text-heading">Cash On Delivery</p>
-                      <p className="text-sm text-text-muted-1">
-                        {hasCustomisation
-                          ? "Unavailable for items with custom printing — please pay online"
-                          : "COD is not available for one or more items in your cart — please pay online"}
-                      </p>
-                    </div>
-                    <div
-                      className="h-5 w-5 border-2"
-                      style={{
-                        borderRadius: "50%",
-                        borderColor: "var(--t-text-muted-3)",
-                        background: "transparent",
-                      }}
-                    />
-                  </div>
+                  <Tag size={15} className="text-primary" />
+                  {selectedCoupon ? "Change Coupon" : "Apply Coupon"}
                 </button>
-              ) : codAvailable ? (
                 <button
-                  onClick={() => setMethod("COD")}
-                  className="w-full border p-5 text-left transition"
-                  style={{
-                    borderRadius: "var(--t-radius-card)",
-                    borderColor: effectiveMethod === "COD" ? "var(--t-primary)" : "var(--t-border-card)",
-                    background: effectiveMethod === "COD" ? "color-mix(in srgb, var(--t-primary) 10%, var(--t-bg-card))" : "var(--t-bg-card-nested)",
-                  }}
+                  type="button"
+                  onClick={() => setSelectedCoupon(null)}
+                  disabled={!selectedCoupon}
+                  className="shrink-0 text-xs font-bold uppercase tracking-wider text-danger transition hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-30"
                 >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-bold text-text-heading">Cash On Delivery</p>
-                      <p className="text-sm text-text-muted-1">Pay after receiving the order</p>
-                    </div>
-                    <div
-                      className="h-5 w-5 border-2"
-                      style={{
-                        borderRadius: "50%",
-                        borderColor: effectiveMethod === "COD" ? "var(--t-primary)" : "var(--t-text-muted-3)",
-                        background: effectiveMethod === "COD" ? "var(--t-primary)" : "transparent",
-                      }}
-                    />
-                  </div>
+                  Remove
                 </button>
-              ) : null}
-
-              {!onlineAvailable && !codAvailable && (
-                <p
-                  className="px-4 py-3 text-sm text-danger"
-                  style={{ borderRadius: "var(--t-radius-input)", background: "color-mix(in srgb, var(--t-danger) 10%, transparent)" }}
-                >
-                  No payment methods available for this pincode.
-                </p>
-              )}
-
-              {selectedAddress && !pincodeInfo?.deliverable && (
-                <p
-                  className="px-4 py-3 text-sm text-danger"
-                  style={{ borderRadius: "var(--t-radius-input)", background: "color-mix(in srgb, var(--t-danger) 10%, transparent)" }}
-                >
-                  Delivery is not available for pincode {selectedAddress.pincode}.
-                </p>
-              )}
-
-              {selectedAddress && hasRestrictedItems && (
-                <div
-                  className="px-4 py-3 text-sm text-danger"
-                  style={{ borderRadius: "var(--t-radius-input)", background: "color-mix(in srgb, var(--t-danger) 10%, transparent)" }}
-                >
-                  <p className="font-bold">
-                    Delivery not available for pincode {selectedAddress.pincode}
-                  </p>
-                  <p className="mt-1">
-                    These products are not deliverable to your pincode:{" "}
-                    <strong>{restrictedItems.map((r) => r.productName).join(", ")}</strong>.
-                    Please select a different delivery address or remove these items.
-                  </p>
-                </div>
-              )}
-
-              <div
-                className="mt-4 px-5 py-4 bg-bg-card-nested"
-                style={{ borderRadius: "var(--t-radius-card)" }}
-              >
-                <div className="flex justify-between">
-                  <span className="text-text-muted-1">Payable Amount</span>
-                  <span className="text-2xl font-black text-text-heading" style={{ fontFamily: "var(--t-font-heading)" }}>₹{finalTotal.toLocaleString("en-IN")}</span>
-                </div>
               </div>
-
-              <span className="hidden lg:block">
-                <button
-                  onClick={placeOrder}
-                  disabled={loading || deliveryBlocked}
-                  className="inline-flex w-full items-center justify-center gap-2 py-4 text-lg font-black uppercase tracking-wider transition-colors bg-primary hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-                  style={{ borderRadius: "var(--t-radius-button)", color: "var(--t-bg-page)", fontFamily: "var(--t-font-heading)", minHeight: 56 }}
+              {selectedCoupon && (
+                <div
+                  className="mt-3 flex items-center justify-between gap-2 border px-4 py-3"
+                  style={{
+                    borderRadius: "var(--t-radius-input)",
+                    borderColor: "color-mix(in srgb, var(--t-success) 30%, transparent)",
+                    background: "color-mix(in srgb, var(--t-success) 5%, transparent)",
+                  }}
                 >
-                  {loading ? (
-                    <>
-                      <Loader2 size={20} className="animate-spin" />
-                      {effectiveMethod === "ONLINE" ? "Creating Payment..." : "Placing Order..."}
-                    </>
-                  ) : effectiveMethod === "ONLINE" ? (
-                    "Proceed To Payment"
-                  ) : (
-                    "Place Order"
-                  )}
-                </button>
-              </span>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-bold" style={{ color: "var(--t-success)" }}>{selectedCoupon.code}</p>
+                    <p className="truncate text-xs text-text-muted-2">{selectedCoupon.title}</p>
+                  </div>
+                  <span className="shrink-0 text-sm font-bold text-text-heading">
+                    -₹{couponDiscount.toLocaleString("en-IN")}
+                  </span>
+                </div>
+              )}
             </div>
           </section>
+
+          {/* Loyalty Reward — compact toggle lives in the Order Summary card */}
+
+          {/* Payment — method picker + place-order live in the sticky checkout
+              section (mobile bottom bar) and the Order Summary card (desktop) */}
         </div>
 
         {/* RIGHT: Order Summary */}
@@ -1285,6 +1019,112 @@ export default function CheckoutClient({
               </div>
             </div>
 
+            {/* Loyalty — compact; big section was removed from the main page */}
+            {loyaltyLoading ? (
+              <div className="border-t border-border-subtle px-4 sm:px-6 py-4">
+                <div className="flex items-center gap-2.5">
+                  <Gift size={15} className="shrink-0 text-primary" />
+                  <p className="text-xs text-text-muted-2">Checking your reward…</p>
+                </div>
+              </div>
+            ) : loyalty?.loyalty?.hasAvailableReward ? (
+              <div className="border-t border-border-subtle px-4 sm:px-6 py-4">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex min-w-0 items-center gap-2.5">
+                    <Gift size={15} className="shrink-0 text-primary" />
+                    <div className="min-w-0">
+                      <p className="truncate text-xs font-bold uppercase tracking-wider text-text-heading">
+                        {loyalty.loyalty.badgeName || "Your Loyalty"} Reward
+                      </p>
+                      <p className="truncate text-[11px] text-text-muted-2">
+                        Save ₹{(loyaltyDiscount || 0).toLocaleString("en-IN")} on this order
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    aria-label="Toggle loyalty reward"
+                    aria-pressed={useLoyaltyReward}
+                    onClick={() => setUseLoyaltyReward((v) => !v)}
+                    className="shrink-0"
+                    style={{ color: useLoyaltyReward ? "var(--t-primary)" : "var(--t-text-muted-2)" }}
+                  >
+                    <RadioDot active={useLoyaltyReward} />
+                  </button>
+                </div>
+              </div>
+            ) : loyalty?.loyalty ? (
+              <div className="border-t border-border-subtle px-4 sm:px-6 py-4">
+                <div className="flex items-center gap-2.5">
+                  <Sparkles size={15} className="shrink-0 text-primary" />
+                  <p className="min-w-0 truncate text-[11px] font-medium text-text-muted-1">
+                    {loyalty.loyalty.currentPurchaseCount} of {loyalty.loyalty.requiredPurchases} qualifying purchases —{" "}
+                    {Math.max(0, loyalty.loyalty.requiredPurchases - loyalty.loyalty.currentPurchaseCount)} to go
+                  </p>
+                </div>
+                <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-bg-card-nested">
+                  <div
+                    className="h-full rounded-full"
+                    style={{
+                      width: `${Math.min(100, (loyalty.loyalty.currentPurchaseCount / loyalty.loyalty.requiredPurchases) * 100)}%`,
+                      background: "var(--t-primary)",
+                    }}
+                  />
+                </div>
+              </div>
+            ) : null}
+
+            {/* Desktop (lg+) payment chooser + place-order — on mobile this lives in
+                the sticky bottom bar, so it only shows on large screens here. */}
+            <div className="hidden lg:block border-t border-border-subtle px-4 sm:px-6 py-4">
+              <PaymentChooser
+                current={effectiveMethod}
+                onChange={setMethod}
+                onlineAvailable={onlineAvailable}
+                codAvailable={codAvailable}
+                onlineDisableReason={onlineDisableReason}
+                codDisableReason={codDisableReason}
+              />
+
+              {!onlineAvailable && !codAvailable && (
+                <p
+                  className="mt-3 px-3 py-2.5 text-xs text-danger"
+                  style={{ borderRadius: "var(--t-radius-input)", background: "color-mix(in srgb, var(--t-danger) 10%, transparent)" }}
+                >
+                  No payment methods available for this pincode.
+                </p>
+              )}
+
+              {deliveryBlocked && (
+                <div
+                  className="mt-3 px-3 py-2.5 text-xs text-danger"
+                  style={{ borderRadius: "var(--t-radius-input)", background: "color-mix(in srgb, var(--t-danger) 10%, transparent)" }}
+                >
+                  {hasRestrictedItems
+                    ? `Delivery unavailable for pincode ${selectedAddress?.pincode}: ${restrictedItems.map((r) => r.productName).join(", ")}.`
+                    : `Delivery is not available for pincode ${selectedAddress?.pincode}.`}
+                </div>
+              )}
+
+              <button
+                onClick={placeOrder}
+                disabled={loading || deliveryBlocked}
+                className="mt-4 inline-flex w-full items-center justify-center gap-2 py-4 text-base font-black uppercase tracking-wider transition-colors bg-primary hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                style={{ borderRadius: "var(--t-radius-button)", color: "var(--t-bg-page)", fontFamily: "var(--t-font-heading)", minHeight: 52 }}
+              >
+                {loading ? (
+                  <>
+                    <Loader2 size={18} className="animate-spin" />
+                    {effectiveMethod === "ONLINE" ? "Creating Payment..." : "Placing Order..."}
+                  </>
+                ) : effectiveMethod === "ONLINE" ? (
+                  "Proceed To Payment"
+                ) : (
+                  "Place Order"
+                )}
+              </button>
+            </div>
+
             {deliveryDate && (
               <div
                 className="mx-4 sm:mx-6 mb-4 flex items-center gap-3 px-4 py-3"
@@ -1383,6 +1223,46 @@ export default function CheckoutClient({
         onlineAvailable={onlineAvailable}
         onlineDisableReason={onlineDisableReason}
       />
+
+      {/* Coupon picker popup — compact "Apply Coupon" button opens this */}
+      <Modal
+        open={showCouponModal}
+        onClose={() => setShowCouponModal(false)}
+        maxWidth="max-w-lg"
+      >
+        <div className="p-6 sm:p-8">
+          <div className="mb-5 flex items-start justify-between gap-3">
+            <div>
+              <h2
+                className="text-lg font-bold text-text-heading"
+                style={{ fontFamily: "var(--t-font-heading)" }}
+              >
+                Apply Coupon
+              </h2>
+              <p className="mt-0.5 text-xs text-text-muted-1">
+                Pick a coupon to bring your total down.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowCouponModal(false)}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border transition hover:bg-bg-card"
+              style={{ borderColor: "var(--t-border-card)" }}
+              aria-label="Close coupon picker"
+            >
+              <X size={17} className="text-text-heading" />
+            </button>
+          </div>
+          <CouponSelector
+            subtotal={subtotal}
+            selectedCoupon={selectedCoupon}
+            onSelect={(c) => {
+              setSelectedCoupon(c);
+              setShowCouponModal(false);
+            }}
+          />
+        </div>
+      </Modal>
 
       {/* Popup when a product in the cart is not deliverable to the selected pincode */}
       <Modal

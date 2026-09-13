@@ -7,15 +7,20 @@ import { toast } from "sonner";
 import {
   ArrowLeft,
   CheckCircle2,
-  CreditCard,
+  ChevronDown,
   Gift,
   Loader2,
   MapPin,
   Package,
+  Pencil,
+  Trash2,
   Truck,
 } from "lucide-react";
 
 import { formatCurrency } from "@/lib/format";
+import PaymentChooser from "@/components/store/checkout/PaymentChooser";
+import PaymentMethodSheet from "@/components/store/checkout/PaymentMethodSheet";
+import AddressModal from "@/components/store/checkout/AddressModal";
 
 interface Address {
   id: string;
@@ -260,6 +265,43 @@ export default function ComboCheckoutClient({ addresses, offerSlug }: Props) {
   const showOnline = onlineAvailable && offerAllowsOnline && productsAllowOnline;
   const showCod = codAvailable && offerAllowsCod && productsAllowCod;
 
+  // Disable reasons surfaced in the shared payment UI.
+  const codDisableReason = !codAvailable
+    ? "Cash on delivery is not available for this pincode."
+    : !offerAllowsCod
+      ? "COD is not available for this offer — please pay online."
+      : !productsAllowCod
+        ? "COD is not available for one or more products — please pay online."
+        : undefined;
+  const onlineDisableReason = !onlineAvailable
+    ? "Online payment is not available for this pincode."
+    : !offerAllowsOnline
+      ? "Online payment is not available for this offer."
+      : !productsAllowOnline
+        ? "Online payment is not available for one or more products."
+        : undefined;
+
+  const [showPaymentPicker, setShowPaymentPicker] = useState(false);
+  const paymentMethodNormalized: "ONLINE" | "COD" = method === "CASHFREE" ? "ONLINE" : "COD";
+  const selectPayment = (m: "ONLINE" | "COD") =>
+    setMethod(m === "ONLINE" ? "CASHFREE" : "COD");
+
+  // Address edit modal reused from the regular checkout.
+  const [editingAddress, setEditingAddress] = useState<Address | undefined>(undefined);
+  const [addressModalOpen, setAddressModalOpen] = useState(false);
+
+  const shortPreview = (addr: Address) => {
+    const full = [
+      addr.addressLine1,
+      addr.addressLine2,
+      `${addr.city}, ${addr.state}`,
+      `${addr.country} - ${addr.pincode}`,
+    ]
+      .filter(Boolean)
+      .join(", ");
+    return full.length > 20 ? `${full.slice(0, 20).trimEnd()}…` : full;
+  };
+
   // ── Order placement ──
   const placeOrder = useCallback(async () => {
     if (!complete) return;
@@ -420,36 +462,81 @@ export default function ComboCheckoutClient({ addresses, offerSlug }: Props) {
                 ) : (
                   <div className="space-y-2.5">
                     {addresses.map((addr) => (
-                      <button
+                      <div
                         key={addr.id}
-                        type="button"
                         onClick={() => handleSelectAddress(addr.id)}
-                        className="w-full border p-4 text-left transition"
+                        className="w-full cursor-pointer border p-4 text-left transition"
                         style={{
                           borderRadius: "var(--t-radius-card)",
                           borderColor: selectedAddressId === addr.id ? "var(--t-primary)" : "var(--t-border-card)",
                           background: selectedAddressId === addr.id ? "color-mix(in srgb, var(--t-primary) 8%, var(--t-bg-card))" : "var(--t-bg-card-nested)",
                         }}
                       >
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="min-w-0">
-                            <p className="text-sm font-bold text-text-heading">
-                              {addr.fullName}
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <p className="truncate text-sm font-bold text-text-heading">
+                                {addr.fullName}
+                              </p>
                               {addr.isDefault && (
-                                <span className="ml-2 text-[9px] font-black uppercase tracking-wider text-primary">Default</span>
+                                <span className="shrink-0 rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-primary"
+                                  style={{ background: "color-mix(in srgb, var(--t-primary) 14%, transparent)" }}
+                                >
+                                  Default
+                                </span>
                               )}
-                            </p>
-                            <p className="mt-1 text-xs text-text-muted-2">
-                              {addr.addressLine1}
-                              {addr.addressLine2 ? `, ${addr.addressLine2}` : ""}, {addr.city}, {addr.state} — {addr.pincode}
+                            </div>
+                            <p className="mt-1 truncate text-xs text-text-muted-2" title={[
+                              addr.addressLine1,
+                              addr.addressLine2,
+                              `${addr.city}, ${addr.state}`,
+                              `${addr.country} - ${addr.pincode}`,
+                            ].filter(Boolean).join(", ")}>
+                              {shortPreview(addr)}
                             </p>
                             <p className="mt-0.5 text-xs text-text-muted-2">{addr.phone}</p>
                           </div>
-                          {selectedAddressId === addr.id && (
-                            <CheckCircle2 size={18} className="shrink-0 text-primary" />
-                          )}
+                          <div className="flex shrink-0 items-center gap-1.5">
+                            <button
+                              type="button"
+                              aria-label={`Edit address for ${addr.fullName}`}
+                              title="Edit this address"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingAddress(addr);
+                                setAddressModalOpen(true);
+                              }}
+                              className="flex h-8 w-8 items-center justify-center border border-border-card bg-bg-card transition hover:bg-bg-card-alt"
+                              style={{ borderRadius: "var(--t-radius-button)" }}
+                            >
+                              <Pencil size={14} className="text-text-heading" />
+                            </button>
+                            <button
+                              type="button"
+                              aria-label={`Delete address for ${addr.fullName}`}
+                              title="Delete this address"
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                const ok = confirm("Delete this address?");
+                                if (!ok) return;
+                                await fetch("/api/address", {
+                                  method: "DELETE",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({ id: addr.id }),
+                                });
+                                router.refresh();
+                              }}
+                              className="flex h-8 w-8 items-center justify-center text-white transition hover:opacity-90"
+                              style={{ borderRadius: "var(--t-radius-button)", background: "var(--t-danger)" }}
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                            {selectedAddressId === addr.id && (
+                              <CheckCircle2 size={18} className="shrink-0 text-primary" />
+                            )}
+                          </div>
                         </div>
-                      </button>
+                      </div>
                     ))}
                   </div>
                 )}
@@ -482,130 +569,8 @@ export default function ComboCheckoutClient({ addresses, offerSlug }: Props) {
               </div>
             </section>
 
-            {/* Payment */}
-            <section
-              className="overflow-hidden border border-border-card bg-bg-card"
-              style={{ borderRadius: "var(--t-radius-card)" }}
-            >
-              <div className="flex items-center gap-3 border-b border-border-subtle px-4 sm:px-6 py-4 sm:py-5">
-                <div
-                  className="flex h-8 w-8 items-center justify-center"
-                  style={{ borderRadius: "var(--t-radius-card)", background: "color-mix(in srgb, var(--t-primary) 15%, transparent)" }}
-                >
-                  <CreditCard size={16} className="text-primary" />
-                </div>
-                <div>
-                  <p className="text-xs uppercase tracking-wider text-primary" style={{ fontFamily: "var(--t-font-heading)" }}>Step 2</p>
-                  <h2 className="text-lg font-bold text-text-heading">Payment Method</h2>
-                </div>
-              </div>
-
-              <div className="space-y-3 p-4 sm:p-6">
-                {showOnline && (
-                  <button
-                    onClick={() => setMethod("CASHFREE")}
-                    className="w-full border p-5 text-left transition"
-                    style={{
-                      borderRadius: "var(--t-radius-card)",
-                      borderColor: method === "CASHFREE" ? "var(--t-primary)" : "var(--t-border-card)",
-                      background: method === "CASHFREE" ? "color-mix(in srgb, var(--t-primary) 10%, var(--t-bg-card))" : "var(--t-bg-card-nested)",
-                    }}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-bold text-text-heading">Online Payment</p>
-                        <p className="text-sm text-text-muted-1">UPI / Cards / Net Banking / Wallets</p>
-                      </div>
-                      <div
-                        className="h-5 w-5 border-2"
-                        style={{
-                          borderRadius: "50%",
-                          borderColor: method === "CASHFREE" ? "var(--t-primary)" : "var(--t-text-muted-3)",
-                          background: method === "CASHFREE" ? "var(--t-primary)" : "transparent",
-                        }}
-                      />
-                    </div>
-                  </button>
-                )}
-
-                {showCod ? (
-                  <button
-                    onClick={() => setMethod("COD")}
-                    className="w-full border p-5 text-left transition"
-                    style={{
-                      borderRadius: "var(--t-radius-card)",
-                      borderColor: method === "COD" ? "var(--t-primary)" : "var(--t-border-card)",
-                      background: method === "COD" ? "color-mix(in srgb, var(--t-primary) 10%, var(--t-bg-card))" : "var(--t-bg-card-nested)",
-                    }}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-bold text-text-heading">Cash On Delivery</p>
-                        <p className="text-sm text-text-muted-1">Pay after receiving the order</p>
-                      </div>
-                      <div
-                        className="h-5 w-5 border-2"
-                        style={{
-                          borderRadius: "50%",
-                          borderColor: method === "COD" ? "var(--t-primary)" : "var(--t-text-muted-3)",
-                          background: method === "COD" ? "var(--t-primary)" : "transparent",
-                        }}
-                      />
-                    </div>
-                  </button>
-                ) : (
-                  <div
-                    className="px-5 py-4 text-sm text-danger"
-                    style={{ borderRadius: "var(--t-radius-card)", background: "color-mix(in srgb, var(--t-danger) 8%, transparent)" }}
-                  >
-                    COD is not available for this pincode — please pay online.
-                  </div>
-                )}
-
-                {!showOnline && !showCod && (
-                  <p
-                    className="px-4 py-3 text-sm text-danger"
-                    style={{ borderRadius: "var(--t-radius-input)", background: "color-mix(in srgb, var(--t-danger) 10%, transparent)" }}
-                  >
-                    No payment methods available for this pincode.
-                  </p>
-                )}
-
-                <div className="mt-4 px-5 py-4 bg-bg-card-nested" style={{ borderRadius: "var(--t-radius-card)" }}>
-                  <div className="flex justify-between">
-                    <span className="text-text-muted-1">Payable Amount</span>
-                    <span className="text-2xl font-black text-text-heading" style={{ fontFamily: "var(--t-font-heading)" }}>
-                      {pricingState === "loading" ? "—" : formatCurrency(payTotal)}
-                    </span>
-                  </div>
-                </div>
-
-                {pricingState === "error" && (
-                  <p className="px-4 py-3 text-sm text-danger" style={{ borderRadius: "var(--t-radius-input)", background: "color-mix(in srgb, var(--t-danger) 10%, transparent)" }}>
-                    {pricingMessage}
-                  </p>
-                )}
-
-                <div className="hidden lg:block">
-                  <button
-                    onClick={placeOrder}
-                    disabled={placing || !complete || pricingState !== "success" || !shipping?.deliverable}
-                    className="w-full py-4 text-lg font-black uppercase tracking-wider transition-colors bg-primary hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-                    style={{ borderRadius: "var(--t-radius-button)", color: "var(--t-bg-page)", fontFamily: "var(--t-font-heading)" }}
-                  >
-                    {placing ? (
-                      <>
-                        <Loader2 size={17} className="animate-spin" /> Processing...
-                      </>
-                    ) : pricingState === "loading"
-                      ? "Checking availability..."
-                      : method === "CASHFREE"
-                      ? "Proceed To Payment"
-                      : "Place Order"}
-                  </button>
-                </div>
-              </div>
-            </section>
+            {/* Payment — lives in the sticky bottom bar (mobile) and the
+                Order Summary card (desktop), same as the normal checkout */}
           </div>
 
           {/* RIGHT: Order Summary */}
@@ -682,6 +647,63 @@ export default function ComboCheckoutClient({ addresses, offerSlug }: Props) {
                   </div>
                 )}
               </div>
+
+              {/* Desktop (lg+) payment chooser + place-order — same UI as the
+                  normal checkout; mobile uses the sticky bottom bar */}
+              <div className="hidden lg:block border-t border-border-subtle px-4 sm:px-6 py-4">
+                <PaymentChooser
+                  current={paymentMethodNormalized}
+                  onChange={selectPayment}
+                  onlineAvailable={showOnline}
+                  codAvailable={showCod}
+                  onlineDisableReason={onlineDisableReason}
+                  codDisableReason={codDisableReason}
+                />
+
+                {!showOnline && !showCod && (
+                  <p
+                    className="mt-3 px-3 py-2.5 text-xs text-danger"
+                    style={{ borderRadius: "var(--t-radius-input)", background: "color-mix(in srgb, var(--t-danger) 10%, transparent)" }}
+                  >
+                    No payment methods available for this pincode.
+                  </p>
+                )}
+
+                {!shipping?.deliverable && (
+                  <p
+                    className="mt-3 px-3 py-2.5 text-xs text-danger"
+                    style={{ borderRadius: "var(--t-radius-input)", background: "color-mix(in srgb, var(--t-danger) 10%, transparent)" }}
+                  >
+                    Delivery is not available at the selected pincode.
+                  </p>
+                )}
+
+                {pricingState === "error" && (
+                  <p
+                    className="mt-3 px-3 py-2.5 text-xs text-danger"
+                    style={{ borderRadius: "var(--t-radius-input)", background: "color-mix(in srgb, var(--t-danger) 10%, transparent)" }}
+                  >
+                    {pricingMessage}
+                  </p>
+                )}
+
+                <button
+                  onClick={placeOrder}
+                  disabled={placing || !complete || pricingState !== "success" || !shipping?.deliverable}
+                  className="mt-4 inline-flex w-full items-center justify-center gap-2 py-4 text-base font-black uppercase tracking-wider transition-colors bg-primary hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                  style={{ borderRadius: "var(--t-radius-button)", color: "var(--t-bg-page)", fontFamily: "var(--t-font-heading)", minHeight: 52 }}
+                >
+                  {placing ? (
+                    <>
+                      <Loader2 size={18} className="animate-spin" /> Processing...
+                    </>
+                  ) : pricingState === "loading"
+                    ? "Checking availability..."
+                    : method === "CASHFREE"
+                    ? "Proceed To Payment"
+                    : "Place Order"}
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -711,6 +733,15 @@ export default function ComboCheckoutClient({ addresses, offerSlug }: Props) {
               >
                 {pricingState === "loading" ? "—" : formatCurrency(payTotal)}
               </p>
+              <button
+                type="button"
+                onClick={() => setShowPaymentPicker(true)}
+                className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-black uppercase tracking-wider"
+                style={{ color: "var(--t-primary)", fontFamily: "var(--t-font-heading)" }}
+              >
+                {method === "CASHFREE" ? "Online Payment" : "Cash On Delivery"}
+                <ChevronDown size={13} className={showPaymentPicker ? "rotate-180 transition-transform" : "transition-transform"} />
+              </button>
             </div>
             <button
               onClick={placeOrder}
@@ -729,6 +760,31 @@ export default function ComboCheckoutClient({ addresses, offerSlug }: Props) {
           </div>
         </div>
       )}
+
+      {/* Mobile payment method picker (shared bottom sheet, same as checkout) */}
+      <PaymentMethodSheet
+        open={showPaymentPicker}
+        onClose={() => setShowPaymentPicker(false)}
+        current={paymentMethodNormalized}
+        onSelect={selectPayment}
+        codAvailable={showCod}
+        codDisableReason={codDisableReason}
+        onlineAvailable={showOnline}
+        onlineDisableReason={onlineDisableReason}
+      />
+
+      {/* Address edit popup — same component + flow as the regular checkout */}
+      <AddressModal
+        open={addressModalOpen}
+        address={editingAddress}
+        onClose={() => {
+          setEditingAddress(undefined);
+          setAddressModalOpen(false);
+        }}
+        onSuccess={() => {
+          router.refresh();
+        }}
+      />
     </div>
   );
 }

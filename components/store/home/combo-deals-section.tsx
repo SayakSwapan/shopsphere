@@ -156,7 +156,6 @@ function ComboGrid({ combos }: { combos: ComboWithItems[] }) {
             (s, it) => s + baseOf(it.product) * it.quantity,
             0
           );
-          const names = combo.items.map((it) => it.product.name).join(" + ");
           const { offerLine, badge, freeIds } = comboDealDetails(combo);
           return (
             <Link
@@ -221,8 +220,6 @@ function ComboGrid({ combos }: { combos: ComboWithItems[] }) {
                   ) : null
                 )}
               </div>
-
-              <p className="mt-4 text-xs text-text-muted-2 line-clamp-2">{names}</p>
 
               <div className="mt-4 flex items-center justify-between gap-3">
                 <div className="min-w-0">

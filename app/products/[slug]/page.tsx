@@ -273,14 +273,16 @@ export default async function ProductPage({ params }: Props) {
           >
             <div className="flex items-center gap-2 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
               {[
-                { href: "#details", label: "Details", icon: <Info size={13} /> },
-                { href: "#reviews", label: `Reviews (${reviewCount})`, icon: <Star size={13} /> },
-                { href: "#related", label: "Related", icon: <LayoutGrid size={13} /> },
+                { href: "#details", label: "Details", icon: <Info size={13} />, hideOnMobile: true },
+                { href: "#reviews", label: `Reviews (${reviewCount})`, icon: <Star size={13} />, hideOnMobile: false },
+                { href: "#related", label: "Related", icon: <LayoutGrid size={13} />, hideOnMobile: false },
               ].map((chip) => (
                 <a
                   key={chip.href}
                   href={chip.href}
-                  className="inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-bold transition active:scale-95"
+                  className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-bold transition active:scale-95 ${
+                    chip.hideOnMobile ? "hidden sm:inline-flex" : ""
+                  }`}
                   style={{
                     borderColor: "var(--t-border-card)",
                     background: "var(--t-bg-card)",
@@ -400,13 +402,13 @@ export default async function ProductPage({ params }: Props) {
               />
 
               {/* Available sizes (the size chart now lives in the Select Size header) */}
-              {realSizes.length > 0 && (
+              {/* {realSizes.length > 0 && (
                 <div className="pd-card px-4 sm:px-6 py-4 flex flex-wrap items-center gap-3">
                   <span className="text-xs font-medium" style={{ color: "var(--t-text-muted-1)" }}>
                     Available sizes: {realSizes.join(", ")}
                   </span>
                 </div>
-              )}
+              )} */}
 
               {/* Low stock banner */}
               {lowStock && (
@@ -434,8 +436,8 @@ export default async function ProductPage({ params }: Props) {
         </div>
       </section>
 
-      {/* DESCRIPTION + DETAILS */}
-      <section id="details" className="mx-auto max-w-7xl scroll-mt-32 px-4 py-10 sm:px-6 lg:scroll-mt-24 lg:px-8 lg:py-14">
+      {/* DESCRIPTION + DETAILS (hidden on phones — mobile-first space management) */}
+      <section id="details" className="mx-auto max-w-7xl scroll-mt-32 hidden sm:block px-4 py-10 sm:px-6 lg:scroll-mt-24 lg:px-8 lg:py-14">
         <div className="grid gap-6 lg:grid-cols-5 lg:gap-8">
           {/* Left column — Description + Details */}
           <div className="lg:col-span-3 space-y-6">

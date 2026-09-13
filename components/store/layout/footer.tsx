@@ -122,9 +122,17 @@ export default async function Footer() {
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6 md:gap-10 lg:gap-8">
           {/* Brand */}
           <div className="col-span-2 md:col-span-4 lg:col-span-1">
-            <Link href="/" className="inline-block">
+            <Link href="/" className="inline-flex items-center gap-2.5">
               {siteLogo ? (
-                <SiteLogo src={siteLogo} alt={siteName} height={40} />
+                <>
+                  <SiteLogo src={siteLogo} alt={siteName} height={40} />
+                  <span
+                    className="text-xl font-black tracking-tight"
+                    style={{ color: "var(--t-text-heading)", fontFamily: "var(--t-font-heading)" }}
+                  >
+                    {siteName}
+                  </span>
+                </>
               ) : (
                 <h2
                   className="text-2xl font-black text-text-heading"

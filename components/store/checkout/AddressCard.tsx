@@ -1,6 +1,6 @@
 "use client";
 
-import { MapPin, Pencil, Trash2 } from "lucide-react";
+import { Check, MapPin, Pencil, Trash2 } from "lucide-react";
 
 interface Address {
   id: string;
@@ -37,10 +37,22 @@ export default function AddressCard({
   onDelete,
   onDefault,
 }: Props) {
+  // Full address kept untouched — only the on-page preview is compacted.
+  const fullAddress = [
+    address.addressLine1,
+    address.addressLine2,
+    `${address.city}, ${address.state}`,
+    `${address.country} - ${address.pincode}`,
+  ]
+    .filter(Boolean)
+    .join(", ");
+  const shortAddress =
+    fullAddress.length > 20 ? `${fullAddress.slice(0, 20).trimEnd()}…` : fullAddress;
+
   return (
     <div
       onClick={onSelect}
-      className="cursor-pointer border p-6 transition-all"
+      className="cursor-pointer border p-4 transition-all"
       style={{
         borderRadius: "var(--t-radius-card)",
         ...(selected
@@ -60,88 +72,84 @@ export default function AddressCard({
         if (!selected) e.currentTarget.style.borderColor = "var(--t-border-card)";
       }}
     >
-      <div className="flex items-start justify-between">
-        <div className="flex gap-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-start gap-2.5">
           <MapPin
-            size={22}
-            className={selected ? "text-primary" : "text-text-muted-2"}
+            size={16}
+            className={`mt-0.5 shrink-0 ${selected ? "text-primary" : "text-text-muted-2"}`}
           />
-          <div>
-            <h3 className="text-xl font-black text-text-heading">
+          <div className="min-w-0">
+            <h3 className="truncate text-sm font-black text-text-heading">
               {address.fullName}
             </h3>
-            <p className="text-text-muted-2">
-              {address.phone}
-            </p>
+            <p className="text-[11px] text-text-muted-2">{address.phone}</p>
           </div>
         </div>
 
-        {address.isDefault && (
-          <span
-            className="px-4 py-2 text-xs font-black uppercase"
-            style={{
-              borderRadius: "var(--t-radius-badge)",
-              background: "var(--t-primary)",
-              color: "var(--t-button-text, #fff)",
-            }}
-          >
-            Default
-          </span>
-        )}
+        <div className="flex shrink-0 items-center gap-1.5">
+          {address.isDefault && (
+            <span
+              className="px-2 py-0.5 text-[9px] font-black uppercase"
+              style={{
+                borderRadius: "var(--t-radius-badge)",
+                background: "var(--t-primary)",
+                color: "var(--t-button-text, #fff)",
+              }}
+            >
+              Default
+            </span>
+          )}
+          {onEdit && (
+            <button
+              type="button"
+              aria-label={`Edit address for ${address.fullName}`}
+              title="Edit this address"
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit();
+              }}
+              className="flex h-8 w-8 items-center justify-center border border-border-card bg-bg-card transition hover:bg-bg-card-alt"
+              style={{ borderRadius: "var(--t-radius-button)" }}
+            >
+              <Pencil size={14} className="text-text-heading" />
+            </button>
+          )}
+          {onDelete && (
+            <button
+              type="button"
+              aria-label={`Delete address for ${address.fullName}`}
+              title="Delete this address"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
+              className="flex h-8 w-8 items-center justify-center text-white transition hover:opacity-90"
+              style={{ borderRadius: "var(--t-radius-button)", background: "var(--t-danger)" }}
+            >
+              <Trash2 size={14} />
+            </button>
+          )}
+        </div>
       </div>
 
-      <div className="mt-5 space-y-1 text-text-heading" style={{ opacity: 0.8 }}>
-        <p>{address.addressLine1}</p>
-        {address.addressLine2 && (
-          <p>{address.addressLine2}</p>
-        )}
-        <p>
-          {address.city}, {address.state}
-        </p>
-        <p>
-          {address.country} - {address.pincode}
-        </p>
-      </div>
+      <p className="mt-2 truncate text-xs text-text-heading" style={{ opacity: 0.8 }} title={fullAddress}>
+        {shortAddress}
+      </p>
 
-      <div className="mt-6 flex flex-wrap gap-3">
-        {!address.isDefault && (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onDefault?.();
-            }}
-            className="px-4 py-2 text-sm font-bold transition bg-primary text-button-text hover:opacity-90"
-            style={{ borderRadius: "var(--t-radius-button)" }}
-          >
-            Set Default
-          </button>
-        )}
+      {!address.isDefault && onDefault && (
         <button
           type="button"
           onClick={(e) => {
             e.stopPropagation();
-            onEdit?.();
+            onDefault();
           }}
-          className="flex items-center gap-2 px-4 py-2 text-sm text-text-heading transition border border-border-card bg-bg-card hover:bg-bg-card-alt"
+          className="mt-3 flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold transition bg-primary text-button-text hover:opacity-90"
           style={{ borderRadius: "var(--t-radius-button)" }}
         >
-          <Pencil size={16} />
-          Edit
+          <Check size={12} />
+          Set Default
         </button>
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete?.();
-          }}
-          className="flex items-center gap-2 px-4 py-2 text-sm text-white transition hover:opacity-90"
-          style={{ borderRadius: "var(--t-radius-button)", background: "var(--t-danger)" }}
-        >
-          <Trash2 size={16} />
-          Delete
-        </button>
-      </div>
+      )}
     </div>
   );
 }

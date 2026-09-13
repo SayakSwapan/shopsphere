@@ -122,7 +122,21 @@ function isFlatDiscount(type: unknown): boolean {
 
 function isPercentDiscount(type: unknown): boolean {
   const t = String(type ?? "").toUpperCase();
-  return t === "PERCENT" || t === "PERCENTAGE";
+  return t.includes("PERCENT") || t === "PERCENTAGE";
+}
+
+// One square chip per size name (gender ignored); a size is selectable if
+// ANY of its variants has stock — mirrors the PDP size picker.
+function sizeOptionsFor(product: ComboRoomProduct) {
+  const map = new Map<string, { sizeName: string; inStock: boolean; variantId: string }>();
+  for (const v of product.productvariant) {
+    const key = v.sizeName || "Default";
+    const existing = map.get(key);
+    if (!existing || (Number(v.stock) > 0 && !existing.inStock)) {
+      map.set(key, { sizeName: key, inStock: Number(v.stock) > 0, variantId: v.id });
+    }
+  }
+  return Array.from(map.values());
 }
 
 function getEffectivePrice(
@@ -166,7 +180,6 @@ export default function ComboOfferRoom({ offer }: { offer: ComboRoomOffer }) {
     return Math.max(1, Number(offer.buyCount) || 1);
   }, [offer.comboType, offer.buyCount]);
 
-  const freeCount = offer.comboType === "BOGO" ? Math.max(0, getCount - buyCount) : null;
   const isFixedPrice = offer.comboType === "FIXED_PRICE";
 
   // Only products that can currently be fulfilled (product + at least one
@@ -605,13 +618,7 @@ export default function ComboOfferRoom({ offer }: { offer: ComboRoomOffer }) {
               )}
               {!hasCompleteSelection && (
                 <p className="mt-2 text-[10px] text-text-muted-2 text-center">
-                  {offer.comboType === "PICK_ANY"
-                    ? `Pick any ${getCount} · pay for the 1 most expensive`
-                    : freeCount && freeCount > 0
-                    ? `Buy ${buyCount} · Get ${freeCount} Free`
-                    : isFixedPrice
-                    ? `Everything for ${formatCurrency(offer.customPrice ?? 0)}`
-                    : "Discount applies at checkout"}
+                  Pick {getCount} products to continue
                 </p>
               )}
             </div>
@@ -662,40 +669,26 @@ export default function ComboOfferRoom({ offer }: { offer: ComboRoomOffer }) {
               <p className="mt-3 text-[10px] font-bold uppercase tracking-wider text-text-muted-2">
                 {selections.some((s) => s.productId === modalProduct.id) ? "Change size" : "Choose a size"}
               </p>
-              <div className="mt-2 grid grid-cols-2 gap-2">
-                {modalProduct.productvariant
-                  .filter((v) => Number(v.stock) > 0)
-                  .map((variant) => {
-                    const isCurrent =
-                      selections.find((s) => s.productId === modalProduct.id)?.productVariantId === variant.id;
-                    return (
-                      <button
-                        key={variant.id}
-                        type="button"
-                        onClick={() => {
-                          addSelection(modalProduct.id, variant.id);
-                          setModalProduct(null);
-                        }}
-                        data-selected={isCurrent ? "true" : "false"}
-                        className="flex items-center justify-between px-3 py-2.5 border bg-bg-card-nested text-left transition-colors hover:border-primary hover:text-primary"
-                        style={{
-                          borderRadius: "var(--t-radius-button)",
-                          borderColor: isCurrent ? "var(--t-primary)" : "var(--t-border-card)",
-                        }}
-                      >
-                        <span className="text-xs font-bold">
-                          {variant.sizeName || "Default"}
-                          {variant.genderName ? ` · ${variant.genderName}` : ""}
-                        </span>
-                        <span
-                          className="text-[10px]"
-                          style={{ color: isCurrent ? "var(--t-primary)" : "var(--t-text-muted-2)" }}
-                        >
-                          {isCurrent ? "Selected · " : ""}stock {variant.stock}
-                        </span>
-                      </button>
-                    );
-                  })}
+              <div className="mt-2 flex flex-wrap gap-2.5">
+                {sizeOptionsFor(modalProduct).map((option) => {
+                  const isSelected =
+                    selections.find((s) => s.productId === modalProduct.id)?.productVariantId === option.variantId;
+                  return (
+                    <button
+                      key={option.sizeName}
+                      type="button"
+                      disabled={!option.inStock}
+                      onClick={() => {
+                        addSelection(modalProduct.id, option.variantId);
+                        setModalProduct(null);
+                      }}
+                      data-selected={isSelected ? "true" : "false"}
+                      className="pd-size-btn"
+                    >
+                      {option.sizeName}
+                    </button>
+                  );
+                })}
               </div>
 
               <p className="mt-3 text-[10px] text-text-muted-2">

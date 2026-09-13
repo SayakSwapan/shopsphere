@@ -189,7 +189,15 @@ export default async function SportsFooter() {
           <div className="sm:col-span-2 lg:col-span-2">
             <Link href="/" className="inline-flex items-center gap-2">
               {siteLogo ? (
-                <SiteLogo src={siteLogo} alt={siteName} height={42} />
+                <>
+                  <SiteLogo src={siteLogo} alt={siteName} height={42} />
+                  <span
+                    className="text-2xl font-normal uppercase"
+                    style={{ fontFamily: "'Anton', sans-serif", color: "#F4F3EE" }}
+                  >
+                    {siteName}
+                  </span>
+                </>
               ) : (
                 <>
                   <span

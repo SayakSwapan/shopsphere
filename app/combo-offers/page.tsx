@@ -16,12 +16,6 @@ export const metadata: Metadata = {
   alternates: { canonical: "/combo-offers" },
 };
 
-const TYPE_LABEL: Record<string, string> = {
-  BOGO: "Buy X Get Y",
-  PICK_ANY: "Pick Any",
-  FIXED_PRICE: "Bundle Deal",
-};
-
 export default async function ComboOffersPage() {
   const now = new Date();
   const offers = await prisma.comboOffer.findMany({
@@ -105,7 +99,6 @@ export default async function ComboOffersPage() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {visible.map((offer) => {
-              const free = Math.max(0, offer.getCount - Number(offer.buyCount || 1));
               const available = offer.inStockCount >= offer.getCount;
               return (
                 <Link
@@ -145,16 +138,6 @@ export default async function ComboOffersPage() {
 
                   {/* Body */}
                   <div className="p-4 sm:p-5">
-                    <div className="flex items-center gap-2 mb-1.5">
-                      <span className="text-[10px] font-black uppercase tracking-wider text-primary">
-                        {TYPE_LABEL[offer.comboType] || offer.comboType}
-                      </span>
-                      {offer.comboType === "PICK_ANY" ? (
-                        <span className="text-[10px] text-text-muted-2">Pay 1 · rest free</span>
-                      ) : offer.comboType === "BOGO" ? (
-                        <span className="text-[10px] text-success">Get {free} Free</span>
-                      ) : null}
-                    </div>
                     <h3 className="text-lg font-bold text-text-heading leading-snug line-clamp-2 group-hover:text-primary transition-colors">
                       {offer.title}
                     </h3>

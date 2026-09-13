@@ -9,6 +9,7 @@ import type { CustomPrintData } from "@/types/custom-print";
 import Modal from "@/components/common/modal";
 
 import AddressSection from "./addressSection";
+import PaymentMethodSheet from "./PaymentMethodSheet";
 import CouponSelector from "./CouponSelector";
 import CustomPrintSection, { StorePrintType } from "@/components/store/product/custom-print-section";
 import type { Coupon } from "@/types/coupon";
@@ -128,6 +129,7 @@ export default function CheckoutClient({
   // products for the default address (customer skipped the pincode check).
   const [showRestrictedPopup, setShowRestrictedPopup] = useState(initialRestrictedItems.length > 0);
   const [method, setMethod] = useState<"COD" | "ONLINE">("ONLINE");
+  const [showPaymentPicker, setShowPaymentPicker] = useState(false);
   const [loading, setLoading] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [savingCustomizeId, setSavingCustomizeId] = useState<string | null>(null);
@@ -319,6 +321,20 @@ export default function CheckoutClient({
     (pincodeInfo?.allowCod ?? true) && !hasCustomisation && productsAllowCod;
   const onlineAvailable =
     (pincodeInfo?.allowOnline ?? true) && productsAllowOnline;
+
+  const codDisableReason = hasCustomisation
+    ? "Unavailable for items with custom printing — please pay online."
+    : !productsAllowCod
+      ? "COD is not available for one or more items in your cart — please pay online."
+      : (pincodeInfo?.allowCod ?? true)
+        ? undefined
+        : "Cash on delivery is not available for this pincode.";
+
+  const onlineDisableReason = !productsAllowOnline
+    ? "Online payment is not available for one or more items in your cart — please choose Cash on Delivery."
+    : (pincodeInfo?.allowOnline ?? true)
+      ? undefined
+      : "Online payment is not available for this pincode.";
 
   const cartProductIds = useMemo(
     () => items.map((i) => i.product.id).join(","),
@@ -1313,37 +1329,60 @@ export default function CheckoutClient({
           paddingBottom: "env(safe-area-inset-bottom)",
         }}
       >
-        <div className="flex items-center gap-3 px-4 py-3 sm:px-6">
-          <div className="min-w-0 flex-1">
-            <p
-              className="text-[10px] font-bold uppercase tracking-wider text-text-muted-1"
-              style={{ fontFamily: "var(--t-font-heading)" }}
+        <div className="px-4 py-3 sm:px-6">
+          <div className="flex items-center gap-3">
+            <div className="min-w-0 flex-1">
+              <p
+                className="text-[10px] font-bold uppercase tracking-wider text-text-muted-1"
+                style={{ fontFamily: "var(--t-font-heading)" }}
+              >
+                Payable Amount
+              </p>
+              <p
+                className="text-xl font-black text-text-heading"
+                style={{ fontFamily: "var(--t-font-heading)" }}
+              >
+                ₹{finalTotal.toLocaleString("en-IN")}
+              </p>
+              <button
+                type="button"
+                onClick={() => setShowPaymentPicker(true)}
+                className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-black uppercase tracking-wider"
+                style={{ color: "var(--t-primary)", fontFamily: "var(--t-font-heading)" }}
+              >
+                {effectiveMethod === "ONLINE" ? "Online Payment" : "Cash On Delivery"}
+                <ChevronDown size={13} className={showPaymentPicker ? "rotate-180 transition-transform" : "transition-transform"} />
+              </button>
+            </div>
+            <button
+              onClick={placeOrder}
+              disabled={loading || deliveryBlocked}
+              className="inline-flex flex-shrink-0 items-center justify-center gap-2 px-5 text-sm font-black uppercase tracking-wider transition-colors bg-primary hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+              style={{ borderRadius: "var(--t-radius-button)", color: "var(--t-bg-page)", fontFamily: "var(--t-font-heading)", minHeight: 48 }}
             >
-              Payable Amount
-            </p>
-            <p
-              className="text-xl font-black text-text-heading"
-              style={{ fontFamily: "var(--t-font-heading)" }}
-            >
-              ₹{finalTotal.toLocaleString("en-IN")}
-            </p>
+              {loading ? (
+                <Loader2 size={18} className="animate-spin" />
+              ) : effectiveMethod === "ONLINE" ? (
+                "Proceed To Payment"
+              ) : (
+                "Place Order"
+              )}
+            </button>
           </div>
-          <button
-            onClick={placeOrder}
-            disabled={loading || deliveryBlocked}
-            className="inline-flex flex-shrink-0 items-center justify-center gap-2 px-5 text-sm font-black uppercase tracking-wider transition-colors bg-primary hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-            style={{ borderRadius: "var(--t-radius-button)", color: "var(--t-bg-page)", fontFamily: "var(--t-font-heading)", minHeight: 48 }}
-          >
-            {loading ? (
-              <Loader2 size={18} className="animate-spin" />
-            ) : effectiveMethod === "ONLINE" ? (
-              "Proceed To Payment"
-            ) : (
-              "Place Order"
-            )}
-          </button>
         </div>
       </div>
+
+      {/* Mobile payment method picker (bottom sheet) */}
+      <PaymentMethodSheet
+        open={showPaymentPicker}
+        onClose={() => setShowPaymentPicker(false)}
+        current={effectiveMethod}
+        onSelect={setMethod}
+        codAvailable={codAvailable}
+        codDisableReason={codDisableReason}
+        onlineAvailable={onlineAvailable}
+        onlineDisableReason={onlineDisableReason}
+      />
 
       {/* Popup when a product in the cart is not deliverable to the selected pincode */}
       <Modal

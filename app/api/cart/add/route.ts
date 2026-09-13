@@ -33,13 +33,19 @@ export async function POST(req: Request) {
       );
     }
 
-    const [variant, user] = await Promise.all([
+    const [variant, user, cartQuery] = await Promise.all([
       prisma.productvariant.findUnique({
         where: { id: productVariantId },
       }),
       prisma.user.findUnique({
         where: { email: session.user.email },
       }),
+      session.user?.id
+        ? prisma.cart.findUnique({
+            where: { userId: session.user.id },
+            include: { cartitem: true },
+          })
+        : Promise.resolve(null),
     ]);
 
     if (!variant || variant.productId !== productId) {
@@ -100,14 +106,7 @@ export async function POST(req: Request) {
       );
     }
 
-    let cart = await prisma.cart.findUnique({
-      where: {
-        userId: user.id,
-      },
-      include: {
-        cartitem: true,
-      },
-    });
+    let cart = cartQuery ?? null;
 
     if (!cart) {
       cart = await prisma.cart.create({
@@ -121,13 +120,13 @@ export async function POST(req: Request) {
       });
     }
 
-    const existingItem = await prisma.cartitem.findFirst({
-      where: {
-        cartId: cart.id,
-        productId,
-        productVariantId,
-      },
-    });
+    // The cart was loaded with its items in the same round trip as the
+    // variant + user, so the "does this line already exist" check can be
+    // resolved in memory — no extra DB query.
+    const existingItem = cart.cartitem.find(
+      (item) =>
+        item.productId === productId && item.productVariantId === productVariantId
+    );
 
     // Customised items are treated as distinct lines — two different
     // personalisations of the same product must not be merged together.

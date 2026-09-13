@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 
-const MIN_DISPLAY_MS = 500;
+// The overlay is hidden the moment the destination URL renders (no artificial
+// minimum dwell time) so fast navigations never feel artificially slow.
+const MIN_DISPLAY_MS = 0;
 const MAX_DISPLAY_MS = 8000;
 
 /**
@@ -11,8 +13,8 @@ const MAX_DISPLAY_MS = 8000;
  *
  * Shows a blurred, themed "Loading" screen the moment a client-side
  * navigation starts — product-card clicks, navbar links, router.push,
- * back/forward — and stays up for at least MIN_DISPLAY_MS so the user
- * always sees it, even on fast navigations.
+ * back/forward — and hides as soon as the destination URL renders.
+ * It never artificially delays fast navigations.
  *
  * The overlay is deliberately non-interactive (`pointer-events: none`)
  * so it never blocks taps on buttons, links or menus, even while a slow
@@ -38,25 +40,28 @@ export default function LoadingOverlay() {
     if (lastUrlRef.current === null) lastUrlRef.current = currentUrl;
   }, [pathname, currentUrl]);
 
-  function show() {
+  const show = useCallback(() => {
     if (isAdminRef.current || visibleRef.current) return;
     if (hideTimerRef.current) window.clearTimeout(hideTimerRef.current);
     visibleRef.current = true;
     startedAtRef.current = Date.now();
     setVisible(true);
-  }
+  }, []);
 
-  function hide() {
+  const hide = useCallback(() => {
     if (hideTimerRef.current) window.clearTimeout(hideTimerRef.current);
     visibleRef.current = false;
     setVisible(false);
-  }
+  }, []);
 
-  function scheduleHide() {
+  const scheduleHide = useCallback(() => {
     if (hideTimerRef.current) window.clearTimeout(hideTimerRef.current);
-    const remaining = Math.max(0, MIN_DISPLAY_MS - (Date.now() - startedAtRef.current));
+    const remaining = Math.max(
+      0,
+      MIN_DISPLAY_MS - (Date.now() - startedAtRef.current)
+    );
     hideTimerRef.current = window.setTimeout(hide, remaining);
-  }
+  }, [hide]);
 
   // Detect navigation start: link clicks, history pushState/replaceState
   // (covers router.push/router.replace) and popstate (back/forward).
@@ -109,8 +114,7 @@ export default function LoadingOverlay() {
       window.history.pushState = originalPushState;
       window.history.replaceState = originalReplaceState;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [show]);
 
   // Navigation finished — hide once the URL (pathname or search) actually changes.
   useEffect(() => {
@@ -118,15 +122,14 @@ export default function LoadingOverlay() {
     if (currentUrl === lastUrlRef.current) return;
     lastUrlRef.current = currentUrl;
     scheduleHide();
-  }, [currentUrl]);
+  }, [currentUrl, scheduleHide]);
 
   // Safety net: never leave the overlay stuck behind a failed navigation.
   useEffect(() => {
     if (!visible) return;
     const t = window.setTimeout(hide, MAX_DISPLAY_MS);
     return () => window.clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visible]);
+  }, [visible, hide]);
 
   useEffect(
     () => () => {

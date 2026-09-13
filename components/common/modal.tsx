@@ -1,13 +1,6 @@
 "use client";
 
-import {
-  AnimatePresence,
-  motion,
-} from "framer-motion";
-import {
-  ReactNode,
-  useEffect,
-} from "react";
+import { ReactNode, useEffect } from "react";
 
 interface ModalProps {
   open: boolean;
@@ -25,129 +18,60 @@ export default function Modal({
   useEffect(() => {
     if (!open) return;
 
-    document.body.style.overflow =
-      "hidden";
+    document.body.style.overflow = "hidden";
 
-    function onKeyDown(
-      e: KeyboardEvent
-    ) {
-      if (e.key === "Escape") {
-        onClose();
-      }
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
     }
 
-    window.addEventListener(
-      "keydown",
-      onKeyDown
-    );
+    window.addEventListener("keydown", onKeyDown);
 
     return () => {
-      document.body.style.overflow =
-        "";
-
-      window.removeEventListener(
-        "keydown",
-        onKeyDown
-      );
+      document.body.style.overflow = "";
+      window.removeEventListener("keydown", onKeyDown);
     };
   }, [open, onClose]);
 
+  if (!open) return null;
+
   return (
-    <AnimatePresence>
+    <div
+      role="dialog"
+      aria-modal="true"
+      className="fixed inset-0 z-[999] flex items-center justify-center p-3 sm:p-5"
+      style={{ animation: "common-modal-fade 0.2s ease-out both" }}
+    >
+      {/* Overlay */}
+      <div
+        className="absolute inset-0 bg-black/60 backdrop-blur-md"
+        onClick={onClose}
+      />
 
-      {open && (
-        <motion.div
-          initial={{
-            opacity: 0,
-          }}
-          animate={{
-            opacity: 1,
-          }}
-          exit={{
-            opacity: 0,
-          }}
-          transition={{
-            duration: 0.2,
-          }}
-          className="
-          fixed
-          inset-0
-          z-[999]
-          flex
-          items-center
-          justify-center
-          p-3
-          sm:p-5
-          "
-        >
-          {/* Overlay */}
+      {/* Modal */}
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className={`relative w-full ${maxWidth} rounded-[32px] overflow-hidden border shadow-2xl`}
+        style={{
+          background: "rgba(17,24,39,.82)",
+          backdropFilter: "blur(25px)",
+          WebkitBackdropFilter: "blur(25px)",
+          borderColor: "rgba(255,255,255,.08)",
+          animation: "common-modal-pop 0.22s ease-out both",
+        }}
+      >
+        {children}
+      </div>
 
-          <motion.div
-            initial={{
-              opacity: 0,
-            }}
-            animate={{
-              opacity: 1,
-            }}
-            exit={{
-              opacity: 0,
-            }}
-            onClick={onClose}
-            className="
-            absolute
-            inset-0
-            bg-black/60
-            backdrop-blur-md
-            "
-          />
-
-          {/* Modal */}
-
-          <motion.div
-            initial={{
-              opacity: 0,
-              scale: 0.92,
-              y: 30,
-            }}
-            animate={{
-              opacity: 1,
-              scale: 1,
-              y: 0,
-            }}
-            exit={{
-              opacity: 0,
-              scale: 0.92,
-              y: 30,
-            }}
-            transition={{
-              duration: 0.22,
-            }}
-            onClick={(e) =>
-              e.stopPropagation()
-            }
-            className={`
-            relative
-            w-full
-            ${maxWidth}
-            rounded-[32px]
-            overflow-hidden
-            border
-            shadow-2xl
-            `}
-            style={{
-              background:
-                "rgba(17,24,39,.82)",
-              backdropFilter:
-                "blur(25px)",
-              borderColor:
-                "rgba(255,255,255,.08)",
-            }}
-          >
-            {children}
-          </motion.div>
-        </motion.div>
-      )}
-
-    </AnimatePresence>
+      <style>{`
+        @keyframes common-modal-fade {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes common-modal-pop {
+          from { opacity: 0; transform: scale(0.92) translateY(30px); }
+          to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+      `}</style>
+    </div>
   );
 }

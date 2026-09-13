@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { getEffectivePrice, isFlatDiscount, priceWithGst } from "@/lib/pricing";
@@ -19,71 +20,14 @@ import ShareButton from "@/components/store/share-button";
 import SizeChartButton from "@/components/store/product/size-chart-button";
 import PdpComboSection from "@/components/store/product/pdp-combo-section";
 import ProductJsonLd from "@/components/seo/product-json-ld";
-import { ArrowUpRight, RotateCcw, RefreshCw, Info, Home, Star, LayoutGrid, Sparkles } from "lucide-react";
+import { RelatedProductsSkeleton, ComboSectionSkeleton } from "@/components/ui/skeleton";
+import { ArrowUpRight, RotateCcw, RefreshCw, Info, Home, Star, LayoutGrid } from "lucide-react";
 
 interface Props {
   params: Promise<{
     slug: string;
   }>;
 }
-
-type ProductVariantData = {
-  id: string;
-  stock: number;
-  sku: string;
-  size: {
-    id: string;
-    sizeName: string;
-    sizeCategory: string;
-  };
-  gender: {
-    id: string;
-    name: string;
-  };
-};
-
-type ProductWithDetails = {
-  id: string;
-  name: string;
-  slug: string;
-  description: string;
-  sellingPrice: number;
-  costPrice: number;
-  discountType: string;
-  discountValue: number;
-  salePrice: number;
-  gstPercentage: number;
-  offerStart: Date | null;
-  offerEnd: Date | null;
-  finalPrice: number;
-  stock: number;
-  categoryId: string;
-  createdAt: Date;
-  updatedAt: Date;
-  isFeatured: boolean;
-  status: boolean;
-  lowStockAlert: number;
-  isTrending: boolean;
-  isReturnable: boolean;
-  isReplaceable: boolean;
-  returnDays: number;
-  totalSold: number;
-  totalViews: number;
-  productimage: {
-    id: string;
-    createdAt: Date;
-    productId: string;
-    url: string;
-  }[];
-  category: {
-    id: string;
-    name: string;
-    slug: string;
-    sizeCategory: string;
-    createdAt: Date;
-  };
-  productvariant: ProductVariantData[];
-};
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
@@ -144,38 +88,37 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function ProductPage({ params }: Props) {
   const { slug } = await params;
 
-  const product = (await prisma.product.findUnique({
-    where: { slug },
-    include: {
-      productimage: true,
-      category: true,
-      productvariant: {
-        include: {
-          size: true,
-          gender: true,
+  const [product, session] = await Promise.all([
+    prisma.product.findUnique({
+      where: { slug },
+      include: {
+        productimage: true,
+        category: true,
+        productvariant: {
+          include: {
+            size: true,
+            gender: true,
+          },
         },
+        review: {
+          include: { user: { select: { name: true } } },
+          orderBy: { createdAt: "desc" },
+        },
+        _count: { select: { review: true } },
       },
-    },
-  })) as ProductWithDetails | null;
+    }),
+    auth(),
+  ]);
 
   if (!product) return notFound();
 
-  const [reviewAgg, session, reviews] = await Promise.all([
-    prisma.review.aggregate({
-      where: { productId: product.id },
-      _avg: { rating: true },
-      _count: { rating: true },
-    }),
-    auth(),
-    prisma.review.findMany({
-      where: { productId: product.id },
-      include: { user: { select: { name: true } } },
-      orderBy: { createdAt: "desc" },
-    }),
-  ]);
-
-  const reviewAverage = Number((reviewAgg._avg.rating || 0).toFixed(1));
-  const reviewCount = reviewAgg._count.rating;
+  const reviews = product.review ?? [];
+  const reviewCount = product._count?.review ?? reviews.length;
+  const reviewAverage = reviews.length
+    ? Number(
+        (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)
+      )
+    : 0;
 
   const serializedReviews = reviews.map((r) => ({
     id: r.id,
@@ -654,14 +597,18 @@ export default async function ProductPage({ params }: Props) {
 
       {/* RELATED PRODUCTS */}
       <section id="related" className="mx-auto max-w-7xl scroll-mt-32 px-4 pb-16 sm:px-6 lg:scroll-mt-24 lg:px-8 lg:pb-24">
-        <RelatedProducts
-          categoryId={product.categoryId}
-          currentProductId={product.id}
-        />
+        <Suspense fallback={<RelatedProductsSkeleton />}>
+          <RelatedProducts
+            categoryId={product.categoryId}
+            currentProductId={product.id}
+          />
+        </Suspense>
       </section>
 
       {/* COMBO OFFERS containing this product */}
-      <PdpComboSection productId={product.id} />
+      <Suspense fallback={<ComboSectionSkeleton />}>
+        <PdpComboSection productId={product.id} />
+      </Suspense>
 
       <Footer />
     </div>

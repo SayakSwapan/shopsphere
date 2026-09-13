@@ -7,7 +7,6 @@ import SiteBrand from "@/components/brand/site-brand";
 import LoginForm from "./login-form";
 import RegisterForm from "./register-form";
 import { X } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
 
 export default function AuthModal() {
   const {
@@ -101,26 +100,10 @@ export default function AuthModal() {
             Premium shopping, made for you.
           </p>
 
-          <AnimatePresence mode="wait">
-
-            <motion.div
+          <div
               key={mode}
-              initial={{
-                opacity: 0,
-                y: 20,
-              }}
-              animate={{
-                opacity: 1,
-                y: 0,
-              }}
-              exit={{
-                opacity: 0,
-                y: -20,
-              }}
-              transition={{
-                duration: 0.25,
-              }}
               className="mt-10"
+              style={{ animation: "auth-modal-switch 0.25s ease-out both" }}
             >
               {mode ===
               "login" ? (
@@ -170,13 +153,17 @@ export default function AuthModal() {
                   </div>
                 </>
               )}
-            </motion.div>
-
-          </AnimatePresence>
+            </div>
 
         </div>
 
       </div>
+      <style>{`
+        @keyframes auth-modal-switch {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
     </Modal>
   );
 }

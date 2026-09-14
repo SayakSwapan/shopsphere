@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import ForgotPasswordForm from "./forgot-password-form";
 import PhoneLoginForm from "./phone-login-form";
+import EmailOtpLoginForm from "./email-otp-login-form";
 import { getLoginRedirect } from "@/lib/login-redirect";
 import { useOptionalAuthModal } from "./auth-context";
 
@@ -15,6 +16,7 @@ export default function LoginForm() {
   const authModal = useOptionalAuthModal();
 
   const [loginMethod, setLoginMethod] = useState<"email" | "phone">("email");
+  const [emailMode, setEmailMode] = useState<"password" | "otp">("password");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -130,6 +132,8 @@ export default function LoginForm() {
 
       {loginMethod === "phone" ? (
         <PhoneLoginForm onBack={() => setLoginMethod("email")} />
+      ) : emailMode === "otp" ? (
+        <EmailOtpLoginForm onBack={() => setEmailMode("password")} />
       ) : (
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
@@ -191,6 +195,17 @@ export default function LoginForm() {
               "Login"
             )}
           </button>
+
+          <div className="text-center">
+            <button
+              type="button"
+              onClick={() => setEmailMode("otp")}
+              className="text-xs font-medium transition hover:opacity-80"
+              style={{ color: "var(--t-primary)" }}
+            >
+              Login with OTP instead
+            </button>
+          </div>
         </form>
       )}
     </div>

@@ -457,6 +457,45 @@ const EMAIL_TEMPLATES = [
       SUPPORT
     ),
   },
+  {
+    templateKey: "offline_invoice",
+    templateName: "Offline Invoice",
+    subject: "Invoice #{{orderNumber}} — {{siteName}}",
+    description: "Sent to the customer after an offline (POS) sale is fully paid",
+    placeholders: "{{customerName}},{{orderNumber}},{{orderDate}},{{paymentMethod}},{{itemsTable}},{{subtotal}},{{gst}},{{discount}},{{paidAmount}},{{dueAmount}},{{total}},{{customerEmail}},{{customerAddress}},{{messageHeadline}},{{messageBody}},{{logoBlock}},{{supportEmail}}",
+    body: emailShell(
+      headingBlock("Offline Invoice", "Hello, {{customerName}}", "{{messageBody}}") +
+        infoBox(
+          '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">' +
+            kvRow("Invoice Number", "#{{orderNumber}}", ACCENT, true) +
+            kvRow("Date", "{{orderDate}}") +
+            kvRow("Payment Method", "{{paymentMethod}}") +
+            kvRow("Total Payable", "{{total}}", INK, true) +
+            "</table>",
+          "success"
+        ) +
+        sectionLabel("Order Summary") +
+        "{{itemsTable}}" +
+        '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:16px;">' +
+        kvRow("Subtotal (Excl. GST)", "{{subtotal}}") +
+        kvRow("Total GST", "{{gst}}") +
+        kvRow("Discount", "{{discount}}", SUCCESS_TEXT) +
+        kvRow("Amount Paid", "{{paidAmount}}", SUCCESS_TEXT) +
+        kvRow("Due", "{{dueAmount}}", ACCENT) +
+        '<tr><td style="padding:10px 0 6px 0;border-top:1px solid ' +
+        DIVIDER +
+        ';"><p style="color:' +
+        INK +
+        ';font-size:16px;font-weight:800;margin:0;">Total Payable</p></td><td align="right" style="padding:10px 0 6px 0;border-top:1px solid ' +
+        DIVIDER +
+        ';"><p style="color:' +
+        ACCENT +
+        ';font-size:18px;font-weight:800;margin:0;">{{total}}</p></td></tr>' +
+        "</table>" +
+        noteLine("This invoice was sent to <strong style=\"color:" + INK + ";\">{{customerEmail}}</strong>."),
+      SUPPORT
+    ),
+  },
 ];
 
 async function main() {

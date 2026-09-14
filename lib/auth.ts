@@ -61,6 +61,11 @@ export const {
           return null;
         }
 
+        // Deactivated accounts cannot log in.
+        if (!user.isActive) {
+          return null;
+        }
+
         // Partners must use their own portal, not customer login.
         if (user.role === "PARTNER") {
           return null;

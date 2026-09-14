@@ -236,7 +236,7 @@ export default function ProductsContent({ products, categories, genders, perPage
         {/* Products grid */}
         {products.length > 0 ? (
           <>
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
               {visibleProducts.map((product) =>
                 combo ? (
                   <ComboQuickAddCard

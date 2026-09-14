@@ -121,7 +121,7 @@ export default function ProductCard({ product }: Props) {
               "/placeholder.png"
             }
             alt={product.name}
-            className="h-[260px] sm:h-[320px] lg:h-[420px] w-full object-cover transition-transform duration-700 group-hover:scale-110"
+            className="h-[150px] sm:h-[260px] lg:h-[320px] w-full object-cover transition-transform duration-700 group-hover:scale-110"
           />
 
           {/* overlay */}
@@ -129,10 +129,10 @@ export default function ProductCard({ product }: Props) {
         </Link>
 
         {/* badges */}
-        <div className="absolute left-4 top-4 flex gap-2">
+        <div className="absolute left-2.5 sm:left-4 top-2.5 sm:top-4 flex gap-1.5 sm:gap-2">
           {product.isFeatured && (
             <span
-              className="bg-primary px-3 py-1 text-[10px] font-black uppercase tracking-wider"
+              className="bg-primary px-1.5 sm:px-3 py-0.5 sm:py-1 text-[8px] sm:text-[10px] font-black uppercase tracking-wider"
               style={{ borderRadius: "var(--t-radius-badge)", color: "var(--t-bg-page)" }}
             >
               Featured
@@ -140,7 +140,7 @@ export default function ProductCard({ product }: Props) {
           )}
           {product.isTrending && (
             <span
-              className="bg-accent px-3 py-1 text-[10px] font-black uppercase tracking-wider"
+              className="bg-accent px-1.5 sm:px-3 py-0.5 sm:py-1 text-[8px] sm:text-[10px] font-black uppercase tracking-wider"
               style={{ borderRadius: "var(--t-radius-badge)", color: "var(--t-bg-page)" }}
             >
               Trending
@@ -149,30 +149,30 @@ export default function ProductCard({ product }: Props) {
         </div>
 
         {/* wishlist */}
-        <div className="absolute right-4 top-4">
+        <div className="absolute right-2.5 sm:right-4 top-2.5 sm:top-4">
           <WishlistButton productId={product.id} />
         </div>
       </div>
 
       {/* CONTENT */}
-      <div className="p-4 lg:p-6">
-        {/* Rating */}
-        <div className="mb-3">
+      <div className="p-2.5 sm:p-4 lg:p-6">
+        {/* Rating - hidden on mobile */}
+        <div className="mb-1.5 sm:mb-3 hidden sm:block">
           <CardRating productId={product.id} />
         </div>
 
         {/* Name */}
         <Link href={`/products/${product.slug}`}>
           <h3
-            className="text-base lg:text-lg font-bold leading-7 text-text-heading transition-colors duration-300 group-hover:text-primary line-clamp-2 min-h-[56px]"
+            className="text-xs sm:text-base lg:text-lg font-bold leading-5 sm:leading-7 text-text-heading transition-colors duration-300 group-hover:text-primary line-clamp-2 min-h-[32px] sm:min-h-[56px]"
           >
             {product.name}
           </h3>
         </Link>
 
-        {/* Sizes */}
+        {/* Sizes - hidden on mobile */}
         {availableSizes.length > 0 && (
-          <div className="mt-3 flex flex-wrap items-center gap-1.5">
+          <div className="mt-1.5 sm:mt-3 hidden sm:flex flex-wrap items-center gap-1.5">
             <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted-2">
               Sizes
             </span>
@@ -189,9 +189,9 @@ export default function ProductCard({ product }: Props) {
         )}
 
         {/* Price */}
-        <div className="mt-5">
-          <div className="flex items-end gap-2.5">
-            <span className="text-2xl sm:text-3xl font-black text-text-heading">
+        <div className="mt-3 sm:mt-5">
+          <div className="flex items-end gap-1.5 sm:gap-2.5">
+            <span className="text-lg sm:text-2xl lg:text-3xl font-black text-text-heading">
               ₹{displayPrice.toLocaleString("en-IN")}
             </span>
 
@@ -208,7 +208,7 @@ export default function ProductCard({ product }: Props) {
           </div>
 
           {hasDiscount && (
-            <div className="mt-2 flex items-center gap-2">
+            <div className="mt-1.5 sm:mt-2 hidden sm:flex items-center gap-2">
               <span
                 className="inline-flex px-2.5 py-1 text-xs font-black text-success"
                 style={{ background: "color-mix(in srgb, var(--t-success) 12%, transparent)", borderRadius: "var(--t-radius-badge)" }}
@@ -242,7 +242,7 @@ export default function ProductCard({ product }: Props) {
         {/* CTA */}
         <Link
           href={`/products/${product.slug}`}
-          className="mt-6 flex h-12 items-center justify-center font-bold uppercase tracking-wider transition-all duration-300 bg-primary hover:opacity-90"
+          className="mt-4 sm:mt-6 hidden sm:flex h-12 items-center justify-center font-bold uppercase tracking-wider transition-all duration-300 bg-primary hover:opacity-90"
           style={{ borderRadius: "var(--t-radius-button)", color: "var(--t-bg-page)", fontFamily: "var(--t-font-heading)" }}
         >
           View Product

@@ -18,6 +18,7 @@ import {
   calculateLoyaltyDiscount,
   handleRefundLoyaltyAdjustment,
 } from "@/lib/loyalty";
+import { sendOfflineInvoiceEmail } from "@/lib/email/offline-invoice-email";
 
 /**
  * Shared service for the Offline / POS sales system.
@@ -847,6 +848,13 @@ async function createOrderAndItems(opts: {
     return order;
   });
 
+  // Fire-and-forget: send invoice email for fully-paid offline sales.
+  if (isComplete && !isPartial) {
+    sendOfflineInvoiceEmail({ orderId: result.id }).catch((e) =>
+      console.error("Offline invoice email failed:", e)
+    );
+  }
+
   return {
     orderId: result.id,
     orderNumber: result.orderNumber,
@@ -1055,6 +1063,13 @@ export async function completeOfflineOrder(opts: {
     }
   }
 
+  // Fire-and-forget: send invoice email for fully-paid offline sales.
+  if (!isPartial) {
+    sendOfflineInvoiceEmail({ orderId: order.id }).catch((e) =>
+      console.error("Offline invoice email failed:", e)
+    );
+  }
+
   return { orderId: order.id, already: false, paidAmount, dueAmount, isPartial };
 }
 
@@ -1135,6 +1150,13 @@ export async function collectOfflineDue(opts: {
       },
     });
   });
+
+  // Fire-and-forget: send final invoice email when due is fully cleared.
+  if (isNowCleared) {
+    sendOfflineInvoiceEmail({ orderId: order.id }).catch((e) =>
+      console.error("Offline invoice email failed:", e)
+    );
+  }
 
   return {
     orderId: order.id,

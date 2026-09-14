@@ -15,6 +15,18 @@ export interface PeriodConfig {
   type: PeriodType;
 }
 
+export interface ChannelSplit {
+  revenue: number;
+  orders: number;
+  cogs: number;
+  grossProfit: number;
+  expenses: number;
+  transactionFees: number;
+  gatewayCharges: number;
+  netProfit: number;
+  refunds: number;
+}
+
 export interface FinanceSummary {
   period: string;
   totalRevenue: number;
@@ -34,6 +46,8 @@ export interface FinanceSummary {
   monthlyData: MonthlyProfit[];
   settlementSummary: SettlementSummary | null;
   cashFlow: CashFlowSummary | null;
+  online: ChannelSplit;
+  offline: ChannelSplit;
 }
 
 function resolvePeriod(type: PeriodType): PeriodConfig {
@@ -90,6 +104,7 @@ export async function getFinanceSummary(period: PeriodType = "monthly"): Promise
         paymentMethod: true,
         paymentStatus: true,
         transactionFee: true,
+        orderType: true,
         orderitem: {
           select: {
             quantity: true,
@@ -132,6 +147,54 @@ export async function getFinanceSummary(period: PeriodType = "monthly"): Promise
     ? await buildMonthlyProfit(orders, expenses, paymentTransactions, refundAmounts, new Date().getFullYear())
     : [];
 
+  // ── Online vs Offline channel split ──
+  const emptyChannel: ChannelSplit = { revenue: 0, orders: 0, cogs: 0, grossProfit: 0, expenses: 0, transactionFees: 0, gatewayCharges: 0, netProfit: 0, refunds: 0 };
+  const online = { ...emptyChannel };
+  const offline = { ...emptyChannel };
+
+  for (const o of orders) {
+    const ch = o.orderType === "OFFLINE" ? offline : online;
+    ch.revenue += Number(o.totalAmount);
+    ch.orders += 1;
+    ch.transactionFees += o.transactionFee ? Number(o.transactionFee) : 0;
+
+    const refundAmt = refundAmounts.get(o.id) ?? 0;
+    ch.refunds += refundAmt;
+
+    let orderCogs = 0;
+    if (!refundAmounts.has(o.id)) {
+      for (const item of o.orderitem) {
+        const cp = item.costPriceSnapshot ? Number(item.costPriceSnapshot) : Number(item.product.costPrice);
+        orderCogs += item.quantity * cp;
+      }
+    }
+    ch.cogs += orderCogs;
+  }
+
+  online.grossProfit = online.revenue - online.refunds - online.cogs;
+  offline.grossProfit = offline.revenue - offline.refunds - offline.cogs;
+
+  // Attribute expenses proportionally by revenue
+  const totalRev = online.revenue + offline.revenue;
+  if (totalRev > 0) {
+    const onlineShare = online.revenue / totalRev;
+    const offlineShare = offline.revenue / totalRev;
+    online.expenses = profit.totalExpenses * onlineShare;
+    offline.expenses = profit.totalExpenses * offlineShare;
+  }
+
+  // Attribute gateway charges proportionally by transaction fees
+  const totalTxFees = online.transactionFees + offline.transactionFees;
+  if (totalTxFees > 0) {
+    const onlineTxFeeShare = online.transactionFees / totalTxFees;
+    const offlineTxFeeShare = offline.transactionFees / totalTxFees;
+    online.gatewayCharges = profit.gatewayCharges * onlineTxFeeShare;
+    offline.gatewayCharges = profit.gatewayCharges * offlineTxFeeShare;
+  }
+
+  online.netProfit = online.grossProfit - online.expenses - online.transactionFees - online.gatewayCharges;
+  offline.netProfit = offline.grossProfit - offline.expenses - offline.transactionFees - offline.gatewayCharges;
+
   return {
     period,
     totalRevenue: profit.grossRevenue,
@@ -151,6 +214,8 @@ export async function getFinanceSummary(period: PeriodType = "monthly"): Promise
     monthlyData,
     settlementSummary,
     cashFlow,
+    online,
+    offline,
   };
 }
 

@@ -16,7 +16,21 @@ import {
   ChevronDown,
   Calculator,
   Info,
+  Globe,
+  Store,
 } from "lucide-react";
+
+interface ChannelSplit {
+  revenue: number;
+  orders: number;
+  cogs: number;
+  grossProfit: number;
+  expenses: number;
+  transactionFees: number;
+  gatewayCharges: number;
+  netProfit: number;
+  refunds: number;
+}
 
 interface FinanceData {
   totalRevenue: number;
@@ -36,6 +50,8 @@ interface FinanceData {
   monthlyData: { month: string; grossRevenue: number; cogs: number; expenses: number; transactionFees: number; netProfit: number }[];
   settlementSummary: { totalSettled: number; totalGatewayFees: number; totalNetSettlements: number; totalPending: number } | null;
   cashFlow: { totalInflow: number; totalOutflow: number; netCashFlow: number } | null;
+  online: ChannelSplit;
+  offline: ChannelSplit;
 }
 
 function fmtCurrency(value: number | string | null | undefined): string {
@@ -394,6 +410,133 @@ export default function FinancePage() {
             </p>
           </div>
         ))}
+      </div>
+
+      {/* ── Revenue Split: Online vs Offline ── */}
+      <div className="rounded-2xl border border-white/5 bg-[#111827] p-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-bold text-white flex items-center gap-2">
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500/10">
+                <Globe size={16} className="text-indigo-400" />
+              </span>
+              Revenue Split
+            </h2>
+            <p className="text-xs text-slate-500 mt-1">Online vs Offline (POS) — where your money comes from.</p>
+          </div>
+          <div className="flex flex-wrap gap-3 text-xs">
+            <span className="flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-3 py-1 font-semibold text-emerald-400">
+              <Globe size={12} /> Website
+            </span>
+            <span className="flex items-center gap-1.5 rounded-full bg-fuchsia-500/10 px-3 py-1 font-semibold text-fuchsia-400">
+              <Store size={12} /> Store / POS
+            </span>
+          </div>
+        </div>
+
+        {/* Split bar */}
+        <div className="mt-5">
+          <div className="flex h-5 w-full overflow-hidden rounded-full bg-[#0B1624]">
+            <div
+              className="bg-gradient-to-r from-emerald-500 to-teal-400 transition-all"
+              style={{ width: `${data.totalRevenue > 0 ? ((data.online.revenue / data.totalRevenue) * 100).toFixed(1) : 0}%` }}
+            />
+            <div
+              className="bg-gradient-to-r from-fuchsia-500 to-purple-400 transition-all"
+              style={{ width: `${data.totalRevenue > 0 ? ((data.offline.revenue / data.totalRevenue) * 100).toFixed(1) : 0}%` }}
+            />
+          </div>
+          <div className="mt-2 flex justify-between text-xs font-medium">
+            <span className="text-emerald-400">
+              Online · {data.totalRevenue > 0 ? ((data.online.revenue / data.totalRevenue) * 100).toFixed(1) : 0}%
+            </span>
+            <span className="text-fuchsia-400">
+              Offline · {data.totalRevenue > 0 ? ((data.offline.revenue / data.totalRevenue) * 100).toFixed(1) : 0}%
+            </span>
+          </div>
+        </div>
+
+        {/* Channel cards */}
+        <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {[
+            {
+              label: "Online Sales",
+              icon: Globe,
+              ch: data.online,
+              accent: "emerald",
+              rendered: true,
+            },
+            {
+              label: "Offline Sales",
+              icon: Store,
+              ch: data.offline,
+              accent: "fuchsia",
+              rendered: true,
+            },
+          ].map(({ label, icon: Icon, ch, accent }) => {
+            const isOnline = accent === "emerald";
+            return (
+              <div
+                key={label}
+                className={`rounded-2xl border p-5 ${
+                  isOnline ? "border-emerald-500/15 bg-emerald-500/[0.03]" : "border-fuchsia-500/15 bg-fuchsia-500/[0.03]"
+                }`}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <div className={`flex h-9 w-9 items-center justify-center rounded-xl ${isOnline ? "bg-emerald-500/10" : "bg-fuchsia-500/10"}`}>
+                      <Icon size={18} className={isOnline ? "text-emerald-400" : "text-fuchsia-400"} />
+                    </div>
+                    <span className="font-bold text-white">{label}</span>
+                  </div>
+                  <span className="text-xs text-slate-500">{ch.orders} orders</span>
+                </div>
+
+                <p className={`mt-4 text-2xl font-black ${isOnline ? "text-emerald-400" : "text-fuchsia-400"}`}>
+                  {fmtCurrency(ch.revenue)}
+                </p>
+
+                <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2.5 border-t border-white/5 pt-3 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500">Gross Profit</span>
+                    <span className={`font-semibold ${ch.grossProfit >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+                      {fmtCurrency(ch.grossProfit)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500">COGS</span>
+                    <span className="font-semibold text-orange-400">{fmtCurrency(ch.cogs)}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500">Expenses</span>
+                    <span className="font-semibold text-red-400">{fmtCurrency(ch.expenses)}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500">Refunds</span>
+                    <span className="font-semibold text-yellow-400">{fmtCurrency(ch.refunds)}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500">Tx + Gateway Fees</span>
+                    <span className="font-semibold text-rose-400">{fmtCurrency(ch.transactionFees + ch.gatewayCharges)}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500">Net Profit</span>
+                    <span className={`font-bold ${ch.netProfit >= 0 ? "text-emerald-300" : "text-red-400"}`}>
+                      {fmtCurrency(ch.netProfit)}
+                    </span>
+                  </div>
+                </div>
+
+                {ch.orders > 0 && (
+                  <div className="mt-3 flex items-center justify-between rounded-lg bg-black/30 px-3 py-2">
+                    <span className="text-[11px] text-slate-500">AOV</span>
+                    <span className="text-sm font-bold text-white">{fmtCurrency(ch.revenue / ch.orders)}</span>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       {/* Owner Insights */}

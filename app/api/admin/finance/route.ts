@@ -42,6 +42,28 @@ export async function GET(request: NextRequest) {
         monthlyData: summary.monthlyData,
         settlementSummary: summary.settlementSummary,
         cashFlow: summary.cashFlow,
+        online: {
+          revenue: Math.round(summary.online.revenue),
+          orders: summary.online.orders,
+          cogs: Math.round(summary.online.cogs),
+          grossProfit: Math.round(summary.online.grossProfit),
+          expenses: Math.round(summary.online.expenses),
+          transactionFees: Math.round(summary.online.transactionFees),
+          gatewayCharges: Math.round(summary.online.gatewayCharges),
+          netProfit: Math.round(summary.online.netProfit),
+          refunds: Math.round(summary.online.refunds),
+        },
+        offline: {
+          revenue: Math.round(summary.offline.revenue),
+          orders: summary.offline.orders,
+          cogs: Math.round(summary.offline.cogs),
+          grossProfit: Math.round(summary.offline.grossProfit),
+          expenses: Math.round(summary.offline.expenses),
+          transactionFees: Math.round(summary.offline.transactionFees),
+          gatewayCharges: Math.round(summary.offline.gatewayCharges),
+          netProfit: Math.round(summary.offline.netProfit),
+          refunds: Math.round(summary.offline.refunds),
+        },
       },
     });
   } catch (error) {

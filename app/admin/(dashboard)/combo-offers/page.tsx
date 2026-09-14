@@ -12,6 +12,11 @@ import {
   Globe,
   AlertTriangle,
   Clock,
+  Wallet,
+  Crown,
+  TrendingUp,
+  BarChart3,
+  Percent,
 } from "lucide-react";
 import DeleteButton from "@/components/admin/common/delete-button";
 import { syncComboEndState } from "@/lib/combo-offer";
@@ -237,73 +242,136 @@ export default async function ComboOffersPage() {
           </span>
         </div>
 
-        {/* Summary cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div className="rounded-xl border border-amber-500/20 bg-[#0A0F1E] p-4">
-            <div className="flex items-center gap-2 text-amber-400 text-xs font-semibold uppercase tracking-wider mb-2">
-              <IndianRupee size={14} /> Combo Revenue
-            </div>
-            <div className="text-xl font-black text-white">{inr(comboRevenue)}</div>
-            <div className="text-xs text-slate-500 mt-1">{comboOrderCount} orders</div>
-          </div>
-          <div className="rounded-xl border border-emerald-500/20 bg-[#0A0F1E] p-4">
-            <div className="flex items-center gap-2 text-emerald-400 text-xs font-semibold uppercase tracking-wider mb-2">
-              <TicketPercent size={14} /> Discount Given
-            </div>
-            <div className="text-xl font-black text-white">{inr(comboDiscountTotal)}</div>
-            <div className="text-xs text-slate-500 mt-1">
-              {comboRevenue > 0 ? Math.round((comboDiscountTotal / comboRevenue) * 100) : 0}% of revenue
-            </div>
-          </div>
-          <div className="rounded-xl border border-blue-500/20 bg-[#0A0F1E] p-4">
-            <div className="flex items-center gap-2 text-blue-400 text-xs font-semibold uppercase tracking-wider mb-2">
-              <ShoppingBag size={14} /> Combo Orders
-            </div>
-            <div className="text-xl font-black text-white">{comboOrderCount}</div>
-            <div className="text-xs text-slate-500 mt-1">orders with a combo applied</div>
-          </div>
-          <div className="rounded-xl border border-purple-500/20 bg-[#0A0F1E] p-4">
-            <div className="flex items-center gap-2 text-purple-400 text-xs font-semibold uppercase tracking-wider mb-2">
-              <Layers size={14} /> Units via Combos
-            </div>
-            <div className="text-xl font-black text-white">{comboUnits}</div>
-            <div className="text-xs text-slate-500 mt-1">
-              avg {comboOrderCount > 0 ? (comboUnits / comboOrderCount).toFixed(1) : 0} units / order
+        {/* Hero summary */}
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#1A1035] via-[#141B33] to-[#0A0F1E] border border-purple-500/20 p-5">
+          <div className="absolute -top-20 -right-20 h-64 w-64 rounded-full bg-purple-600/20 blur-3xl" />
+          <div className="absolute -bottom-24 -left-16 h-56 w-56 rounded-full bg-amber-500/10 blur-3xl" />
+          <div className="relative">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="rounded-xl border border-amber-500/25 bg-black/30 backdrop-blur p-4">
+                <div className="flex items-center gap-2 text-amber-400 text-xs font-semibold uppercase tracking-wider mb-2">
+                  <Crown size={14} /> Combo Revenue
+                </div>
+                <div className="text-xl font-black text-white">{inr(comboRevenue)}</div>
+                <div className="text-xs text-slate-500 mt-1 flex items-center gap-1">
+                  <TrendingUp size={11} className="text-emerald-400" />
+                  {comboOrderCount} combo orders
+                </div>
+              </div>
+              <div className="rounded-xl border border-emerald-500/25 bg-black/30 backdrop-blur p-4">
+                <div className="flex items-center gap-2 text-emerald-400 text-xs font-semibold uppercase tracking-wider mb-2">
+                  <TicketPercent size={14} /> Discount Given
+                </div>
+                <div className="text-xl font-black text-white">{inr(comboDiscountTotal)}</div>
+                <div className="text-xs text-slate-500 mt-1 flex items-center gap-1">
+                  <Percent size={11} className="text-emerald-400" />
+                  {comboRevenue > 0 ? Math.round((comboDiscountTotal / comboRevenue) * 100) : 0}% of revenue
+                </div>
+              </div>
+              <div className="rounded-xl border border-blue-500/25 bg-black/30 backdrop-blur p-4">
+                <div className="flex items-center gap-2 text-blue-400 text-xs font-semibold uppercase tracking-wider mb-2">
+                  <ShoppingBag size={14} /> Combo Orders
+                </div>
+                <div className="text-xl font-black text-white">{comboOrderCount}</div>
+                <div className="text-xs text-slate-500 mt-1 flex items-center gap-1">
+                  <BarChart3 size={11} className="text-blue-400" /> orders with combo
+                </div>
+              </div>
+              <div className="rounded-xl border border-purple-500/25 bg-black/30 backdrop-blur p-4">
+                <div className="flex items-center gap-2 text-purple-400 text-xs font-semibold uppercase tracking-wider mb-2">
+                  <Layers size={14} /> Units via Combos
+                </div>
+                <div className="text-xl font-black text-white">{comboUnits}</div>
+                <div className="text-xs text-slate-500 mt-1">
+                  avg {comboOrderCount > 0 ? (comboUnits / comboOrderCount).toFixed(1) : 0} units / order
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Online vs Offline split */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {(["ONLINE", "OFFLINE"] as const).map((type) => {
-            const d = split[type];
-            const isOnline = type === "ONLINE";
-            return (
-              <div key={type} className="rounded-xl border border-[#1E293B] bg-[#0A0F1E] p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  {isOnline ? <Globe size={15} className="text-sky-400" /> : <Store size={15} className="text-fuchsia-400" />}
-                  <span className="text-sm font-semibold text-white">{isOnline ? "Online (website)" : "Offline (POS)"}</span>
-                  <span className="ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-500/15 text-slate-400">
-                    {d.orders} orders
-                  </span>
+        {/* Revenue split visual */}
+        <div className="relative overflow-hidden rounded-2xl border border-[#1E293B] bg-gradient-to-r from-[#0D1425] to-[#131A2E] p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+            <div className="flex items-center gap-2">
+              <Wallet size={16} className="text-amber-400" />
+              <h3 className="text-sm font-bold text-white">Revenue Split</h3>
+            </div>
+            <div className="flex gap-2">
+              <span className="flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-full bg-sky-500/15 text-sky-400">
+                <Globe size={11} /> Website
+              </span>
+              <span className="flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-full bg-fuchsia-500/15 text-fuchsia-400">
+                <Store size={11} /> POS
+              </span>
+            </div>
+          </div>
+
+          <div className="flex h-4 w-full overflow-hidden rounded-full bg-[#0A0F1E] ring-1 ring-white/5">
+            <div
+              className="bg-gradient-to-r from-sky-500 to-cyan-400"
+              style={{ width: `${comboRevenue > 0 ? (split.ONLINE.revenue / comboRevenue) * 100 : 0}%` }}
+            />
+            <div
+              className="bg-gradient-to-r from-fuchsia-500 to-purple-500"
+              style={{ width: `${comboRevenue > 0 ? (split.OFFLINE.revenue / comboRevenue) * 100 : 0}%` }}
+            />
+          </div>
+          <div className="mt-2 flex items-center justify-between text-xs font-semibold">
+            <span className="text-sky-400">
+              Online {comboRevenue > 0 ? ((split.ONLINE.revenue / comboRevenue) * 100).toFixed(1) : 0}%
+            </span>
+            <span className="text-slate-600">|</span>
+            <span className="text-fuchsia-400">
+              Offline {comboRevenue > 0 ? ((split.OFFLINE.revenue / comboRevenue) * 100).toFixed(1) : 0}%
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
+            {(["ONLINE", "OFFLINE"] as const).map((type) => {
+              const d = split[type];
+              const isOnline = type === "ONLINE";
+              return (
+                <div
+                  key={type}
+                  className={`relative overflow-hidden rounded-2xl p-4 ${isOnline ? "bg-gradient-to-br from-sky-500/10 to-cyan-500/5 border border-sky-500/25" : "bg-gradient-to-br from-fuchsia-500/10 to-purple-500/5 border border-fuchsia-500/25"}`}
+                >
+                  {isOnline ? (
+                    <Globe size={60} className="absolute -right-4 -top-4 text-sky-500/10" />
+                  ) : (
+                    <Store size={60} className="absolute -right-4 -top-4 text-fuchsia-500/10" />
+                  )}
+                  <div className="relative">
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className={`text-sm font-bold ${isOnline ? "text-sky-400" : "text-fuchsia-400"}`}>
+                        {isOnline ? "Online Sales" : "Offline (POS) Sales"}
+                      </span>
+                      <span className={`ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full ${isOnline ? "bg-sky-500/15 text-sky-400" : "bg-fuchsia-500/15 text-fuchsia-400"}`}>
+                        {d.orders} orders
+                      </span>
+                    </div>
+                    <div className="text-2xl font-black text-white">{inr(d.revenue)}</div>
+                    <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+                      <div className="rounded-lg bg-black/30 px-2 py-1.5">
+                        <div className="text-[9px] uppercase tracking-wider text-slate-500 font-semibold">Discount</div>
+                        <div className="text-xs font-bold text-emerald-300 mt-0.5">{inr(d.discount)}</div>
+                      </div>
+                      <div className="rounded-lg bg-black/30 px-2 py-1.5">
+                        <div className="text-[9px] uppercase tracking-wider text-slate-500 font-semibold">Units</div>
+                        <div className="text-xs font-bold text-blue-300 mt-0.5">{d.units}</div>
+                      </div>
+                      <div className="rounded-lg bg-black/30 px-2 py-1.5">
+                        <div className="text-[9px] uppercase tracking-wider text-slate-500 font-semibold">Order Avg</div>
+                        <div className="text-xs font-bold text-white mt-0.5">
+                          {d.orders > 0 ? inr(d.revenue / d.orders) : "—"}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div className="grid grid-cols-3 gap-2 text-center">
-                  <div>
-                    <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Revenue</div>
-                    <div className="text-sm font-bold text-white mt-0.5">{inr(d.revenue)}</div>
-                  </div>
-                  <div>
-                    <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Discount</div>
-                    <div className="text-sm font-bold text-emerald-300 mt-0.5">{inr(d.discount)}</div>
-                  </div>
-                  <div>
-                    <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Units</div>
-                    <div className="text-sm font-bold text-blue-300 mt-0.5">{d.units}</div>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
 
         {/* Per-offer breakdown */}

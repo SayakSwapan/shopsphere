@@ -1054,6 +1054,7 @@ export async function createComboOrder(
     entityId: order.id,
     createdById: user.id,
     notifyKey: "notify_on_order",
+    inAppOnly: true,
   }).catch(console.error);
 
   return {

@@ -1,9 +1,15 @@
 import { prisma } from "@/lib/prisma";
-import { sendWhatsAppText, isWhatsAppConfigured, formatPhoneForWhatsApp } from "@/lib/whatsapp-service";
+import {
+  sendWhatsAppText,
+  isWhatsAppConfigured,
+  formatPhoneForWhatsApp,
+} from "@/lib/whatsapp-service";
 import { sendTelegramMessage, isTelegramConfigured } from "@/lib/telegram";
 
 async function getAdminPhone(): Promise<string | null> {
-  const row = await prisma.siteSetting.findUnique({ where: { key: "admin_phone" } });
+  const row = await prisma.siteSetting.findUnique({
+    where: { key: "admin_phone" },
+  });
   return row?.value?.trim() || null;
 }
 
@@ -51,21 +57,30 @@ function buildTelegramOrderMessage(o: OrderSummaryForNotification): string {
   lines.push("");
   lines.push(`👤 <b>Customer:</b> ${escapeTelegramHtml(o.customerName)}`);
   lines.push(`📱 Phone: ${escapeTelegramHtml(o.customerPhone)}`);
-  if (o.customerEmail) lines.push(`📧 Email: ${escapeTelegramHtml(o.customerEmail)}`);
+  if (o.customerEmail)
+    lines.push(`📧 Email: ${escapeTelegramHtml(o.customerEmail)}`);
   lines.push("");
   lines.push("🛒 <b>Items:</b>");
 
   for (const item of o.items) {
-    const variant = item.variant ? ` (${escapeTelegramHtml(item.variant)})` : "";
-    lines.push(`• ${escapeTelegramHtml(item.name)}${variant} × ${item.qty} — ₹${item.price.toLocaleString("en-IN")}`);
+    const variant = item.variant
+      ? ` (${escapeTelegramHtml(item.variant)})`
+      : "";
+    lines.push(
+      `• ${escapeTelegramHtml(item.name)}${variant} × ${item.qty} — ₹${item.price.toLocaleString("en-IN")}`,
+    );
   }
 
   lines.push("");
-  lines.push(`💰 <b>Total: ₹${o.total.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</b>`);
+  lines.push(
+    `💰 <b>Total: ₹${o.total.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</b>`,
+  );
 
   const label = PAYMENT_LABELS[o.paymentMethod] ?? o.paymentMethod;
   if (o.paymentStatus) {
-    lines.push(`💳 Payment: ${escapeTelegramHtml(label)} — ${escapeTelegramHtml(o.paymentStatus)}`);
+    lines.push(
+      `💳 Payment: ${escapeTelegramHtml(label)} — ${escapeTelegramHtml(o.paymentStatus)}`,
+    );
   } else {
     lines.push(`💳 Payment: ${escapeTelegramHtml(label)}`);
   }
@@ -80,7 +95,17 @@ function buildTelegramOrderMessage(o: OrderSummaryForNotification): string {
 interface CreateNotificationParams {
   title: string;
   message: string;
-  type: "INFO" | "SUCCESS" | "WARNING" | "ERROR" | "APPROVAL" | "ORDER" | "STOCK" | "PAYMENT" | "RETURN" | "REPLACEMENT";
+  type:
+    | "INFO"
+    | "SUCCESS"
+    | "WARNING"
+    | "ERROR"
+    | "APPROVAL"
+    | "ORDER"
+    | "STOCK"
+    | "PAYMENT"
+    | "RETURN"
+    | "REPLACEMENT";
   entityType?: string;
   entityId?: string;
   createdById?: string;
@@ -88,17 +113,33 @@ interface CreateNotificationParams {
   orderSummary?: OrderSummaryForNotification;
   /** Extra key/value detail lines appended to the Telegram message (e.g. contact form fields). */
   telegramDetails?: string[];
+  /**
+   * Create the in-app notification only and skip external channels
+   * (Telegram/WhatsApp). Used for events that aren't final yet — e.g. an online
+   * order row at creation time before the buyer actually pays.
+   */
+  inAppOnly?: boolean;
 }
 
-function buildSimpleTelegramMessage(title: string, message: string, details?: string[]): string {
-  const parts = [`🔔 <b>${escapeTelegramHtml(title)}</b>`, "", escapeTelegramHtml(message)];
+function buildSimpleTelegramMessage(
+  title: string,
+  message: string,
+  details?: string[],
+): string {
+  const parts = [
+    `🔔 <b>${escapeTelegramHtml(title)}</b>`,
+    "",
+    escapeTelegramHtml(message),
+  ];
   if (details && details.length > 0) {
     parts.push("", ...details.map(escapeTelegramHtml));
   }
   return parts.join("\n");
 }
 
-export async function createAdminNotification(params: CreateNotificationParams) {
+export async function createAdminNotification(
+  params: CreateNotificationParams,
+) {
   const admins = await prisma.user.findMany({
     where: { role: "ADMIN" },
     select: { id: true },
@@ -125,22 +166,36 @@ export async function createAdminNotification(params: CreateNotificationParams) 
   });
 
   const notifyKey = params.notifyKey ?? "notify_on_order";
-  const [adminPhone, notifyEnabled] = await Promise.all([getAdminPhone(), isNotifyEnabled(notifyKey)]);
-  if (adminPhone && notifyEnabled && isWhatsAppConfigured()) {
-    sendWhatsAppText(formatPhoneForWhatsApp(adminPhone), `🔔 *${params.title}*\n\n${params.message}`).catch(() => {});
-  }
+  const [adminPhone, notifyEnabled] = await Promise.all([
+    getAdminPhone(),
+    isNotifyEnabled(notifyKey),
+  ]);
+  if (!params.inAppOnly) {
+    if (adminPhone && notifyEnabled && isWhatsAppConfigured()) {
+      sendWhatsAppText(
+        formatPhoneForWhatsApp(adminPhone),
+        `🔔 *${params.title}*\n\n${params.message}`,
+      ).catch(() => {});
+    }
 
-  if (isTelegramConfigured()) {
-    const telegramMsg = params.orderSummary
-      ? buildTelegramOrderMessage(params.orderSummary)
-      : buildSimpleTelegramMessage(params.title, params.message, params.telegramDetails);
-    sendTelegramMessage(telegramMsg).catch(() => {});
+    if (isTelegramConfigured()) {
+      const telegramMsg = params.orderSummary
+        ? buildTelegramOrderMessage(params.orderSummary)
+        : buildSimpleTelegramMessage(
+            params.title,
+            params.message,
+            params.telegramDetails,
+          );
+      sendTelegramMessage(telegramMsg).catch(() => {});
+    }
   }
 
   return notification;
 }
 
-export async function createUserNotification(params: CreateNotificationParams & { userId: string }) {
+export async function createUserNotification(
+  params: CreateNotificationParams & { userId: string },
+) {
   const notification = await prisma.notification.create({
     data: {
       title: params.title,

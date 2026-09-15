@@ -452,6 +452,7 @@ export async function POST(req: Request) {
       entityId: order.id,
       createdById: user.id,
       notifyKey: "notify_on_order",
+      inAppOnly: true,
     }).catch(console.error);
 
     return NextResponse.json({

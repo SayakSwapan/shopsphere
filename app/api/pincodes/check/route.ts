@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
     if (!pincode || !/^\d{6}$/.test(pincode)) {
       return NextResponse.json(
         { success: false, message: "Valid 6-digit pincode is required." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -24,14 +24,36 @@ export async function GET(request: NextRequest) {
     });
 
     if (!record) {
+      const productIdsParam = searchParams.get("productIds");
+      const productIds = productIdsParam
+        ? productIdsParam
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean)
+        : [];
+
+      let restrictedProducts: { productId: string; productName: string }[] = [];
+      if (productIds.length > 0) {
+        const products = await prisma.product.findMany({
+          where: { id: { in: productIds } },
+          select: { id: true, name: true, restrictedPincodes: true },
+        });
+        restrictedProducts = products
+          .filter((p) => p.restrictedPincodes.includes(pincode))
+          .map((p) => ({ productId: p.id, productName: p.name }));
+      }
+
       return NextResponse.json({
         success: true,
-        deliverable: false,
-        estimatedDays: 0,
-        allowCod: false,
-        allowOnline: false,
-        restrictedProducts: [],
-        message: "Pincode not found. Delivery not available.",
+        deliverable: true,
+        estimatedDays: 3,
+        allowCod: true,
+        allowOnline: true,
+        restrictedProducts,
+        message:
+          restrictedProducts.length > 0
+            ? "Some products are not deliverable to this pincode."
+            : "Delivery in 3 business days",
       });
     }
 
@@ -80,7 +102,7 @@ export async function GET(request: NextRequest) {
     console.error(error);
     return NextResponse.json(
       { success: false, message: "Something went wrong." },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

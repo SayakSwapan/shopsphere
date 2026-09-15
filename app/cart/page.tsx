@@ -193,7 +193,7 @@ export default async function CartPage() {
               {items.map((item) => {
                 return (
                   <CartItem
-                    key={item.id}
+                    key={`${item.id}-${item.quantity}`}
                     item={{
                       id: item.id,
                       quantity: item.quantity,
@@ -269,14 +269,21 @@ export default async function CartPage() {
                           className="cart-mini-item flex items-center justify-between gap-3"
                         >
                           <div className="min-w-0 flex-1">
-                            <p className="cart-mini-name truncate text-sm font-medium text-text-body">
+                            <p
+                              className="cart-mini-name line-clamp-1 text-sm font-medium text-text-body"
+                              title={item.product.name}
+                            >
                               {item.product.name}
                             </p>
                             <p className="cart-mini-meta mt-0.5 text-xs text-text-muted-2">
-                              {item.productvariant?.size?.sizeName
-                                ? `Size ${item.productvariant.size.sizeName}`
-                                : ""}{" "}
-                              &times; {item.quantity}
+                              {item.productvariant?.size?.sizeName ? (
+                                <span className="whitespace-nowrap font-semibold">
+                                  Size {item.productvariant.size.sizeName}
+                                </span>
+                              ) : null}{" "}
+                              <span className="whitespace-nowrap">
+                                &times; {item.quantity}
+                              </span>
                             </p>
                             {printUnit > 0 && (
                               <p className="cart-mini-meta mt-0.5 text-xs font-semibold text-primary">

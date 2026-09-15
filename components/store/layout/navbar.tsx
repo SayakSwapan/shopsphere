@@ -1,10 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { Search, Heart, ShoppingBag, Menu, X, UserRound } from "lucide-react";
+import { Search, Heart, ShoppingBag, Home, UserRound } from "lucide-react";
 import WishlistCount from "../wishlist-count";
 import { useState } from "react";
-import NavbarAuth from "../auth/navbar-auth";
 import CartCount from "../cart-count";
 import UserMenu from "../auth/user-menu";
 import { useAuthModal } from "@/components/auth/auth-context";
@@ -13,7 +12,10 @@ import SearchBar from "@/components/store/search-bar";
 import SiteBrand from "@/components/brand/site-brand";
 import FitText from "@/components/brand/fit-text";
 import SiteLogo from "@/components/brand/site-logo";
-import { useSiteName, useSiteLogo } from "@/components/store/site-settings-provider";
+import {
+  useSiteName,
+  useSiteLogo,
+} from "@/components/store/site-settings-provider";
 import SportsNavbar from "./sports-navbar";
 
 interface NavbarProps {
@@ -32,13 +34,10 @@ export default function Navbar({ session, announcement }: NavbarProps) {
   const siteName = useSiteName();
   const siteLogo = useSiteLogo();
 
-  const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
 
   if (themeId === "sports") {
-    return (
-      <SportsNavbar session={session} announcement={announcement} />
-    );
+    return <SportsNavbar session={session} announcement={announcement} />;
   }
 
   const navLinks = [
@@ -56,11 +55,12 @@ export default function Navbar({ session, announcement }: NavbarProps) {
         <div
           className="bg-primary overflow-hidden"
           style={{
-            background: themeId === "ethnic"
-              ? "linear-gradient(90deg, #6E1F27, #8B2E38, #6E1F27)"
-              : themeId === "fashion"
-              ? "linear-gradient(90deg, #C9A96E, #D4B87A, #C9A96E)"
-              : "linear-gradient(90deg, var(--t-primary), color-mix(in srgb, var(--t-primary) 85%, #000), var(--t-primary))",
+            background:
+              themeId === "ethnic"
+                ? "linear-gradient(90deg, #6E1F27, #8B2E38, #6E1F27)"
+                : themeId === "fashion"
+                  ? "linear-gradient(90deg, #C9A96E, #D4B87A, #C9A96E)"
+                  : "linear-gradient(90deg, var(--t-primary), color-mix(in srgb, var(--t-primary) 85%, #000), var(--t-primary))",
           }}
         >
           <div
@@ -78,11 +78,12 @@ export default function Navbar({ session, announcement }: NavbarProps) {
                     letterSpacing: "0.06em",
                     textTransform: "uppercase",
                     fontFamily: "var(--t-font-body)",
-                    color: themeId === "ethnic"
-                      ? "#FBF3E6"
-                      : themeId === "fashion"
-                      ? "#1A1A1A"
-                      : "#FFFFFF",
+                    color:
+                      themeId === "ethnic"
+                        ? "#FBF3E6"
+                        : themeId === "fashion"
+                          ? "#1A1A1A"
+                          : "#FFFFFF",
                   }}
                 >
                   <span
@@ -90,7 +91,12 @@ export default function Navbar({ session, announcement }: NavbarProps) {
                     style={{
                       fontSize: 8,
                       opacity: 0.6,
-                      color: themeId === "ethnic" ? "#D4AF37" : themeId === "fashion" ? "#1A1A1A" : "#FFFFFF",
+                      color:
+                        themeId === "ethnic"
+                          ? "#D4AF37"
+                          : themeId === "fashion"
+                            ? "#1A1A1A"
+                            : "#FFFFFF",
                     }}
                   >
                     ✦
@@ -101,7 +107,12 @@ export default function Navbar({ session, announcement }: NavbarProps) {
                     style={{
                       fontSize: 8,
                       opacity: 0.6,
-                      color: themeId === "ethnic" ? "#D4AF37" : themeId === "fashion" ? "#1A1A1A" : "#FFFFFF",
+                      color:
+                        themeId === "ethnic"
+                          ? "#D4AF37"
+                          : themeId === "fashion"
+                            ? "#1A1A1A"
+                            : "#FFFFFF",
                     }}
                   >
                     ✦
@@ -117,11 +128,12 @@ export default function Navbar({ session, announcement }: NavbarProps) {
       <header
         className="sticky top-0 z-50"
         style={{
-          background: themeId === "ethnic"
-            ? "rgba(255,248,240,0.97)"
-            : themeId === "fashion"
-            ? "rgba(250,250,250,0.97)"
-            : "rgba(255,255,255,0.97)",
+          background:
+            themeId === "ethnic"
+              ? "rgba(255,248,240,0.97)"
+              : themeId === "fashion"
+                ? "rgba(250,250,250,0.97)"
+                : "rgba(255,255,255,0.97)",
           backdropFilter: "blur(16px)",
           borderBottom: "1px solid var(--t-border-subtle)",
         }}
@@ -136,10 +148,24 @@ export default function Navbar({ session, announcement }: NavbarProps) {
               href="/"
               className="min-w-0 shrink uppercase leading-none"
               style={{
-                color: themeId === "ethnic" ? "#6E1F27" : "var(--t-text-heading)",
-                letterSpacing: themeId === "ethnic" ? "0.03em" : themeId === "luxury" ? "0.05em" : "-0.03em",
-                fontWeight: themeId === "ethnic" ? 400 : themeId === "fashion" ? 700 : 900,
-                fontFamily: themeId === "ethnic" ? "'Marcellus', serif" : "var(--t-font-heading)",
+                color:
+                  themeId === "ethnic" ? "#6E1F27" : "var(--t-text-heading)",
+                letterSpacing:
+                  themeId === "ethnic"
+                    ? "0.03em"
+                    : themeId === "luxury"
+                      ? "0.05em"
+                      : "-0.03em",
+                fontWeight:
+                  themeId === "ethnic"
+                    ? 400
+                    : themeId === "fashion"
+                      ? 700
+                      : 900,
+                fontFamily:
+                  themeId === "ethnic"
+                    ? "'Marcellus', serif"
+                    : "var(--t-font-heading)",
               }}
             >
               <div className="flex min-w-0 flex-1 items-center gap-2.5 overflow-hidden">
@@ -174,11 +200,24 @@ export default function Navbar({ session, announcement }: NavbarProps) {
                   style={{
                     color: "var(--t-text-muted-1)",
                     fontSize: themeId === "ethnic" ? 12 : 11,
-                    fontWeight: themeId === "ethnic" ? 400 : themeId === "fashion" ? 600 : 900,
+                    fontWeight:
+                      themeId === "ethnic"
+                        ? 400
+                        : themeId === "fashion"
+                          ? 600
+                          : 900,
                     textTransform: "uppercase",
-                    letterSpacing: themeId === "ethnic" ? "0.12em" : themeId === "luxury" ? "0.2em" : "0.15em",
+                    letterSpacing:
+                      themeId === "ethnic"
+                        ? "0.12em"
+                        : themeId === "luxury"
+                          ? "0.2em"
+                          : "0.15em",
                     borderRadius: "var(--t-radius-button)",
-                    fontFamily: themeId === "ethnic" ? "'Inter', sans-serif" : "var(--t-font-heading)",
+                    fontFamily:
+                      themeId === "ethnic"
+                        ? "'Inter', sans-serif"
+                        : "var(--t-font-heading)",
                   }}
                 >
                   {link.label}
@@ -259,19 +298,6 @@ export default function Navbar({ session, announcement }: NavbarProps) {
                 <span className="hidden sm:inline">Cart</span>
                 <CartCount />
               </Link>
-
-              {/* Hamburger (mobile) */}
-              <button
-                className="lg:hidden p-2.5 sm:p-3 transition-colors"
-                style={{
-                  color: "var(--t-text-muted-1)",
-                  borderRadius: "var(--t-radius-button)",
-                }}
-                onClick={() => setMenuOpen(!menuOpen)}
-                aria-label="Toggle menu"
-              >
-                {menuOpen ? <X size={20} /> : <Menu size={20} />}
-              </button>
             </div>
           </div>
         </div>
@@ -286,43 +312,6 @@ export default function Navbar({ session, announcement }: NavbarProps) {
           </div>
         )}
 
-        {/* ── MOBILE MENU ── */}
-        {menuOpen && (
-          <div
-            className="lg:hidden px-4 pb-6 pt-2"
-            style={{
-              borderTop: "1px solid var(--t-border-subtle)",
-              background: themeId === "ethnic"
-                ? "rgba(255,248,240,0.99)"
-                : themeId === "fashion"
-                ? "rgba(250,250,250,0.99)"
-                : "rgba(255,255,255,0.99)",
-            }}
-          >
-            <nav className="flex flex-col gap-1">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.label}
-                  href={link.href}
-                  onClick={() => setMenuOpen(false)}
-                  className="px-4 py-3 text-sm font-black uppercase tracking-[0.12em] transition-colors"
-                  style={{
-                    color: "var(--t-text-muted-1)",
-                    borderRadius: "var(--t-radius-button)",
-                    fontFamily: "var(--t-font-heading)",
-                  }}
-                >
-                  {link.label}
-                </Link>
-              ))}
-
-              <div className="flex items-center gap-3 px-4 py-3">
-                <NavbarAuth />
-              </div>
-            </nav>
-          </div>
-        )}
-
         {/* Hover styles */}
         <style>{`
           .nav-link:hover {
@@ -331,6 +320,52 @@ export default function Navbar({ session, announcement }: NavbarProps) {
           }
         `}</style>
       </header>
+
+      {/* ── MOBILE STICKY BOTTOM NAV ── */}
+      <nav
+        className="lg:hidden fixed inset-x-0 bottom-0 z-50 border-t"
+        style={{
+          background:
+            themeId === "ethnic"
+              ? "rgba(255,248,240,0.98)"
+              : themeId === "fashion"
+                ? "rgba(250,250,250,0.98)"
+                : "rgba(255,255,255,0.98)",
+          backdropFilter: "blur(16px)",
+          borderColor: "var(--t-border-subtle)",
+          paddingBottom: "env(safe-area-inset-bottom)",
+        }}
+        aria-label="Quick navigation"
+      >
+        <div className="grid grid-cols-2">
+          <Link
+            href="/"
+            className="flex flex-col items-center justify-center gap-1 py-2.5 transition-colors active:opacity-70"
+            style={{ color: "var(--t-primary)" }}
+          >
+            <Home size={20} strokeWidth={2.2} />
+            <span
+              className="text-[10px] font-black uppercase tracking-[0.12em]"
+              style={{ fontFamily: "var(--t-font-heading)" }}
+            >
+              Home
+            </span>
+          </Link>
+          <Link
+            href="/products"
+            className="flex flex-col items-center justify-center gap-1 py-2.5 transition-colors active:opacity-70"
+            style={{ color: "var(--t-primary)" }}
+          >
+            <ShoppingBag size={19} strokeWidth={2.2} />
+            <span
+              className="text-[10px] font-black uppercase tracking-[0.12em]"
+              style={{ fontFamily: "var(--t-font-heading)" }}
+            >
+              Shop All
+            </span>
+          </Link>
+        </div>
+      </nav>
     </>
   );
 }

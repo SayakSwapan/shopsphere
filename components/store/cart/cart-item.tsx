@@ -63,10 +63,12 @@ interface Props {
 export default function CartItem({ item }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [removing, setRemoving] = useState(false);
   const { themeId } = useTheme();
+  const [displayQty, setDisplayQty] = useState(item.quantity);
 
   const maxStock = item.productvariant?.stock ?? Infinity;
-  const atMax = item.quantity >= maxStock;
+  const atMax = displayQty >= maxStock;
 
   const gstRate = Number(item.product.gstPercentage) || 0;
   const unitBase = getEffectivePrice(
@@ -90,6 +92,7 @@ export default function CartItem({ item }: Props) {
       return;
     }
 
+    setDisplayQty(quantity);
     setLoading(true);
 
     const res = await fetch("/api/cart/update", {
@@ -106,6 +109,7 @@ export default function CartItem({ item }: Props) {
     if (!res.ok) {
       const data = await res.json();
       toast.error(data.message || "Failed to update quantity");
+      setDisplayQty(item.quantity);
       setLoading(false);
       return;
     }
@@ -118,7 +122,7 @@ export default function CartItem({ item }: Props) {
   }
 
   async function removeItem() {
-    setLoading(true);
+    setRemoving(true);
 
     await fetch("/api/cart/remove", {
       method: "DELETE",
@@ -130,7 +134,7 @@ export default function CartItem({ item }: Props) {
       }),
     });
 
-    setLoading(false);
+    setRemoving(false);
 
     toast.success("Removed from cart");
 
@@ -147,7 +151,7 @@ export default function CartItem({ item }: Props) {
           : themeId === "ethnic"
             ? "border-[var(--t-border-card)]"
             : "border-[var(--t-border-card)]"
-      }`}
+      } ${removing ? "opacity-40 pointer-events-none" : ""}`}
       style={{
         borderRadius: themeId === "fashion" ? "20px" : "var(--t-radius-card)",
         boxShadow:
@@ -406,7 +410,7 @@ export default function CartItem({ item }: Props) {
               >
                 <button
                   disabled={loading}
-                  onClick={() => updateQuantity(item.quantity - 1)}
+                  onClick={() => updateQuantity(displayQty - 1)}
                   className={`p-4 transition text-text-heading ${
                     themeId === "sports"
                       ? "hover:bg-[var(--t-primary)]/10"
@@ -425,11 +429,11 @@ export default function CartItem({ item }: Props) {
                       : undefined
                   }
                 >
-                  {item.quantity}
+                  {displayQty}
                 </span>
                 <button
                   disabled={loading || atMax}
-                  onClick={() => updateQuantity(item.quantity + 1)}
+                  onClick={() => updateQuantity(displayQty + 1)}
                   className={`p-4 transition text-text-heading disabled:cursor-not-allowed disabled:opacity-30 ${
                     themeId === "sports"
                       ? "hover:bg-[var(--t-primary)]/10"
@@ -448,7 +452,7 @@ export default function CartItem({ item }: Props) {
 
               {/* Remove */}
               <button
-                disabled={loading}
+                disabled={removing}
                 onClick={removeItem}
                 className="p-4 text-danger transition hover:text-white"
                 style={{

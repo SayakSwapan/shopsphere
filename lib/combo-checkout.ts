@@ -623,21 +623,6 @@ export async function comboShippingPreview(
   const restrictedItems = await getRestrictedCartItems(priced, pincode);
   const pincodeInfo = await getPincodeInfo(pincode);
 
-  if (!pincodeInfo) {
-    return {
-      deliverable: false,
-      allowCod: false,
-      allowOnline: false,
-      estimatedDays: null,
-      restrictedItems,
-      shipping: null,
-      weightGrams: priced.reduce((s, i) => s + (Number(i.weight) || 0), 0),
-      freeShipping: false,
-      freeShippingThreshold: null,
-      amountNeeded: 0,
-    };
-  }
-
   if (!pincodeInfo.deliverable || restrictedItems.length > 0) {
     return {
       deliverable: false,
@@ -788,7 +773,7 @@ export async function createComboOrder(
     );
   }
   const pincodeInfo = await getPincodeInfo(address.pincode);
-  if (!pincodeInfo || !pincodeInfo.deliverable) {
+  if (!pincodeInfo.deliverable) {
     throw new ComboCheckoutError(
       `Delivery is not available at pincode ${address.pincode}.`,
     );

@@ -166,9 +166,7 @@ export interface PincodeInfo {
   allowOnline: boolean;
 }
 
-export async function getPincodeInfo(
-  pincode: string,
-): Promise<PincodeInfo | null> {
+export async function getPincodeInfo(pincode: string): Promise<PincodeInfo> {
   const record = await prisma.pincode.findUnique({
     where: { pincode },
     select: {
@@ -179,7 +177,14 @@ export async function getPincodeInfo(
     },
   });
 
-  if (!record) return null;
+  if (!record) {
+    return {
+      deliverable: true,
+      estimatedDays: 3,
+      allowCod: true,
+      allowOnline: true,
+    };
+  }
 
   return {
     deliverable: record.isDeliverable,

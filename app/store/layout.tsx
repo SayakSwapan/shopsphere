@@ -11,6 +11,7 @@ export default function StoreLayout({
       <NavbarWrapper />
       {children}
       <Footer />
+      <div className="h-16 lg:hidden" aria-hidden="true" />
     </>
   );
 }

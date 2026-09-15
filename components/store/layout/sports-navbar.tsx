@@ -6,18 +6,20 @@ import {
   Search,
   Heart,
   ShoppingBag,
-  Menu,
+  Home,
   X,
   Zap,
   UserRound,
 } from "lucide-react";
 import WishlistCount from "../wishlist-count";
 import CartCount from "../cart-count";
-import NavbarAuth from "../auth/navbar-auth";
 import UserMenu from "../auth/user-menu";
 import { useAuthModal } from "@/components/auth/auth-context";
 import { useTheme } from "@/lib/themes/theme-provider";
-import { useSiteName, useSiteLogo } from "@/components/store/site-settings-provider";
+import {
+  useSiteName,
+  useSiteLogo,
+} from "@/components/store/site-settings-provider";
 import SearchBar from "@/components/store/search-bar";
 import FitText from "@/components/brand/fit-text";
 import SiteLogo from "@/components/brand/site-logo";
@@ -46,16 +48,12 @@ interface Props {
   announcement?: string | null;
 }
 
-export default function SportsNavbar({
-  session,
-  announcement,
-}: Props) {
+export default function SportsNavbar({ session, announcement }: Props) {
   const { openAuth } = useAuthModal();
   const { themeId } = useTheme();
   const siteName = useSiteName();
   const siteLogo = useSiteLogo();
 
-  const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
 
   const segments = splitSegments(siteName);
@@ -112,9 +110,15 @@ export default function SportsNavbar({
         }}
       >
         <div className="mx-auto max-w-7xl px-4">
-          <div className="flex items-center justify-between gap-3" style={{ height: 72 }}>
+          <div
+            className="flex items-center justify-between gap-3"
+            style={{ height: 72 }}
+          >
             {/* Logo */}
-            <Link href="/" className="flex min-w-0 shrink items-center gap-2.5 overflow-hidden">
+            <Link
+              href="/"
+              className="flex min-w-0 shrink items-center gap-2.5 overflow-hidden"
+            >
               {siteLogo && (
                 <SiteLogo
                   src={siteLogo}
@@ -149,7 +153,9 @@ export default function SportsNavbar({
                 >
                   {brandHead}
                   {brandAccent && (
-                    <span style={{ color: "var(--sports-volt)" }}>{brandAccent}</span>
+                    <span style={{ color: "var(--sports-volt)" }}>
+                      {brandAccent}
+                    </span>
                   )}
                 </FitText>
               </span>
@@ -198,7 +204,10 @@ export default function SportsNavbar({
               </Link>
 
               {session?.user ? (
-                <UserMenu name={session.user.name ?? "User"} email={session.user.email ?? ""} />
+                <UserMenu
+                  name={session.user.name ?? "User"}
+                  email={session.user.email ?? ""}
+                />
               ) : (
                 <button
                   onClick={() => openAuth("login")}
@@ -231,87 +240,61 @@ export default function SportsNavbar({
                 <span className="hidden sm:inline">Cart</span>
                 <CartCount />
               </Link>
-
-              <button
-                className="lg:hidden p-2.5 sm:p-3"
-                style={{ color: "#F4F3EE" }}
-                onClick={() => setMenuOpen(!menuOpen)}
-                aria-label="Toggle menu"
-              >
-                {menuOpen ? <X size={22} /> : <Menu size={22} />}
-              </button>
             </div>
           </div>
         </div>
 
         {/* Mobile search */}
         {searchOpen && (
-          <div className="px-4 pb-3 xl:hidden" style={{ borderTop: "1px solid rgba(255,255,255,0.07)" }}>
+          <div
+            className="px-4 pb-3 xl:hidden"
+            style={{ borderTop: "1px solid rgba(255,255,255,0.07)" }}
+          >
             <SearchBar autoFocus variant="dark" inputClass="flex-1" />
           </div>
         )}
       </header>
 
-      {/* ── MOBILE DRAWER ── */}
-      {menuOpen && (
-        <>
-          <div
-            className="fixed inset-0 z-40 bg-black/60 lg:hidden"
-            onClick={() => setMenuOpen(false)}
-          />
-          <div
-            className="fixed right-0 top-0 bottom-0 z-50 w-80 overflow-y-auto lg:hidden"
-            style={{
-              background: "#0A0E13",
-              borderLeft: "1px solid rgba(203,255,62,0.15)",
-              boxShadow: "-10px 0 40px rgba(0,0,0,0.6)",
-            }}
+      {/* ── MOBILE STICKY BOTTOM NAV ── */}
+      <nav
+        className="lg:hidden fixed inset-x-0 bottom-0 z-50 border-t"
+        style={{
+          background: "rgba(10,14,19,0.98)",
+          backdropFilter: "blur(16px)",
+          borderColor: "rgba(203,255,62,0.16)",
+          paddingBottom: "env(safe-area-inset-bottom)",
+        }}
+        aria-label="Quick navigation"
+      >
+        <div className="grid grid-cols-2">
+          <Link
+            href="/"
+            className="flex flex-col items-center justify-center gap-1 py-2.5 transition-colors active:opacity-70"
+            style={{ color: "var(--sports-volt)" }}
           >
-            <div className="flex items-center justify-between p-5" style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
-              <span
-                className="uppercase"
-                style={{
-                  fontFamily: "'Anton', sans-serif",
-                  fontSize: "1.25rem",
-                  color: "#F4F3EE",
-                }}
-              >
-                Menu
-              </span>
-              <button
-                onClick={() => setMenuOpen(false)}
-                className="p-2"
-                style={{ color: "#9A9D9F" }}
-                aria-label="Close menu"
-              >
-                <X size={22} />
-              </button>
-            </div>
-
-            <nav className="flex flex-col gap-1 p-4">
-              {QUICK_LINKS.map((link) => (
-                <Link
-                  key={link.label}
-                  href={link.href}
-                  onClick={() => setMenuOpen(false)}
-                  className="px-4 py-3.5 text-sm font-black uppercase tracking-[0.12em] transition-colors hover:text-[var(--sports-volt)]"
-                  style={{
-                    color: "#9A9D9F",
-                    fontFamily: "var(--t-font-body)",
-                    borderBottom: "1px solid rgba(255,255,255,0.06)",
-                  }}
-                >
-                  {link.label}
-                </Link>
-              ))}
-
-              <div className="flex items-center gap-3 px-4 py-4">
-                <NavbarAuth />
-              </div>
-            </nav>
-          </div>
-        </>
-      )}
+            <Home size={20} strokeWidth={2.2} />
+            <span
+              className="text-[10px] font-black uppercase tracking-[0.12em]"
+              style={{ fontFamily: "'Anton', sans-serif" }}
+            >
+              Home
+            </span>
+          </Link>
+          <Link
+            href="/products"
+            className="flex flex-col items-center justify-center gap-1 py-2.5 transition-colors active:opacity-70"
+            style={{ color: "var(--sports-volt)" }}
+          >
+            <ShoppingBag size={19} strokeWidth={2.2} />
+            <span
+              className="text-[10px] font-black uppercase tracking-[0.12em]"
+              style={{ fontFamily: "'Anton', sans-serif" }}
+            >
+              Shop All
+            </span>
+          </Link>
+        </div>
+      </nav>
     </>
   );
 }

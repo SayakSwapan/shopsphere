@@ -197,6 +197,23 @@ export default function CheckoutClient({
     Record<string, CustomPrintData | null>
   >({});
 
+  // Optimistic quantity being applied right now. Updated instantly on the
+  // +/- steppers so the order summary feels responsive, then reconciled by
+  // the server refresh. Falls back to the prop quantity.
+  const [qtyOverrides, setQtyOverrides] = useState<Record<string, number>>({});
+
+  // Optimistically-removed item ids (hidden immediately, restored on error).
+  const [removedIds, setRemovedIds] = useState<Set<string>>(new Set());
+
+  const effectiveQty = (item: CartItem): number =>
+    qtyOverrides[item.id] ?? item.quantity;
+
+  // Items visible in the summary — optimistic removals are hidden instantly.
+  const visibleItems = useMemo(
+    () => items.filter((i) => !removedIds.has(i.id)),
+    [items, removedIds],
+  );
+
   const effectiveCustomization = (item: CartItem): CustomPrintData | null => {
     if (item.id in customizationDraft) {
       return customizationDraft[item.id] ?? null;
@@ -259,23 +276,29 @@ export default function CheckoutClient({
 
   const itemTotalInclGst = useMemo(() => {
     // Server-computed total (subtotal + gst) plus the GST-inclusive delta of
-    // any optimistic customisation edits still being typed.
+    // any optimistic customisation edits and quantity overrides still pending.
     let delta = 0;
     for (const item of items) {
-      if (!(item.id in customizationDraft)) continue;
-      const draftIncl = customizationUnitPriceWithGst(
-        effectiveCustomization(item),
-        item.product.gstPercentage || 0,
-      );
-      const savedIncl = customizationUnitPriceWithGst(
-        item.customization,
-        item.product.gstPercentage || 0,
-      );
-      delta += (draftIncl - savedIncl) * item.quantity;
+      const qty = effectiveQty(item);
+      if (item.id in customizationDraft) {
+        const draftIncl = customizationUnitPriceWithGst(
+          effectiveCustomization(item),
+          item.product.gstPercentage || 0,
+        );
+        const savedIncl = customizationUnitPriceWithGst(
+          item.customization,
+          item.product.gstPercentage || 0,
+        );
+        delta += (draftIncl - savedIncl) * qty;
+      }
+      if (qtyOverrides[item.id] !== undefined) {
+        const unit = inclPrice(item);
+        delta += unit * (qty - item.quantity);
+      }
     }
     return Number((subtotal + gst + Math.round(delta * 100) / 100).toFixed(2));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [subtotal, gst, items, customizationDraft]);
+  }, [subtotal, gst, items, customizationDraft, qtyOverrides]);
 
   // Backend-computed loyalty reward discount. Mirrors calculateLoyaltyDiscount.
   const loyaltyDiscount = useMemo(() => {
@@ -422,6 +445,7 @@ export default function CheckoutClient({
       return;
     }
 
+    setQtyOverrides((prev) => ({ ...prev, [item.id]: quantity }));
     setUpdatingId(item.id);
     try {
       const res = await fetch("/api/cart/update", {
@@ -431,12 +455,22 @@ export default function CheckoutClient({
       });
       const data = await res.json();
       if (!res.ok) {
+        setQtyOverrides((prev) => {
+          const next = { ...prev };
+          delete next[item.id];
+          return next;
+        });
         toast.error(data.message || "Failed to update quantity");
         return;
       }
       router.refresh();
       window.dispatchEvent(new Event("cart-updated"));
     } catch {
+      setQtyOverrides((prev) => {
+        const next = { ...prev };
+        delete next[item.id];
+        return next;
+      });
       toast.error("Something went wrong.");
     } finally {
       setUpdatingId(null);
@@ -448,6 +482,7 @@ export default function CheckoutClient({
       clearTimeout(customizeTimerRef.current[item.id]);
       delete customizeTimerRef.current[item.id];
     }
+    setRemovedIds((prev) => new Set(prev).add(item.id));
     setUpdatingId(item.id);
     try {
       const res = await fetch("/api/cart/remove", {
@@ -457,6 +492,11 @@ export default function CheckoutClient({
       });
       if (!res.ok) {
         const data = await res.json();
+        setRemovedIds((prev) => {
+          const next = new Set(prev);
+          next.delete(item.id);
+          return next;
+        });
         toast.error(data.message || "Failed to remove item");
         return;
       }
@@ -464,6 +504,11 @@ export default function CheckoutClient({
       router.refresh();
       window.dispatchEvent(new Event("cart-updated"));
     } catch {
+      setRemovedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(item.id);
+        return next;
+      });
       toast.error("Something went wrong.");
     } finally {
       setUpdatingId(null);
@@ -674,7 +719,8 @@ export default function CheckoutClient({
           Checkout
         </h1>
         <p className="mt-2 text-sm text-text-muted-1">
-          {items.length} item{items.length > 1 ? "s" : ""} in your order
+          {visibleItems.length} item{visibleItems.length > 1 ? "s" : ""} in your
+          order
         </p>
       </div>
 
@@ -756,7 +802,7 @@ export default function CheckoutClient({
                   unavailable).
                 </p>
                 <div className="space-y-4">
-                  {items.map((item) => {
+                  {visibleItems.map((item) => {
                     if (
                       !item.customPrintEnabled ||
                       (item.printTypes?.length ?? 0) === 0
@@ -794,7 +840,7 @@ export default function CheckoutClient({
                               {item.variantSize
                                 ? `Size ${item.variantSize} · `
                                 : ""}
-                              Qty {item.quantity}
+                              Qty {effectiveQty(item)}
                             </p>
                           </div>
                           <div className="flex flex-shrink-0 items-center gap-2">
@@ -952,7 +998,7 @@ export default function CheckoutClient({
 
             <div className="border-t border-border-subtle px-4 sm:px-6 py-4">
               <div className={`space-y-3 checkout-mini-list`}>
-                {items.map((item) => {
+                {visibleItems.map((item) => {
                   const unitIncl = inclPrice(item);
                   const liveCustomization = effectiveCustomization(item);
                   const printUnitIncl = liveCustomization
@@ -961,9 +1007,9 @@ export default function CheckoutClient({
                         item.product.gstPercentage || 0,
                       )
                     : 0;
-                  const lineTotal = (unitIncl + printUnitIncl) * item.quantity;
-                  const atMax =
-                    item.stock !== null && item.quantity >= item.stock;
+                  const qty = effectiveQty(item);
+                  const lineTotal = (unitIncl + printUnitIncl) * qty;
+                  const atMax = item.stock !== null && qty >= item.stock;
                   const isUpdating = updatingId === item.id;
                   return (
                     <div
@@ -972,15 +1018,20 @@ export default function CheckoutClient({
                     >
                       <div className="min-w-0 flex-1">
                         <p
-                          className={`checkout-mini-name truncate text-sm font-medium text-text-body`}
+                          className="checkout-mini-name line-clamp-1 text-sm font-medium text-text-body"
+                          title={item.product.name}
                         >
                           {item.product.name}
                         </p>
-                        <p
-                          className={`checkout-mini-meta mt-0.5 text-xs text-text-muted-2`}
-                        >
-                          {item.variantSize ? `Size ${item.variantSize}` : ""}{" "}
-                          &times; {item.quantity}
+                        <p className="checkout-mini-meta mt-0.5 text-xs text-text-muted-2">
+                          {item.variantSize ? (
+                            <span className="whitespace-nowrap font-semibold">
+                              Size {item.variantSize}
+                            </span>
+                          ) : null}{" "}
+                          <span className="whitespace-nowrap">
+                            &times; {qty}
+                          </span>
                         </p>
                         {printUnitIncl > 0 && (
                           <p className="checkout-mini-meta mt-0.5 text-xs font-semibold text-primary">
@@ -999,24 +1050,20 @@ export default function CheckoutClient({
                             <button
                               type="button"
                               aria-label="Decrease quantity"
-                              disabled={isUpdating || item.quantity <= 1}
-                              onClick={() =>
-                                changeQuantity(item, item.quantity - 1)
-                              }
+                              disabled={isUpdating || qty <= 1}
+                              onClick={() => changeQuantity(item, qty - 1)}
                               className="flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center text-text-heading transition hover:bg-bg-card-alt disabled:cursor-not-allowed disabled:opacity-30"
                             >
                               <Minus size={12} />
                             </button>
                             <span className="w-6 sm:w-7 text-center text-[11px] sm:text-xs font-black text-text-heading">
-                              {item.quantity}
+                              {qty}
                             </span>
                             <button
                               type="button"
                               aria-label="Increase quantity"
                               disabled={isUpdating || atMax}
-                              onClick={() =>
-                                changeQuantity(item, item.quantity + 1)
-                              }
+                              onClick={() => changeQuantity(item, qty + 1)}
                               className="flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center text-text-heading transition hover:bg-bg-card-alt disabled:cursor-not-allowed disabled:opacity-30"
                             >
                               {atMax ? (

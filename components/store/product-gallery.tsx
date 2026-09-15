@@ -198,7 +198,8 @@ export default function ProductGallery({
                     width={800}
                     height={800}
                     unoptimized
-                    className="aspect-[4/5] w-full object-contain select-none"
+                    className="w-full object-contain select-none"
+                    style={{ aspectRatio: "auto" }}
                   />
                 </div>
               ))}
@@ -256,7 +257,8 @@ export default function ProductGallery({
               width={800}
               height={800}
               unoptimized
-              className="aspect-[4/5] w-full object-contain select-none"
+              className="w-full object-contain select-none"
+              style={{ aspectRatio: "auto" }}
             />
             <div
               className="absolute bottom-3 right-3 z-10 flex gap-2"
@@ -287,7 +289,8 @@ export default function ProductGallery({
             width={800}
             height={800}
             unoptimized
-            className="relative h-72 w-full object-contain select-none sm:h-90 md:h-140"
+            className="relative w-full object-contain select-none"
+            style={{ aspectRatio: "auto" }}
           />
           {/* Wishlist + Share — bottom-right of the image */}
           <div

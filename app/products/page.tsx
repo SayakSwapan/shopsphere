@@ -30,7 +30,9 @@ interface ProductsPageProps {
   }>;
 }
 
-export default async function ProductsPage({ searchParams }: ProductsPageProps) {
+export default async function ProductsPage({
+  searchParams,
+}: ProductsPageProps) {
   const params = await searchParams;
 
   const selectedCategories = params.category?.split(",").filter(Boolean) || [];
@@ -41,21 +43,19 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
 
   // Resolve combo product IDs if a combo filter is active.
   let comboProductIds: string[] | null = null;
-  let comboInfo:
-    | {
-        slug: string;
-        title: string;
-        badge: string | null;
-        headline: string | null;
-        description: string | null;
-        comboType: "BOGO" | "PICK_ANY" | "FIXED_PRICE";
-        customPrice: number | null;
-        buyCount: number;
-        getCount: number;
-        minPick?: number;
-        items: { quantity: number; product: { id: string; name: string } }[];
-      }
-    | null = null;
+  let comboInfo: {
+    slug: string;
+    title: string;
+    badge: string | null;
+    headline: string | null;
+    description: string | null;
+    comboType: "BOGO" | "PICK_ANY" | "FIXED_PRICE";
+    customPrice: number | null;
+    buyCount: number;
+    getCount: number;
+    minPick?: number;
+    items: { quantity: number; product: { id: string; name: string } }[];
+  } | null = null;
 
   if (comboSlug) {
     const now = new Date();
@@ -84,7 +84,8 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
         title: "All Combo Deals",
         badge: null,
         headline: null,
-        description: "Every product that's part of an active combo offer, all in one place.",
+        description:
+          "Every product that's part of an active combo offer, all in one place.",
         comboType: "FIXED_PRICE",
         customPrice: null,
         buyCount: 1,
@@ -128,7 +129,8 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
           headline: combo.headline,
           description: combo.description,
           comboType: combo.comboType,
-          customPrice: combo.customPrice != null ? Number(combo.customPrice) : null,
+          customPrice:
+            combo.customPrice != null ? Number(combo.customPrice) : null,
           buyCount: combo.buyCount,
           getCount: combo.getCount,
           minPick: combo.minPick ?? undefined,
@@ -145,9 +147,10 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
     prisma.product.findMany({
       where: {
         status: true,
-        ...(comboProductIds && comboProductIds.length > 0 && {
-          id: { in: comboProductIds },
-        }),
+        ...(comboProductIds &&
+          comboProductIds.length > 0 && {
+            id: { in: comboProductIds },
+          }),
         ...(searchQuery && {
           name: { contains: searchQuery },
         }),
@@ -160,7 +163,9 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
           },
         }),
         ...(selectedGenders.length > 0 && {
-          productvariant: { some: { gender: { name: { in: selectedGenders } } } },
+          productvariant: {
+            some: { gender: { name: { in: selectedGenders } } },
+          },
         }),
       },
       select: {
@@ -168,6 +173,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
         name: true,
         slug: true,
         sellingPrice: true,
+        discountedPrice: true,
         salePrice: true,
         finalPrice: true,
         discountType: true,
@@ -195,13 +201,20 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
             : { createdAt: "desc" },
     }),
     prisma.category.findMany({ select: { id: true, name: true } }),
-    prisma.gender.findMany({ where: { isActive: true }, select: { id: true, name: true } }),
-    prisma.siteSetting.findUnique({ where: { key: "products_per_page" }, select: { value: true } }),
+    prisma.gender.findMany({
+      where: { isActive: true },
+      select: { id: true, name: true },
+    }),
+    prisma.siteSetting.findUnique({
+      where: { key: "products_per_page" },
+      select: { value: true },
+    }),
   ]);
 
   const products = rawProducts.map((p) => ({
     ...p,
     sellingPrice: p.sellingPrice.toString(),
+    discountedPrice: p.discountedPrice?.toString() ?? null,
     salePrice: p.salePrice?.toString() ?? null,
     finalPrice: p.finalPrice?.toString() ?? null,
     discountValue: p.discountValue?.toString() ?? null,
@@ -216,7 +229,10 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
       {/* Hero */}
       <div
         className="relative overflow-hidden border-b border-border-subtle"
-        style={{ background: "color-mix(in srgb, var(--t-bg-card) 60%, var(--t-bg-page))" }}
+        style={{
+          background:
+            "color-mix(in srgb, var(--t-bg-card) 60%, var(--t-bg-page))",
+        }}
       >
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-10 sm:py-14">
           <p className="text-xs font-bold uppercase tracking-[0.3em] text-primary mb-2">
@@ -228,7 +244,8 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
           >
             {comboInfo ? (
               <>
-                {comboInfo.badge || "Bundle"} <span className="text-primary">Deal</span>
+                {comboInfo.badge || "Bundle"}{" "}
+                <span className="text-primary">Deal</span>
               </>
             ) : (
               <>
@@ -238,11 +255,13 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
           </h1>
           {comboInfo ? (
             <p className="mt-3 text-sm max-w-md leading-relaxed text-text-muted-1">
-              {comboInfo.description || "Shop the curated combo — products listed are part of this exclusive bundle offer."}
+              {comboInfo.description ||
+                "Shop the curated combo — products listed are part of this exclusive bundle offer."}
             </p>
           ) : (
             <p className="mt-3 text-sm max-w-md leading-relaxed text-text-muted-1">
-              Discover premium jerseys, footwear, lifestyle apparel and exclusive collections.
+              Discover premium jerseys, footwear, lifestyle apparel and
+              exclusive collections.
             </p>
           )}
           {products.length > 0 && (
@@ -256,7 +275,9 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
         </div>
         <div
           className="h-[2px]"
-          style={{ background: "linear-gradient(90deg, var(--t-primary), transparent)" }}
+          style={{
+            background: "linear-gradient(90deg, var(--t-primary), transparent)",
+          }}
         />
       </div>
 

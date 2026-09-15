@@ -5,7 +5,10 @@ import { NextResponse } from "next/server";
 export async function GET(req: Request) {
   const session = await getAdminSession();
   if (!session || session.user.role !== "ADMIN") {
-    return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
+    return NextResponse.json(
+      { success: false, message: "Unauthorized" },
+      { status: 401 },
+    );
   }
   const { searchParams } = new URL(req.url);
   const search = (searchParams.get("search") || "").trim();
@@ -15,7 +18,12 @@ export async function GET(req: Request) {
     where: {
       status: true,
       ...(search
-        ? { OR: [{ name: { contains: search, mode: "insensitive" } }, { slug: search }] }
+        ? {
+            OR: [
+              { name: { contains: search, mode: "insensitive" } },
+              { slug: search },
+            ],
+          }
         : {}),
     },
     select: {
@@ -23,6 +31,7 @@ export async function GET(req: Request) {
       name: true,
       slug: true,
       sellingPrice: true,
+      discountedPrice: true,
       costPrice: true,
       salePrice: true,
       finalPrice: true,

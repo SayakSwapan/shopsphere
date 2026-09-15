@@ -61,7 +61,10 @@ export interface ComboPricingResult {
 }
 
 /** Maps the apply enum to online/offline applicability. */
-export function comboAppliesTo(apply: ComboApply, orderType: "ONLINE" | "OFFLINE"): boolean {
+export function comboAppliesTo(
+  apply: ComboApply,
+  orderType: "ONLINE" | "OFFLINE",
+): boolean {
   if (apply === "BOTH") return true;
   if (apply === "ONLINE") return orderType === "ONLINE";
   if (apply === "OFFLINE") return orderType === "OFFLINE";
@@ -117,7 +120,9 @@ export async function syncComboEndState() {
 
   for (const offer of activeOffers) {
     const required = Math.max(2, offer.getCount ?? 2);
-    const inStockCount = offer.items.filter((it) => it.product.stock > 0).length;
+    const inStockCount = offer.items.filter(
+      (it) => it.product.stock > 0,
+    ).length;
     if (inStockCount >= required) continue;
     const outOfStockItem = offer.items.find((it) => it.product.stock <= 0);
     await prisma.comboOffer.update({
@@ -139,7 +144,8 @@ export async function syncComboEndState() {
 // distribution. Uses lastSellingPrice when configured, otherwise falls back to
 // costPrice. Returns 0 when both are missing (no floor enforced).
 function productFloor(product: Record<string, unknown>): number {
-  const last = Number((product as { lastSellingPrice?: unknown }).lastSellingPrice) || 0;
+  const last =
+    Number((product as { lastSellingPrice?: unknown }).lastSellingPrice) || 0;
   const cost = Number((product as { costPrice?: unknown }).costPrice) || 0;
   return Math.max(last, cost);
 }
@@ -153,45 +159,50 @@ export async function getActiveComboOffers() {
   await syncComboEndState();
 
   const now = new Date();
-  return prisma.comboOffer.findMany({
-    where: {
-      isActive: true,
-      AND: [
-        { OR: [{ startDate: null }, { startDate: { lte: now } }] },
-        { OR: [{ endDate: null }, { endDate: { gte: now } }] },
-      ],
-    },
-    include: {
-      items: {
-        include: {
-          product: {
-            select: {
-              id: true,
-              name: true,
-              slug: true,
-              sellingPrice: true,
-              costPrice: true,
-              lastSellingPrice: true,
-              salePrice: true,
-              finalPrice: true,
-              gstPercentage: true,
-              discountType: true,
-              discountValue: true,
-              offerStart: true,
-              offerEnd: true,
-              stock: true,
-              productimage: { orderBy: { createdAt: "asc" as const }, take: 1 },
+  return prisma.comboOffer
+    .findMany({
+      where: {
+        isActive: true,
+        AND: [
+          { OR: [{ startDate: null }, { startDate: { lte: now } }] },
+          { OR: [{ endDate: null }, { endDate: { gte: now } }] },
+        ],
+      },
+      include: {
+        items: {
+          include: {
+            product: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+                sellingPrice: true,
+                costPrice: true,
+                lastSellingPrice: true,
+                salePrice: true,
+                finalPrice: true,
+                gstPercentage: true,
+                discountType: true,
+                discountValue: true,
+                offerStart: true,
+                offerEnd: true,
+                stock: true,
+                productimage: {
+                  orderBy: { createdAt: "asc" as const },
+                  take: 1,
+                },
+              },
             },
           },
         },
       },
-    },
-    orderBy: { sortOrder: "asc" },
-  }).then((offers) =>
-    offers.filter((o) =>
-      o.items.every((it) => (it.product as { stock: number }).stock > 0)
-    )
-  );
+      orderBy: { sortOrder: "asc" },
+    })
+    .then((offers) =>
+      offers.filter((o) =>
+        o.items.every((it) => (it.product as { stock: number }).stock > 0),
+      ),
+    );
 }
 
 /**
@@ -212,6 +223,8 @@ function productBase(product: Record<string, unknown>): number {
     discountValue: (product as { discountValue?: unknown }).discountValue,
     offerStart: (product as { offerStart?: Date | null }).offerStart,
     offerEnd: (product as { offerEnd?: Date | null }).offerEnd,
+    discountedPrice: (product as { discountedPrice?: number | null })
+      .discountedPrice,
   });
 }
 
@@ -231,15 +244,22 @@ export type ComboReservedUnit = { idx?: number; base: number; floor: number };
  *                    clamped to >= its floor (min sell price).
  */
 export function priceComboReservedSet<T extends ComboReservedUnit>(
-  combo: { comboType?: string | null; buyCount?: unknown; customPrice?: unknown },
-  reservedUnits: T[]
+  combo: {
+    comboType?: string | null;
+    buyCount?: unknown;
+    customPrice?: unknown;
+  },
+  reservedUnits: T[],
 ): { pay: number }[] {
   const totalPrice = reservedUnits.reduce((s, u) => s + u.base, 0);
 
   if (combo.comboType === "BOGO" || combo.comboType === "PICK_ANY") {
     const buyCount = Math.min(
-      Math.max(1, combo.comboType === "PICK_ANY" ? 1 : Number(combo.buyCount) || 1),
-      reservedUnits.length
+      Math.max(
+        1,
+        combo.comboType === "PICK_ANY" ? 1 : Number(combo.buyCount) || 1,
+      ),
+      reservedUnits.length,
     );
     const sorted = [...reservedUnits].sort((a, b) => b.base - a.base);
     const paySet = new Set<T>(sorted.slice(0, buyCount));
@@ -262,13 +282,17 @@ export function priceComboReservedSet<T extends ComboReservedUnit>(
   if (floorsSum <= capped && totalPrice > 0) {
     // Feasible: distribute remaining budget proportionally above floors.
     const remaining = Math.max(0, capped - floorsSum);
-    const capacities = reservedUnits.map((u, i) => Math.max(0, u.base - floors[i]));
+    const capacities = reservedUnits.map((u, i) =>
+      Math.max(0, u.base - floors[i]),
+    );
     const totalCapacity = capacities.reduce((s, c) => s + c, 0);
 
     const pays = reservedUnits.map((u, i) => {
       if (totalCapacity <= 0) return floors[i];
       const share =
-        Math.round(((capacities[i] / totalCapacity) * remaining + Number.EPSILON) * 100) / 100;
+        Math.round(
+          ((capacities[i] / totalCapacity) * remaining + Number.EPSILON) * 100,
+        ) / 100;
       return Math.round((floors[i] + share + Number.EPSILON) * 100) / 100;
     });
 
@@ -287,8 +311,15 @@ export function priceComboReservedSet<T extends ComboReservedUnit>(
     const share =
       totalPrice <= 0
         ? 0
-        : Math.round(((u.base / totalPrice) * discount + Number.EPSILON) * 100) / 100;
-    return { pay: Math.max(0, Math.round((u.base - share + Number.EPSILON) * 100) / 100) };
+        : Math.round(
+            ((u.base / totalPrice) * discount + Number.EPSILON) * 100,
+          ) / 100;
+    return {
+      pay: Math.max(
+        0,
+        Math.round((u.base - share + Number.EPSILON) * 100) / 100,
+      ),
+    };
   });
 }
 
@@ -302,9 +333,13 @@ export function priceComboReservedSet<T extends ComboReservedUnit>(
  * @param combos           optional pre-fetched combos (avoids re-querying).
  */
 export async function applyComboPricing(
-  items: { productId: string; quantity: number; product: Record<string, unknown> }[],
+  items: {
+    productId: string;
+    quantity: number;
+    product: Record<string, unknown>;
+  }[],
   orderType: "ONLINE" | "OFFLINE",
-  combos?: Awaited<ReturnType<typeof getActiveComboOffers>>
+  combos?: Awaited<ReturnType<typeof getActiveComboOffers>>,
 ): Promise<ComboPricingResult> {
   const allCombos = combos ?? (await getActiveComboOffers());
 
@@ -334,7 +369,7 @@ export async function applyComboPricing(
   // (each with its required quantity) — any from the set, not a specific one.
   const pickAnyPresentCount = (
     combo: (typeof allCombos)[number],
-    availUnits: typeof units
+    availUnits: typeof units,
   ): number => {
     const avail = new Map<string, number>();
     availUnits.forEach((u) => {
@@ -351,7 +386,10 @@ export async function applyComboPricing(
     .filter((c) => comboAppliesTo(c.apply as ComboApply, orderType))
     .map((c) => {
       if (c.comboType === "PICK_ANY") {
-        const required = Math.min(Math.max(2, Number(c.minPick) || 2), c.items.length);
+        const required = Math.min(
+          Math.max(2, Number(c.minPick) || 2),
+          c.items.length,
+        );
         return {
           combo: c,
           need: new Map<string, number>(),
@@ -360,16 +398,24 @@ export async function applyComboPricing(
         };
       }
       const need = new Map<string, number>();
-      c.items.forEach((it) => need.set(it.productId, (need.get(it.productId) ?? 0) + it.quantity));
+      c.items.forEach((it) =>
+        need.set(it.productId, (need.get(it.productId) ?? 0) + it.quantity),
+      );
       const available = new Map<string, number>();
       units.forEach((u) => {
-        if (!u.reserved) available.set(u.productId, (available.get(u.productId) ?? 0) + 1);
+        if (!u.reserved)
+          available.set(u.productId, (available.get(u.productId) ?? 0) + 1);
       });
       let ok = true;
       need.forEach((q, pid) => {
         if ((available.get(pid) ?? 0) < q) ok = false;
       });
-      return { combo: c, need, ok, size: c.items.reduce((s, it) => s + it.quantity, 0) };
+      return {
+        combo: c,
+        need,
+        ok,
+        size: c.items.reduce((s, it) => s + it.quantity, 0),
+      };
     })
     .filter((s) => s.ok && s.combo.items.length >= 2)
     .sort((a, b) => b.size - a.size || a.combo.sortOrder - b.combo.sortOrder);
@@ -404,7 +450,8 @@ export async function applyComboPricing(
     // Check availability of every required product against current reservations.
     const avail = new Map<string, number>();
     units.forEach((u) => {
-      if (!u.reserved) avail.set(u.productId, (avail.get(u.productId) ?? 0) + 1);
+      if (!u.reserved)
+        avail.set(u.productId, (avail.get(u.productId) ?? 0) + 1);
     });
     let stillOk = true;
     s.need.forEach((q, pid) => {
@@ -472,7 +519,9 @@ export async function applyComboPricing(
 
   // Aggregate per original cartitem.
   const perItem = items.map((item, idx) => {
-    const myUnits = units.filter((u) => u.idx === idx && u.productId === item.productId);
+    const myUnits = units.filter(
+      (u) => u.idx === idx && u.productId === item.productId,
+    );
     const totalBase = myUnits.reduce((s, u) => s + u.base, 0);
     const lineCombos = comboByUnit.filter((cb) => cb.idx === idx);
     const discountedBase = lineCombos.reduce((s, cb) => s + cb.pay, 0);
@@ -481,14 +530,18 @@ export async function applyComboPricing(
     // stay at full price.
     const reservedCount = lineCombos.length;
     const surplusBase = units
-      .filter((u) => u.idx === idx && u.productId === item.productId && !u.reserved)
+      .filter(
+        (u) => u.idx === idx && u.productId === item.productId && !u.reserved,
+      )
       .reduce((s, u) => s + u.base, 0);
 
     const effectiveBase = discountedBase + surplusBase;
     const totalFullBase =
       totalBase +
       units
-        .filter((u) => u.idx === idx && u.productId === item.productId && !u.reserved)
+        .filter(
+          (u) => u.idx === idx && u.productId === item.productId && !u.reserved,
+        )
         .reduce((s, u) => s + u.base, 0);
 
     const discountUnit =
@@ -517,7 +570,10 @@ export async function applyComboPricing(
 
   for (const p of perItem) {
     const qty = Number((p.cartitem as { quantity?: unknown }).quantity) || 0;
-    const gstRate = Number((p.cartitem.product as { gstPercentage?: unknown }).gstPercentage) || 0;
+    const gstRate =
+      Number(
+        (p.cartitem.product as { gstPercentage?: unknown }).gstPercentage,
+      ) || 0;
     const { gstAmount } = getGstBreakdown(p.unitBase, gstRate);
     subtotal += p.unitBase * qty;
     gst += gstAmount * qty;

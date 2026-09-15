@@ -20,6 +20,7 @@ interface Props {
     discountValue?: number;
     salePrice?: number;
     finalPrice?: number;
+    discountedPrice?: number;
     gstPercentage?: number;
     offerStart?: Date | string | null;
     offerEnd?: Date | string | null;
@@ -38,10 +39,15 @@ interface Props {
 export default function ProductCard({ product }: Props) {
   const gstRate = Number(product.gstPercentage || 0);
 
-  const originalPrice = priceWithGst(
-    Number(product.sellingPrice || 0),
-    gstRate,
-  );
+  const sellingPrice = Number(product.sellingPrice || 0);
+
+  const originalPrice = priceWithGst(sellingPrice, gstRate);
+
+  // Independent discounted price: shown whenever it is set and strictly below
+  // the selling price — NO offer start/end dates required.
+  const independentPrice = Number(product.discountedPrice || 0);
+  const independentActive =
+    independentPrice > 0 && independentPrice < sellingPrice;
 
   const discountType = String(product.discountType || "").toUpperCase();
 
@@ -53,14 +59,10 @@ export default function ProductCard({ product }: Props) {
     (!product.offerStart || now >= new Date(product.offerStart)) &&
     (!product.offerEnd || now <= new Date(product.offerEnd));
 
-  const hasDiscount =
-    offerActive &&
-    discountValue > 0 &&
-    (isPercentDiscount(discountType) || isFlatDiscount(discountType));
-
-  // An offer is "upcoming" when a discount is configured with a start time in
-  // the future — the sale price is shown, but we surface a countdown so the
-  // customer knows the offer is about to drop.
+  // A scheduled discount is "upcoming" when a start time lies in the future —
+  // the sale price is hidden (inactive offer) but we surface a countdown so the
+  // customer knows the offer is about to drop. NOT triggered by the independent
+  // discounted price (a schedule is optional metadata there).
   const offerUpcoming =
     !offerActive &&
     discountValue > 0 &&
@@ -68,17 +70,22 @@ export default function ProductCard({ product }: Props) {
     now < new Date(product.offerStart) &&
     (isPercentDiscount(discountType) || isFlatDiscount(discountType));
 
-  // Only show the discounted price when the offer is actually active; a
-  // scheduled/expired offer must not surface the sale price as if it were the
-  // regular price (inconsistent with the badge/countdown that is hidden).
+  const hasDiscount =
+    independentActive ||
+    (offerActive &&
+      discountValue > 0 &&
+      (isPercentDiscount(discountType) || isFlatDiscount(discountType)));
+
+  // Only show the discounted price when it is truly active; a scheduled/expired
+  // offer must not surface the sale price as if it were the regular price
+  // (inconsistent with the hidden badge/countdown). The independent price wins
+  // over the offer computation whenever present.
   const displayPrice = priceWithGst(
-    hasDiscount
-      ? getEffectivePrice(
-          product.salePrice,
-          product.finalPrice,
-          product.sellingPrice,
-        )
-      : Number(product.sellingPrice || 0),
+    independentActive
+      ? independentPrice
+      : hasDiscount
+        ? getEffectivePrice(product.salePrice, product.finalPrice, sellingPrice)
+        : sellingPrice,
     gstRate,
   );
 
@@ -91,21 +98,20 @@ export default function ProductCard({ product }: Props) {
     ),
   );
 
+  // Compute actual saving vs the GST-inclusive MRP (works for both % and flat).
   let discountLabel = "";
   let offPercent = 0;
 
-  if (hasDiscount) {
-    if (isPercentDiscount(discountType)) {
+  if (hasDiscount && displayPrice < originalPrice && originalPrice > 0) {
+    offPercent = Math.round(
+      ((originalPrice - displayPrice) / originalPrice) * 100,
+    );
+    if (independentActive) {
+      discountLabel = `${offPercent}% OFF`;
+    } else if (isPercentDiscount(discountType)) {
       discountLabel = `${discountValue}% OFF`;
     } else {
       discountLabel = `₹${discountValue.toFixed(0)} OFF`;
-    }
-
-    // Compute actual saving vs the GST-inclusive MRP (works for both % and flat).
-    if (displayPrice < originalPrice && originalPrice > 0) {
-      offPercent = Math.round(
-        ((originalPrice - displayPrice) / originalPrice) * 100,
-      );
     }
   }
 

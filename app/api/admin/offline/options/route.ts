@@ -121,6 +121,7 @@ export async function GET(req: Request) {
         id: true,
         name: true,
         sellingPrice: true,
+        discountedPrice: true,
         salePrice: true,
         costPrice: true,
         gstPercentage: true,
@@ -154,7 +155,9 @@ export async function GET(req: Request) {
       category: p.category?.name ?? null,
       image: p.productimage[0]?.url ?? null,
       sellingPrice: Number(p.sellingPrice),
-      onlineSellingPrice: Number(p.salePrice || p.sellingPrice || 0),
+      onlineSellingPrice: Number(
+        p.discountedPrice || p.salePrice || p.sellingPrice || 0,
+      ),
       costPrice: Number(p.costPrice),
       gstPercentage: Number(p.gstPercentage) || 0,
       stock: p.stock,

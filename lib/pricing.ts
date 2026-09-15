@@ -17,10 +17,7 @@ function round2(value: number): number {
   return Math.round((value + Number.EPSILON) * 100) / 100;
 }
 
-export function getGstBreakdown(
-  base: number,
-  gstRate: number
-): GstBreakdown {
+export function getGstBreakdown(base: number, gstRate: number): GstBreakdown {
   const safeBase = Number(base) || 0;
   const rate = Number(gstRate) || 0;
 
@@ -49,7 +46,7 @@ export function priceWithGst(base: number, gstRate: number): number {
 export function getEffectivePrice(
   salePrice: unknown,
   finalPrice: unknown,
-  sellingPrice: unknown
+  sellingPrice: unknown,
 ): number {
   for (const candidate of [salePrice, finalPrice, sellingPrice]) {
     const value = Number(candidate);
@@ -95,8 +92,9 @@ export function isProductOfferActive(opts: OfferWindowInput): boolean {
 
 /**
  * The pre-GST unit base the CUSTOMER actually sees/pays right now:
- * the discounted salePrice while the offer is live, otherwise the regular
- * sellingPrice. Uses getActivePriceBase under the hood.
+ * the independent discountedPrice while it is set and below the regular price
+ * (no offer schedule required), otherwise the offer-window-aware price that
+ * falls back to the regular sellingPrice when the offer is not live.
  */
 export function getActivePriceBase(opts: {
   salePrice: unknown;
@@ -106,9 +104,23 @@ export function getActivePriceBase(opts: {
   discountValue?: unknown;
   offerStart?: Date | string | null;
   offerEnd?: Date | string | null;
+  discountedPrice?: unknown;
   now?: Date;
 }): number {
-  if (!isProductOfferActive(opts)) return Number(opts.sellingPrice) || 0;
+  const sellingPrice = Number(opts.sellingPrice) || 0;
+  const discountedPrice = Number(opts.discountedPrice);
+
+  // Independent discounted price: active whenever it is set and strictly below
+  // the regular price — NOT tied to offerStart/offerEnd at all.
+  if (
+    Number.isFinite(discountedPrice) &&
+    discountedPrice > 0 &&
+    discountedPrice < sellingPrice
+  ) {
+    return discountedPrice;
+  }
+
+  if (!isProductOfferActive(opts)) return sellingPrice;
   return getEffectivePrice(opts.salePrice, opts.finalPrice, opts.sellingPrice);
 }
 
@@ -152,14 +164,12 @@ export function isPercentDiscount(type: unknown): boolean {
 export function getDiscountAmount(
   priceInclGst: number,
   discountType: unknown,
-  discountValue: unknown
+  discountValue: unknown,
 ): number {
   const price = Number(priceInclGst) || 0;
   const value = Number(discountValue) || 0;
   if (value <= 0 || price <= 0) return 0;
-  const amount = isFlatDiscount(discountType)
-    ? value
-    : (price * value) / 100;
+  const amount = isFlatDiscount(discountType) ? value : (price * value) / 100;
   return round2(Math.max(0, Math.min(amount, price)));
 }
 
@@ -181,16 +191,16 @@ export function getDiscountedPrice(
   sellingPrice: number,
   gstRate: number,
   discountType: unknown,
-  discountValue: unknown
+  discountValue: unknown,
 ): DiscountedPriceResult {
   const finalPriceInclGst = priceWithGst(sellingPrice, gstRate);
   const discountAmount = getDiscountAmount(
     finalPriceInclGst,
     discountType,
-    discountValue
+    discountValue,
   );
   const discountedPriceInclGst = round2(
-    Math.max(0, finalPriceInclGst - discountAmount)
+    Math.max(0, finalPriceInclGst - discountAmount),
   );
   const rate = Number(gstRate) || 0;
   const salePriceBase =
@@ -245,10 +255,10 @@ export function getPriceBreakdown(opts: {
   const discountAmount = getDiscountAmount(
     finalPriceInclGst,
     discountType,
-    discountValue
+    discountValue,
   );
   const discountedPriceInclGst = round2(
-    Math.max(0, finalPriceInclGst - discountAmount)
+    Math.max(0, finalPriceInclGst - discountAmount),
   );
   const salePriceBase =
     gstRate > 0

@@ -1,5 +1,5 @@
 export interface VariantForm {
-   id: string;
+  id: string;
   genderId: string;
   genderName: string;
   sizeId: string;
@@ -66,6 +66,8 @@ export interface ProductFormValues {
   discountValue: number;
   salePrice: number;
   finalPrice: number;
+  // Independent discounted price (pre-GST base). Works WITHOUT offer dates.
+  discountedPrice: number;
   offerStart: string;
   offerEnd: string;
 

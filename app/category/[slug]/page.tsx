@@ -69,7 +69,11 @@ export default async function CategoryPage({ params }: Props) {
         include: { size: true, gender: true },
       },
     },
-    orderBy: [{ isFeatured: "desc" }, { isTrending: "desc" }, { createdAt: "desc" }],
+    orderBy: [
+      { isFeatured: "desc" },
+      { isTrending: "desc" },
+      { createdAt: "desc" },
+    ],
   });
 
   const itemList = {
@@ -120,7 +124,10 @@ export default async function CategoryPage({ params }: Props) {
       {/* Hero */}
       <div
         className="relative overflow-hidden border-b border-border-subtle"
-        style={{ background: "color-mix(in srgb, var(--t-bg-card) 60%, var(--t-bg-page))" }}
+        style={{
+          background:
+            "color-mix(in srgb, var(--t-bg-card) 60%, var(--t-bg-page))",
+        }}
       >
         {category.image && (
           <div
@@ -129,12 +136,20 @@ export default async function CategoryPage({ params }: Props) {
           />
         )}
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-10 sm:py-14">
-          <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-xs text-text-muted-2 mb-4">
-            <Link href="/" className="inline-flex items-center gap-1 transition hover:text-primary">
+          <nav
+            aria-label="Breadcrumb"
+            className="flex items-center gap-2 text-xs text-text-muted-2 mb-4"
+          >
+            <Link
+              href="/"
+              className="inline-flex items-center gap-1 transition hover:text-primary"
+            >
               <Home size={13} /> Home
             </Link>
             <span>/</span>
-            <span className="font-semibold text-text-heading">{category.name}</span>
+            <span className="font-semibold text-text-heading">
+              {category.name}
+            </span>
           </nav>
 
           <p className="text-xs font-bold uppercase tracking-[0.3em] text-primary mb-2">
@@ -157,7 +172,9 @@ export default async function CategoryPage({ params }: Props) {
         </div>
         <div
           className="h-[2px]"
-          style={{ background: "linear-gradient(90deg, var(--t-primary), transparent)" }}
+          style={{
+            background: "linear-gradient(90deg, var(--t-primary), transparent)",
+          }}
         />
       </div>
 
@@ -179,8 +196,18 @@ export default async function CategoryPage({ params }: Props) {
                   discountType: product.discountType,
                   discountValue: Number(product.discountValue),
                   sellingPrice: Number(product.sellingPrice),
-                  salePrice: product.salePrice != null ? Number(product.salePrice) : undefined,
-                  finalPrice: product.finalPrice != null ? Number(product.finalPrice) : undefined,
+                  discountedPrice:
+                    product.discountedPrice != null
+                      ? Number(product.discountedPrice)
+                      : undefined,
+                  salePrice:
+                    product.salePrice != null
+                      ? Number(product.salePrice)
+                      : undefined,
+                  finalPrice:
+                    product.finalPrice != null
+                      ? Number(product.finalPrice)
+                      : undefined,
                   gstPercentage: Number(product.gstPercentage),
                   offerStart: product.offerStart,
                   offerEnd: product.offerEnd,

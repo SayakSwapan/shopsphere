@@ -23,6 +23,7 @@ interface Product {
   name: string;
   slug: string;
   sellingPrice: string;
+  discountedPrice?: string | null;
   salePrice: string | null;
   finalPrice: string | null;
   discountType: string | null;
@@ -62,7 +63,11 @@ interface Props {
 function comboOfferLine(combo: ComboInfo): string {
   if (combo.slug === "all") return "Every active combo in one view";
   const count = combo.items.reduce((s, it) => s + it.quantity, 0);
-  if (combo.comboType === "FIXED_PRICE" && combo.customPrice && combo.customPrice > 0) {
+  if (
+    combo.comboType === "FIXED_PRICE" &&
+    combo.customPrice &&
+    combo.customPrice > 0
+  ) {
     return `Bundle all ${count} items for ₹${combo.customPrice}`;
   }
   if (combo.comboType === "PICK_ANY") {
@@ -73,12 +78,20 @@ function comboOfferLine(combo: ComboInfo): string {
   const getCount = Math.max(2, Number(combo.getCount) || 2);
   const buy = Math.min(Math.max(1, combo.buyCount || 1), getCount);
   const free = Math.max(0, getCount - buy);
-  return free > 0 ? `Buy ${buy} Get ${free} Free` : `Buy ${buy} item${buy > 1 ? "s" : ""}`;
+  return free > 0
+    ? `Buy ${buy} Get ${free} Free`
+    : `Buy ${buy} item${buy > 1 ? "s" : ""}`;
 }
 
 const DEFAULT_PER_PAGE = 12;
 
-export default function ProductsContent({ products, categories, genders, perPage, combo }: Props) {
+export default function ProductsContent({
+  products,
+  categories,
+  genders,
+  perPage,
+  combo,
+}: Props) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const itemsPerPage = perPage && perPage > 0 ? perPage : DEFAULT_PER_PAGE;
   const [visibleCount, setVisibleCount] = useState(itemsPerPage);
@@ -104,10 +117,13 @@ export default function ProductsContent({ products, categories, genders, perPage
 
   const filterSidebar = useMemo(
     () => <FilterSidebar categories={categories} genders={genders} />,
-    [categories, genders]
+    [categories, genders],
   );
 
-  const visibleProducts = useMemo(() => products.slice(0, visibleCount), [products, visibleCount]);
+  const visibleProducts = useMemo(
+    () => products.slice(0, visibleCount),
+    [products, visibleCount],
+  );
   const hasMore = visibleCount < products.length;
 
   // Required quantity per product when viewing a specific combo (e.g. "2 of this
@@ -137,7 +153,10 @@ export default function ProductsContent({ products, categories, genders, perPage
       <div className="flex-1 min-w-0">
         {/* Mobile filter button + toolbar */}
         <div className="flex items-center justify-between gap-3 mb-4">
-          <MobileFilterButton onClick={() => setMobileOpen(true)} filterCount={activeCount} />
+          <MobileFilterButton
+            onClick={() => setMobileOpen(true)}
+            filterCount={activeCount}
+          />
           <div className={activeCount > 0 ? "" : "lg:ml-auto"}>
             <ProductsToolbar totalProducts={products.length} />
           </div>
@@ -153,19 +172,26 @@ export default function ProductsContent({ products, categories, genders, perPage
           <div
             className="mb-4 overflow-hidden"
             style={{
-              border: "1px solid color-mix(in srgb, var(--t-primary) 30%, transparent)",
+              border:
+                "1px solid color-mix(in srgb, var(--t-primary) 30%, transparent)",
               borderRadius: "var(--t-radius-card)",
-              background: "color-mix(in srgb, var(--t-primary) 7%, transparent)",
+              background:
+                "color-mix(in srgb, var(--t-primary) 7%, transparent)",
             }}
           >
             <div className="flex items-center justify-between gap-3 p-3 sm:p-4">
               <div className="flex items-center gap-2.5 min-w-0">
-                <Tag size={16} style={{ color: "var(--t-primary)", flexShrink: 0 }} />
+                <Tag
+                  size={16}
+                  style={{ color: "var(--t-primary)", flexShrink: 0 }}
+                />
                 <div className="min-w-0">
                   <p className="text-xs font-bold uppercase tracking-wider text-text-muted-2">
                     {combo.badge || "Combo Deal"}
                   </p>
-                  <p className="text-sm font-semibold text-text-heading truncate">{combo.title}</p>
+                  <p className="text-sm font-semibold text-text-heading truncate">
+                    {combo.title}
+                  </p>
                 </div>
               </div>
               <button
@@ -185,9 +211,15 @@ export default function ProductsContent({ products, categories, genders, perPage
 
             <div
               className="px-4 sm:px-4 pb-3 sm:pb-4"
-              style={{ borderTop: "1px solid color-mix(in srgb, var(--t-primary) 18%, transparent)" }}
+              style={{
+                borderTop:
+                  "1px solid color-mix(in srgb, var(--t-primary) 18%, transparent)",
+              }}
             >
-              <p className="mt-3 text-sm font-black text-text-heading" style={{ fontFamily: "var(--t-font-heading)" }}>
+              <p
+                className="mt-3 text-sm font-black text-text-heading"
+                style={{ fontFamily: "var(--t-font-heading)" }}
+              >
                 {comboOfferLine(combo)}
               </p>
               {combo.items.length > 0 && (
@@ -208,7 +240,9 @@ export default function ProductsContent({ products, categories, genders, perPage
                         }}
                       >
                         {it.quantity > 1 && (
-                          <span className="font-black text-primary">{it.quantity}×</span>
+                          <span className="font-black text-primary">
+                            {it.quantity}×
+                          </span>
                         )}
                         {it.product.name}
                         {i < combo.items.length - 1 && (
@@ -218,7 +252,8 @@ export default function ProductsContent({ products, categories, genders, perPage
                     ))}
                   </div>
                   <p className="mt-2 text-xs text-text-muted-1">
-                    The deal applies automatically at checkout. Buying these separately charges full price.
+                    The deal applies automatically at checkout. Buying these
+                    separately charges full price.
                   </p>
                 </div>
               )}
@@ -228,8 +263,18 @@ export default function ProductsContent({ products, categories, genders, perPage
 
         {/* Search query indicator */}
         {searchQuery && (
-          <div className="mb-4 text-sm" style={{ color: "var(--t-text-muted-1)" }}>
-            Results for &quot;<span className="font-medium" style={{ color: "var(--t-text-heading)" }}>{searchQuery}</span>&quot;
+          <div
+            className="mb-4 text-sm"
+            style={{ color: "var(--t-text-muted-1)" }}
+          >
+            Results for &quot;
+            <span
+              className="font-medium"
+              style={{ color: "var(--t-text-heading)" }}
+            >
+              {searchQuery}
+            </span>
+            &quot;
           </div>
         )}
 
@@ -252,6 +297,10 @@ export default function ProductsContent({ products, categories, genders, perPage
                       name: product.name,
                       slug: product.slug,
                       sellingPrice: Number(product.sellingPrice),
+                      discountedPrice:
+                        product.discountedPrice != null
+                          ? Number(product.discountedPrice)
+                          : undefined,
                       salePrice: Number(product.salePrice),
                       finalPrice: Number(product.finalPrice),
                       discountType: product.discountType ?? undefined,
@@ -261,11 +310,13 @@ export default function ProductsContent({ products, categories, genders, perPage
                       offerEnd: product.offerEnd,
                       isFeatured: product.isFeatured,
                       isTrending: product.isTrending,
-                      productimage: product.productimage.map((img) => ({ url: img.url })),
+                      productimage: product.productimage.map((img) => ({
+                        url: img.url,
+                      })),
                       productvariant: product.productvariant,
                     }}
                   />
-                )
+                ),
               )}
             </div>
 
@@ -280,14 +331,23 @@ export default function ProductsContent({ products, categories, genders, perPage
                     color: "var(--t-button-text, #FFFFFF)",
                     borderRadius: "var(--t-radius-button)",
                     fontFamily: "var(--t-font-heading)",
-                    boxShadow: "0 4px 14px color-mix(in srgb, var(--t-primary) 30%, transparent)",
+                    boxShadow:
+                      "0 4px 14px color-mix(in srgb, var(--t-primary) 30%, transparent)",
                   }}
                 >
                   View More
-                  <ChevronDown size={16} strokeWidth={2.5} className="transition-transform group-hover:translate-y-0.5" />
+                  <ChevronDown
+                    size={16}
+                    strokeWidth={2.5}
+                    className="transition-transform group-hover:translate-y-0.5"
+                  />
                 </button>
-                <p className="text-xs" style={{ color: "var(--t-text-muted-2)" }}>
-                  Showing {Math.min(visibleCount, products.length)} of {products.length} products
+                <p
+                  className="text-xs"
+                  style={{ color: "var(--t-text-muted-2)" }}
+                >
+                  Showing {Math.min(visibleCount, products.length)} of{" "}
+                  {products.length} products
                 </p>
               </div>
             )}
@@ -295,7 +355,10 @@ export default function ProductsContent({ products, categories, genders, perPage
             {/* All loaded indicator */}
             {!hasMore && products.length > itemsPerPage && (
               <div className="flex justify-center mt-10">
-                <p className="text-sm font-medium" style={{ color: "var(--t-text-muted-2)" }}>
+                <p
+                  className="text-sm font-medium"
+                  style={{ color: "var(--t-text-muted-2)" }}
+                >
                   All {products.length} products loaded
                 </p>
               </div>
@@ -312,7 +375,10 @@ export default function ProductsContent({ products, categories, genders, perPage
             >
               <Package size={28} style={{ color: "var(--t-text-muted-3)" }} />
             </div>
-            <h3 className="text-lg font-semibold mb-1" style={{ color: "var(--t-text-heading)" }}>
+            <h3
+              className="text-lg font-semibold mb-1"
+              style={{ color: "var(--t-text-heading)" }}
+            >
               No products found
             </h3>
             <p className="text-sm" style={{ color: "var(--t-text-muted-1)" }}>
@@ -323,7 +389,10 @@ export default function ProductsContent({ products, categories, genders, perPage
       </div>
 
       {/* Mobile drawer */}
-      <MobileFilterDrawer open={mobileOpen} onClose={() => setMobileOpen(false)}>
+      <MobileFilterDrawer
+        open={mobileOpen}
+        onClose={() => setMobileOpen(false)}
+      >
         {filterSidebar}
       </MobileFilterDrawer>
     </div>

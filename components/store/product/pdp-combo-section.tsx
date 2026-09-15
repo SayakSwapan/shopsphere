@@ -11,6 +11,7 @@ function baseOf(p: {
   salePrice: number | null;
   finalPrice: number | null;
   sellingPrice: number;
+  discountedPrice?: number | null;
   discountType?: string | null;
   discountValue?: number | null;
   offerStart?: Date | string | null;
@@ -24,6 +25,7 @@ function baseOf(p: {
     discountValue: p.discountValue,
     offerStart: p.offerStart,
     offerEnd: p.offerEnd,
+    discountedPrice: p.discountedPrice,
   });
 }
 
@@ -46,6 +48,7 @@ type PdpCombo = {
       name: string;
       slug: string;
       sellingPrice: number;
+      discountedPrice?: number | null;
       salePrice: number | null;
       finalPrice: number | null;
       gstPercentage: number;
@@ -83,6 +86,7 @@ export default async function PdpComboSection({
               name: true,
               slug: true,
               sellingPrice: true,
+              discountedPrice: true,
               salePrice: true,
               finalPrice: true,
               gstPercentage: true,

@@ -1,12 +1,26 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Package, ShieldCheck, RotateCcw, Truck, PartyPopper } from "lucide-react";
+import {
+  Package,
+  ShieldCheck,
+  RotateCcw,
+  Truck,
+  PartyPopper,
+} from "lucide-react";
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getGstBreakdown, getActivePriceBase, priceWithGst } from "@/lib/pricing";
+import {
+  getGstBreakdown,
+  getActivePriceBase,
+  priceWithGst,
+} from "@/lib/pricing";
 import { calculateShipping } from "@/lib/shipping";
-import { customizationLetterCharge, customizationUnitPrice, customizationUnitPriceWithGst } from "@/lib/print-pricing";
+import {
+  customizationLetterCharge,
+  customizationUnitPrice,
+  customizationUnitPriceWithGst,
+} from "@/lib/print-pricing";
 
 import NavbarWrapper from "@/components/store/layout/navbar-wrapper";
 import Footer from "@/components/store/layout/footer";
@@ -66,7 +80,8 @@ export default async function CartPage() {
         discountValue: item.product.discountValue,
         offerStart: item.product.offerStart,
         offerEnd: item.product.offerEnd,
-      })
+        discountedPrice: item.product.discountedPrice,
+      }),
     );
   });
 
@@ -77,16 +92,21 @@ export default async function CartPage() {
     const base = unitBaseByItemId.get(item.id)!;
     const { gstAmount } = getGstBreakdown(
       base,
-      Number(item.product.gstPercentage) || 0
+      Number(item.product.gstPercentage) || 0,
     );
 
     // Custom print charge (pre-GST) is billed per piece, so multiply by qty.
     const printUnit = customizationUnitPrice(
-      item.customization as import("@/types/custom-print").CustomPrintData | null
+      item.customization as
+        import("@/types/custom-print").CustomPrintData | null,
     );
-    const printGst = customizationLetterCharge(
-      item.customization as import("@/types/custom-print").CustomPrintData | null
-    ) * (Number(item.product.gstPercentage) || 0) / 100;
+    const printGst =
+      (customizationLetterCharge(
+        item.customization as
+          import("@/types/custom-print").CustomPrintData | null,
+      ) *
+        (Number(item.product.gstPercentage) || 0)) /
+      100;
 
     totalSelling += (base + printUnit) * item.quantity;
     totalGst += (gstAmount + printGst) * item.quantity;
@@ -100,12 +120,14 @@ export default async function CartPage() {
       quantity: item.quantity,
       product: {
         weight: item.product.weight ?? undefined,
-        salePrice: item.product.salePrice ? Number(item.product.salePrice) : undefined,
+        salePrice: item.product.salePrice
+          ? Number(item.product.salePrice)
+          : undefined,
         sellingPrice: Number(item.product.sellingPrice),
       },
     })),
     false,
-    totalSelling
+    totalSelling,
   );
 
   const shippingCost = shippingResult.shipping;
@@ -129,7 +151,8 @@ export default async function CartPage() {
           </h1>
           {items.length > 0 && (
             <p className="mt-2 text-sm text-text-muted-1">
-              {itemCount} {itemCount === 1 ? "item" : "items"} waiting for checkout
+              {itemCount} {itemCount === 1 ? "item" : "items"} waiting for
+              checkout
             </p>
           )}
         </div>
@@ -155,7 +178,10 @@ export default async function CartPage() {
             <Link
               href="/products"
               className="mt-8 inline-block px-10 py-4 font-black uppercase tracking-wider text-sm transition-colors bg-primary hover:opacity-90"
-              style={{ borderRadius: "var(--t-radius-button)", color: "var(--t-bg-page)" }}
+              style={{
+                borderRadius: "var(--t-radius-button)",
+                color: "var(--t-bg-page)",
+              }}
             >
               Browse Products
             </Link>
@@ -190,7 +216,9 @@ export default async function CartPage() {
                         slug: item.product.slug,
                         name: item.product.name,
                         sellingPrice: Number(item.product.sellingPrice),
-                        salePrice: item.product.salePrice ? Number(item.product.salePrice) : undefined,
+                        salePrice: item.product.salePrice
+                          ? Number(item.product.salePrice)
+                          : undefined,
                         gstPercentage: Number(item.product.gstPercentage) || 0,
                         productimage: item.product.productimage,
                       },
@@ -222,14 +250,18 @@ export default async function CartPage() {
                   <div className="space-y-3 cart-mini-list">
                     {items.map((item) => {
                       const unit = unitBaseByItemId.get(item.id)!;
-                      const inclUnit = priceWithGst(unit, Number(item.product.gstPercentage) || 0);
-                      const printUnit = customizationUnitPriceWithGst(
-                        item.customization as import("@/types/custom-print").CustomPrintData | null,
-                        Number(item.product.gstPercentage) || 0
+                      const inclUnit = priceWithGst(
+                        unit,
+                        Number(item.product.gstPercentage) || 0,
                       );
-                      const customPrint = item.customization as
-                        | { printTypeName?: string }
-                        | null;
+                      const printUnit = customizationUnitPriceWithGst(
+                        item.customization as
+                          import("@/types/custom-print").CustomPrintData | null,
+                        Number(item.product.gstPercentage) || 0,
+                      );
+                      const customPrint = item.customization as {
+                        printTypeName?: string;
+                      } | null;
                       const lineTotal = (inclUnit + printUnit) * item.quantity;
                       return (
                         <div
@@ -275,8 +307,18 @@ export default async function CartPage() {
 
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-text-muted-1">Delivery</span>
-                    <span className="font-medium" style={{ color: shippingCost === 0 ? "var(--t-success)" : "var(--t-text-body)" }}>
-                      {shippingCost === 0 ? "FREE" : `₹${shippingCost.toLocaleString("en-IN")}`}
+                    <span
+                      className="font-medium"
+                      style={{
+                        color:
+                          shippingCost === 0
+                            ? "var(--t-success)"
+                            : "var(--t-text-body)",
+                      }}
+                    >
+                      {shippingCost === 0
+                        ? "FREE"
+                        : `₹${shippingCost.toLocaleString("en-IN")}`}
                     </span>
                   </div>
                 </div>
@@ -287,46 +329,75 @@ export default async function CartPage() {
                     className="mx-4 sm:mx-6 mt-3 flex items-center gap-2.5 px-4 py-3"
                     style={{
                       borderRadius: "var(--t-radius-card)",
-                      background: "color-mix(in srgb, var(--t-success) 10%, transparent)",
-                      border: "1px solid color-mix(in srgb, var(--t-success) 20%, transparent)",
+                      background:
+                        "color-mix(in srgb, var(--t-success) 10%, transparent)",
+                      border:
+                        "1px solid color-mix(in srgb, var(--t-success) 20%, transparent)",
                     }}
                   >
-                    <PartyPopper size={16} style={{ color: "var(--t-success)", flexShrink: 0 }} />
-                    <p className="text-xs font-semibold" style={{ color: "var(--t-success)" }}>
+                    <PartyPopper
+                      size={16}
+                      style={{ color: "var(--t-success)", flexShrink: 0 }}
+                    />
+                    <p
+                      className="text-xs font-semibold"
+                      style={{ color: "var(--t-success)" }}
+                    >
                       Yay! You&apos;ve got free shipping on this order.
                     </p>
                   </div>
                 )}
 
-                {!shippingResult.freeShipping && shippingResult.freeShippingThreshold !== null && shippingResult.amountNeeded > 0 && (
-                  <div className="px-4 sm:px-6 mt-3">
-                    <div
-                      className="px-4 py-3"
-                      style={{
-                        borderRadius: "var(--t-radius-card)",
-                        background: "color-mix(in srgb, var(--t-primary) 8%, transparent)",
-                        border: "1px solid color-mix(in srgb, var(--t-primary) 18%, transparent)",
-                      }}
-                    >
-                      <div className="flex items-center gap-2">
-                        <Truck size={15} className="text-primary" style={{ flexShrink: 0 }} />
-                        <p className="text-xs font-semibold text-text-heading">
-                          Add <span className="font-black text-primary">₹{shippingResult.amountNeeded.toLocaleString("en-IN")}</span> more to get free shipping!{" "}
-                          <span className="font-normal text-text-muted-2">(Free above ₹{shippingResult.freeShippingThreshold!.toLocaleString("en-IN")})</span>
-                        </p>
-                      </div>
-                      <div className="mt-2.5 h-1.5 w-full overflow-hidden rounded-full bg-bg-card-nested">
-                        <div
-                          className="h-full rounded-full transition-all duration-500"
-                          style={{
-                            width: `${Math.min(100, Math.max(2, (totalSelling / shippingResult.freeShippingThreshold!) * 100))}%`,
-                            background: "var(--t-primary)",
-                          }}
-                        />
+                {!shippingResult.freeShipping &&
+                  shippingResult.freeShippingThreshold !== null &&
+                  shippingResult.amountNeeded > 0 && (
+                    <div className="px-4 sm:px-6 mt-3">
+                      <div
+                        className="px-4 py-3"
+                        style={{
+                          borderRadius: "var(--t-radius-card)",
+                          background:
+                            "color-mix(in srgb, var(--t-primary) 8%, transparent)",
+                          border:
+                            "1px solid color-mix(in srgb, var(--t-primary) 18%, transparent)",
+                        }}
+                      >
+                        <div className="flex items-center gap-2">
+                          <Truck
+                            size={15}
+                            className="text-primary"
+                            style={{ flexShrink: 0 }}
+                          />
+                          <p className="text-xs font-semibold text-text-heading">
+                            Add{" "}
+                            <span className="font-black text-primary">
+                              ₹
+                              {shippingResult.amountNeeded.toLocaleString(
+                                "en-IN",
+                              )}
+                            </span>{" "}
+                            more to get free shipping!{" "}
+                            <span className="font-normal text-text-muted-2">
+                              (Free above ₹
+                              {shippingResult.freeShippingThreshold!.toLocaleString(
+                                "en-IN",
+                              )}
+                              )
+                            </span>
+                          </p>
+                        </div>
+                        <div className="mt-2.5 h-1.5 w-full overflow-hidden rounded-full bg-bg-card-nested">
+                          <div
+                            className="h-full rounded-full transition-all duration-500"
+                            style={{
+                              width: `${Math.min(100, Math.max(2, (totalSelling / shippingResult.freeShippingThreshold!) * 100))}%`,
+                              background: "var(--t-primary)",
+                            }}
+                          />
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
                 {/* Total */}
                 <div className="border-t border-border-subtle px-4 sm:px-6 py-5">
@@ -351,7 +422,11 @@ export default async function CartPage() {
                   <Link
                     href="/checkout"
                     className="block w-full py-4 text-center text-sm font-black uppercase tracking-wider transition-colors bg-primary hover:opacity-90"
-                    style={{ borderRadius: "var(--t-radius-button)", color: "var(--t-bg-page)", fontFamily: "var(--t-font-heading)" }}
+                    style={{
+                      borderRadius: "var(--t-radius-button)",
+                      color: "var(--t-bg-page)",
+                      fontFamily: "var(--t-font-heading)",
+                    }}
                   >
                     Proceed to Checkout
                   </Link>

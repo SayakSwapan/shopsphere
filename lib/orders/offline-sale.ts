@@ -113,6 +113,7 @@ type ResolvedItem = {
     sellingPrice: number;
     lastSellingPrice: number | null;
     onlineSellingPrice: number;
+    discountedPrice: number | null;
     discountType?: string | null;
     discountValue?: number | null;
     offerStart?: Date | null;
@@ -122,9 +123,7 @@ type ResolvedItem = {
   availableStock: number;
 };
 
-async function resolveItem(
-  line: OfflineLineItemInput
-): Promise<ResolvedItem> {
+async function resolveItem(line: OfflineLineItemInput): Promise<ResolvedItem> {
   const product = await prisma.product.findUnique({
     where: { id: line.productId },
     select: {
@@ -137,6 +136,7 @@ async function resolveItem(
       lastSellingPrice: true,
       lastSellingProfitPercentage: true,
       finalPrice: true,
+      discountedPrice: true,
       discountType: true,
       discountValue: true,
       offerStart: true,
@@ -148,13 +148,13 @@ async function resolveItem(
   if (!product) throw new OfflineSaleError("Product not found.");
 
   const onlineSellingPrice = Number(
-    product.salePrice || product.sellingPrice || 0
+    product.discountedPrice || product.salePrice || product.sellingPrice || 0,
   );
 
   // Offline pricing for this product must be configured before it can be sold.
   if (product.lastSellingPrice == null) {
     throw new OfflineSaleError(
-      `Offline minimum selling price is not configured for the product "${product.name}". Please update the product pricing configuration.`
+      `Offline minimum selling price is not configured for the product "${product.name}". Please update the product pricing configuration.`,
     );
   }
 
@@ -181,8 +181,13 @@ async function resolveItem(
       finalPrice: Number(product.finalPrice),
       lastSellingPrice: Number(product.lastSellingPrice),
       onlineSellingPrice,
+      discountedPrice:
+        product.discountedPrice != null
+          ? Number(product.discountedPrice)
+          : null,
       discountType: product.discountType,
-      discountValue: product.discountValue != null ? Number(product.discountValue) : null,
+      discountValue:
+        product.discountValue != null ? Number(product.discountValue) : null,
       offerStart: product.offerStart,
       offerEnd: product.offerEnd,
     },
@@ -234,15 +239,15 @@ export interface OfflineComboAdjustmentResult {
 type ResolvedLine = { resolved: ResolvedItem; line: OfflineLineItemInput };
 
 async function resolveLines(
-  lines: OfflineLineItemInput[]
+  lines: OfflineLineItemInput[],
 ): Promise<ResolvedLine[]> {
   return Promise.all(
-    lines.map(async (line) => ({ resolved: await resolveItem(line), line }))
+    lines.map(async (line) => ({ resolved: await resolveItem(line), line })),
   );
 }
 
 async function computeOfflineComboAdjustmentsFromResolved(
-  resolvedLines: ResolvedLine[]
+  resolvedLines: ResolvedLine[],
 ): Promise<OfflineComboAdjustmentResult> {
   if (resolvedLines.length === 0) {
     return {
@@ -255,7 +260,13 @@ async function computeOfflineComboAdjustmentsFromResolved(
 
   // Normalise every sale line into individual "units" (pre-GST bases mirroring
   // the online engine) so a combo's reserved set is priced per unit.
-  type ComboUnit = { idx: number; productId: string; base: number; floor: number; reserved?: boolean };
+  type ComboUnit = {
+    idx: number;
+    productId: string;
+    base: number;
+    floor: number;
+    reserved?: boolean;
+  };
   const units: ComboUnit[] = [];
   const qtyByProduct = new Map<string, number>();
   const gstByProduct = new Map<string, number>();
@@ -269,20 +280,24 @@ async function computeOfflineComboAdjustmentsFromResolved(
       discountValue: resolved.product.discountValue,
       offerStart: resolved.product.offerStart,
       offerEnd: resolved.product.offerEnd,
+      discountedPrice: resolved.product.discountedPrice,
     });
     const floor = Math.max(
       Number(resolved.product.lastSellingPrice) || 0,
-      Number(resolved.product.costPrice) || 0
+      Number(resolved.product.costPrice) || 0,
     );
     gstByProduct.set(line.productId, resolved.product.gstPercentage);
-    qtyByProduct.set(line.productId, (qtyByProduct.get(line.productId) ?? 0) + (line.quantity || 0));
+    qtyByProduct.set(
+      line.productId,
+      (qtyByProduct.get(line.productId) ?? 0) + (line.quantity || 0),
+    );
     for (let i = 0; i < (line.quantity || 0); i++) {
       units.push({ idx, productId: line.productId, base, floor });
     }
   });
 
   const activeCombos = (await getActiveComboOffers()).filter((c) =>
-    comboAppliesTo(c.apply, "OFFLINE")
+    comboAppliesTo(c.apply, "OFFLINE"),
   );
 
   // Subset semantics: an offer applies when the REQUIRED number of DISTINCT
@@ -291,14 +306,20 @@ async function computeOfflineComboAdjustmentsFromResolved(
   // combo-managed for that offer.
   const thresholdFor = (combo: (typeof activeCombos)[number]): number => {
     if (combo.comboType === "PICK_ANY") {
-      return Math.min(Math.max(2, Number(combo.minPick) || 2), combo.items.length);
+      return Math.min(
+        Math.max(2, Number(combo.minPick) || 2),
+        combo.items.length,
+      );
     }
-    return Math.min(Math.max(2, Number(combo.getCount) || 2), combo.items.length);
+    return Math.min(
+      Math.max(2, Number(combo.getCount) || 2),
+      combo.items.length,
+    );
   };
 
   const presentCount = (
     combo: (typeof activeCombos)[number],
-    avail: Map<string, number>
+    avail: Map<string, number>,
   ): number => {
     let present = 0;
     for (const it of combo.items) {
@@ -318,7 +339,9 @@ async function computeOfflineComboAdjustmentsFromResolved(
       };
     })
     .filter((s) => s.ok && s.combo.items.length >= 2)
-    .sort((a, b) => b.present - a.present || a.combo.sortOrder - b.combo.sortOrder);
+    .sort(
+      (a, b) => b.present - a.present || a.combo.sortOrder - b.combo.sortOrder,
+    );
 
   const appliedReservations: {
     combo: (typeof satisfiable)[number]["combo"];
@@ -348,7 +371,10 @@ async function computeOfflineComboAdjustmentsFromResolved(
 
   const payByProduct = new Map<string, number>();
   const baseByProduct = new Map<string, number>();
-  const combosByProduct = new Map<string, { offerId: string; title: string }[]>();
+  const combosByProduct = new Map<
+    string,
+    { offerId: string; title: string }[]
+  >();
   const appliedStats: OfflineComboAdjustmentResult["applied"] = [];
 
   for (const ar of appliedReservations) {
@@ -356,7 +382,10 @@ async function computeOfflineComboAdjustmentsFromResolved(
     const totalBase = ar.reservedUnits.reduce((s, u) => s + u.base, 0);
     const paid = pays.reduce((s, p) => s + p.pay, 0);
     ar.reservedUnits.forEach((u, i) => {
-      payByProduct.set(u.productId, (payByProduct.get(u.productId) ?? 0) + pays[i].pay);
+      payByProduct.set(
+        u.productId,
+        (payByProduct.get(u.productId) ?? 0) + pays[i].pay,
+      );
       baseByProduct.set(u.productId, u.base);
       const list = combosByProduct.get(u.productId) ?? [];
       if (!list.some((c) => c.offerId === ar.combo.id)) {
@@ -380,7 +409,10 @@ async function computeOfflineComboAdjustmentsFromResolved(
     const pays = priceComboReservedSet(ar.combo, ar.reservedUnits);
     ar.reservedUnits.forEach((u, i) => {
       comboSavingsInclGst += round2(
-        baseToPriceInclGst(round2(u.base - pays[i].pay), gstByProduct.get(u.productId) ?? 0)
+        baseToPriceInclGst(
+          round2(u.base - pays[i].pay),
+          gstByProduct.get(u.productId) ?? 0,
+        ),
       );
     });
   }
@@ -396,7 +428,9 @@ async function computeOfflineComboAdjustmentsFromResolved(
       byProductId[pid] = {
         productId: pid,
         unitBase,
-        unitPriceInclGst: round2(baseToPriceInclGst(unitBase, gstByProduct.get(pid) ?? 0)),
+        unitPriceInclGst: round2(
+          baseToPriceInclGst(unitBase, gstByProduct.get(pid) ?? 0),
+        ),
         discountUnitBase,
         combos: combosByProduct.get(pid) ?? [],
         isFree: unitBase <= 0,
@@ -407,7 +441,9 @@ async function computeOfflineComboAdjustmentsFromResolved(
   return {
     byProductId,
     applied: appliedStats,
-    comboSavingsBase: round2(appliedStats.reduce((s, a) => s + a.discountBase, 0)),
+    comboSavingsBase: round2(
+      appliedStats.reduce((s, a) => s + a.discountBase, 0),
+    ),
     comboSavingsInclGst: round2(comboSavingsInclGst),
   };
 }
@@ -418,7 +454,7 @@ async function computeOfflineComboAdjustmentsFromResolved(
  * service (authoritative) and the POS UI preview endpoint (display only).
  */
 export async function computeOfflineComboAdjustments(
-  lines: OfflineLineItemInput[]
+  lines: OfflineLineItemInput[],
 ): Promise<OfflineComboAdjustmentResult> {
   const resolvedLines = await resolveLines(lines);
   return computeOfflineComboAdjustmentsFromResolved(resolvedLines);
@@ -457,12 +493,13 @@ async function resolveShippingCode(customer: OfflineCustomerInput): Promise<{
         });
         if (owner && owner.id !== existingByPhone.id) {
           throw new OfflineSaleError(
-            `The email "${typedEmail}" is already registered to another customer (${owner.id}). Use a different email or select that customer instead.`
+            `The email "${typedEmail}" is already registered to another customer (${owner.id}). Use a different email or select that customer instead.`,
           );
         }
       }
       const updateData: { name?: string; email?: string } = {};
-      if (customer.name && customer.name.trim()) updateData.name = customer.name.trim();
+      if (customer.name && customer.name.trim())
+        updateData.name = customer.name.trim();
       if (typedEmail) updateData.email = typedEmail;
       const upserted = await prisma.user.update({
         where: { id: existingByPhone.id },
@@ -497,9 +534,13 @@ async function resolveShippingCode(customer: OfflineCustomerInput): Promise<{
     return { code: walkIn.id, isWalkIn: true, userId: walkIn.id };
   } catch (e) {
     const err = e as { code?: string; meta?: { target?: string[] } };
-    if (err?.code === "P2002" && Array.isArray(err?.meta?.target) && err.meta.target.some((t) => t.toLowerCase().includes("email"))) {
+    if (
+      err?.code === "P2002" &&
+      Array.isArray(err?.meta?.target) &&
+      err.meta.target.some((t) => t.toLowerCase().includes("email"))
+    ) {
       throw new OfflineSaleError(
-        `The email "${email}" is already registered to another customer. Use a different email, or select that existing customer first.`
+        `The email "${email}" is already registered to another customer. Use a different email, or select that existing customer first.`,
       );
     }
     throw e;
@@ -526,12 +567,12 @@ async function createOrderAndItems(opts: {
   for (const { resolved: r, line } of resolvedBase) {
     if (!Number.isFinite(line.quantity) || line.quantity <= 0) {
       throw new OfflineSaleError(
-        `Quantity must be greater than 0 for "${r.product.name}".`
+        `Quantity must be greater than 0 for "${r.product.name}".`,
       );
     }
     if (line.quantity > r.availableStock) {
       throw new OfflineSaleError(
-        `Insufficient stock available for "${r.product.name}". Available: ${r.availableStock}.`
+        `Insufficient stock available for "${r.product.name}". Available: ${r.availableStock}.`,
       );
     }
   }
@@ -565,7 +606,10 @@ async function createOrderAndItems(opts: {
     });
 
     // Price cannot be negative.
-    if (!Number.isFinite(pricing.actualSellingPrice) || pricing.actualSellingPrice < 0) {
+    if (
+      !Number.isFinite(pricing.actualSellingPrice) ||
+      pricing.actualSellingPrice < 0
+    ) {
       throw new OfflineSaleError("Price cannot be negative.");
     }
 
@@ -603,7 +647,7 @@ async function createOrderAndItems(opts: {
   if (isComplete && input.useLoyaltyReward) {
     const loyaltyCalc = await calculateLoyaltyDiscount(
       customerUser.userId,
-      totalAmount
+      totalAmount,
     );
     if (loyaltyCalc.applicable && loyaltyCalc.discountAmount > 0) {
       loyaltyDiscount = loyaltyCalc.discountAmount;
@@ -626,7 +670,7 @@ async function createOrderAndItems(opts: {
   const dueAmount = round2(totalForPayment - paidAmount);
   if (isPartial && !(dueAmount > 0)) {
     throw new OfflineSaleError(
-      "For a due / partial payment sale the paid amount must be less than the total. Use Complete Sale if fully paid."
+      "For a due / partial payment sale the paid amount must be less than the total. Use Complete Sale if fully paid.",
     );
   }
 
@@ -655,13 +699,14 @@ async function createOrderAndItems(opts: {
         shipping,
         discount,
         comboDiscount:
-          comboAdjust.comboSavingsBase > 0 ? comboAdjust.comboSavingsBase : null,
+          comboAdjust.comboSavingsBase > 0
+            ? comboAdjust.comboSavingsBase
+            : null,
         loyaltyPurchaseCounted: false,
         loyaltyRewardApplied: loyaltyDiscount > 0,
         loyaltyRewardId,
         loyaltyDiscountAmount: loyaltyDiscount > 0 ? loyaltyDiscount : null,
-        fullName:
-          (input.customer.name || "").trim() || "Walk-in Customer",
+        fullName: (input.customer.name || "").trim() || "Walk-in Customer",
         phone: (input.customer.phone || "").trim(),
         addressLine1: (input.customer.addressLine1 || "").trim(),
         addressLine2: (input.customer.addressLine2 || "").trim() || null,
@@ -690,7 +735,7 @@ async function createOrderAndItems(opts: {
       if (isComplete) {
         if (line.quantity > r.availableStock) {
           throw new OfflineSaleError(
-            `Insufficient stock available for "${r.product.name}". Available: ${r.availableStock}.`
+            `Insufficient stock available for "${r.product.name}". Available: ${r.availableStock}.`,
           );
         }
       }
@@ -708,9 +753,7 @@ async function createOrderAndItems(opts: {
           costPriceSnapshot: pricing.costPrice,
           gstSnapshot: pricing.gstAmount,
           discountSnapshot: 0,
-          comboDiscountSnapshot: combo
-            ? round2(combo.discountUnitBase)
-            : 0,
+          comboDiscountSnapshot: combo ? round2(combo.discountUnitBase) : 0,
           lastSellingPriceAtSale: pricing.lastSellingPrice,
           actualSellingPrice: pricing.actualSellingPrice,
           gstPercentageAtSale: pricing.gstPercentage,
@@ -834,7 +877,7 @@ async function createOrderAndItems(opts: {
             orderAmount: totalAmount,
             source: "OFFLINE",
           },
-          tx
+          tx,
         );
         if (counted) {
           await tx.order.update({
@@ -851,7 +894,7 @@ async function createOrderAndItems(opts: {
   // Fire-and-forget: send invoice email for fully-paid offline sales.
   if (isComplete && !isPartial) {
     sendOfflineInvoiceEmail({ orderId: result.id }).catch((e) =>
-      console.error("Offline invoice email failed:", e)
+      console.error("Offline invoice email failed:", e),
     );
   }
 
@@ -927,7 +970,7 @@ export async function completeOfflineOrder(opts: {
     paidAmount = round2(Math.min(opts.paidAmount ?? 0, totalAmount));
     if (!(round2(totalAmount - paidAmount) > 0)) {
       throw new OfflineSaleError(
-        "For a due / partial payment sale the paid amount must be less than the total. Use Complete Sale if fully paid."
+        "For a due / partial payment sale the paid amount must be less than the total. Use Complete Sale if fully paid.",
       );
     }
   } else {
@@ -945,13 +988,16 @@ export async function completeOfflineOrder(opts: {
       if (!product) throw new OfflineSaleError("Product not found.");
       if (item.quantity > product.stock) {
         throw new OfflineSaleError(
-          `Insufficient stock available for "${product.name}". Available: ${product.stock}.`
+          `Insufficient stock available for "${product.name}". Available: ${product.stock}.`,
         );
       }
 
       await tx.product.update({
         where: { id: item.productId },
-        data: { stock: { decrement: item.quantity }, totalSold: { increment: item.quantity } },
+        data: {
+          stock: { decrement: item.quantity },
+          totalSold: { increment: item.quantity },
+        },
       });
 
       const variant = item.variantSku
@@ -962,7 +1008,7 @@ export async function completeOfflineOrder(opts: {
       if (variant) {
         if (item.quantity > variant.stock) {
           throw new OfflineSaleError(
-            `Insufficient variant stock available. Available: ${variant.stock}.`
+            `Insufficient variant stock available. Available: ${variant.stock}.`,
           );
         }
         const beforeV = variant.stock;
@@ -1021,7 +1067,9 @@ export async function completeOfflineOrder(opts: {
         orderId: order.id,
         amount: paidAmount,
         paymentMethod: opts.paymentMethod,
-        notes: isPartial ? "Upfront payment (due sale opened)" : "Full payment at sale",
+        notes: isPartial
+          ? "Upfront payment (due sale opened)"
+          : "Full payment at sale",
         recordedById: opts.recordedById ?? null,
       },
     });
@@ -1066,11 +1114,17 @@ export async function completeOfflineOrder(opts: {
   // Fire-and-forget: send invoice email for fully-paid offline sales.
   if (!isPartial) {
     sendOfflineInvoiceEmail({ orderId: order.id }).catch((e) =>
-      console.error("Offline invoice email failed:", e)
+      console.error("Offline invoice email failed:", e),
     );
   }
 
-  return { orderId: order.id, already: false, paidAmount, dueAmount, isPartial };
+  return {
+    orderId: order.id,
+    already: false,
+    paidAmount,
+    dueAmount,
+    isPartial,
+  };
 }
 
 /**
@@ -1104,7 +1158,7 @@ export async function collectOfflineDue(opts: {
   }
   if (amount > currentDue) {
     throw new OfflineSaleError(
-      `Payment of ₹${round2(amount).toFixed(2)} exceeds the outstanding due of ₹${round2(currentDue).toFixed(2)}.`
+      `Payment of ₹${round2(amount).toFixed(2)} exceeds the outstanding due of ₹${round2(currentDue).toFixed(2)}.`,
     );
   }
   if (!["CASH", "UPI", "CARD", "BANK_TRANSFER"].includes(opts.paymentMethod)) {
@@ -1154,7 +1208,7 @@ export async function collectOfflineDue(opts: {
   // Fire-and-forget: send final invoice email when due is fully cleared.
   if (isNowCleared) {
     sendOfflineInvoiceEmail({ orderId: order.id }).catch((e) =>
-      console.error("Offline invoice email failed:", e)
+      console.error("Offline invoice email failed:", e),
     );
   }
 
@@ -1178,8 +1232,7 @@ export async function cancelOfflineOrder(opts: { orderId: string }) {
   if (!order) throw new OfflineSaleError("Order not found.", 404);
   if (order.orderType !== "OFFLINE")
     throw new OfflineSaleError("Not an offline order.");
-  if (order.status === "CANCELLED")
-    return { orderId: order.id, already: true };
+  if (order.status === "CANCELLED") return { orderId: order.id, already: true };
 
   await prisma.$transaction(async (tx) => {
     // Did this order already have stock deducted? If so, restore it.

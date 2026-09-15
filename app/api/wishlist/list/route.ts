@@ -33,10 +33,26 @@ export async function GET() {
       wishlist?.wishlistitem.map((item) => ({
         ...item.product,
         sellingPrice: Number(item.product.sellingPrice),
-        salePrice: item.product.salePrice != null ? Number(item.product.salePrice) : undefined,
-        finalPrice: item.product.finalPrice != null ? Number(item.product.finalPrice) : undefined,
-        discountValue: item.product.discountValue != null ? Number(item.product.discountValue) : undefined,
-        gstPercentage: item.product.gstPercentage != null ? Number(item.product.gstPercentage) : undefined,
+        discountedPrice:
+          item.product.discountedPrice != null
+            ? Number(item.product.discountedPrice)
+            : undefined,
+        salePrice:
+          item.product.salePrice != null
+            ? Number(item.product.salePrice)
+            : undefined,
+        finalPrice:
+          item.product.finalPrice != null
+            ? Number(item.product.finalPrice)
+            : undefined,
+        discountValue:
+          item.product.discountValue != null
+            ? Number(item.product.discountValue)
+            : undefined,
+        gstPercentage:
+          item.product.gstPercentage != null
+            ? Number(item.product.gstPercentage)
+            : undefined,
       })) || [];
 
     return NextResponse.json({ products });

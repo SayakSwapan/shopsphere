@@ -25,7 +25,11 @@ export default async function RelatedProducts({
         include: { size: true },
       },
     },
-    orderBy: [{ isTrending: "desc" }, { totalSold: "desc" }, { createdAt: "desc" }],
+    orderBy: [
+      { isTrending: "desc" },
+      { totalSold: "desc" },
+      { createdAt: "desc" },
+    ],
     take: 8,
   });
 
@@ -44,14 +48,19 @@ export default async function RelatedProducts({
           include: { size: true },
         },
       },
-      orderBy: [{ isTrending: "desc" }, { totalSold: "desc" }, { createdAt: "desc" }],
+      orderBy: [
+        { isTrending: "desc" },
+        { totalSold: "desc" },
+        { createdAt: "desc" },
+      ],
       take: 8,
     });
   }
 
   if (!products.length) return null;
 
-  const isFallback = products.length > 0 && !products.some((p) => p.categoryId === categoryId);
+  const isFallback =
+    products.length > 0 && !products.some((p) => p.categoryId === categoryId);
 
   return (
     <section className="mt-8 sm:mt-16">
@@ -88,6 +97,10 @@ export default async function RelatedProducts({
               name: product.name,
               slug: product.slug,
               sellingPrice: Number(product.sellingPrice),
+              discountedPrice:
+                product.discountedPrice != null
+                  ? Number(product.discountedPrice)
+                  : undefined,
               salePrice: Number(product.salePrice),
               finalPrice: Number(product.finalPrice),
               discountType: product.discountType,

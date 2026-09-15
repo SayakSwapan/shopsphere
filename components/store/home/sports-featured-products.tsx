@@ -19,6 +19,7 @@ interface ProductRow {
   name: string;
   slug: string;
   sellingPrice: unknown;
+  discountedPrice: unknown;
   discountType: string;
   discountValue: unknown;
   salePrice: unknown;
@@ -187,15 +188,25 @@ export default async function SportsFeaturedProducts() {
             const discountType = String(
               product.discountType || "",
             ).toUpperCase();
+
+            // Independent discounted price: active whenever set and below the
+            // selling price — NO offer start/end dates required.
+            const independentPrice = Number(product.discountedPrice || 0);
+            const independentActive =
+              independentPrice > 0 &&
+              independentPrice < Number(product.sellingPrice || 0);
+
             const now = new Date();
             const offerActive =
               Number(product.discountValue || 0) > 0 &&
               (!product.offerStart || now >= new Date(product.offerStart)) &&
               (!product.offerEnd || now <= new Date(product.offerEnd));
             const hasDiscount =
-              offerActive &&
-              Number(product.discountValue || 0) > 0 &&
-              (isPercentDiscount(discountType) || isFlatDiscount(discountType));
+              independentActive ||
+              (offerActive &&
+                Number(product.discountValue || 0) > 0 &&
+                (isPercentDiscount(discountType) ||
+                  isFlatDiscount(discountType)));
 
             // Scheduled offer (starts in the future) — surface a countdown so the
             // customer knows the discount is coming.
@@ -206,17 +217,27 @@ export default async function SportsFeaturedProducts() {
               now < new Date(product.offerStart) &&
               (isPercentDiscount(discountType) || isFlatDiscount(discountType));
 
-            // Only show the discounted price when the offer is active.
+            // Only show the discounted price when it is truly active.
             const displayPrice = priceWithGst(
-              hasDiscount
-                ? getEffectivePrice(
-                    product.salePrice,
-                    product.finalPrice,
-                    product.sellingPrice,
-                  )
-                : Number(product.sellingPrice || 0),
+              independentActive
+                ? independentPrice
+                : hasDiscount
+                  ? getEffectivePrice(
+                      product.salePrice,
+                      product.finalPrice,
+                      product.sellingPrice,
+                    )
+                  : Number(product.sellingPrice || 0),
               gstRate,
             );
+
+            const discountLabel = independentActive
+              ? `${Math.round(
+                  ((originalPrice - displayPrice) / originalPrice) * 100,
+                )}% OFF`
+              : isFlatDiscount(discountType)
+                ? `₹${Number(product.discountValue)} OFF`
+                : `${Number(product.discountValue)}% OFF`;
 
             return (
               <div
@@ -274,9 +295,7 @@ export default async function SportsFeaturedProducts() {
                         fontFamily: "var(--t-font-body)",
                       }}
                     >
-                      {isFlatDiscount(discountType)
-                        ? `₹${Number(product.discountValue)} OFF`
-                        : `${Number(product.discountValue)}% OFF`}
+                      {discountLabel}
                     </span>
                   )}
 

@@ -13,6 +13,7 @@ export function validateProduct(body: {
   description?: unknown;
   categoryId?: unknown;
   sellingPrice?: unknown;
+  discountedPrice?: unknown;
   gstPercentage?: unknown;
 }): string | null {
   if (!body || typeof body !== "object") {
@@ -33,6 +34,24 @@ export function validateProduct(body: {
   if (!categoryId) return "Please select a category.";
   if (!Number.isFinite(sellingPrice) || sellingPrice <= 0) {
     return "A valid selling price is required.";
+  }
+
+  const discountedPrice = Number(body.discountedPrice);
+  if (
+    body.discountedPrice !== undefined &&
+    body.discountedPrice !== null &&
+    body.discountedPrice !== "" &&
+    Number(discountedPrice) > 0
+  ) {
+    if (!Number.isFinite(discountedPrice)) {
+      return "Discounted price must be a valid number.";
+    }
+    if (discountedPrice <= 0) {
+      return "Discounted price must be greater than zero.";
+    }
+    if (discountedPrice >= sellingPrice) {
+      return "Discounted price must be less than the regular selling price.";
+    }
   }
 
   if (body.gstPercentage !== undefined && body.gstPercentage !== null) {

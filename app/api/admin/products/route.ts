@@ -8,17 +8,23 @@ import crypto from "crypto";
 function friendlyError(error: unknown): string {
   if (error instanceof Error) {
     const msg = error.message;
-    if (msg.includes("No 'sizechart' record")) return "Selected size chart no longer exists.";
-    if (msg.includes("No 'category' record")) return "Selected category no longer exists.";
+    if (msg.includes("No 'sizechart' record"))
+      return "Selected size chart no longer exists.";
+    if (msg.includes("No 'category' record"))
+      return "Selected category no longer exists.";
     if (msg.includes("Foreign key constraint failed")) {
-      if (msg.includes("genderId")) return "Invalid gender selected for a variant.";
+      if (msg.includes("genderId"))
+        return "Invalid gender selected for a variant.";
       if (msg.includes("sizeId")) return "Invalid size selected for a variant.";
-      if (msg.includes("categoryId")) return "Selected category no longer exists.";
-      if (msg.includes("sizeChartId")) return "Selected size chart no longer exists.";
+      if (msg.includes("categoryId"))
+        return "Selected category no longer exists.";
+      if (msg.includes("sizeChartId"))
+        return "Selected size chart no longer exists.";
       return "A referenced record (category, gender, size, etc.) was not found.";
     }
     if (msg.includes("Unique constraint failed")) {
-      if (msg.includes("slug")) return "A product with this slug already exists.";
+      if (msg.includes("slug"))
+        return "A product with this slug already exists.";
       return "A record with the same unique identifier already exists.";
     }
   }
@@ -29,7 +35,10 @@ export async function GET(req: Request) {
   try {
     const session = await getAdminSession();
     if (!session) {
-      return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
+      return NextResponse.json(
+        { success: false, message: "Unauthorized" },
+        { status: 401 },
+      );
     }
 
     const { searchParams } = new URL(req.url);
@@ -37,9 +46,7 @@ export async function GET(req: Request) {
     const take = Number(searchParams.get("take") || 10);
 
     const products = await prisma.product.findMany({
-      where: search
-        ? { name: { contains: search } }
-        : undefined,
+      where: search ? { name: { contains: search } } : undefined,
       select: {
         id: true,
         name: true,
@@ -53,7 +60,10 @@ export async function GET(req: Request) {
     return NextResponse.json({ success: true, products });
   } catch (error) {
     console.error(error);
-    return NextResponse.json({ success: false, message: "Failed to search products" }, { status: 500 });
+    return NextResponse.json(
+      { success: false, message: "Failed to search products" },
+      { status: 500 },
+    );
   }
 }
 
@@ -61,17 +71,14 @@ export async function POST(req: Request) {
   try {
     const session = await getAdminSession();
 
-    if (
-      !session ||
-      session.user.role !== "ADMIN"
-    ) {
+    if (!session || session.user.role !== "ADMIN") {
       return NextResponse.json(
         {
           message: "Unauthorized",
         },
         {
           status: 401,
-        }
+        },
       );
     }
 
@@ -84,7 +91,7 @@ export async function POST(req: Request) {
           success: false,
           message: validationError,
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -97,106 +104,113 @@ export async function POST(req: Request) {
       return NextResponse.json(
         {
           success: false,
-          message: "A product with this slug already exists. Please change the slug.",
+          message:
+            "A product with this slug already exists. Please change the slug.",
         },
-        { status: 409 }
+        { status: 409 },
       );
     }
 
-    const product =
-      await prisma.product.create({
-        data: {
-          id: crypto.randomUUID(),
+    const product = await prisma.product.create({
+      data: {
+        id: crypto.randomUUID(),
 
-          name: body.name,
-          slug: body.slug,
-          description: body.description,
+        name: body.name,
+        slug: body.slug,
+        description: body.description,
 
-          sellingPrice: Number(body.sellingPrice),
-          costPrice: Number(body.costPrice),
-          lastSellingProfitPercentage:
-            body.lastSellingProfitPercentage != null && body.lastSellingProfitPercentage !== ""
-              ? Number(body.lastSellingProfitPercentage)
-              : null,
-          lastSellingPrice:
-            body.lastSellingPrice != null && body.lastSellingPrice !== ""
-              ? Number(body.lastSellingPrice)
-              : null,
-          metaTitle: body.metaTitle,
-          metaDescription: body.metaDescription,
-          metaKeywords: body.metaKeywords,
-          discountType: body.discountType,
-          discountValue: Number(body.discountValue),
-          salePrice: Number(body.salePrice),
-          finalPrice: Number(body.finalPrice),
-          gstPercentage: Number(body.gstPercentage) || 0,
-          weight: Number(body.weight) || 0,
-          isReturnable: body.isReturnable,
-          isReplaceable: body.isReplaceable,
-          returnDays: Number(body.returnDays),
-          replaceDays: Number(body.replaceDays || 0),
-
-          offerStart: body.offerStart
-            ? new Date(body.offerStart)
+        sellingPrice: Number(body.sellingPrice),
+        discountedPrice:
+          body.discountedPrice != null &&
+          body.discountedPrice !== "" &&
+          Number(body.discountedPrice) > 0
+            ? Number(body.discountedPrice)
             : null,
-
-          offerEnd: body.offerEnd
-            ? new Date(body.offerEnd)
+        costPrice: Number(body.costPrice),
+        lastSellingProfitPercentage:
+          body.lastSellingProfitPercentage != null &&
+          body.lastSellingProfitPercentage !== ""
+            ? Number(body.lastSellingProfitPercentage)
             : null,
+        lastSellingPrice:
+          body.lastSellingPrice != null && body.lastSellingPrice !== ""
+            ? Number(body.lastSellingPrice)
+            : null,
+        metaTitle: body.metaTitle,
+        metaDescription: body.metaDescription,
+        metaKeywords: body.metaKeywords,
+        discountType: body.discountType,
+        discountValue: Number(body.discountValue),
+        salePrice: Number(body.salePrice),
+        finalPrice: Number(body.finalPrice),
+        gstPercentage: Number(body.gstPercentage) || 0,
+        weight: Number(body.weight) || 0,
+        isReturnable: body.isReturnable,
+        isReplaceable: body.isReplaceable,
+        returnDays: Number(body.returnDays),
+        replaceDays: Number(body.replaceDays || 0),
 
-          stock: Number(body.stock),
-          lowStockAlert: Number(body.lowStockAlert),
+        offerStart: body.offerStart ? new Date(body.offerStart) : null,
 
-          customPrintEnabled: body.customPrintEnabled ?? false,
-          customPrintName: body.customPrintName ?? false,
-          customPrintNumber: body.customPrintNumber ?? false,
-          customPrintImage: body.customPrintImage ?? false,
+        offerEnd: body.offerEnd ? new Date(body.offerEnd) : null,
 
-          restrictedPincodes: (body.restrictedPincodes ?? []).filter(
-            (pincode: unknown): pincode is string =>
-              typeof pincode === "string" && /^\d{6}$/.test(pincode)
-          ),
+        stock: Number(body.stock),
+        lowStockAlert: Number(body.lowStockAlert),
 
-          allowedPaymentMethods:
-            body.allowedPaymentMethods === "ONLINE_ONLY"
-              ? "ONLINE_ONLY"
-              : body.allowedPaymentMethods === "COD_ONLY"
-                ? "COD_ONLY"
-                : "BOTH",
+        customPrintEnabled: body.customPrintEnabled ?? false,
+        customPrintName: body.customPrintName ?? false,
+        customPrintNumber: body.customPrintNumber ?? false,
+        customPrintImage: body.customPrintImage ?? false,
 
-          status: body.status,
-          isFeatured: body.isFeatured,
-          isTrending: body.isTrending,
+        restrictedPincodes: (body.restrictedPincodes ?? []).filter(
+          (pincode: unknown): pincode is string =>
+            typeof pincode === "string" && /^\d{6}$/.test(pincode),
+        ),
 
-          totalSold: 0,
-          totalViews: 0,
+        allowedPaymentMethods:
+          body.allowedPaymentMethods === "ONLINE_ONLY"
+            ? "ONLINE_ONLY"
+            : body.allowedPaymentMethods === "COD_ONLY"
+              ? "COD_ONLY"
+              : "BOTH",
 
-          ...(body.sizeChartId
-            ? {
-                sizeChart: {
-                  connect: {
-                    id: body.sizeChartId,
-                  },
+        status: body.status,
+        isFeatured: body.isFeatured,
+        isTrending: body.isTrending,
+
+        totalSold: 0,
+        totalViews: 0,
+
+        ...(body.sizeChartId
+          ? {
+              sizeChart: {
+                connect: {
+                  id: body.sizeChartId,
                 },
-              }
-            : {}),
+              },
+            }
+          : {}),
 
-          createdAt: new Date(),
-          updatedAt: new Date(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
 
-          category: {
-            connect: {
-              id: body.categoryId,
-            },
+        category: {
+          connect: {
+            id: body.categoryId,
           },
         },
-      });
+      },
+    });
 
     // Save Print Type Links
 
-    const printTypeIds: string[] = (body.customPrintTypeIds ?? body.printTypeIds ?? []).filter(
+    const printTypeIds: string[] = (
+      body.customPrintTypeIds ??
+      body.printTypeIds ??
+      []
+    ).filter(
       (id: unknown): id is string =>
-        typeof id === "string" && id.trim().length > 0
+        typeof id === "string" && id.trim().length > 0,
     );
 
     if (printTypeIds.length > 0) {
@@ -213,7 +227,7 @@ export async function POST(req: Request) {
 
     const imageUrls: string[] = (body.images ?? []).filter(
       (url: unknown): url is string =>
-        typeof url === "string" && url.trim().length > 0
+        typeof url === "string" && url.trim().length > 0,
     );
 
     if (imageUrls.length > 0) {
@@ -245,7 +259,7 @@ export async function POST(req: Request) {
             stock: Number(variant.stock),
             createdAt: new Date(),
             updatedAt: new Date(),
-          })
+          }),
         ),
       });
     }
@@ -264,7 +278,7 @@ export async function POST(req: Request) {
       },
       {
         status: 500,
-      }
+      },
     );
   }
 }

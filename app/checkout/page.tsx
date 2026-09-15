@@ -4,7 +4,10 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getGstBreakdown, getActivePriceBase } from "@/lib/pricing";
 import { calculateShipping, getPincodeInfo } from "@/lib/shipping";
-import { customizationLetterCharge, customizationUnitPrice } from "@/lib/print-pricing";
+import {
+  customizationLetterCharge,
+  customizationUnitPrice,
+} from "@/lib/print-pricing";
 import { getProductPrintAvailabilityMap } from "@/lib/product-print-availability";
 import { getRestrictedCartItems } from "@/lib/product-deliverability";
 
@@ -69,20 +72,29 @@ export default async function CheckoutPage() {
         discountValue: item.product.discountValue,
         offerStart: item.product.offerStart,
         offerEnd: item.product.offerEnd,
-      })
+        discountedPrice: item.product.discountedPrice,
+      }),
     );
   });
 
   for (const item of cart.cartitem) {
     const unitBase = unitBaseByItemId.get(item.id)!;
-    const { gstAmount } = getGstBreakdown(unitBase, Number(item.product.gstPercentage) || 0);
+    const { gstAmount } = getGstBreakdown(
+      unitBase,
+      Number(item.product.gstPercentage) || 0,
+    );
 
     const printUnit = customizationUnitPrice(
-      item.customization as import("@/types/custom-print").CustomPrintData | null
+      item.customization as
+        import("@/types/custom-print").CustomPrintData | null,
     );
-    const printGst = customizationLetterCharge(
-      item.customization as import("@/types/custom-print").CustomPrintData | null
-    ) * (Number(item.product.gstPercentage) || 0) / 100;
+    const printGst =
+      (customizationLetterCharge(
+        item.customization as
+          import("@/types/custom-print").CustomPrintData | null,
+      ) *
+        (Number(item.product.gstPercentage) || 0)) /
+      100;
 
     subtotal += (unitBase + printUnit) * item.quantity;
     gst += (gstAmount + printGst) * item.quantity;
@@ -91,25 +103,33 @@ export default async function CheckoutPage() {
   subtotal = Math.round(subtotal * 100) / 100;
   gst = Math.round(gst * 100) / 100;
 
-  const defaultAddress = user.addresses.find((a) => a.isDefault) ?? user.addresses[0];
+  const defaultAddress =
+    user.addresses.find((a) => a.isDefault) ?? user.addresses[0];
 
-  const [shippingResult, pincodeInfo, restrictedItems, printAvailability] = await Promise.all([
-    calculateShipping(
-      cart.cartitem.map((item) => ({
-        quantity: item.quantity,
-        product: {
-          weight: item.product.weight,
-          salePrice: Number(item.product.salePrice || 0),
-          sellingPrice: Number(item.product.sellingPrice),
-        },
-      })),
-      false,
-      subtotal
-    ),
-    defaultAddress ? getPincodeInfo(defaultAddress.pincode) : Promise.resolve(null),
-    defaultAddress ? getRestrictedCartItems(cart.cartitem, defaultAddress.pincode) : Promise.resolve([]),
-    getProductPrintAvailabilityMap(cart.cartitem.map((item) => item.productId)),
-  ]);
+  const [shippingResult, pincodeInfo, restrictedItems, printAvailability] =
+    await Promise.all([
+      calculateShipping(
+        cart.cartitem.map((item) => ({
+          quantity: item.quantity,
+          product: {
+            weight: item.product.weight,
+            salePrice: Number(item.product.salePrice || 0),
+            sellingPrice: Number(item.product.sellingPrice),
+          },
+        })),
+        false,
+        subtotal,
+      ),
+      defaultAddress
+        ? getPincodeInfo(defaultAddress.pincode)
+        : Promise.resolve(null),
+      defaultAddress
+        ? getRestrictedCartItems(cart.cartitem, defaultAddress.pincode)
+        : Promise.resolve([]),
+      getProductPrintAvailabilityMap(
+        cart.cartitem.map((item) => item.productId),
+      ),
+    ]);
 
   const total = subtotal + shippingResult.shipping + gst;
 

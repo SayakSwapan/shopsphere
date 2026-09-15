@@ -175,6 +175,7 @@ export async function POST(req: Request) {
           discountValue: item.product.discountValue,
           offerStart: item.product.offerStart,
           offerEnd: item.product.offerEnd,
+          discountedPrice: item.product.discountedPrice,
         }),
       );
     });

@@ -64,64 +64,73 @@ async function fetchHomeData() {
         },
       }),
     ]);
-    return { featuredProducts: [], trendingProducts: [], banners, settings: [], rawTheme };
+    return {
+      featuredProducts: [],
+      trendingProducts: [],
+      banners,
+      settings: [],
+      rawTheme,
+    };
   }
 
-  const [featuredProducts, trendingProducts, banners, settings] = await Promise.all([
-    prisma.product.findMany({
-      where: {
-        isFeatured: true,
-        status: true,
-        productvariant: { some: { stock: { gt: 0 } } },
-      },
-      include: {
-        productimage: { take: 1 },
-        productvariant: {
-          where: { stock: { gt: 0 } },
-          include: { size: true },
+  const [featuredProducts, trendingProducts, banners, settings] =
+    await Promise.all([
+      prisma.product.findMany({
+        where: {
+          isFeatured: true,
+          status: true,
+          productvariant: { some: { stock: { gt: 0 } } },
         },
-      },
-      take: 8,
-    }),
-    prisma.product.findMany({
-      where: {
-        isTrending: true,
-        status: true,
-        productvariant: { some: { stock: { gt: 0 } } },
-      },
-      include: {
-        productimage: { take: 1 },
-        productvariant: {
-          where: { stock: { gt: 0 } },
-          include: { size: true },
+        include: {
+          productimage: { take: 1 },
+          productvariant: {
+            where: { stock: { gt: 0 } },
+            include: { size: true },
+          },
         },
-      },
-      take: 8,
-    }),
-    prisma.banner.findMany({
-      where: { isActive: true },
-      orderBy: { sortOrder: "asc" },
-      select: {
-        id: true,
-        title: true,
-        subtitle: true,
-        badge: true,
-        eyebrow: true,
-        imageUrl: true,
-        linkUrl: true,
-        linkText: true,
-      },
-    }),
-    prisma.siteSetting.findMany({
-      where: { key: "ticker_texts" },
-      select: { key: true, value: true },
-    }),
-  ]);
+        take: 8,
+      }),
+      prisma.product.findMany({
+        where: {
+          isTrending: true,
+          status: true,
+          productvariant: { some: { stock: { gt: 0 } } },
+        },
+        include: {
+          productimage: { take: 1 },
+          productvariant: {
+            where: { stock: { gt: 0 } },
+            include: { size: true },
+          },
+        },
+        take: 8,
+      }),
+      prisma.banner.findMany({
+        where: { isActive: true },
+        orderBy: { sortOrder: "asc" },
+        select: {
+          id: true,
+          title: true,
+          subtitle: true,
+          badge: true,
+          eyebrow: true,
+          imageUrl: true,
+          linkUrl: true,
+          linkText: true,
+        },
+      }),
+      prisma.siteSetting.findMany({
+        where: { key: "ticker_texts" },
+        select: { key: true, value: true },
+      }),
+    ]);
 
   return { featuredProducts, trendingProducts, banners, settings, rawTheme };
 }
 
-export default async function HomePage(props: { searchParams?: Promise<{ preview?: string; theme?: string }> }) {
+export default async function HomePage(props: {
+  searchParams?: Promise<{ preview?: string; theme?: string }>;
+}) {
   const searchParams = await props.searchParams;
 
   let data: Awaited<ReturnType<typeof fetchHomeData>> | null = null;
@@ -130,7 +139,13 @@ export default async function HomePage(props: { searchParams?: Promise<{ preview
   } catch {
     try {
       const rawTheme = await getActiveTheme();
-      data = { featuredProducts: [], trendingProducts: [], banners: [], settings: [], rawTheme };
+      data = {
+        featuredProducts: [],
+        trendingProducts: [],
+        banners: [],
+        settings: [],
+        rawTheme,
+      };
     } catch {
       // DB completely unavailable — render with defaults
     }
@@ -148,8 +163,13 @@ export default async function HomePage(props: { searchParams?: Promise<{ preview
   const isEthnic = activeTheme === "ethnic";
   const isSports = activeTheme === "sports";
 
-  const tickerRaw = settings[0]?.value || "Free shipping over ₹999|New arrivals weekly|Easy 30-day returns|Premium quality guarantee|Exclusive member deals";
-  const tickerItems = tickerRaw.split("|").map((t) => t.trim()).filter(Boolean);
+  const tickerRaw =
+    settings[0]?.value ||
+    "Free shipping over ₹999|New arrivals weekly|Easy 30-day returns|Premium quality guarantee|Exclusive member deals";
+  const tickerItems = tickerRaw
+    .split("|")
+    .map((t) => t.trim())
+    .filter(Boolean);
   const tickerRepeated = [...tickerItems, ...tickerItems];
 
   if (isSports) {
@@ -198,12 +218,18 @@ export default async function HomePage(props: { searchParams?: Promise<{ preview
 
       {/* Ticker */}
       <div className="overflow-hidden py-3 bg-primary" aria-hidden="true">
-        <div className="flex whitespace-nowrap w-max" style={{ animation: "ticker-scroll 22s linear infinite" }}>
+        <div
+          className="flex whitespace-nowrap w-max"
+          style={{ animation: "ticker-scroll 22s linear infinite" }}
+        >
           {tickerRepeated.map((item, i) => (
             <span
               key={i}
               className="px-8 text-xs font-black uppercase tracking-[0.25em]"
-              style={{ fontFamily: "var(--t-font-heading)", color: "var(--t-bg-page)" }}
+              style={{
+                fontFamily: "var(--t-font-heading)",
+                color: "var(--t-bg-page)",
+              }}
             >
               {item}
               <span className="mx-4 opacity-40">{isEthnic ? "◆" : "✦"}</span>
@@ -214,7 +240,13 @@ export default async function HomePage(props: { searchParams?: Promise<{ preview
       </div>
 
       {/* Why Shop With Us */}
-      <div className="border-y border-border-subtle" style={{ background: "color-mix(in srgb, var(--t-bg-card) 50%, var(--t-bg-page))" }}>
+      <div
+        className="border-y border-border-subtle"
+        style={{
+          background:
+            "color-mix(in srgb, var(--t-bg-card) 50%, var(--t-bg-page))",
+        }}
+      >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12 flex flex-col sm:flex-row flex-wrap items-center justify-between gap-6">
           <div className="text-center sm:text-left">
             <p className="text-xs font-bold tracking-[0.35em] uppercase mb-2 text-primary">
@@ -222,9 +254,13 @@ export default async function HomePage(props: { searchParams?: Promise<{ preview
             </p>
             <p
               className="font-black uppercase text-2xl sm:text-3xl leading-none text-text-heading"
-              style={{ letterSpacing: "-0.02em", fontFamily: "var(--t-font-heading)" }}
+              style={{
+                letterSpacing: "-0.02em",
+                fontFamily: "var(--t-font-heading)",
+              }}
             >
-              Every Purchase,<br />
+              Every Purchase,
+              <br />
               <span className="text-primary">Backed By Us</span>
             </p>
           </div>
@@ -241,7 +277,9 @@ export default async function HomePage(props: { searchParams?: Promise<{ preview
                 style={{ borderRadius: "var(--t-radius-card)" }}
               >
                 <b.icon size={18} className="text-primary" />
-                <span className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-text-muted-1">{b.label}</span>
+                <span className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-text-muted-1">
+                  {b.label}
+                </span>
               </div>
             ))}
           </div>
@@ -253,7 +291,9 @@ export default async function HomePage(props: { searchParams?: Promise<{ preview
         <section className="max-w-7xl mx-auto px-4 sm:px-6 py-10 sm:py-20">
           <div className="flex items-end justify-between mb-6 sm:mb-10">
             <div>
-              <p className="text-xs font-bold tracking-[0.3em] uppercase mb-2 text-primary">{isEthnic ? "◆" : "●"} Handpicked</p>
+              <p className="text-xs font-bold tracking-[0.3em] uppercase mb-2 text-primary">
+                {isEthnic ? "◆" : "●"} Handpicked
+              </p>
               <h2
                 className="text-2xl sm:text-3xl md:text-4xl font-extrabold uppercase leading-none text-text-heading tracking-tight"
                 style={{ fontFamily: "var(--t-font-heading)" }}
@@ -264,14 +304,21 @@ export default async function HomePage(props: { searchParams?: Promise<{ preview
             <Link
               href="/products"
               className="hidden sm:block font-black uppercase text-xs px-7 py-3 border border-primary/40 text-primary hover:bg-primary/10 transition-all"
-              style={{ letterSpacing: "0.1em", borderRadius: "var(--t-radius-button)", fontFamily: "var(--t-font-heading)" }}
+              style={{
+                letterSpacing: "0.1em",
+                borderRadius: "var(--t-radius-button)",
+                fontFamily: "var(--t-font-heading)",
+              }}
             >
               View All →
             </Link>
           </div>
           <div
             className="h-[2px] mb-px"
-            style={{ background: "linear-gradient(90deg, var(--t-primary), transparent)" }}
+            style={{
+              background:
+                "linear-gradient(90deg, var(--t-primary), transparent)",
+            }}
           />
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-6">
             {featuredProducts.map((product) => (
@@ -284,6 +331,10 @@ export default async function HomePage(props: { searchParams?: Promise<{ preview
                   discountType: product.discountType,
                   discountValue: Number(product.discountValue),
                   sellingPrice: Number(product.sellingPrice),
+                  discountedPrice:
+                    product.discountedPrice != null
+                      ? Number(product.discountedPrice)
+                      : undefined,
                   salePrice: Number(product.salePrice),
                   finalPrice: Number(product.finalPrice),
                   gstPercentage: Number(product.gstPercentage),
@@ -300,7 +351,11 @@ export default async function HomePage(props: { searchParams?: Promise<{ preview
           <Link
             href="/products"
             className="sm:hidden block mt-6 text-center font-black uppercase text-xs px-7 py-3 border border-primary/40 text-primary hover:bg-primary/10 transition-all"
-            style={{ letterSpacing: "0.1em", borderRadius: "var(--t-radius-button)", fontFamily: "var(--t-font-heading)" }}
+            style={{
+              letterSpacing: "0.1em",
+              borderRadius: "var(--t-radius-button)",
+              fontFamily: "var(--t-font-heading)",
+            }}
           >
             View All →
           </Link>
@@ -312,7 +367,9 @@ export default async function HomePage(props: { searchParams?: Promise<{ preview
         <section className="max-w-7xl mx-auto px-4 sm:px-6 py-10 sm:py-20">
           <div className="flex items-end justify-between mb-6 sm:mb-10">
             <div>
-              <p className="text-xs font-bold tracking-[0.3em] uppercase mb-2 text-primary">{isEthnic ? "◆" : "●"} Right Now</p>
+              <p className="text-xs font-bold tracking-[0.3em] uppercase mb-2 text-primary">
+                {isEthnic ? "◆" : "●"} Right Now
+              </p>
               <h2
                 className="text-2xl sm:text-3xl md:text-4xl font-extrabold uppercase leading-none text-text-heading tracking-tight"
                 style={{ fontFamily: "var(--t-font-heading)" }}
@@ -323,14 +380,21 @@ export default async function HomePage(props: { searchParams?: Promise<{ preview
             <Link
               href="/products"
               className="hidden sm:block font-black uppercase text-xs px-7 py-3 border border-primary/40 text-primary hover:bg-primary/10 transition-all"
-              style={{ letterSpacing: "0.1em", borderRadius: "var(--t-radius-button)", fontFamily: "var(--t-font-heading)" }}
+              style={{
+                letterSpacing: "0.1em",
+                borderRadius: "var(--t-radius-button)",
+                fontFamily: "var(--t-font-heading)",
+              }}
             >
               View All →
             </Link>
           </div>
           <div
             className="h-[2px] mb-px"
-            style={{ background: "linear-gradient(90deg, var(--t-primary), transparent)" }}
+            style={{
+              background:
+                "linear-gradient(90deg, var(--t-primary), transparent)",
+            }}
           />
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-6">
             {trendingProducts.map((product) => (
@@ -343,6 +407,10 @@ export default async function HomePage(props: { searchParams?: Promise<{ preview
                   discountType: product.discountType,
                   discountValue: Number(product.discountValue),
                   sellingPrice: Number(product.sellingPrice),
+                  discountedPrice:
+                    product.discountedPrice != null
+                      ? Number(product.discountedPrice)
+                      : undefined,
                   salePrice: Number(product.salePrice),
                   finalPrice: Number(product.finalPrice),
                   gstPercentage: Number(product.gstPercentage),
@@ -359,7 +427,11 @@ export default async function HomePage(props: { searchParams?: Promise<{ preview
           <Link
             href="/products"
             className="sm:hidden block mt-6 text-center font-black uppercase text-xs px-7 py-3 border border-primary/40 text-primary hover:bg-primary/10 transition-all"
-            style={{ letterSpacing: "0.1em", borderRadius: "var(--t-radius-button)", fontFamily: "var(--t-font-heading)" }}
+            style={{
+              letterSpacing: "0.1em",
+              borderRadius: "var(--t-radius-button)",
+              fontFamily: "var(--t-font-heading)",
+            }}
           >
             View All →
           </Link>

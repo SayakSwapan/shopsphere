@@ -29,7 +29,10 @@ import { calculateShipping, getPincodeInfo } from "@/lib/shipping";
 import { getRestrictedCartItems } from "@/lib/product-deliverability";
 import { calcTransactionFee } from "@/lib/finance/transaction-charge.service";
 import { createAdminNotification } from "@/lib/notifications";
-import { createPaymentSession, cashfreeClientMode } from "@/lib/payment/cashfree";
+import {
+  createPaymentSession,
+  cashfreeClientMode,
+} from "@/lib/payment/cashfree";
 import { cancelAbandonedPaymentOrders } from "@/lib/orders/abandoned";
 import { sendOrderConfirmationEmail } from "@/lib/email/order-emails";
 import type { ComboOfferType, ComboPaymentMethod } from "@prisma/client";
@@ -117,6 +120,7 @@ type ProductWithVariants = {
   slug: string;
   description: string | null;
   sellingPrice: number | string;
+  discountedPrice: number | string | null;
   salePrice: number | string | null;
   finalPrice: number | string | null;
   discountType: string | null;
@@ -156,7 +160,9 @@ type FullCombo = {
 } & { items: { product: ProductWithVariants }[] };
 
 /** Number of products the customer must select in the dedicated combo flow. */
-export function comboGetCount(offer: Pick<FullCombo, "comboType" | "getCount" | "minPick">): number {
+export function comboGetCount(
+  offer: Pick<FullCombo, "comboType" | "getCount" | "minPick">,
+): number {
   if (offer.comboType === "PICK_ANY") {
     return Math.max(2, Number(offer.minPick) || 2);
   }
@@ -173,6 +179,7 @@ function productBase(product: ProductWithVariants): number {
     discountValue: product.discountValue,
     offerStart: product.offerStart,
     offerEnd: product.offerEnd,
+    discountedPrice: product.discountedPrice,
   });
 }
 
@@ -185,7 +192,7 @@ function round2(value: number): number {
  * Throws ComboCheckoutError when the offer is not live.
  */
 export async function getPublicComboOffer(
-  slug: string
+  slug: string,
 ): Promise<FullCombo | null> {
   const now = new Date();
   const offer = await prisma.comboOffer.findFirst({
@@ -281,13 +288,13 @@ export async function getPublicComboOfferMeta(slug: string) {
     (p) =>
       !p.allowedPaymentMethods ||
       p.allowedPaymentMethods === "BOTH" ||
-      p.allowedPaymentMethods === "COD_ONLY"
+      p.allowedPaymentMethods === "COD_ONLY",
   );
   const productAllowsOnline = products.every(
     (p) =>
       !p.allowedPaymentMethods ||
       p.allowedPaymentMethods === "BOTH" ||
-      p.allowedPaymentMethods === "ONLINE_ONLY"
+      p.allowedPaymentMethods === "ONLINE_ONLY",
   );
 
   return {
@@ -297,9 +304,10 @@ export async function getPublicComboOfferMeta(slug: string) {
     badge: offer.badge,
     comboType: offer.comboType,
     buyCount: offer.buyCount,
-    getCount: offer.comboType === "PICK_ANY"
-      ? Math.max(2, Number(offer.minPick) || 2)
-      : Math.max(2, Number(offer.getCount) || 2),
+    getCount:
+      offer.comboType === "PICK_ANY"
+        ? Math.max(2, Number(offer.minPick) || 2)
+        : Math.max(2, Number(offer.getCount) || 2),
     customPrice: offer.customPrice != null ? Number(offer.customPrice) : null,
     allowedPaymentMethods: offer.allowedPaymentMethods,
     productAllowsCod,
@@ -368,7 +376,7 @@ export async function getPublicComboOffers(): Promise<
 
 function validSelections(
   offer: FullCombo,
-  selections: ComboSelectionLine[]
+  selections: ComboSelectionLine[],
 ): ComboSelectionLine[] {
   if (!Array.isArray(selections) || selections.length === 0) {
     throw new ComboCheckoutError("Your combo selection is empty.");
@@ -377,24 +385,31 @@ function validSelections(
   const required = comboGetCount(offer);
   if (selections.length !== required) {
     throw new ComboCheckoutError(
-      `Please select exactly ${required} products for this offer (you picked ${selections.length}).`
+      `Please select exactly ${required} products for this offer (you picked ${selections.length}).`,
     );
   }
 
   const poolIds = new Set(offer.items.map((it) => it.product.id));
   const seen = new Set<string>();
   for (const sel of selections) {
-    if (!sel?.productId) throw new ComboCheckoutError("A product selection is invalid.");
+    if (!sel?.productId)
+      throw new ComboCheckoutError("A product selection is invalid.");
     if (!poolIds.has(sel.productId)) {
-      throw new ComboCheckoutError("One of the selected products is not part of this offer.");
+      throw new ComboCheckoutError(
+        "One of the selected products is not part of this offer.",
+      );
     }
     if (seen.has(sel.productId)) {
-      throw new ComboCheckoutError("You can select only one unit per product in a combo.");
+      throw new ComboCheckoutError(
+        "You can select only one unit per product in a combo.",
+      );
     }
     seen.add(sel.productId);
   }
   if (seen.size !== required) {
-    throw new ComboCheckoutError(`Select ${required} different products to continue.`);
+    throw new ComboCheckoutError(
+      `Select ${required} different products to continue.`,
+    );
   }
 
   return selections;
@@ -411,7 +426,7 @@ function validSelections(
  */
 export async function priceComboSelection(
   offer: FullCombo,
-  selections: ComboSelectionLine[]
+  selections: ComboSelectionLine[],
 ): Promise<ComboPricingSummary> {
   const lines = validSelections(offer, selections);
   const required = comboGetCount(offer);
@@ -426,12 +441,17 @@ export async function priceComboSelection(
     let variant: (typeof product.productvariant)[number] | null = null;
     if (product.productvariant.length > 0) {
       variant =
-        product.productvariant.find((v) => v.id === sel.productVariantId) ?? null;
+        product.productvariant.find((v) => v.id === sel.productVariantId) ??
+        null;
       if (!variant) {
-        throw new ComboCheckoutError(`Please choose a valid size for "${product.name}".`);
+        throw new ComboCheckoutError(
+          `Please choose a valid size for "${product.name}".`,
+        );
       }
       if (variant.stock < 1) {
-        throw new ComboCheckoutError(`"${product.name}" (${variant.size?.sizeName ?? variant.sku}) is out of stock.`);
+        throw new ComboCheckoutError(
+          `"${product.name}" (${variant.size?.sizeName ?? variant.sku}) is out of stock.`,
+        );
       }
       variantId = variant.id;
     } else if (Number(product.stock) < 1) {
@@ -469,9 +489,15 @@ export async function priceComboSelection(
   // `buyCount` (PICK_ANY always charges exactly 1) and mark everything else FREE.
   if (offer.comboType !== "FIXED_PRICE") {
     const buyCount =
-      offer.comboType === "PICK_ANY" ? 1 : Math.min(Math.max(1, Number(offer.buyCount) || 1), required);
-    const sortedByBase = [...items].sort((a, b) => b.originalBase - a.originalBase);
-    const paidIds = new Set<string>(sortedByBase.slice(0, buyCount).map((i) => i.productId));
+      offer.comboType === "PICK_ANY"
+        ? 1
+        : Math.min(Math.max(1, Number(offer.buyCount) || 1), required);
+    const sortedByBase = [...items].sort(
+      (a, b) => b.originalBase - a.originalBase,
+    );
+    const paidIds = new Set<string>(
+      sortedByBase.slice(0, buyCount).map((i) => i.productId),
+    );
     for (const item of items) {
       const isFree = !paidIds.has(item.productId);
       item.isFree = isFree;
@@ -490,8 +516,7 @@ export async function priceComboSelection(
         ? Math.min(custom, totalBase)
         : totalBase;
     const fullPriceItems = items.find((i) => i.originalBase > 0);
-    const effectiveTotalBase =
-      fullPriceItems && totalBase > 0 ? totalBase : 0;
+    const effectiveTotalBase = fullPriceItems && totalBase > 0 ? totalBase : 0;
 
     if (effectiveTotalBase > 0) {
       let allocatedSum = 0;
@@ -502,9 +527,13 @@ export async function priceComboSelection(
             ? Math.max(0, target - allocatedSum)
             : round2((item.originalBase / totalBase) * target);
         item.payBase = Math.max(0, Math.min(share, item.originalBase));
-        if (k < items.length - 1) allocatedSum = round2(allocatedSum + item.payBase);
+        if (k < items.length - 1)
+          allocatedSum = round2(allocatedSum + item.payBase);
         item.isFree = item.payBase <= 0;
-        item.payInclGst = getGstBreakdown(item.payBase, item.gstRate).priceInclGst;
+        item.payInclGst = getGstBreakdown(
+          item.payBase,
+          item.gstRate,
+        ).priceInclGst;
         item.comboDiscountUnit = round2(item.originalBase - item.payBase);
       }
     } else {
@@ -557,7 +586,10 @@ export async function priceComboSelection(
     payableTotal,
     savingsBase,
     savingsInclGst,
-    savingsPct: originalTotal > 0 ? Math.round((savingsBase / originalSubtotal) * 100 * 100) / 100 : 0,
+    savingsPct:
+      originalTotal > 0
+        ? Math.round((savingsBase / originalSubtotal) * 100 * 100) / 100
+        : 0,
   };
 }
 
@@ -571,8 +603,11 @@ export async function priceComboSelection(
  * address. Mirrors the order-creation pincode logic (restrictions + COD flag).
  */
 export async function comboShippingPreview(
-  priced: Pick<PricedComboItem, "productId" | "productName" | "weight" | "originalBase">[],
-  pincode: string
+  priced: Pick<
+    PricedComboItem,
+    "productId" | "productName" | "weight" | "originalBase"
+  >[],
+  pincode: string,
 ): Promise<{
   deliverable: boolean;
   allowCod: boolean;
@@ -621,9 +656,13 @@ export async function comboShippingPreview(
   const shippingResult = await calculateShipping(
     priced.map((i) => ({
       quantity: 1,
-      product: { weight: i.weight, salePrice: i.originalBase, sellingPrice: i.originalBase },
+      product: {
+        weight: i.weight,
+        salePrice: i.originalBase,
+        sellingPrice: i.originalBase,
+      },
     })),
-    false
+    false,
   );
 
   return {
@@ -672,7 +711,9 @@ export interface ComboOrderResult {
  * offer activity, selection rules, latest prices/stock, pincode restriction and
  * serviceability are all re-validated here.
  */
-export async function createComboOrder(input: CreateComboOrderInput): Promise<ComboOrderResult> {
+export async function createComboOrder(
+  input: CreateComboOrderInput,
+): Promise<ComboOrderResult> {
   const now = new Date();
 
   const offer = await prisma.comboOffer.findFirst({
@@ -719,7 +760,9 @@ export async function createComboOrder(input: CreateComboOrderInput): Promise<Co
     getCount: offer.getCount,
     customPrice: offer.customPrice === null ? null : Number(offer.customPrice),
     allowedPaymentMethods: offer.allowedPaymentMethods,
-    items: offer.items.map((it) => ({ product: it.product as unknown as ProductWithVariants })),
+    items: offer.items.map((it) => ({
+      product: it.product as unknown as ProductWithVariants,
+    })),
   };
 
   const priced = await priceComboSelection(fullOffer, input.selections);
@@ -731,21 +774,29 @@ export async function createComboOrder(input: CreateComboOrderInput): Promise<Co
   if (!user) throw new ComboCheckoutError("User not found.", 404);
 
   const address = user.addresses.find((a) => a.id === input.addressId);
-  if (!address) throw new ComboCheckoutError("Shipping address not found.", 400);
+  if (!address)
+    throw new ComboCheckoutError("Shipping address not found.", 400);
 
   // Pincode restrictions + serviceability (never trust the client).
-  const restrictedItems = await getRestrictedCartItems(priced.items, address.pincode);
+  const restrictedItems = await getRestrictedCartItems(
+    priced.items,
+    address.pincode,
+  );
   if (restrictedItems.length > 0) {
     throw new ComboCheckoutError(
-      `These products are not deliverable to pincode ${address.pincode}: ${restrictedItems.map((r) => r.productName).join(", ")}.`
+      `These products are not deliverable to pincode ${address.pincode}: ${restrictedItems.map((r) => r.productName).join(", ")}.`,
     );
   }
   const pincodeInfo = await getPincodeInfo(address.pincode);
   if (!pincodeInfo || !pincodeInfo.deliverable) {
-    throw new ComboCheckoutError(`Delivery is not available at pincode ${address.pincode}.`);
+    throw new ComboCheckoutError(
+      `Delivery is not available at pincode ${address.pincode}.`,
+    );
   }
   if (input.paymentMethod === "COD" && !pincodeInfo.allowCod) {
-    throw new ComboCheckoutError("COD is not available at this pincode. Please pay online.");
+    throw new ComboCheckoutError(
+      "COD is not available at this pincode. Please pay online.",
+    );
   }
 
   // Enforce the offer's configured payment methods (COD / online / both).
@@ -760,23 +811,25 @@ export async function createComboOrder(input: CreateComboOrderInput): Promise<Co
   // Per-product payment-method permissions (admin-set on each product). A
   // COD-only product can never be paid online, even inside a combo, and an
   // online-only product can never be paid by COD.
-  const selectedProductIds = new Set(
-    input.selections.map((s) => s.productId)
-  );
+  const selectedProductIds = new Set(input.selections.map((s) => s.productId));
   const selectedProducts = fullOffer.items
     .filter((it) => selectedProductIds.has(it.product.id))
     .map((it) => it.product as { allowedPaymentMethods?: string });
   const productBlocksCod = selectedProducts.some(
-    (p) => p.allowedPaymentMethods === "ONLINE_ONLY"
+    (p) => p.allowedPaymentMethods === "ONLINE_ONLY",
   );
   const productBlocksOnline = selectedProducts.some(
-    (p) => p.allowedPaymentMethods === "COD_ONLY"
+    (p) => p.allowedPaymentMethods === "COD_ONLY",
   );
   if (input.paymentMethod === "COD" && productBlocksCod) {
-    throw new ComboCheckoutError("COD is not available for one or more products in this offer. Please use online payment.");
+    throw new ComboCheckoutError(
+      "COD is not available for one or more products in this offer. Please use online payment.",
+    );
   }
   if (input.paymentMethod === "CASHFREE" && productBlocksOnline) {
-    throw new ComboCheckoutError("Online payment is not available for one or more products in this offer. Please use Cash on Delivery.");
+    throw new ComboCheckoutError(
+      "Online payment is not available for one or more products in this offer. Please use Cash on Delivery.",
+    );
   }
 
   const shippingResult = await calculateShipping(
@@ -789,15 +842,17 @@ export async function createComboOrder(input: CreateComboOrderInput): Promise<Co
       },
     })),
     false,
-    priced.payableSubtotal
+    priced.payableSubtotal,
   );
   const shipping = shippingResult.shipping;
 
-// Combo offers never stack with coupons or loyalty rewards (existing rule), so
+  // Combo offers never stack with coupons or loyalty rewards (existing rule), so
   // a dedicated combo order never applies a loyalty reward.
   const loyaltyDiscount = 0;
 
-  const total = round2(priced.payableSubtotal - loyaltyDiscount + shipping + priced.payableGst);
+  const total = round2(
+    priced.payableSubtotal - loyaltyDiscount + shipping + priced.payableGst,
+  );
   const comboSavings = priced.savingsBase;
 
   let transactionFee = 0;
@@ -928,23 +983,45 @@ export async function createComboOrder(input: CreateComboOrderInput): Promise<Co
         customerEmail: user.email,
         items: priced.items.map((item) => ({
           name: item.productName,
-          variant: [item.variantGender, item.variantSize ? `Size: ${item.variantSize}` : null].filter(Boolean).join(" · ") || undefined,
+          variant:
+            [
+              item.variantGender,
+              item.variantSize ? `Size: ${item.variantSize}` : null,
+            ]
+              .filter(Boolean)
+              .join(" · ") || undefined,
           qty: item.quantity,
-          price: round2(item.payBase + getGstBreakdown(item.payBase, item.gstRate).gstAmount) * item.quantity,
+          price:
+            round2(
+              item.payBase +
+                getGstBreakdown(item.payBase, item.gstRate).gstAmount,
+            ) * item.quantity,
         })),
         total,
         paymentMethod: "COD",
-        shippingAddress: [address.fullName, address.addressLine1, address.addressLine2, `${address.city}, ${address.state} — ${address.pincode}`].filter(Boolean).join("\n"),
+        shippingAddress: [
+          address.fullName,
+          address.addressLine1,
+          address.addressLine2,
+          `${address.city}, ${address.state} — ${address.pincode}`,
+        ]
+          .filter(Boolean)
+          .join("\n"),
       },
     }).catch(console.error);
 
     // Email the customer their combo COD confirmation (fire-and-forget, deduped
     // atomically on the order's confirmationEmailSent flag).
     void sendOrderConfirmationEmail({ orderId: order.id, type: "COD" }).catch(
-      console.error
+      console.error,
     );
 
-    return { orderId: order.id, orderNumber: order.orderNumber, paymentMethod: "COD", success: true };
+    return {
+      orderId: order.id,
+      orderNumber: order.orderNumber,
+      paymentMethod: "COD",
+      success: true,
+    };
   }
 
   // ── Cashfree (online gateway) ──
@@ -1003,6 +1080,10 @@ export async function createComboOrder(input: CreateComboOrderInput): Promise<Co
     dbOrderId: order.id,
     amount: paymentSession.amount,
     currency: paymentSession.currency,
-    customer: { name: address.fullName, email: user.email, contact: address.phone },
+    customer: {
+      name: address.fullName,
+      email: user.email,
+      contact: address.phone,
+    },
   };
 }

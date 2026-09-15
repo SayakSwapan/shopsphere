@@ -10,10 +10,7 @@ interface Params {
   }>;
 }
 
-export async function PUT(
-  req: Request,
-  { params }: Params
-) {
+export async function PUT(req: Request, { params }: Params) {
   try {
     const session = await getAdminSession();
 
@@ -23,7 +20,7 @@ export async function PUT(
           success: false,
           message: "Unauthorized",
         },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -38,7 +35,7 @@ export async function PUT(
           success: false,
           message: validationError,
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -51,15 +48,16 @@ export async function PUT(
       return NextResponse.json(
         {
           success: false,
-          message: "A product with this slug already exists. Please change the slug.",
+          message:
+            "A product with this slug already exists. Please change the slug.",
         },
-        { status: 409 }
+        { status: 409 },
       );
     }
 
     const imageUrls: string[] = (body.images ?? []).filter(
       (url: unknown): url is string =>
-        typeof url === "string" && url.trim().length > 0
+        typeof url === "string" && url.trim().length > 0,
     );
 
     // Whole update runs in one transaction so a partial failure
@@ -76,9 +74,16 @@ export async function PUT(
           description: body.description,
 
           sellingPrice: Number(body.sellingPrice),
+          discountedPrice:
+            body.discountedPrice != null &&
+            body.discountedPrice !== "" &&
+            Number(body.discountedPrice) > 0
+              ? Number(body.discountedPrice)
+              : null,
           costPrice: Number(body.costPrice),
           lastSellingProfitPercentage:
-            body.lastSellingProfitPercentage != null && body.lastSellingProfitPercentage !== ""
+            body.lastSellingProfitPercentage != null &&
+            body.lastSellingProfitPercentage !== ""
               ? Number(body.lastSellingProfitPercentage)
               : null,
           lastSellingPrice:
@@ -102,13 +107,9 @@ export async function PUT(
           isTrending: body.isTrending,
           status: body.status,
 
-          offerStart: body.offerStart
-            ? new Date(body.offerStart)
-            : null,
+          offerStart: body.offerStart ? new Date(body.offerStart) : null,
 
-          offerEnd: body.offerEnd
-            ? new Date(body.offerEnd)
-            : null,
+          offerEnd: body.offerEnd ? new Date(body.offerEnd) : null,
 
           stock: Number(body.stock),
           lowStockAlert: Number(body.lowStockAlert),
@@ -120,7 +121,7 @@ export async function PUT(
 
           restrictedPincodes: (body.restrictedPincodes ?? []).filter(
             (pincode: unknown): pincode is string =>
-              typeof pincode === "string" && /^\d{6}$/.test(pincode)
+              typeof pincode === "string" && /^\d{6}$/.test(pincode),
           ),
 
           allowedPaymentMethods:
@@ -155,9 +156,13 @@ export async function PUT(
       }
 
       // Print type links are fully replaced on every update.
-      const printTypeIds: string[] = (body.customPrintTypeIds ?? body.printTypeIds ?? []).filter(
+      const printTypeIds: string[] = (
+        body.customPrintTypeIds ??
+        body.printTypeIds ??
+        []
+      ).filter(
         (pid: unknown): pid is string =>
-          typeof pid === "string" && pid.trim().length > 0
+          typeof pid === "string" && pid.trim().length > 0,
       );
 
       await tx.productPrintType.deleteMany({
@@ -217,7 +222,7 @@ export async function PUT(
               stock: Number(v.stock),
               createdAt: new Date(),
               updatedAt: new Date(),
-            })
+            }),
           ),
         });
       }
@@ -237,15 +242,12 @@ export async function PUT(
       },
       {
         status: 500,
-      }
+      },
     );
   }
 }
 
-export async function PATCH(
-  req: Request,
-  { params }: Params
-) {
+export async function PATCH(req: Request, { params }: Params) {
   try {
     const session = await getAdminSession();
 
@@ -255,7 +257,7 @@ export async function PATCH(
           success: false,
           message: "Unauthorized",
         },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -277,7 +279,7 @@ export async function PATCH(
               success: false,
               message: `${key} must be a boolean.`,
             },
-            { status: 400 }
+            { status: 400 },
           );
         }
         data[key] = body[key];
@@ -290,7 +292,7 @@ export async function PATCH(
           success: false,
           message: "Nothing to update.",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -311,15 +313,12 @@ export async function PATCH(
         success: false,
         message: "Update Failed",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
-export async function DELETE(
-  req: Request,
-  { params }: Params
-) {
+export async function DELETE(req: Request, { params }: Params) {
   try {
     const session = await getAdminSession();
 
@@ -329,7 +328,7 @@ export async function DELETE(
           success: false,
           message: "Unauthorized",
         },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -347,7 +346,7 @@ export async function DELETE(
           message:
             "Cannot delete product with existing orders. Mark it as inactive instead.",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -408,7 +407,7 @@ export async function DELETE(
       },
       {
         status: 500,
-      }
+      },
     );
   }
 }

@@ -129,6 +129,14 @@ export default async function ProductPage({ params }: Props) {
   const gstRate = Number(product.gstPercentage || 0);
   const baseOriginal = Number(product.sellingPrice || 0);
 
+  // Independent discounted price: active whenever set and below the selling
+  // price — NO offer start/end dates required. Takes priority over the legacy
+  // discount type/value computation so the admin can show a fixed sale price
+  // independently of any schedule.
+  const independentPrice = Number(product.discountedPrice || 0);
+  const independentActive =
+    independentPrice > 0 && independentPrice < baseOriginal;
+
   // Server-side offer window gating: the discount only applies when the
   // current time falls within the offerStart → offerEnd window (or the
   // window is open-ended). When the offer is not active the customer should
@@ -140,13 +148,15 @@ export default async function ProductPage({ params }: Props) {
     (!product.offerStart || now >= new Date(product.offerStart)) &&
     (!product.offerEnd || now <= new Date(product.offerEnd));
 
-  const baseDisplay = offerActive
-    ? getEffectivePrice(
-        product.salePrice,
-        product.finalPrice,
-        product.sellingPrice,
-      )
-    : baseOriginal;
+  const baseDisplay = independentActive
+    ? independentPrice
+    : offerActive
+      ? getEffectivePrice(
+          product.salePrice,
+          product.finalPrice,
+          product.sellingPrice,
+        )
+      : baseOriginal;
 
   // All customer-facing prices are GST-inclusive. The discount is derived from
   // the real price gap so the "% OFF" badge always matches the rupee savings.
@@ -154,16 +164,18 @@ export default async function ProductPage({ params }: Props) {
   const displayPrice = priceWithGst(baseDisplay, gstRate);
 
   const hasDiscount =
-    offerActive &&
+    (independentActive || (offerActive && product.discountValue > 0)) &&
     baseOriginal > baseDisplay &&
     baseDisplay > 0 &&
     displayPrice < originalPrice;
 
   // An offer is "upcoming" when a discount is configured with a future start —
   // the discounted price isn't live yet, but we surface a countdown so the
-  // customer knows the offer is about to drop.
+  // customer knows the offer is about to drop. NOT triggered by the independent
+  // discounted price (a schedule is optional metadata there).
   const offerUpcoming =
     !offerActive &&
+    !independentActive &&
     product.discountValue > 0 &&
     product.offerStart &&
     now < new Date(product.offerStart);
@@ -175,12 +187,15 @@ export default async function ProductPage({ params }: Props) {
       : 0;
 
   // Label always matches the rupee savings. FIXED discounts keep a rupee
-  // label (GST-inclusive), everything else shows the real % off.
+  // label (GST-inclusive), everything else shows the real % off. Independent
+  // discounted price always uses the computed percent-off.
   const discountLabel =
     hasDiscount && savings > 0
-      ? isFlatDiscount(product.discountType)
-        ? `₹${Math.round(savings).toLocaleString("en-IN")} OFF`
-        : `${percentOff}% OFF`
+      ? independentActive
+        ? `${percentOff}% OFF`
+        : isFlatDiscount(product.discountType)
+          ? `₹${Math.round(savings).toLocaleString("en-IN")} OFF`
+          : `${percentOff}% OFF`
       : "";
 
   const inStock = product.stock > 0;

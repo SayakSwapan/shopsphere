@@ -204,6 +204,8 @@ export default function ProductForm({
 
         finalPrice: 0,
 
+        discountedPrice: 0,
+
         offerStart: "",
 
         offerEnd: "",
@@ -284,6 +286,8 @@ export default function ProductForm({
       discountValue: Number(product.discountValue),
       salePrice: Number(product.salePrice),
       finalPrice: Number(product.finalPrice),
+      discountedPrice:
+        (product as { discountedPrice?: number }).discountedPrice ?? 0,
       gstPercentage: Number(product.gstPercentage) || 0,
       weight: Number(product.weight) || 0,
       metaTitle: product.metaTitle ?? "",

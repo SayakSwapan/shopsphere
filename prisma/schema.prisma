@@ -311,10 +311,17 @@ model product {
 
   discountType String @default("PERCENT") 
   discountValue Float @default(0) 
-  salePrice Float @default(0) 
+  salePrice Float @default(0)
   offerStart DateTime?
   offerEnd DateTime?
   finalPrice Float @default(0)
+
+  // Independent discounted price (pre-GST base) that works WITHOUT offer dates.
+  // When set and < sellingPrice, the frontend shows ~~MRP~~ Discounted Price
+  // immediately — no offer schedule required. Offer dates remain optional
+  // metadata that only adds a countdown/timer to the same discount display.
+  discountedPrice Float?
+
   gstPercentage Float @default(0)
   weight Int @default(0) // grams
   stock          Int

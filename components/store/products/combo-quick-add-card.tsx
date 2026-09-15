@@ -25,6 +25,7 @@ export interface ComboQuickAddProduct {
   name: string;
   slug: string;
   sellingPrice: string;
+  discountedPrice?: string | null;
   salePrice: string | null;
   finalPrice: string | null;
   discountType: string | null;
@@ -121,29 +122,37 @@ export default function ComboQuickAddCard({
   const now = new Date();
   const discountType = String(product.discountType || "").toUpperCase();
   const discountValue = Number(product.discountValue || 0);
+
+  // Independent discounted price: active whenever set and below the selling
+  // price — NO offer start/end dates required.
+  const sellingPriceNum = Number(product.sellingPrice || 0);
+  const independentPrice = Number(product.discountedPrice || 0);
+  const independentActive =
+    independentPrice > 0 && independentPrice < sellingPriceNum;
+
   const offerActive =
     discountValue > 0 &&
     (!product.offerStart || now >= new Date(product.offerStart)) &&
     (!product.offerEnd || now <= new Date(product.offerEnd));
   const hasDiscount =
-    offerActive &&
-    discountValue > 0 &&
-    (isPercentDiscount(discountType) || isFlatDiscount(discountType));
+    independentActive ||
+    (offerActive &&
+      discountValue > 0 &&
+      (isPercentDiscount(discountType) || isFlatDiscount(discountType)));
 
   const displayPrice = priceWithGst(
-    hasDiscount
-      ? getEffectivePrice(
-          product.salePrice ? Number(product.salePrice) : undefined,
-          product.finalPrice ? Number(product.finalPrice) : undefined,
-          Number(product.sellingPrice || 0),
-        )
-      : Number(product.sellingPrice || 0),
+    independentActive
+      ? independentPrice
+      : hasDiscount
+        ? getEffectivePrice(
+            product.salePrice ? Number(product.salePrice) : undefined,
+            product.finalPrice ? Number(product.finalPrice) : undefined,
+            sellingPriceNum,
+          )
+        : sellingPriceNum,
     gstRate,
   );
-  const originalPrice = priceWithGst(
-    Number(product.sellingPrice || 0),
-    gstRate,
-  );
+  const originalPrice = priceWithGst(sellingPriceNum, gstRate);
 
   const hasStock =
     sizeGroups.some((g) => g.inStock) ||

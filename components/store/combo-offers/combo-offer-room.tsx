@@ -36,6 +36,7 @@ interface ComboRoomProduct {
   slug: string;
   description: string | null;
   sellingPrice: number;
+  discountedPrice: number | null;
   salePrice: number | null;
   finalPrice: number | null;
   discountType: string | null;
@@ -161,6 +162,13 @@ function getEffectivePrice(
 
 /** Pre-GST unit price the customer actually pays today (offer-window aware). */
 function activeBase(p: ComboRoomProduct): number {
+  // Independent discounted price: active whenever set and below the selling
+  // price — NO offer start/end dates required.
+  const discountedPrice = Number(p.discountedPrice || 0);
+  const sellingPrice = Number(p.sellingPrice) || 0;
+  if (discountedPrice > 0 && discountedPrice < sellingPrice) {
+    return discountedPrice;
+  }
   const discountValue = Number(p.discountValue || 0);
   const discountType = String(p.discountType || "").toUpperCase();
   const offerActive =
@@ -168,12 +176,8 @@ function activeBase(p: ComboRoomProduct): number {
     (isPercentDiscount(discountType) || isFlatDiscount(discountType)) &&
     (!p.offerStart || new Date() >= new Date(p.offerStart)) &&
     (!p.offerEnd || new Date() <= new Date(p.offerEnd));
-  if (!offerActive) return Number(p.sellingPrice) || 0;
-  return getEffectivePrice(
-    p.salePrice,
-    p.finalPrice,
-    Number(p.sellingPrice) || 0,
-  );
+  if (!offerActive) return sellingPrice;
+  return getEffectivePrice(p.salePrice, p.finalPrice, sellingPrice);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

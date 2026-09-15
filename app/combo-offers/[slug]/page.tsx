@@ -12,7 +12,8 @@ interface PageProps {
   params: Promise<{ slug: string }>;
 }
 
-const toNum = (v: unknown): number => (Number.isFinite(Number(v)) ? Number(v) : 0);
+const toNum = (v: unknown): number =>
+  Number.isFinite(Number(v)) ? Number(v) : 0;
 
 export default async function ComboOfferDetailPage({ params }: PageProps) {
   const { slug } = await params;
@@ -39,15 +40,24 @@ export default async function ComboOfferDetailPage({ params }: PageProps) {
         slug: product.slug,
         description: product.description,
         sellingPrice: toNum(product.sellingPrice),
+        discountedPrice:
+          product.discountedPrice != null
+            ? toNum(product.discountedPrice)
+            : null,
         salePrice: product.salePrice != null ? toNum(product.salePrice) : null,
-        finalPrice: product.finalPrice != null ? toNum(product.finalPrice) : null,
+        finalPrice:
+          product.finalPrice != null ? toNum(product.finalPrice) : null,
         discountType: product.discountType,
-        discountValue: product.discountValue != null ? toNum(product.discountValue) : null,
+        discountValue:
+          product.discountValue != null ? toNum(product.discountValue) : null,
         offerStart: product.offerStart?.toISOString() ?? null,
         offerEnd: product.offerEnd?.toISOString() ?? null,
         gstPercentage: toNum(product.gstPercentage),
         costPrice: product.costPrice != null ? toNum(product.costPrice) : null,
-        lastSellingPrice: product.lastSellingPrice != null ? toNum(product.lastSellingPrice) : null,
+        lastSellingPrice:
+          product.lastSellingPrice != null
+            ? toNum(product.lastSellingPrice)
+            : null,
         stock: product.stock,
         weight: product.weight != null ? toNum(product.weight) : null,
         restrictedPincodes: product.restrictedPincodes,

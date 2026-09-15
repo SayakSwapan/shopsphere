@@ -10,6 +10,7 @@ interface Product {
   name: string;
   slug: string;
   sellingPrice: number;
+  discountedPrice?: number;
   salePrice?: number;
   finalPrice?: number;
   discountType?: string;
@@ -78,7 +79,11 @@ export default function WishlistPageContent({ initialProducts }: Props) {
         <Link
           href="/products"
           className="inline-flex items-center gap-2 px-6 py-3 font-bold text-sm uppercase tracking-wider transition-all duration-300 bg-primary hover:opacity-90"
-          style={{ borderRadius: "var(--t-radius-button)", color: "var(--t-bg-page)", fontFamily: "var(--t-font-heading)" }}
+          style={{
+            borderRadius: "var(--t-radius-button)",
+            color: "var(--t-bg-page)",
+            fontFamily: "var(--t-font-heading)",
+          }}
         >
           <ShoppingCart size={16} />
           Start Shopping

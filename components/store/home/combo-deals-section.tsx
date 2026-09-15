@@ -11,6 +11,7 @@ function baseOf(p: {
   salePrice: number | null;
   finalPrice: number | null;
   sellingPrice: number;
+  discountedPrice?: number | null;
   discountType?: string | null;
   discountValue?: number | null;
   offerStart?: Date | string | null;
@@ -24,6 +25,7 @@ function baseOf(p: {
     discountValue: p.discountValue,
     offerStart: p.offerStart,
     offerEnd: p.offerEnd,
+    discountedPrice: p.discountedPrice,
   });
 }
 
@@ -106,6 +108,7 @@ interface ComboWithItems {
       name: string;
       slug: string;
       sellingPrice: number;
+      discountedPrice?: number | null;
       salePrice: number | null;
       finalPrice: number | null;
       gstPercentage: number;
@@ -140,21 +143,27 @@ function ComboGrid({ combos }: { combos: ComboWithItems[] }) {
         <Link
           href="/combo-offers"
           className="hidden sm:block font-black uppercase text-xs px-7 py-3 border border-primary/40 text-primary hover:bg-primary/10 transition-all"
-          style={{ letterSpacing: "0.1em", borderRadius: "var(--t-radius-button)", fontFamily: "var(--t-font-heading)" }}
+          style={{
+            letterSpacing: "0.1em",
+            borderRadius: "var(--t-radius-button)",
+            fontFamily: "var(--t-font-heading)",
+          }}
         >
           View All →
         </Link>
       </div>
       <div
         className="h-[2px] mb-px"
-        style={{ background: "linear-gradient(90deg, var(--t-primary), transparent)" }}
+        style={{
+          background: "linear-gradient(90deg, var(--t-primary), transparent)",
+        }}
       />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         {combos.map((combo) => {
           const totalNormal = combo.items.reduce(
             (s, it) => s + baseOf(it.product) * it.quantity,
-            0
+            0,
           );
           const { offerLine, badge, freeIds } = comboDealDetails(combo);
           return (
@@ -166,7 +175,10 @@ function ComboGrid({ combos }: { combos: ComboWithItems[] }) {
             >
               <div
                 className="absolute inset-x-0 top-0 h-1"
-                style={{ background: "linear-gradient(90deg, var(--t-primary), var(--t-accent))" }}
+                style={{
+                  background:
+                    "linear-gradient(90deg, var(--t-primary), var(--t-accent))",
+                }}
               />
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -177,14 +189,17 @@ function ComboGrid({ combos }: { combos: ComboWithItems[] }) {
                     {combo.title}
                   </h3>
                   {combo.headline && (
-                    <p className="mt-1 text-xs text-text-muted-1 truncate">{combo.headline}</p>
+                    <p className="mt-1 text-xs text-text-muted-1 truncate">
+                      {combo.headline}
+                    </p>
                   )}
                 </div>
                 <span
                   className="flex-shrink-0 inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider"
                   style={{
                     borderRadius: "var(--t-radius-badge)",
-                    background: "color-mix(in srgb, var(--t-primary) 15%, transparent)",
+                    background:
+                      "color-mix(in srgb, var(--t-primary) 15%, transparent)",
                     color: "var(--t-primary)",
                     fontFamily: "var(--t-font-heading)",
                   }}
@@ -217,7 +232,7 @@ function ComboGrid({ combos }: { combos: ComboWithItems[] }) {
                         </span>
                       )}
                     </div>
-                  ) : null
+                  ) : null,
                 )}
               </div>
 
@@ -232,7 +247,10 @@ function ComboGrid({ combos }: { combos: ComboWithItems[] }) {
                 </div>
                 <span
                   className="font-black text-base sm:text-lg text-right leading-tight"
-                  style={{ color: "var(--t-primary)", fontFamily: "var(--t-font-heading)" }}
+                  style={{
+                    color: "var(--t-primary)",
+                    fontFamily: "var(--t-font-heading)",
+                  }}
                 >
                   {offerLine}
                 </span>
@@ -249,7 +267,11 @@ function ComboGrid({ combos }: { combos: ComboWithItems[] }) {
       <Link
         href="/combo-offers"
         className="sm:hidden block mt-6 text-center font-black uppercase text-xs px-7 py-3 border border-primary/40 text-primary hover:bg-primary/10 transition-all"
-        style={{ letterSpacing: "0.1em", borderRadius: "var(--t-radius-button)", fontFamily: "var(--t-font-heading)" }}
+        style={{
+          letterSpacing: "0.1em",
+          borderRadius: "var(--t-radius-button)",
+          fontFamily: "var(--t-font-heading)",
+        }}
       >
         View All →
       </Link>
@@ -278,6 +300,7 @@ export default async function ComboDealsSection() {
               name: true,
               slug: true,
               sellingPrice: true,
+              discountedPrice: true,
               salePrice: true,
               finalPrice: true,
               gstPercentage: true,

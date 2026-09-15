@@ -13,7 +13,10 @@ export async function GET() {
   try {
     const session = await getAdminSession();
     if (!session || session.user.role !== "ADMIN") {
-      return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
+      return NextResponse.json(
+        { success: false, message: "Unauthorized" },
+        { status: 401 },
+      );
     }
 
     const now = new Date();
@@ -34,6 +37,7 @@ export async function GET() {
                 id: true,
                 name: true,
                 sellingPrice: true,
+                discountedPrice: true,
                 salePrice: true,
                 costPrice: true,
                 gstPercentage: true,
@@ -78,7 +82,9 @@ export async function GET() {
           name: p.name,
           category: p.category?.name ?? null,
           sellingPrice: Number(p.sellingPrice),
-          onlineSellingPrice: Number(p.salePrice || p.sellingPrice || 0),
+          onlineSellingPrice: Number(
+            p.discountedPrice || p.salePrice || p.sellingPrice || 0,
+          ),
           costPrice: Number(p.costPrice),
           gstPercentage: Number(p.gstPercentage) || 0,
           stock: p.stock,
@@ -107,7 +113,7 @@ export async function GET() {
     console.error("OFFLINE COMBO OPTIONS ERROR:", error);
     return NextResponse.json(
       { success: false, message: "Failed to load combo offers" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

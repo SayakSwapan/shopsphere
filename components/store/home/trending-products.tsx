@@ -17,6 +17,7 @@ interface ProductRow {
   name: string;
   slug: string;
   sellingPrice: unknown;
+  discountedPrice: unknown;
   discountType: string;
   discountValue: unknown;
   salePrice: unknown;
@@ -137,12 +138,22 @@ export default async function TrendingProducts() {
               Number(product.sellingPrice || 0),
               gstRate,
             );
+
+            // Independent discounted price: active whenever set and below the
+            // selling price — NO offer start/end dates required.
+            const independentPrice = Number(product.discountedPrice || 0);
+            const independentActive =
+              independentPrice > 0 &&
+              independentPrice < Number(product.sellingPrice || 0);
+
             const displayPrice = priceWithGst(
-              getEffectivePrice(
-                product.salePrice,
-                product.finalPrice,
-                product.sellingPrice,
-              ),
+              independentActive
+                ? independentPrice
+                : getEffectivePrice(
+                    product.salePrice,
+                    product.finalPrice,
+                    product.sellingPrice,
+                  ),
               gstRate,
             );
 
@@ -159,8 +170,18 @@ export default async function TrendingProducts() {
               product.discountType || "",
             ).toUpperCase();
             const hasDiscount =
-              Number(product.discountValue || 0) > 0 &&
-              (isPercentDiscount(discountType) || isFlatDiscount(discountType));
+              independentActive ||
+              (Number(product.discountValue || 0) > 0 &&
+                (isPercentDiscount(discountType) ||
+                  isFlatDiscount(discountType)));
+
+            const discountLabel = independentActive
+              ? `${Math.round(
+                  ((originalPrice - displayPrice) / originalPrice) * 100,
+                )}% OFF`
+              : isFlatDiscount(discountType)
+                ? `₹${Number(product.discountValue)} OFF`
+                : `${Number(product.discountValue)}% OFF`;
 
             return (
               <div
@@ -205,9 +226,7 @@ export default async function TrendingProducts() {
                         borderRadius: "var(--t-radius-badge)",
                       }}
                     >
-                      {isFlatDiscount(discountType)
-                        ? `₹${Number(product.discountValue)} OFF`
-                        : `${Number(product.discountValue)}% OFF`}
+                      {discountLabel}
                     </span>
                   )}
 

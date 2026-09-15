@@ -87,7 +87,12 @@ function ctaButton(href: string, label: string): string {
 }
 
 /** Label/value row inside an info box. */
-function kvRow(label: string, value: string, valueColor = INK, strong = false): string {
+function kvRow(
+  label: string,
+  value: string,
+  valueColor = INK,
+  strong = false,
+): string {
   return `<tr><td style="padding:6px 0;"><p style="color:${MUTED};font-size:13px;margin:0;">${label}</p></td><td align="right" style="padding:6px 0;"><p style="color:${valueColor};font-size:14px;font-weight:${strong ? "bold" : "normal"};margin:0;">${value}</p></td></tr>`;
 }
 
@@ -98,7 +103,11 @@ const INFO_BOX_STYLES: Record<string, string> = {
   warning: `background:${WARNING_BG};border:1px solid ${WARNING_BORDER};`,
 };
 
-function infoBox(inner: string, variant: keyof typeof INFO_BOX_STYLES = "default", align = "left"): string {
+function infoBox(
+  inner: string,
+  variant: keyof typeof INFO_BOX_STYLES = "default",
+  align = "left",
+): string {
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="${INFO_BOX_STYLES[variant]}border-radius:12px;margin:0 0 24px 0;"><tr><td style="padding:20px 24px;text-align:${align};">${inner}</td></tr></table>`;
 }
 
@@ -112,7 +121,10 @@ function noteLine(content: string): string {
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-top:1px solid ${DIVIDER};margin-top:24px;"><tr><td style="padding-top:20px;"><p style="color:${MUTED};font-size:12px;line-height:1.6;margin:0;">${content}</p></td></tr></table>`;
 }
 
-const SUPPORT = "Questions? Contact us at <a href=\"mailto:{{supportEmail}}\" style=\"color:" + ACCENT + ";text-decoration:underline;\">{{supportEmail}}</a>.";
+const SUPPORT =
+  'Questions? Contact us at <a href="mailto:{{supportEmail}}" style="color:' +
+  ACCENT +
+  ';text-decoration:underline;">{{supportEmail}}</a>.';
 
 const EMAIL_TEMPLATES = [
   {
@@ -120,16 +132,23 @@ const EMAIL_TEMPLATES = [
     templateName: "Login OTP",
     subject: "Your {{siteName}} Login Code: {{otp}}",
     description: "Sent when a user requests an OTP for login",
-    placeholders: "{{otp}},{{customerName}},{{expiryMinutes}},{{email}},{{logoBlock}},{{supportEmail}}",
+    placeholders:
+      "{{otp}},{{customerName}},{{expiryMinutes}},{{email}},{{logoBlock}},{{supportEmail}}",
     body: emailShell(
       headingBlock(
         "Login Verification",
         "Hello, {{customerName}}",
-        "Use the code below to complete your login. This code is valid for <strong style=\"color:" + INK + ";\">{{expiryMinutes}} minutes</strong>."
+        'Use the code below to complete your login. This code is valid for <strong style="color:' +
+          INK +
+          ';">{{expiryMinutes}} minutes</strong>.',
       ) +
         otpCode("Your Login Code", "{{otp}}") +
-        noteLine("This OTP was sent to <strong style=\"color:" + INK + ";\">{{email}}</strong>. Never share this code with anyone."),
-      "If you did not request this code, you can safely ignore this email."
+        noteLine(
+          'This OTP was sent to <strong style="color:' +
+            INK +
+            ';">{{email}}</strong>. Never share this code with anyone.',
+        ),
+      "If you did not request this code, you can safely ignore this email.",
     ),
   },
   {
@@ -137,16 +156,23 @@ const EMAIL_TEMPLATES = [
     templateName: "Forgot Password OTP",
     subject: "{{siteName}} — Password Reset Request",
     description: "Sent when a user requests a password reset",
-    placeholders: "{{customerName}},{{otp}},{{expiryMinutes}},{{email}},{{logoBlock}},{{supportEmail}}",
+    placeholders:
+      "{{customerName}},{{otp}},{{expiryMinutes}},{{email}},{{logoBlock}},{{supportEmail}}",
     body: emailShell(
       headingBlock(
         "Password Reset",
         "Hello, {{customerName}}",
-        "We received a request to reset the password for your {{siteName}} account. Use the code below to proceed. This code is valid for <strong style=\"color:" + INK + ";\">{{expiryMinutes}} minutes</strong>."
+        'We received a request to reset the password for your {{siteName}} account. Use the code below to proceed. This code is valid for <strong style="color:' +
+          INK +
+          ';">{{expiryMinutes}} minutes</strong>.',
       ) +
         otpCode("Your Reset Code", "{{otp}}") +
-        noteLine("For security, this OTP was sent to <strong style=\"color:" + INK + ";\">{{email}}</strong>. Never share this code with anyone."),
-      "If you did not request a password reset, you can safely ignore this email. Your password will remain unchanged."
+        noteLine(
+          'For security, this OTP was sent to <strong style="color:' +
+            INK +
+            ';">{{email}}</strong>. Never share this code with anyone.',
+        ),
+      "If you did not request a password reset, you can safely ignore this email. Your password will remain unchanged.",
     ),
   },
   {
@@ -154,16 +180,23 @@ const EMAIL_TEMPLATES = [
     templateName: "Email Verification",
     subject: "Verify Your {{siteName}} Email Address",
     description: "Sent to verify a newly registered customer's email",
-    placeholders: "{{customerName}},{{otp}},{{expiryMinutes}},{{email}},{{logoBlock}},{{supportEmail}}",
+    placeholders:
+      "{{customerName}},{{otp}},{{expiryMinutes}},{{email}},{{logoBlock}},{{supportEmail}}",
     body: emailShell(
       headingBlock(
         "Email Verification",
         "Welcome, {{customerName}}!",
-        "Thank you for creating your {{siteName}} account. Please verify your email address using the code below. This code is valid for <strong style=\"color:" + INK + ";\">{{expiryMinutes}} minutes</strong>."
+        'Thank you for creating your {{siteName}} account. Please verify your email address using the code below. This code is valid for <strong style="color:' +
+          INK +
+          ';">{{expiryMinutes}} minutes</strong>.',
       ) +
         otpCode("Your Verification Code", "{{otp}}") +
-        noteLine("This verification code was sent to <strong style=\"color:" + INK + ";\">{{email}}</strong>. Never share this code with anyone."),
-      "If you didn't create this account, please ignore this email."
+        noteLine(
+          'This verification code was sent to <strong style="color:' +
+            INK +
+            ';">{{email}}</strong>. Never share this code with anyone.',
+        ),
+      "If you didn't create this account, please ignore this email.",
     ),
   },
   {
@@ -176,7 +209,7 @@ const EMAIL_TEMPLATES = [
       headingBlock(
         "Welcome Aboard",
         "Hello, {{customerName}}!",
-        "Your email has been verified and your account is now fully active. You&apos;re ready to explore the latest trends in fashion, footwear, accessories, and lifestyle products."
+        "Your email has been verified and your account is now fully active. You&apos;re ready to explore the latest trends in fashion, footwear, accessories, and lifestyle products.",
       ) +
         infoBox(
           '<p style="color:' +
@@ -187,11 +220,41 @@ const EMAIL_TEMPLATES = [
             ACCENT +
             ';font-size:24px;font-weight:800;letter-spacing:4px;margin:0;text-align:center;">WELCOME10</p>',
           "warning",
-          "center"
+          "center",
         ) +
         ctaButton("https://shopsphere.com", "Start Shopping") +
         noteLine("Need help? " + SUPPORT),
-      SUPPORT
+      SUPPORT,
+    ),
+  },
+  {
+    templateKey: "welcome_back_email",
+    templateName: "Welcome Back Email",
+    subject: "We Miss You, {{customerName}}! Here's {{couponValue}} Off",
+    description:
+      "Sent to a returning customer who logs in after more than one month of inactivity",
+    placeholders:
+      "{{customerName}},{{couponCode}},{{couponValue}},{{email}},{{logoBlock}},{{supportEmail}}",
+    body: emailShell(
+      headingBlock(
+        "Welcome Back",
+        "Good to see you again, {{customerName}}!",
+        "It's been a while since your last visit. We've been working on new collections and can't wait for you to check them out.",
+      ) +
+        infoBox(
+          '<p style="color:' +
+            MUTED +
+            ';font-size:13px;margin:0 0 6px 0;">Here&apos;s a little something for coming back &mdash; enjoy <strong style="color:' +
+            INK +
+            ';">{{couponValue}}</strong> off your next order with code</p><p style="color:' +
+            ACCENT +
+            ';font-size:24px;font-weight:800;letter-spacing:4px;margin:0;text-align:center;">{{couponCode}}</p>',
+          "warning",
+          "center",
+        ) +
+        ctaButton("https://shopsphere.com", "Shop Now") +
+        noteLine("This coupon is valid for a limited time. " + SUPPORT),
+      SUPPORT,
     ),
   },
   {
@@ -204,7 +267,7 @@ const EMAIL_TEMPLATES = [
       headingBlock(
         "Security Alert",
         "Password Changed",
-        "Hello {{customerName}}, the password for your {{siteName}} account has been successfully changed. If this was you, no further action is needed."
+        "Hello {{customerName}}, the password for your {{siteName}} account has been successfully changed. If this was you, no further action is needed.",
       ) +
         infoBox(
           '<p style="color:' +
@@ -214,10 +277,14 @@ const EMAIL_TEMPLATES = [
             ';font-size:13px;line-height:1.6;margin:0;">If you did not make this change, please contact our support team immediately at <a href="mailto:{{supportEmail}}" style="color:' +
             ACCENT +
             ';text-decoration:underline;">{{supportEmail}}</a>.</p>',
-          "danger"
+          "danger",
         ) +
-        noteLine("This notification was sent to <strong style=\"color:" + INK + ";\">{{email}}</strong>."),
-      SUPPORT
+        noteLine(
+          'This notification was sent to <strong style="color:' +
+            INK +
+            ';">{{email}}</strong>.',
+        ),
+      SUPPORT,
     ),
   },
   {
@@ -225,12 +292,13 @@ const EMAIL_TEMPLATES = [
     templateName: "Order Confirmation",
     subject: "Order Confirmed — #{{orderNumber}}",
     description: "Sent after a customer places an order",
-    placeholders: "{{customerName}},{{orderNumber}},{{orderTotal}},{{orderStatus}},{{logoBlock}},{{supportEmail}}",
+    placeholders:
+      "{{customerName}},{{orderNumber}},{{orderTotal}},{{orderStatus}},{{logoBlock}},{{supportEmail}}",
     body: emailShell(
       headingBlock(
         "Order Confirmed",
         "Thank you, {{customerName}}!",
-        "Your order has been placed successfully. We&apos;ll notify you when it ships."
+        "Your order has been placed successfully. We&apos;ll notify you when it ships.",
       ) +
         infoBox(
           '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">' +
@@ -238,11 +306,11 @@ const EMAIL_TEMPLATES = [
             kvRow("Order Total", "{{orderTotal}}", INK, true) +
             kvRow("Status", "{{orderStatus}}", SUCCESS_TEXT, true) +
             "</table>",
-          "success"
+          "success",
         ) +
         ctaButton("https://shopsphere.com/account/orders", "Track Your Order") +
         noteLine(SUPPORT),
-      SUPPORT
+      SUPPORT,
     ),
   },
   {
@@ -250,9 +318,14 @@ const EMAIL_TEMPLATES = [
     templateName: "Order Confirmation (Paid)",
     subject: "Order #{{orderNumber}} confirmed — payment received",
     description: "Sent to the customer after an online payment is confirmed",
-    placeholders: "{{customerName}},{{orderNumber}},{{orderDate}},{{paymentMethod}},{{paymentStatus}},{{itemsTable}},{{subtotal}},{{gst}},{{shipping}},{{discount}},{{total}},{{shippingName}},{{shippingAddress}},{{shippingPhone}},{{customerEmail}},{{messageHeadline}},{{messageBody}},{{supportEmail}},{{logoBlock}}",
+    placeholders:
+      "{{customerName}},{{orderNumber}},{{orderDate}},{{paymentMethod}},{{paymentStatus}},{{itemsTable}},{{subtotal}},{{gst}},{{shipping}},{{discount}},{{total}},{{shippingName}},{{shippingAddress}},{{shippingPhone}},{{customerEmail}},{{messageHeadline}},{{messageBody}},{{supportEmail}},{{logoBlock}}",
     body: emailShell(
-      headingBlock("Payment Received", "Hello, {{customerName}}", "{{messageBody}}") +
+      headingBlock(
+        "Payment Received",
+        "Hello, {{customerName}}",
+        "{{messageBody}}",
+      ) +
         infoBox(
           '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">' +
             kvRow("Order Number", "#{{orderNumber}}", ACCENT, true) +
@@ -261,7 +334,7 @@ const EMAIL_TEMPLATES = [
             kvRow("Payment Status", "{{paymentStatus}}", SUCCESS_TEXT, true) +
             kvRow("Order Total", "{{total}}", INK, true) +
             "</table>",
-          "success"
+          "success",
         ) +
         sectionLabel("Order Summary") +
         "{{itemsTable}}" +
@@ -290,18 +363,28 @@ const EMAIL_TEMPLATES = [
         '<p style="color:' +
         MUTED +
         ';font-size:13px;line-height:1.7;margin:4px 0 0 0;">Phone: {{shippingPhone}}</p>' +
-        noteLine("This confirmation was sent to <strong style=\"color:" + INK + ";\">{{customerEmail}}</strong>."),
-      SUPPORT
+        noteLine(
+          'This confirmation was sent to <strong style="color:' +
+            INK +
+            ';">{{customerEmail}}</strong>.',
+        ),
+      SUPPORT,
     ),
   },
   {
     templateKey: "order_confirmation_cod",
     templateName: "Order Confirmation (COD)",
     subject: "Order #{{orderNumber}} confirmed",
-    description: "Sent to the customer right after a Cash-on-Delivery order is placed",
-    placeholders: "{{customerName}},{{orderNumber}},{{orderDate}},{{paymentMethod}},{{paymentStatus}},{{itemsTable}},{{subtotal}},{{gst}},{{shipping}},{{discount}},{{total}},{{shippingName}},{{shippingAddress}},{{shippingPhone}},{{customerEmail}},{{messageHeadline}},{{messageBody}},{{supportEmail}},{{logoBlock}}",
+    description:
+      "Sent to the customer right after a Cash-on-Delivery order is placed",
+    placeholders:
+      "{{customerName}},{{orderNumber}},{{orderDate}},{{paymentMethod}},{{paymentStatus}},{{itemsTable}},{{subtotal}},{{gst}},{{shipping}},{{discount}},{{total}},{{shippingName}},{{shippingAddress}},{{shippingPhone}},{{customerEmail}},{{messageHeadline}},{{messageBody}},{{supportEmail}},{{logoBlock}}",
     body: emailShell(
-      headingBlock("Order Confirmed", "Hello, {{customerName}}", "{{messageBody}}") +
+      headingBlock(
+        "Order Confirmed",
+        "Hello, {{customerName}}",
+        "{{messageBody}}",
+      ) +
         infoBox(
           '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">' +
             kvRow("Order Number", "#{{orderNumber}}", ACCENT, true) +
@@ -310,7 +393,7 @@ const EMAIL_TEMPLATES = [
             kvRow("Payment Status", "{{paymentStatus}}", ACCENT, true) +
             kvRow("Total Payable on Delivery", "{{total}}", INK, true) +
             "</table>",
-          "warning"
+          "warning",
         ) +
         sectionLabel("Order Summary") +
         "{{itemsTable}}" +
@@ -339,8 +422,14 @@ const EMAIL_TEMPLATES = [
         '<p style="color:' +
         MUTED +
         ';font-size:13px;line-height:1.7;margin:4px 0 0 0;">Phone: {{shippingPhone}}</p>' +
-        noteLine("Please keep <strong style=\"color:" + ACCENT + ";\">{{total}}</strong> ready in cash when the delivery partner arrives. This confirmation was sent to <strong style=\"color:" + INK + ";\">{{customerEmail}}</strong>."),
-      SUPPORT
+        noteLine(
+          'Please keep <strong style="color:' +
+            ACCENT +
+            ';">{{total}}</strong> ready in cash when the delivery partner arrives. This confirmation was sent to <strong style="color:' +
+            INK +
+            ';">{{customerEmail}}</strong>.',
+        ),
+      SUPPORT,
     ),
   },
   {
@@ -348,12 +437,13 @@ const EMAIL_TEMPLATES = [
     templateName: "Order Shipped",
     subject: "Your Order #{{orderNumber}} Has Shipped!",
     description: "Sent when an order is shipped",
-    placeholders: "{{customerName}},{{orderNumber}},{{trackingNumber}},{{trackingLink}},{{orderTotal}},{{logoBlock}},{{supportEmail}}",
+    placeholders:
+      "{{customerName}},{{orderNumber}},{{trackingNumber}},{{trackingLink}},{{orderTotal}},{{logoBlock}},{{supportEmail}}",
     body: emailShell(
       headingBlock(
         "Shipment Update",
         "Your order is on the way!",
-        "Hi {{customerName}}, great news! Your order #{{orderNumber}} has been shipped and is on its way to you."
+        "Hi {{customerName}}, great news! Your order #{{orderNumber}} has been shipped and is on its way to you.",
       ) +
         infoBox(
           '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">' +
@@ -361,11 +451,11 @@ const EMAIL_TEMPLATES = [
             kvRow("Order Total", "{{orderTotal}}", INK, true) +
             kvRow("Tracking Number", "{{trackingNumber}}", INK, true) +
             "</table>",
-          "success"
+          "success",
         ) +
         ctaButton("{{trackingLink}}", "Track Shipment") +
         noteLine("Estimated delivery within 5-7 business days. " + SUPPORT),
-      SUPPORT
+      SUPPORT,
     ),
   },
   {
@@ -373,12 +463,13 @@ const EMAIL_TEMPLATES = [
     templateName: "Order Delivered",
     subject: "Your Order #{{orderNumber}} Has Been Delivered",
     description: "Sent when an order is delivered",
-    placeholders: "{{customerName}},{{orderNumber}},{{orderTotal}},{{logoBlock}},{{supportEmail}}",
+    placeholders:
+      "{{customerName}},{{orderNumber}},{{orderTotal}},{{logoBlock}},{{supportEmail}}",
     body: emailShell(
       headingBlock(
         "Delivery Confirmed",
         "Delivered!",
-        "Hi {{customerName}}, your order #{{orderNumber}} has been delivered. We hope you love your purchase!"
+        "Hi {{customerName}}, your order #{{orderNumber}} has been delivered. We hope you love your purchase!",
       ) +
         infoBox(
           '<p style="color:' +
@@ -387,14 +478,14 @@ const EMAIL_TEMPLATES = [
             MUTED +
             ';font-size:13px;margin:0;">Order #{{orderNumber}} &bull; {{orderTotal}}</p>',
           "success",
-          "center"
+          "center",
         ) +
         '<p style="color:' +
         BODY_TEXT +
         ';font-size:14px;line-height:1.7;margin:0 0 8px 0;">We&apos;d love to hear your feedback. Rate your experience and help other shoppers make informed decisions.</p>' +
         ctaButton("https://shopsphere.com/account/orders", "Write a Review") +
         noteLine(SUPPORT),
-      SUPPORT
+      SUPPORT,
     ),
   },
   {
@@ -402,12 +493,13 @@ const EMAIL_TEMPLATES = [
     templateName: "Order Cancelled",
     subject: "Order #{{orderNumber}} Has Been Cancelled",
     description: "Sent when an order is cancelled",
-    placeholders: "{{customerName}},{{orderNumber}},{{cancelReason}},{{orderTotal}},{{logoBlock}},{{supportEmail}}",
+    placeholders:
+      "{{customerName}},{{orderNumber}},{{cancelReason}},{{orderTotal}},{{logoBlock}},{{supportEmail}}",
     body: emailShell(
       headingBlock(
         "Order Cancelled",
         "Order Cancelled",
-        "Hi {{customerName}}, your order #{{orderNumber}} has been cancelled as requested."
+        "Hi {{customerName}}, your order #{{orderNumber}} has been cancelled as requested.",
       ) +
         infoBox(
           '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">' +
@@ -415,14 +507,14 @@ const EMAIL_TEMPLATES = [
             kvRow("Order Total", "{{orderTotal}}", INK, true) +
             kvRow("Reason", "{{cancelReason}}", DANGER_TEXT, true) +
             "</table>",
-          "danger"
+          "danger",
         ) +
         '<p style="color:' +
         BODY_TEXT +
         ';font-size:14px;line-height:1.7;margin:0 0 24px 0;">If a payment was made, your refund will be processed within 5-7 business days. We' +
         "&apos;re sorry to see you go and hope to serve you again.</p>" +
         noteLine(SUPPORT),
-      SUPPORT
+      SUPPORT,
     ),
   },
   {
@@ -430,12 +522,13 @@ const EMAIL_TEMPLATES = [
     templateName: "Refund Processed",
     subject: "Refund Confirmed for Order #{{orderNumber}}",
     description: "Sent when a refund is processed",
-    placeholders: "{{customerName}},{{orderNumber}},{{refundAmount}},{{refundId}},{{logoBlock}},{{supportEmail}}",
+    placeholders:
+      "{{customerName}},{{orderNumber}},{{refundAmount}},{{refundId}},{{logoBlock}},{{supportEmail}}",
     body: emailShell(
       headingBlock(
         "Refund Processed",
         "Refund Confirmed",
-        "Hi {{customerName}}, your refund for order #{{orderNumber}} has been processed successfully."
+        "Hi {{customerName}}, your refund for order #{{orderNumber}} has been processed successfully.",
       ) +
         infoBox(
           '<p style="color:' +
@@ -448,23 +541,29 @@ const EMAIL_TEMPLATES = [
             INK +
             ';">{{refundId}}</strong></p>',
           "success",
-          "center"
+          "center",
         ) +
         '<p style="color:' +
         BODY_TEXT +
         ';font-size:14px;line-height:1.7;margin:0 0 24px 0;">The refund will be credited to your original payment method within 5-7 business days, depending on your bank or payment provider.</p>' +
         noteLine(SUPPORT),
-      SUPPORT
+      SUPPORT,
     ),
   },
   {
     templateKey: "offline_invoice",
     templateName: "Offline Invoice",
     subject: "Invoice #{{orderNumber}} — {{siteName}}",
-    description: "Sent to the customer after an offline (POS) sale is fully paid",
-    placeholders: "{{customerName}},{{orderNumber}},{{orderDate}},{{paymentMethod}},{{itemsTable}},{{subtotal}},{{gst}},{{discount}},{{paidAmount}},{{dueAmount}},{{total}},{{customerEmail}},{{customerAddress}},{{messageHeadline}},{{messageBody}},{{logoBlock}},{{supportEmail}}",
+    description:
+      "Sent to the customer after an offline (POS) sale is fully paid",
+    placeholders:
+      "{{customerName}},{{orderNumber}},{{orderDate}},{{paymentMethod}},{{itemsTable}},{{subtotal}},{{gst}},{{discount}},{{paidAmount}},{{dueAmount}},{{total}},{{customerEmail}},{{customerAddress}},{{messageHeadline}},{{messageBody}},{{logoBlock}},{{supportEmail}}",
     body: emailShell(
-      headingBlock("Offline Invoice", "Hello, {{customerName}}", "{{messageBody}}") +
+      headingBlock(
+        "Offline Invoice",
+        "Hello, {{customerName}}",
+        "{{messageBody}}",
+      ) +
         infoBox(
           '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">' +
             kvRow("Invoice Number", "#{{orderNumber}}", ACCENT, true) +
@@ -472,7 +571,7 @@ const EMAIL_TEMPLATES = [
             kvRow("Payment Method", "{{paymentMethod}}") +
             kvRow("Total Payable", "{{total}}", INK, true) +
             "</table>",
-          "success"
+          "success",
         ) +
         sectionLabel("Order Summary") +
         "{{itemsTable}}" +
@@ -492,8 +591,12 @@ const EMAIL_TEMPLATES = [
         ACCENT +
         ';font-size:18px;font-weight:800;margin:0;">{{total}}</p></td></tr>' +
         "</table>" +
-        noteLine("This invoice was sent to <strong style=\"color:" + INK + ";\">{{customerEmail}}</strong>."),
-      SUPPORT
+        noteLine(
+          'This invoice was sent to <strong style="color:' +
+            INK +
+            ';">{{customerEmail}}</strong>.',
+        ),
+      SUPPORT,
     ),
   },
 ];

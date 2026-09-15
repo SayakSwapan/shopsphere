@@ -25,6 +25,8 @@ export async function POST(req: Request) {
         emailOtp: true,
         emailOtpExpiry: true,
         emailVerified: true,
+        lastLogin: true,
+        createdAt: true,
       },
     });
 
@@ -67,6 +69,7 @@ export async function POST(req: Request) {
     }
 
     const wasAlreadyVerified = user.emailVerified;
+    const NOW = new Date();
 
     await prisma.user.update({
       where: { id: user.id },
@@ -75,6 +78,7 @@ export async function POST(req: Request) {
         isVerified: true,
         emailOtp: null,
         emailOtpExpiry: null,
+        lastLogin: NOW,
         ...(typeof name === "string" && name.trim()
           ? { name: name.trim() }
           : {}),
@@ -84,8 +88,8 @@ export async function POST(req: Request) {
       },
     });
 
-    // Send welcome email only on first verification (new registration), not on
-    // subsequent logins.
+    // Welcome email is only for brand-new customers on their first-ever
+    // verification. Returning customers must not be re-welcomed.
     if (!wasAlreadyVerified) {
       sendTemplatedEmail({
         to: email,
@@ -98,6 +102,53 @@ export async function POST(req: Request) {
         fallbackSubject: `Welcome to {{siteName}}, ${user.name || "Customer"}!`,
         fallbackBody: `<div style="background:#0A0F1E;color:white;padding:48px;font-family:Arial;"><h1 style="color:#F5A623;">{{siteName}}</h1><p>Welcome, ${user.name || "Customer"}! Your account is now active.</p></div>`,
       }).catch(() => {});
+    }
+
+    // Welcome-back offer: only a returning customer whose LAST login was more
+    // than one month ago gets the coupon + email. Frequent logins (within the
+    // month) never trigger it again.
+    const ONE_MONTH_MS = 30 * 24 * 60 * 60 * 1000;
+    const lastSeen = user.lastLogin ?? user.createdAt;
+    if (
+      wasAlreadyVerified &&
+      lastSeen &&
+      NOW.getTime() - lastSeen.getTime() > ONE_MONTH_MS
+    ) {
+      const coupon = await prisma.coupon.findFirst({
+        where: {
+          isActive: true,
+          startDate: { lte: NOW },
+          endDate: { gte: NOW },
+        },
+        orderBy: { createdAt: "desc" },
+        select: {
+          code: true,
+          discountType: true,
+          discountValue: true,
+        },
+      });
+
+      if (coupon) {
+        const discountValue = Number(coupon.discountValue);
+        const couponValue =
+          coupon.discountType === "PERCENTAGE"
+            ? `${discountValue}% off`
+            : `₹${discountValue} off`;
+
+        sendTemplatedEmail({
+          to: email,
+          templateKey: "welcome_back_email",
+          placeholders: {
+            customerName: user.name || "Customer",
+            couponCode: coupon.code,
+            couponValue,
+            email: email,
+            year: String(new Date().getFullYear()),
+          },
+          fallbackSubject: `We Miss You, ${user.name || "Customer"}!`,
+          fallbackBody: `<div style="background:#0A0F1E;color:white;padding:48px;font-family:Arial;"><h1 style="color:#F5A623;">{{siteName}}</h1><p>Welcome back, ${user.name || "Customer"}! Enjoy <strong>${couponValue}</strong> with code <span style="color:#F5A623;">${coupon.code}</span>.</p></div>`,
+        }).catch(() => {});
+      }
     }
 
     return NextResponse.json({

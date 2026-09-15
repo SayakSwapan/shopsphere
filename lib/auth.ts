@@ -6,12 +6,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { verifyPhoneOtpToken } from "@/lib/phone-otp-token";
 
-export const {
-  handlers,
-  auth,
-  signIn,
-  signOut,
-} = NextAuth({
+export const { handlers, auth, signIn, signOut } = NextAuth({
   session: {
     strategy: "jwt",
   },
@@ -54,15 +49,45 @@ export const {
           // Phone OTP login: requires a short-lived token issued by the
           // verify-otp endpoint AFTER the OTP was validated server-side.
           const tokenPayload = verifyPhoneOtpToken(
-            credentials.phoneOtpToken as string
+            credentials.phoneOtpToken as string,
           );
 
-        if (!tokenPayload || tokenPayload.email !== user.email) {
+          if (!tokenPayload || tokenPayload.email !== user.email) {
+            return null;
+          }
+
+          // Deactivated accounts cannot log in.
+          if (!user.isActive) {
+            return null;
+          }
+
+          // Partners must use their own portal, not customer login.
+          if (user.role === "PARTNER") {
+            return null;
+          }
+
+          return {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            role: user.role,
+          };
+        }
+
+        if (!credentials?.password) {
           return null;
         }
 
-        // Deactivated accounts cannot log in.
-        if (!user.isActive) {
+        if (!user.password) {
+          return null;
+        }
+
+        const isValid = await bcrypt.compare(
+          credentials.password as string,
+          user.password,
+        );
+
+        if (!isValid) {
           return null;
         }
 
@@ -71,39 +96,14 @@ export const {
           return null;
         }
 
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          role: user.role,
-        };
-      }
+        if (user.role === "CUSTOMER" && !user.emailVerified) {
+          return null;
+        }
 
-      if (!credentials?.password) {
-        return null;
-      }
-
-      if (!user.password) {
-        return null;
-      }
-
-      const isValid = await bcrypt.compare(
-        credentials.password as string,
-        user.password
-      );
-
-      if (!isValid) {
-        return null;
-      }
-
-      // Partners must use their own portal, not customer login.
-      if (user.role === "PARTNER") {
-        return null;
-      }
-
-      if (user.role === "CUSTOMER" && !user.emailVerified) {
-        return null;
-      }
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { lastLogin: new Date() },
+        });
 
         return {
           id: user.id,
@@ -134,6 +134,7 @@ export const {
               isActive: true,
               isVerified: true,
               emailVerified: true,
+              lastLogin: new Date(),
             },
           });
         } else {
@@ -149,7 +150,16 @@ export const {
           if (!existingUser.emailVerified) {
             await prisma.user.update({
               where: { id: existingUser.id },
-              data: { emailVerified: true, isVerified: true },
+              data: {
+                emailVerified: true,
+                isVerified: true,
+                lastLogin: new Date(),
+              },
+            });
+          } else {
+            await prisma.user.update({
+              where: { id: existingUser.id },
+              data: { lastLogin: new Date() },
             });
           }
         }

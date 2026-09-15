@@ -647,6 +647,11 @@ model user {
   phoneVerified Boolean @default(false)
   emailVerified Boolean @default(false)
 
+  // Tracks the last successful customer login (OTP, password or Google).
+  // Used by the "welcome back" offer: an existing customer who returns after
+  // more than one month gets a welcome-back coupon + email.
+  lastLogin DateTime?
+
   /*
   |--------------------------------------------------------------------------
   | Partner Approval

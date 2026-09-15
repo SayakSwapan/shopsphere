@@ -14,6 +14,9 @@ export default function EmailOtpLoginForm({ onBack }: { onBack: () => void }) {
 
   const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [isNewUser, setIsNewUser] = useState(false);
   const [loading, setLoading] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
   const [cooldown, setCooldown] = useState(0);
@@ -44,6 +47,7 @@ export default function EmailOtpLoginForm({ onBack }: { onBack: () => void }) {
       }
 
       toast.success("OTP sent to your email!");
+      setIsNewUser(!!data.isNewUser);
       setOtpSent(true);
       setCooldown(30);
     } catch {
@@ -61,7 +65,7 @@ export default function EmailOtpLoginForm({ onBack }: { onBack: () => void }) {
       const res = await fetch("/api/auth/verify-email-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, otp }),
+        body: JSON.stringify({ email, otp, name, phone }),
       });
 
       const data = await res.json();
@@ -128,6 +132,41 @@ export default function EmailOtpLoginForm({ onBack }: { onBack: () => void }) {
           </div>
         </div>
 
+        {isNewUser && (
+          <>
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-text-heading">
+                Full Name <span className="text-danger">*</span>
+              </label>
+              <input
+                type="text"
+                required
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Your name"
+                className="w-full rounded-xl border border-border-card bg-bg-card-nested px-4 py-3 text-text-heading outline-none transition focus:border-primary"
+              />
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-text-heading">
+                Phone Number{" "}
+                <span className="text-xs font-normal text-text-muted-2">
+                  (optional)
+                </span>
+              </label>
+              <input
+                type="tel"
+                inputMode="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="9876543210"
+                className="w-full rounded-xl border border-border-card bg-bg-card-nested px-4 py-3 text-text-heading outline-none transition focus:border-primary"
+              />
+            </div>
+          </>
+        )}
+
         <div>
           <label className="mb-2 block text-sm font-semibold text-text-heading">
             Enter OTP
@@ -147,7 +186,10 @@ export default function EmailOtpLoginForm({ onBack }: { onBack: () => void }) {
         <button
           disabled={loading || otp.length !== 6}
           className="flex h-12 w-full items-center justify-center rounded-xl font-bold transition disabled:opacity-60"
-          style={{ background: "var(--t-primary)", color: "var(--t-button-text)" }}
+          style={{
+            background: "var(--t-primary)",
+            color: "var(--t-button-text)",
+          }}
         >
           {loading ? (
             <Loader2 size={20} className="animate-spin" />
@@ -207,7 +249,10 @@ export default function EmailOtpLoginForm({ onBack }: { onBack: () => void }) {
       <button
         disabled={loading || !email || cooldown > 0}
         className="flex h-12 w-full items-center justify-center rounded-xl font-bold transition disabled:opacity-60"
-        style={{ background: "var(--t-primary)", color: "var(--t-button-text)" }}
+        style={{
+          background: "var(--t-primary)",
+          color: "var(--t-button-text)",
+        }}
       >
         {loading ? (
           <Loader2 size={20} className="animate-spin" />

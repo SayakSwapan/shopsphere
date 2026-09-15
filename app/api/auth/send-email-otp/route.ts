@@ -10,26 +10,42 @@ export async function POST(req: Request) {
     if (!email || typeof email !== "string") {
       return NextResponse.json(
         { success: false, message: "Email required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     const normalizedEmail = email.toLowerCase().trim();
 
     // Anti-bombing / anti-enumeration-cost throttles.
-    const perEmail = rateLimit(`otp-email:${normalizedEmail}`, 3, 10 * 60 * 1000);
+    const perEmail = rateLimit(
+      `otp-email:${normalizedEmail}`,
+      3,
+      10 * 60 * 1000,
+    );
     if (!perEmail.ok) {
       return NextResponse.json(
-        { success: false, message: "Too many OTP requests. Please wait before retrying." },
-        { status: 429, headers: { "Retry-After": String(perEmail.retryAfterSec) } }
+        {
+          success: false,
+          message: "Too many OTP requests. Please wait before retrying.",
+        },
+        {
+          status: 429,
+          headers: { "Retry-After": String(perEmail.retryAfterSec) },
+        },
       );
     }
 
     const perIp = rateLimit(`otp-ip:${getClientIp(req)}`, 10, 60 * 60 * 1000);
     if (!perIp.ok) {
       return NextResponse.json(
-        { success: false, message: "Too many OTP requests. Please try again later." },
-        { status: 429, headers: { "Retry-After": String(perIp.retryAfterSec) } }
+        {
+          success: false,
+          message: "Too many OTP requests. Please try again later.",
+        },
+        {
+          status: 429,
+          headers: { "Retry-After": String(perIp.retryAfterSec) },
+        },
       );
     }
 
@@ -53,8 +69,8 @@ export async function POST(req: Request) {
       },
     });
 
-    const isVerification = !user;
-    const templateKey = isVerification ? "email_verification" : "login_otp";
+    const isNewUser = !user;
+    const templateKey = isNewUser ? "email_verification" : "login_otp";
 
     await sendTemplatedEmail({
       to: normalizedEmail,
@@ -70,12 +86,9 @@ export async function POST(req: Request) {
       fallbackBody: `<div style="background:#0A0F1E;color:white;padding:40px;font-family:Arial;"><h1 style="color:#F5A623;">{{siteName}}</h1><p>Your OTP is:</p><h2 style="letter-spacing:8px;color:#F5A623;">${otp}</h2><p>Valid for 10 minutes.</p></div>`,
     });
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, isNewUser });
   } catch (error) {
     console.error(error);
-    return NextResponse.json(
-      { success: false },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false }, { status: 500 });
   }
 }

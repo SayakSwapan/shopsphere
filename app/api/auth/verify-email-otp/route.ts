@@ -5,12 +5,12 @@ import { createPhoneOtpToken } from "@/lib/phone-otp-token";
 
 export async function POST(req: Request) {
   try {
-    const { email, otp } = await req.json();
+    const { email, otp, name, phone } = await req.json();
 
     if (!email || !otp) {
       return NextResponse.json(
         { success: false, message: "Email and OTP are required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -30,36 +30,39 @@ export async function POST(req: Request) {
 
     if (!user) {
       return NextResponse.json(
-        { success: false, message: "No account found. Please request OTP first." },
-        { status: 404 }
+        {
+          success: false,
+          message: "No account found. Please request OTP first.",
+        },
+        { status: 404 },
       );
     }
 
     if (!user.isActive) {
       return NextResponse.json(
         { success: false, message: "Your account has been deactivated." },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
     if (user.role === "PARTNER") {
       return NextResponse.json(
         { success: false, message: "Partners must use the partner portal." },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
     if (user.emailOtp !== otp) {
       return NextResponse.json(
         { success: false, message: "Invalid OTP" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (!user.emailOtpExpiry || user.emailOtpExpiry < new Date()) {
       return NextResponse.json(
         { success: false, message: "OTP Expired" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -72,6 +75,12 @@ export async function POST(req: Request) {
         isVerified: true,
         emailOtp: null,
         emailOtpExpiry: null,
+        ...(typeof name === "string" && name.trim()
+          ? { name: name.trim() }
+          : {}),
+        ...(typeof phone === "string" && phone.trim()
+          ? { phone: phone.trim() }
+          : {}),
       },
     });
 

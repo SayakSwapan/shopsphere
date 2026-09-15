@@ -14,7 +14,9 @@ import {
   Loader2,
   ShoppingBag,
 } from "lucide-react";
-import AddToCartButton, { addToCartRequest } from "@/components/store/add-to-cart-button";
+import AddToCartButton, {
+  addToCartRequest,
+} from "@/components/store/add-to-cart-button";
 import SizeChartButton from "@/components/store/product/size-chart-button";
 import OfferCountdown from "@/components/store/product/offer-countdown";
 import ReviewHighlights from "@/components/store/product/review-highlights";
@@ -81,7 +83,9 @@ export default function ProductPurchasePanel({
 }: Props) {
   const router = useRouter();
   const authModal = useOptionalAuthModal();
-  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
+  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(
+    null,
+  );
   const [quantity, setQuantity] = useState(1);
   const [isBuying, setIsBuying] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
@@ -89,7 +93,9 @@ export default function ProductPurchasePanel({
   // customer tapped Add to Cart or Buy Now so the sheet can auto-continue that
   // flow once a size is picked.
   const [sizeSheetOpen, setSizeSheetOpen] = useState(false);
-  const [pendingAction, setPendingAction] = useState<"add" | "buy" | null>(null);
+  const [pendingAction, setPendingAction] = useState<"add" | "buy" | null>(
+    null,
+  );
   // Hard guard so a fast double-tap can't fire two cart POSTs before React
   // flushes the disabled state (mirrors AddToCartButton's inflightRef).
   const addInFlightRef = useRef(false);
@@ -99,7 +105,7 @@ export default function ProductPurchasePanel({
       sizeCategory
         ? variants.filter((v) => v.size?.sizeCategory === sizeCategory)
         : variants,
-    [variants, sizeCategory]
+    [variants, sizeCategory],
   );
 
   // A product "has sizes" to pick when at least one of its variants carries a
@@ -124,7 +130,7 @@ export default function ProductPurchasePanel({
   };
 
   const hasRealSizes = filteredVariants.some(
-    (v) => !isFreeSize(v.size?.sizeName)
+    (v) => !isFreeSize(v.size?.sizeName),
   );
   const needsSizeSelection = hasRealSizes && filteredVariants.length > 1;
 
@@ -137,7 +143,7 @@ export default function ProductPurchasePanel({
         : (filteredVariants.find((v) => v.stock > 0) ??
           filteredVariants[0] ??
           null),
-    [needsSizeSelection, filteredVariants]
+    [needsSizeSelection, filteredVariants],
   );
 
   const selectedVariant = useMemo(
@@ -145,7 +151,7 @@ export default function ProductPurchasePanel({
       needsSizeSelection
         ? (filteredVariants.find((v) => v.id === selectedVariantId) ?? null)
         : autoVariant,
-    [needsSizeSelection, filteredVariants, selectedVariantId, autoVariant]
+    [needsSizeSelection, filteredVariants, selectedVariantId, autoVariant],
   );
 
   const maxQuantity = selectedVariant ? Math.max(1, selectedVariant.stock) : 1;
@@ -155,7 +161,7 @@ export default function ProductPurchasePanel({
 
   const increaseQuantity = () =>
     setQuantity((q) =>
-      selectedVariant ? Math.min(selectedVariant.stock, q + 1) : 1
+      selectedVariant ? Math.min(selectedVariant.stock, q + 1) : 1,
     );
 
   // Add to cart. `variant` lets the size bottom sheet continue the flow with the
@@ -189,7 +195,11 @@ export default function ProductPurchasePanel({
 
       if (result.ok) {
         window.dispatchEvent(new Event("cart-updated"));
-        toast.success("Added to Cart");
+        if (result.capReached && result.message) {
+          toast.info(result.message);
+        } else {
+          toast.success(result.message || "Added to Cart");
+        }
       } else if (result.status === 401) {
         authModal?.openAuth("login");
       } else {
@@ -208,7 +218,7 @@ export default function ProductPurchasePanel({
       toast.error(
         needsSizeSelection
           ? "Please select a size to continue"
-          : "This item is currently unavailable"
+          : "This item is currently unavailable",
       );
       return;
     }
@@ -241,10 +251,16 @@ export default function ProductPurchasePanel({
       if (!response.ok || !data.success)
         throw new Error(data.message || "Unable to checkout");
 
-      // Keep the cart badge in sync, then go straight to checkout. The
+      // Keep the cart badge in sync, then go straight to checkout. When the
+      // server capped the merged quantity (item already at the maximum in the
+      // cart) we still let the customer through — the item is already in their
+      // cart — but surface the cap so they understand what happened. The
       // navigation is a soft client transition — no full reload, no
       // Product-Details → Product-Details flash.
       window.dispatchEvent(new Event("cart-updated"));
+      if (data.capReached && typeof data.message === "string") {
+        toast.info(data.message);
+      }
       router.push("/checkout");
     } catch (error) {
       toast.error((error as Error).message || "Failed to start checkout.");
@@ -303,8 +319,16 @@ export default function ProductPurchasePanel({
     },
     {
       icon: RotateCcw,
-      label: isReturnable ? `${returnDays}-Day Return` : isReplaceable ? "Replaceable" : "No Returns",
-      sub: isReturnable ? "Hassle-free" : isReplaceable ? "Free replacement" : "Final sale",
+      label: isReturnable
+        ? `${returnDays}-Day Return`
+        : isReplaceable
+          ? "Replaceable"
+          : "No Returns",
+      sub: isReturnable
+        ? "Hassle-free"
+        : isReplaceable
+          ? "Free replacement"
+          : "Final sale",
     },
   ];
 
@@ -323,9 +347,7 @@ export default function ProductPurchasePanel({
                 <span className="pd-price-original pb-1">
                   ₹{originalPrice.toLocaleString("en-IN")}
                 </span>
-                <span className="pd-badge mb-1">
-                  {discountLabel}
-                </span>
+                <span className="pd-badge mb-1">{discountLabel}</span>
               </>
             )}
           </div>
@@ -336,13 +358,9 @@ export default function ProductPurchasePanel({
             </p>
           )}
 
-          {hasDiscount && offerEnd && (
-            <OfferCountdown offerEnd={offerEnd} />
-          )}
+          {hasDiscount && offerEnd && <OfferCountdown offerEnd={offerEnd} />}
 
-          {offerStart && (
-            <OfferCountdown offerEnd={offerStart} mode="starts" />
-          )}
+          {offerStart && <OfferCountdown offerEnd={offerStart} mode="starts" />}
         </div>
       )}
 
@@ -358,7 +376,10 @@ export default function ProductPurchasePanel({
           <>
             <div className="px-5 py-4">
               <div className="flex items-center justify-between">
-                <p className="text-sm font-bold" style={{ color: "var(--t-text-heading)" }}>
+                <p
+                  className="text-sm font-bold"
+                  style={{ color: "var(--t-text-heading)" }}
+                >
                   Select Size
                 </p>
                 <SizeChartButton productId={productId} />
@@ -390,7 +411,10 @@ export default function ProductPurchasePanel({
               </div>
 
               {!selectedVariant && (
-                <p className="mt-3 text-xs" style={{ color: "var(--t-text-muted-2)" }}>
+                <p
+                  className="mt-3 text-xs"
+                  style={{ color: "var(--t-text-muted-2)" }}
+                >
                   Please select a size to continue
                 </p>
               )}
@@ -402,7 +426,10 @@ export default function ProductPurchasePanel({
         {!needsSizeSelection && (
           <div className="px-5 py-5">
             <div className="flex items-center justify-between">
-              <p className="text-sm font-bold" style={{ color: "var(--t-text-heading)" }}>
+              <p
+                className="text-sm font-bold"
+                style={{ color: "var(--t-text-heading)" }}
+              >
                 {selectedVariant?.size?.sizeName || "Availability"}
               </p>
             </div>
@@ -417,36 +444,56 @@ export default function ProductPurchasePanel({
                         ? "color-mix(in srgb, var(--t-accent) 10%, transparent)"
                         : "color-mix(in srgb, var(--t-success) 10%, transparent)",
                     border: `1px solid color-mix(in srgb, ${
-                      selectedVariant.stock <= 5 ? "var(--t-accent)" : "var(--t-success)"
+                      selectedVariant.stock <= 5
+                        ? "var(--t-accent)"
+                        : "var(--t-success)"
                     } 24%, transparent)`,
                   }}
                 >
                   <span
                     className="h-2.5 w-2.5 rounded-full shrink-0"
                     style={{
-                      background: selectedVariant.stock <= 5 ? "var(--t-accent)" : "var(--t-success)",
-                      animation: selectedVariant.stock <= 5 ? "cd-timer-pulse 1.5s ease-in-out infinite" : undefined,
+                      background:
+                        selectedVariant.stock <= 5
+                          ? "var(--t-accent)"
+                          : "var(--t-success)",
+                      animation:
+                        selectedVariant.stock <= 5
+                          ? "cd-timer-pulse 1.5s ease-in-out infinite"
+                          : undefined,
                     }}
                   />
                   <div className="min-w-0">
                     {selectedVariant.stock <= 5 ? (
-                      <p className="text-sm font-bold" style={{ color: "var(--t-accent)" }}>
+                      <p
+                        className="text-sm font-bold"
+                        style={{ color: "var(--t-accent)" }}
+                      >
                         Only {selectedVariant.stock} left — hurry, buy now!
                       </p>
                     ) : (
-                      <p className="text-sm font-bold" style={{ color: "var(--t-success)" }}>
+                      <p
+                        className="text-sm font-bold"
+                        style={{ color: "var(--t-success)" }}
+                      >
                         In stock — {selectedVariant.stock} available
                       </p>
                     )}
                   </div>
                 </div>
               ) : (
-                <p className="mt-3 text-sm font-bold" style={{ color: "var(--t-danger)" }}>
+                <p
+                  className="mt-3 text-sm font-bold"
+                  style={{ color: "var(--t-danger)" }}
+                >
                   Out of stock
                 </p>
               )
             ) : (
-              <p className="mt-3 text-xs" style={{ color: "var(--t-text-muted-2)" }}>
+              <p
+                className="mt-3 text-xs"
+                style={{ color: "var(--t-text-muted-2)" }}
+              >
                 This item is currently unavailable.
               </p>
             )}
@@ -454,13 +501,22 @@ export default function ProductPurchasePanel({
         )}
 
         {/* Quantity selector (desktop/tablet only — mobile manages quantity via the cart) */}
-        <div className="hidden border-t px-5 py-4 sm:block" style={{ borderColor: "var(--t-border-subtle)" }}>
+        <div
+          className="hidden border-t px-5 py-4 sm:block"
+          style={{ borderColor: "var(--t-border-subtle)" }}
+        >
           <div className="flex items-center justify-between">
-            <p className="text-sm font-bold" style={{ color: "var(--t-text-heading)" }}>
+            <p
+              className="text-sm font-bold"
+              style={{ color: "var(--t-text-heading)" }}
+            >
               Quantity
             </p>
             {selectedVariant && (
-              <span className="text-xs font-medium" style={{ color: "var(--t-text-muted-2)" }}>
+              <span
+                className="text-xs font-medium"
+                style={{ color: "var(--t-text-muted-2)" }}
+              >
                 Max {selectedVariant.stock} available
               </span>
             )}
@@ -472,7 +528,10 @@ export default function ProductPurchasePanel({
               onClick={decreaseQuantity}
               disabled={!selectedVariant || quantity <= 1 || isBuying}
               className="flex h-11 w-11 items-center justify-center rounded-xl border transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
-              style={{ borderColor: "var(--t-border-card)", color: "var(--t-primary)" }}
+              style={{
+                borderColor: "var(--t-border-card)",
+                color: "var(--t-primary)",
+              }}
               aria-label="Decrease quantity"
             >
               <Minus size={18} />
@@ -490,14 +549,20 @@ export default function ProductPurchasePanel({
               onClick={increaseQuantity}
               disabled={!selectedVariant || quantity >= maxQuantity || isBuying}
               className="flex h-11 w-11 items-center justify-center rounded-xl border transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
-              style={{ borderColor: "var(--t-border-card)", color: "var(--t-primary)" }}
+              style={{
+                borderColor: "var(--t-border-card)",
+                color: "var(--t-primary)",
+              }}
               aria-label="Increase quantity"
             >
               <Plus size={18} />
             </button>
 
             {!selectedVariant && (
-              <span className="text-xs" style={{ color: "var(--t-text-muted-2)" }}>
+              <span
+                className="text-xs"
+                style={{ color: "var(--t-text-muted-2)" }}
+              >
                 Select a size to choose quantity
               </span>
             )}
@@ -505,19 +570,21 @@ export default function ProductPurchasePanel({
         </div>
 
         {/* CTAs (desktop/tablet only — mobile uses the sticky bottom bar) */}
-          <div className="hidden flex-col gap-3 px-5 pb-5 sm:flex sm:flex-row">
-            <div className="flex-1 min-w-0">
-                <AddToCartButton
-                  productId={productId}
-                  productVariantId={selectedVariant?.id}
-                  quantity={quantity}
-                  disabled={!canPurchase || isBuying}
-                />
-              </div>
+        <div className="hidden flex-col gap-3 px-5 pb-5 sm:flex sm:flex-row">
+          <div className="flex-1 min-w-0">
+            <AddToCartButton
+              productId={productId}
+              productVariantId={selectedVariant?.id}
+              quantity={quantity}
+              disabled={!canPurchase || isBuying}
+            />
+          </div>
 
           <button
             type="button"
-            disabled={isBuying || !selectedVariant || selectedVariant.stock <= 0}
+            disabled={
+              isBuying || !selectedVariant || selectedVariant.stock <= 0
+            }
             onClick={() => runBuyNow()}
             className="pd-btn-primary w-full py-5 font-black uppercase text-xs tracking-wider sm:w-auto sm:flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
             style={!canPurchase ? { opacity: 0.6 } : undefined}
@@ -538,10 +605,16 @@ export default function ProductPurchasePanel({
           <div key={item.label} className="flex items-center gap-2">
             <item.icon size={14} style={{ color: "var(--t-primary)" }} />
             <div>
-              <p className="text-[11px] font-bold leading-tight" style={{ color: "var(--t-text-heading)" }}>
+              <p
+                className="text-[11px] font-bold leading-tight"
+                style={{ color: "var(--t-text-heading)" }}
+              >
                 {item.label}
               </p>
-              <p className="text-[10px]" style={{ color: "var(--t-text-muted-2)" }}>
+              <p
+                className="text-[10px]"
+                style={{ color: "var(--t-text-muted-2)" }}
+              >
                 {item.sub}
               </p>
             </div>
@@ -558,7 +631,8 @@ export default function ProductPurchasePanel({
       <div
         className="fixed inset-x-0 bottom-0 z-50 border-t border-border-card bg-bg-card sm:hidden"
         style={{
-          boxShadow: "0 -4px 16px color-mix(in srgb, var(--t-text-heading) 12%, transparent)",
+          boxShadow:
+            "0 -4px 16px color-mix(in srgb, var(--t-text-heading) 12%, transparent)",
           paddingBottom: "env(safe-area-inset-bottom)",
         }}
       >

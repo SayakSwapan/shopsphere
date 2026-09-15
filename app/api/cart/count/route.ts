@@ -10,24 +10,15 @@ export async function GET() {
       return NextResponse.json({ count: 0 });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-    });
-
-    if (!user) {
-      return NextResponse.json({ count: 0 });
-    }
-
-    const cart = await prisma.cart.findUnique({
-      where: { userId: user.id },
+    // Single query: resolve the caller's cart directly through the email
+    // relation (no separate user lookup required).
+    const cart = await prisma.cart.findFirst({
+      where: { user: { email: session.user.email } },
       include: { cartitem: true },
     });
 
     const count =
-      cart?.cartitem.reduce(
-        (total, item) => total + item.quantity,
-        0
-      ) || 0;
+      cart?.cartitem.reduce((total, item) => total + item.quantity, 0) || 0;
 
     return NextResponse.json({ count });
   } catch (error) {

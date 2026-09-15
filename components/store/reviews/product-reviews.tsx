@@ -29,6 +29,7 @@ interface Props {
   isLoggedIn: boolean;
   currentUserName?: string | null;
   initialReviews?: ReviewItem[];
+  initialSummary?: Summary;
 }
 
 export default function ProductReviews({
@@ -36,17 +37,37 @@ export default function ProductReviews({
   isLoggedIn,
   currentUserName,
   initialReviews,
+  initialSummary,
 }: Props) {
   const { openAuth } = useAuthModal();
 
   const [summary, setSummary] = useState<Summary>(() => {
-    if (initialReviews && initialReviews.length > 0) {
-      const dist: Record<string, number> = { "1": 0, "2": 0, "3": 0, "4": 0, "5": 0 };
-      for (const r of initialReviews) dist[String(r.rating)] += 1;
-      const avg = initialReviews.reduce((s, r) => s + r.rating, 0) / initialReviews.length;
-      return { average: Number(avg.toFixed(2)), count: initialReviews.length, distribution: dist };
+    if (initialSummary) {
+      return initialSummary;
     }
-    return { average: 0, count: 0, distribution: { "1": 0, "2": 0, "3": 0, "4": 0, "5": 0 } };
+    if (initialReviews && initialReviews.length > 0) {
+      const dist: Record<string, number> = {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0,
+        "5": 0,
+      };
+      for (const r of initialReviews) dist[String(r.rating)] += 1;
+      const avg =
+        initialReviews.reduce((s, r) => s + r.rating, 0) /
+        initialReviews.length;
+      return {
+        average: Number(avg.toFixed(2)),
+        count: initialReviews.length,
+        distribution: dist,
+      };
+    }
+    return {
+      average: 0,
+      count: 0,
+      distribution: { "1": 0, "2": 0, "3": 0, "4": 0, "5": 0 },
+    };
   });
   const [reviews, setReviews] = useState<ReviewItem[]>(initialReviews ?? []);
   const [loading, setLoading] = useState(false);
@@ -54,10 +75,9 @@ export default function ProductReviews({
 
   const load = useCallback(async () => {
     try {
-      const res = await fetch(
-        `/api/reviews?productId=${productId}`,
-        { cache: "no-store" }
-      );
+      const res = await fetch(`/api/reviews?productId=${productId}`, {
+        cache: "no-store",
+      });
       const data = await res.json();
 
       if (data.success) {
@@ -92,13 +112,21 @@ export default function ProductReviews({
       <div className="mb-6 sm:mb-8">
         <p
           className="mb-3 text-xs font-bold uppercase tracking-[0.3em]"
-          style={{ color: "var(--t-primary)", fontFamily: "var(--t-font-heading)" }}
+          style={{
+            color: "var(--t-primary)",
+            fontFamily: "var(--t-font-heading)",
+          }}
         >
           ● Customer Reviews
         </p>
         <h2
           className="font-black uppercase leading-none"
-          style={{ fontSize: "clamp(1.5rem, 5vw, 3rem)", letterSpacing: "-0.02em", color: "var(--t-text-heading)", fontFamily: "var(--t-font-heading)" }}
+          style={{
+            fontSize: "clamp(1.5rem, 5vw, 3rem)",
+            letterSpacing: "-0.02em",
+            color: "var(--t-text-heading)",
+            fontFamily: "var(--t-font-heading)",
+          }}
         >
           Ratings &<span style={{ color: "var(--t-primary)" }}> Reviews</span>
         </h2>
@@ -135,7 +163,10 @@ export default function ProductReviews({
             <div className="mt-1 sm:mt-2">
               <Stars value={summary.average} size={20} />
             </div>
-            <p className="text-xs sm:mt-2" style={{ color: "var(--t-text-muted-1)" }}>
+            <p
+              className="text-xs sm:mt-2"
+              style={{ color: "var(--t-text-muted-1)" }}
+            >
               Based on {summary.count}{" "}
               {summary.count === 1 ? "review" : "reviews"}
             </p>
@@ -144,12 +175,14 @@ export default function ProductReviews({
           <div className="mt-5 space-y-2 sm:mt-6">
             {[5, 4, 3, 2, 1].map((star) => {
               const value = summary.distribution?.[String(star)] || 0;
-              const pct =
-                summary.count > 0 ? (value / summary.count) * 100 : 0;
+              const pct = summary.count > 0 ? (value / summary.count) * 100 : 0;
 
               return (
                 <div key={star} className="flex items-center gap-3">
-                  <span className="w-8 text-xs" style={{ color: "var(--t-text-muted-1)" }}>
+                  <span
+                    className="w-8 text-xs"
+                    style={{ color: "var(--t-text-muted-1)" }}
+                  >
                     {star}★
                   </span>
                   <div
@@ -158,10 +191,16 @@ export default function ProductReviews({
                   >
                     <div
                       className="h-full rounded-full"
-                      style={{ width: `${pct}%`, background: "var(--t-accent)" }}
+                      style={{
+                        width: `${pct}%`,
+                        background: "var(--t-accent)",
+                      }}
                     />
                   </div>
-                  <span className="w-6 text-right text-xs" style={{ color: "var(--t-text-muted-1)" }}>
+                  <span
+                    className="w-6 text-right text-xs"
+                    style={{ color: "var(--t-text-muted-1)" }}
+                  >
                     {value}
                   </span>
                 </div>
@@ -195,7 +234,10 @@ export default function ProductReviews({
           )}
 
           {!isLoggedIn && (
-            <p className="mt-3 text-center text-[11px]" style={{ color: "var(--t-text-muted-2)" }}>
+            <p
+              className="mt-3 text-center text-[11px]"
+              style={{ color: "var(--t-text-muted-2)" }}
+            >
               Only logged-in customers can post reviews.
             </p>
           )}
@@ -238,10 +280,16 @@ export default function ProductReviews({
                 background: "var(--t-bg-card)",
               }}
             >
-              <p className="text-sm font-semibold" style={{ color: "var(--t-text-heading)" }}>
+              <p
+                className="text-sm font-semibold"
+                style={{ color: "var(--t-text-heading)" }}
+              >
                 No reviews yet
               </p>
-              <p className="mt-1 text-xs" style={{ color: "var(--t-text-muted-1)" }}>
+              <p
+                className="mt-1 text-xs"
+                style={{ color: "var(--t-text-muted-1)" }}
+              >
                 Be the first to share your thoughts on this product.
               </p>
             </div>
@@ -261,18 +309,25 @@ export default function ProductReviews({
                     <div className="flex items-center gap-2.5 sm:gap-3">
                       <div
                         className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-black sm:h-11 sm:w-11"
-                        style={{ background: "var(--t-primary)", color: "var(--t-bg-page)" }}
+                        style={{
+                          background: "var(--t-primary)",
+                          color: "var(--t-bg-page)",
+                        }}
                       >
                         {review.userName.charAt(0).toUpperCase()}
                       </div>
                       <div className="min-w-0">
-                        <p className="flex items-center gap-2 text-sm font-bold" style={{ color: "var(--t-text-heading)" }}>
+                        <p
+                          className="flex items-center gap-2 text-sm font-bold"
+                          style={{ color: "var(--t-text-heading)" }}
+                        >
                           <span className="truncate">{review.userName}</span>
                           {review.verified && (
                             <span
                               className="inline-flex shrink-0 items-center gap-1 px-2 py-0.5 text-[10px] font-bold"
                               style={{
-                                background: "color-mix(in srgb, var(--t-success) 15%, transparent)",
+                                background:
+                                  "color-mix(in srgb, var(--t-success) 15%, transparent)",
                                 color: "var(--t-success)",
                                 borderRadius: "var(--t-radius-badge)",
                               }}
@@ -282,7 +337,10 @@ export default function ProductReviews({
                             </span>
                           )}
                         </p>
-                        <p className="text-xs" style={{ color: "var(--t-text-muted-2)" }}>
+                        <p
+                          className="text-xs"
+                          style={{ color: "var(--t-text-muted-2)" }}
+                        >
                           {format(new Date(review.createdAt), "dd MMM yyyy")}
                         </p>
                       </div>
@@ -290,7 +348,10 @@ export default function ProductReviews({
                     <Stars value={review.rating} size={14} />
                   </div>
 
-                  <p className="mt-4 text-sm leading-6" style={{ color: "var(--t-text-body)" }}>
+                  <p
+                    className="mt-4 text-sm leading-6"
+                    style={{ color: "var(--t-text-body)" }}
+                  >
                     {review.comment}
                   </p>
 

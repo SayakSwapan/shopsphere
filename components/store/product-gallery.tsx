@@ -5,6 +5,7 @@ import Image from "next/image";
 import { X } from "lucide-react";
 import WishlistButton from "@/components/store/wishlist-button";
 import ShareIconButton from "@/components/store/share-icon-button";
+import { optimizedImageUrl } from "@/lib/cloudinary-image";
 
 interface Props {
   images: {
@@ -15,9 +16,13 @@ interface Props {
   productId: string;
 }
 
-export default function ProductGallery({ images, productName, productId }: Props) {
+export default function ProductGallery({
+  images,
+  productName,
+  productId,
+}: Props) {
   const [selectedImage, setSelectedImage] = useState(
-    images?.[0]?.url || "/placeholder.png"
+    images?.[0]?.url || "/placeholder.png",
   );
   // Mobile swipe gallery: which slide is in view (drives the dots + counter).
   const [activeIndex, setActiveIndex] = useState(0);
@@ -94,13 +99,16 @@ export default function ProductGallery({ images, productName, productId }: Props
   };
 
   const handleTouchEnd = (e: React.TouchEvent) => {
-    for (const t of Array.from(e.changedTouches)) pointersRef.current.delete(t.identifier);
+    for (const t of Array.from(e.changedTouches))
+      pointersRef.current.delete(t.identifier);
     if (e.touches.length < 2) pinchRef.current = null;
   };
 
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();
-    setScale((s) => Math.min(4, Math.max(1, s + (e.deltaY > 0 ? -0.12 : 0.12))));
+    setScale((s) =>
+      Math.min(4, Math.max(1, s + (e.deltaY > 0 ? -0.12 : 0.12))),
+    );
   };
 
   if (!images || images.length === 0) {
@@ -137,7 +145,7 @@ export default function ProductGallery({ images, productName, productId }: Props
     if (!el || el.clientWidth === 0) return;
     const idx = Math.min(
       images.length - 1,
-      Math.max(0, Math.round(el.scrollLeft / step()))
+      Math.max(0, Math.round(el.scrollLeft / step())),
     );
     if (idx !== lastIndexRef.current) {
       lastIndexRef.current = idx;
@@ -168,7 +176,10 @@ export default function ProductGallery({ images, productName, productId }: Props
               ref={trackRef}
               onScroll={handleScroll}
               className="flex items-center gap-2 overflow-x-auto snap-x snap-mandatory scroll-smooth"
-              style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}
+              style={{
+                scrollbarWidth: "none",
+                WebkitOverflowScrolling: "touch",
+              }}
             >
               {images.map((image) => (
                 <div
@@ -176,18 +187,18 @@ export default function ProductGallery({ images, productName, productId }: Props
                   className="relative shrink-0 snap-start cursor-pointer"
                   style={{
                     ...imageStyle,
-                    width: "calc(100% - 48px)",
+                    width: "100%",
                     boxShadow: "0 35px 120px rgba(0,0,0,0.12)",
                   }}
                   onClick={() => openZoom(image.url, altText)}
                 >
                   <Image
-                    src={image.url}
+                    src={optimizedImageUrl(image.url, 900)}
                     alt={altText}
                     width={800}
                     height={800}
                     unoptimized
-                    className="h-72 w-full object-contain select-none"
+                    className="aspect-[4/5] w-full object-contain select-none"
                   />
                 </div>
               ))}
@@ -240,12 +251,12 @@ export default function ProductGallery({ images, productName, productId }: Props
             onClick={() => openZoom(selectedImage, altText)}
           >
             <Image
-              src={selectedImage}
+              src={optimizedImageUrl(selectedImage, 900)}
               alt={altText}
               width={800}
               height={800}
               unoptimized
-              className="h-72 w-full object-contain select-none"
+              className="aspect-[4/5] w-full object-contain select-none"
             />
             <div
               className="absolute bottom-3 right-3 z-10 flex gap-2"
@@ -271,7 +282,7 @@ export default function ProductGallery({ images, productName, productId }: Props
           onClick={() => openZoom(selectedImage, altText)}
         >
           <Image
-            src={selectedImage}
+            src={optimizedImageUrl(selectedImage, 900)}
             alt={altText}
             width={800}
             height={800}
@@ -301,11 +312,13 @@ export default function ProductGallery({ images, productName, productId }: Props
                   style={{
                     borderRadius: "var(--t-radius-card)",
                     border: `2px solid ${isActive ? "var(--t-primary)" : "var(--t-border-card)"}`,
-                    boxShadow: isActive ? "0 8px 30px color-mix(in srgb, var(--t-primary) 15%, transparent)" : "none",
+                    boxShadow: isActive
+                      ? "0 8px 30px color-mix(in srgb, var(--t-primary) 15%, transparent)"
+                      : "none",
                   }}
                 >
                   <Image
-                    src={image.url}
+                    src={optimizedImageUrl(image.url, 200)}
                     alt={`${altText} — thumbnail`}
                     width={200}
                     height={200}

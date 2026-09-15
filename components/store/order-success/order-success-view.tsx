@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
+import { optimizedImageUrl } from "@/lib/cloudinary-image";
 import {
   Check,
   CheckCircle2,
@@ -144,8 +145,7 @@ export default function OrderSuccessView({ order }: { order: OrderViewData }) {
           className="mt-8 text-3xl font-black text-text-heading sm:text-5xl"
           style={{ fontFamily: "var(--t-font-heading)" }}
         >
-          Order Placed{" "}
-          <span className="text-primary">Successfully</span>
+          Order Placed <span className="text-primary">Successfully</span>
         </motion.h1>
 
         <motion.div variants={fadeUp} className="os-flourish mt-5">
@@ -207,7 +207,9 @@ export default function OrderSuccessView({ order }: { order: OrderViewData }) {
       >
         <Clock size={20} className="shrink-0 text-primary" />
         <p className="text-sm text-text-body">
-          <span className="font-bold text-text-heading">Estimated delivery:</span>{" "}
+          <span className="font-bold text-text-heading">
+            Estimated delivery:
+          </span>{" "}
           {formatDate(order.deliveryFrom)} – {formatDate(order.deliveryTo)}
         </p>
       </motion.div>
@@ -293,7 +295,10 @@ export default function OrderSuccessView({ order }: { order: OrderViewData }) {
                   >
                     <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden bg-bg-card-nested sm:h-20 sm:w-20">
                       <Image
-                        src={item.imageUrl || "/placeholder.png"}
+                        src={
+                          optimizedImageUrl(item.imageUrl, 160) ||
+                          "/placeholder.png"
+                        }
                         alt={item.name}
                         fill
                         sizes="80px"
@@ -498,16 +503,16 @@ export default function OrderSuccessView({ order }: { order: OrderViewData }) {
                       isPaid
                         ? "text-primary"
                         : order.paymentStatus === "FAILED"
-                        ? "text-danger"
-                        : "text-text-muted-1"
+                          ? "text-danger"
+                          : "text-text-muted-1"
                     }`}
                   >
                     <ShieldCheck size={15} />
                     {isPaid
                       ? "Paid"
                       : order.paymentStatus === "FAILED"
-                      ? "Failed"
-                      : "Pay on Delivery"}
+                        ? "Failed"
+                        : "Pay on Delivery"}
                   </span>
                 </div>
               </div>

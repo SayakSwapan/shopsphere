@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useTheme } from "@/lib/themes/theme-provider";
 import { customizationUnitPriceWithGst } from "@/lib/print-pricing";
+import { optimizedImageUrl } from "@/lib/cloudinary-image";
 
 interface CartItem {
   id: string;
@@ -32,9 +33,10 @@ interface CartItem {
 }
 
 function inclPrice(item: CartItem): number {
-  const base = item.product.salePrice && item.product.salePrice > 0
-    ? item.product.salePrice
-    : item.product.sellingPrice;
+  const base =
+    item.product.salePrice && item.product.salePrice > 0
+      ? item.product.salePrice
+      : item.product.sellingPrice;
   const rate = item.product.gstPercentage || 0;
   return Number((base + (base * rate) / 100).toFixed(2));
 }
@@ -103,7 +105,7 @@ export default function OrderSummary({
           const hasDiscount = unitIncl < originalIncl && originalIncl > 0;
           const printIncl = customizationUnitPriceWithGst(
             item.customization,
-            item.product.gstPercentage || 0
+            item.product.gstPercentage || 0,
           );
 
           return (
@@ -113,8 +115,8 @@ export default function OrderSummary({
                 themeId === "sports"
                   ? "bg-[var(--t-bg-card-alt)]"
                   : themeId === "fashion"
-                  ? "bg-white shadow-sm"
-                  : "bg-bg-card-nested"
+                    ? "bg-white shadow-sm"
+                    : "bg-bg-card-nested"
               }`}
               style={{
                 borderRadius:
@@ -131,8 +133,8 @@ export default function OrderSummary({
                     themeId === "fashion"
                       ? "12px"
                       : themeId === "sports"
-                      ? "6px"
-                      : "var(--t-radius-card)",
+                        ? "6px"
+                        : "var(--t-radius-card)",
                   ...(themeId === "sports"
                     ? { border: "2px solid var(--t-primary)" }
                     : {}),
@@ -140,7 +142,10 @@ export default function OrderSummary({
               >
                 <Image
                   src={
-                    item.product.productimage?.[0]?.url || "/placeholder.png"
+                    optimizedImageUrl(
+                      item.product.productimage?.[0]?.url,
+                      120,
+                    ) || "/placeholder.png"
                   }
                   alt={item.product.name}
                   fill
@@ -155,8 +160,8 @@ export default function OrderSummary({
                       themeId === "sports"
                         ? "uppercase tracking-wider"
                         : themeId === "fashion"
-                        ? "italic"
-                        : ""
+                          ? "italic"
+                          : ""
                     }`}
                     style={
                       themeId === "sports" || themeId === "fashion"
@@ -179,11 +184,12 @@ export default function OrderSummary({
                         Print:{" "}
                         {[
                           item.customization.printTypeName,
-                          item.customization.name && `"${item.customization.name}"`,
-                          item.customization.number && `No. ${item.customization.number}`,
+                          item.customization.name &&
+                            `"${item.customization.name}"`,
+                          item.customization.number &&
+                            `No. ${item.customization.number}`,
                           item.customization.imageUrl && "Design image",
-                          printIncl > 0 &&
-                            `+₹${printIncl}/pc`,
+                          printIncl > 0 && `+₹${printIncl}/pc`,
                         ]
                           .filter(Boolean)
                           .join(" · ")}
@@ -203,7 +209,9 @@ export default function OrderSummary({
                     )}
                     <span
                       className={`block font-black ${
-                        themeId === "sports" || themeId === "ethnic" || themeId === "luxury"
+                        themeId === "sports" ||
+                        themeId === "ethnic" ||
+                        themeId === "luxury"
                           ? "text-primary"
                           : "text-text-heading"
                       }`}
@@ -227,8 +235,10 @@ export default function OrderSummary({
             className="mt-4 p-4"
             style={{
               borderRadius: "var(--t-radius-input)",
-              border: "1px solid color-mix(in srgb, var(--t-success) 30%, transparent)",
-              background: "color-mix(in srgb, var(--t-success) 5%, transparent)",
+              border:
+                "1px solid color-mix(in srgb, var(--t-success) 30%, transparent)",
+              background:
+                "color-mix(in srgb, var(--t-success) 5%, transparent)",
             }}
           >
             <p className="text-sm" style={{ color: "var(--t-success)" }}>
@@ -245,7 +255,9 @@ export default function OrderSummary({
       <div className="mt-8 space-y-4 border-t border-border-subtle pt-6">
         <div className="flex justify-between text-sm">
           <span className="text-text-muted-1">Item Total</span>
-          <span className="font-medium text-text-body">₹{itemTotalInclGst}</span>
+          <span className="font-medium text-text-body">
+            ₹{itemTotalInclGst}
+          </span>
         </div>
         <div className="flex justify-between text-sm">
           <span className="font-bold text-text-heading">Coupon Discount</span>
@@ -255,7 +267,12 @@ export default function OrderSummary({
         </div>
         <div className="flex justify-between text-sm">
           <span className="text-text-muted-1">Shipping</span>
-          <span className="font-medium" style={{ color: shipping === 0 ? "var(--t-success)" : "var(--t-text-body)" }}>
+          <span
+            className="font-medium"
+            style={{
+              color: shipping === 0 ? "var(--t-success)" : "var(--t-text-body)",
+            }}
+          >
             {shipping === 0 ? "FREE" : `₹${shipping}`}
           </span>
         </div>
@@ -292,7 +309,8 @@ export default function OrderSummary({
           <span style={{ color: "var(--t-success)" }}>✓</span> Easy Returns
         </div>
         <div className="flex items-center gap-2 text-sm text-text-body">
-          <span style={{ color: "var(--t-success)" }}>✓</span> 100% Authentic Products
+          <span style={{ color: "var(--t-success)" }}>✓</span> 100% Authentic
+          Products
         </div>
       </div>
     </aside>

@@ -1,5 +1,4 @@
 import { prisma } from "@/lib/prisma";
-import Link from "next/link";
 import { LoyaltyCustomersTable } from "@/components/admin/loyalty/customer-loyalty-table";
 
 export const metadata = { title: "Customer Loyalty" };

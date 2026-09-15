@@ -3,9 +3,16 @@ import { prisma } from "@/lib/prisma";
 import { getGstBreakdown, getActivePriceBase } from "@/lib/pricing";
 import { calculateShipping } from "@/lib/shipping";
 import { createAdminNotification } from "@/lib/notifications";
-import { customizationLetterCharge, customizationUnitPrice } from "@/lib/print-pricing";
-import { getRestrictedCartItems } from "@/lib/product-deliverability";
-import { calculateLoyaltyDiscount, redeemLoyaltyReward, getLoyaltyProgram } from "@/lib/loyalty";
+import {
+  customizationLetterCharge,
+  customizationUnitPrice,
+} from "@/lib/print-pricing";
+import { getRestrictedCartItemsInline } from "@/lib/product-deliverability";
+import {
+  calculateLoyaltyDiscount,
+  redeemLoyaltyReward,
+  getLoyaltyProgram,
+} from "@/lib/loyalty";
 import { sendOrderConfirmationEmail } from "@/lib/email/order-emails";
 import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
@@ -15,13 +22,23 @@ export async function POST(req: Request) {
     const session = await auth();
 
     if (!session?.user?.email) {
-      return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
+      return NextResponse.json(
+        { success: false, message: "Unauthorized" },
+        { status: 401 },
+      );
     }
 
-    const { paymentMethod, addressId, couponId, useLoyaltyReward } = await req.json();
+    const { paymentMethod, addressId, couponId, useLoyaltyReward } =
+      await req.json();
 
     if (paymentMethod !== "COD") {
-      return NextResponse.json({ success: false, message: "Online payments must use the payment endpoint." }, { status: 400 });
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Online payments must use the payment endpoint.",
+        },
+        { status: 400 },
+      );
     }
 
     const user = await prisma.user.findUnique({
@@ -40,48 +57,75 @@ export async function POST(req: Request) {
       },
     });
 
-    if (!user) return NextResponse.json({ success: false, message: "User not found" }, { status: 404 });
-    if (!user.cart || user.cart.cartitem.length === 0) return NextResponse.json({ success: false, message: "Cart is empty" }, { status: 400 });
+    if (!user)
+      return NextResponse.json(
+        { success: false, message: "User not found" },
+        { status: 404 },
+      );
+    if (!user.cart || user.cart.cartitem.length === 0)
+      return NextResponse.json(
+        { success: false, message: "Cart is empty" },
+        { status: 400 },
+      );
+    // Hoisted so narrowing survives into nested callbacks below.
+    const cart = user.cart;
 
     // Ownership check: the shipping address must belong to the caller.
-    const address = await prisma.address.findFirst({ where: { id: addressId, userId: user.id } });
-    if (!address) return NextResponse.json({ success: false, message: "Address not found" }, { status: 404 });
+    const address = await prisma.address.findFirst({
+      where: { id: addressId, userId: user.id },
+    });
+    if (!address)
+      return NextResponse.json(
+        { success: false, message: "Address not found" },
+        { status: 404 },
+      );
 
     // Never trust the client — block any product that is explicitly restricted
-    // from being delivered to this pincode.
-    const restrictedItems = await getRestrictedCartItems(user.cart.cartitem, address.pincode);
+    // from being delivered to this pincode. The cart items already carry their
+    // full product row, so the check is done in memory (no extra query).
+    const restrictedItems = getRestrictedCartItemsInline(
+      user.cart.cartitem,
+      address.pincode,
+    );
     if (restrictedItems.length > 0) {
       return NextResponse.json(
         {
           success: false,
           message: `These products are not deliverable to pincode ${address.pincode}: ${restrictedItems.map((r) => r.productName).join(", ")}.`,
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     // COD is never allowed when any item carries custom printing — the charge
     // must be settled online. Never trust the client's method choice.
-    const hasCustomisedItem = user.cart.cartitem.some((item) => item.customization != null);
+    const hasCustomisedItem = user.cart.cartitem.some(
+      (item) => item.customization != null,
+    );
     if (hasCustomisedItem) {
       return NextResponse.json(
-        { success: false, message: "COD is not available for items with custom printing. Please use online payment." },
-        { status: 400 }
+        {
+          success: false,
+          message:
+            "COD is not available for items with custom printing. Please use online payment.",
+        },
+        { status: 400 },
       );
     }
 
     // Per-product payment-method permission — a product configured as online-only
     // can never be paid by COD.
     const productBlocksCod = user.cart.cartitem.some(
-      (item) => item.product.allowedPaymentMethods === "ONLINE_ONLY"
+      (item) => item.product.allowedPaymentMethods === "ONLINE_ONLY",
     );
     if (productBlocksCod) {
       return NextResponse.json(
         {
           success: false,
-          message: "COD is not available for one or more items in your cart. Please use online payment.",
+          message:
+            "COD is not available for one or more items in your cart. Please use online payment.",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -93,7 +137,9 @@ export async function POST(req: Request) {
       if (item.productVariantId) {
         const variantStock = item.productvariant?.stock ?? 0;
         if (variantStock < item.quantity) {
-          stockIssues.push(`${item.product.name}${item.productvariant?.sku ? ` (${item.productvariant.sku})` : ""}`);
+          stockIssues.push(
+            `${item.product.name}${item.productvariant?.sku ? ` (${item.productvariant.sku})` : ""}`,
+          );
         }
       } else if ((Number(item.product.stock) || 0) < item.quantity) {
         stockIssues.push(item.product.name);
@@ -105,7 +151,7 @@ export async function POST(req: Request) {
           success: false,
           message: `Some items are no longer in stock: ${stockIssues.join(", ")}. Please adjust your cart and try again.`,
         },
-        { status: 409 }
+        { status: 409 },
       );
     }
 
@@ -128,21 +174,29 @@ export async function POST(req: Request) {
           discountValue: item.product.discountValue,
           offerStart: item.product.offerStart,
           offerEnd: item.product.offerEnd,
-        })
+        }),
       );
     });
 
     for (const item of user.cart.cartitem) {
       const unitBase = unitBaseByItemId.get(item.id)!;
-      const { gstAmount } = getGstBreakdown(unitBase, Number(item.product.gstPercentage) || 0);
+      const { gstAmount } = getGstBreakdown(
+        unitBase,
+        Number(item.product.gstPercentage) || 0,
+      );
 
       // Custom print charge (pre-GST) is billed per piece, so multiply by qty.
       const printUnit = customizationUnitPrice(
-        item.customization as import("@/types/custom-print").CustomPrintData | null
+        item.customization as
+          import("@/types/custom-print").CustomPrintData | null,
       );
-      const printGst = customizationLetterCharge(
-        item.customization as import("@/types/custom-print").CustomPrintData | null
-      ) * (Number(item.product.gstPercentage) || 0) / 100;
+      const printGst =
+        (customizationLetterCharge(
+          item.customization as
+            import("@/types/custom-print").CustomPrintData | null,
+        ) *
+          (Number(item.product.gstPercentage) || 0)) /
+        100;
 
       subtotal += (unitBase + printUnit) * item.quantity;
       gst += (gstAmount + printGst) * item.quantity;
@@ -155,19 +209,32 @@ export async function POST(req: Request) {
     let couponFreeShipping = false;
 
     if (couponId) {
-      const coupon = await prisma.coupon.findUnique({ where: { id: couponId } });
+      const coupon = await prisma.coupon.findUnique({
+        where: { id: couponId },
+      });
 
-      if (coupon && coupon.isActive && coupon.startDate <= new Date() && coupon.endDate >= new Date()) {
+      if (
+        coupon &&
+        coupon.isActive &&
+        coupon.startDate <= new Date() &&
+        coupon.endDate >= new Date()
+      ) {
         if (!coupon.usageLimit || coupon.usedCount < coupon.usageLimit) {
-          const previousUsage = await prisma.couponUsage.count({ where: { couponId, userId: user.id } });
+          const previousUsage = await prisma.couponUsage.count({
+            where: { couponId, userId: user.id },
+          });
           if (previousUsage < coupon.perUserLimit) {
-            if (!coupon.minimumOrder || subtotal >= Number(coupon.minimumOrder)) {
+            if (
+              !coupon.minimumOrder ||
+              subtotal >= Number(coupon.minimumOrder)
+            ) {
               if (coupon.discountType === "FLAT") {
                 discount = Number(coupon.discountValue);
               } else {
-                discount = subtotal * Number(coupon.discountValue) / 100;
+                discount = (subtotal * Number(coupon.discountValue)) / 100;
               }
-              if (coupon.maxDiscount && discount > Number(coupon.maxDiscount)) discount = Number(coupon.maxDiscount);
+              if (coupon.maxDiscount && discount > Number(coupon.maxDiscount))
+                discount = Number(coupon.maxDiscount);
               if (discount > subtotal) discount = subtotal;
               couponFreeShipping = coupon.freeShipping;
             }
@@ -186,7 +253,7 @@ export async function POST(req: Request) {
         },
       })),
       couponFreeShipping,
-      subtotal
+      subtotal,
     );
     const shipping = shippingResult.shipping;
 
@@ -197,7 +264,10 @@ export async function POST(req: Request) {
 
     if (loyaltyProgram.isActive && useLoyaltyReward !== false) {
       const orderValueBasis = subtotal + gst + shipping - discount;
-      const loyaltyCalc = await calculateLoyaltyDiscount(user.id, orderValueBasis);
+      const loyaltyCalc = await calculateLoyaltyDiscount(
+        user.id,
+        orderValueBasis,
+      );
       if (loyaltyCalc.applicable && loyaltyCalc.discountAmount > 0) {
         loyaltyDiscount = loyaltyCalc.discountAmount;
         const loyalty = await prisma.customerLoyalty.findUnique({
@@ -241,94 +311,127 @@ export async function POST(req: Request) {
       },
     });
 
-    for (const item of user.cart.cartitem) {
+    // Everything below — order items, stock decrements, coupon consumption,
+    // cart clearing, the payment record and loyalty redemption — runs in ONE
+    // transaction so a failure can never leave a partial/duplicate order, and
+    // the per-item writes are batched (createMany + parallel conditional
+    // decrements) instead of N serial round-trips. Email + admin notification
+    // stay outside the DB transaction (fire-and-forget).
+    const orderItemData = user.cart.cartitem.map((item) => {
       const sellingPrice = unitBaseByItemId.get(item.id)!;
       const costPrice = Number(item.product.costPrice);
       const gstPct = Number(item.product.gstPercentage) || 0;
       const { gstAmount } = getGstBreakdown(sellingPrice, gstPct);
       const printUnit = customizationUnitPrice(
-        item.customization as import("@/types/custom-print").CustomPrintData | null
+        item.customization as
+          import("@/types/custom-print").CustomPrintData | null,
       );
 
-      await prisma.orderitem.create({
+      return {
+        id: randomUUID(),
+        orderId: order.id,
+        productId: item.productId,
+        quantity: item.quantity,
+        price: sellingPrice,
+        total: (sellingPrice + printUnit) * item.quantity,
+        sellingPriceSnapshot: sellingPrice,
+        mrpSnapshot: Number(item.product.sellingPrice),
+        costPriceSnapshot: costPrice,
+        gstSnapshot: Math.round(gstAmount * 100) / 100,
+        discountSnapshot:
+          item.quantity === 0
+            ? 0
+            : Math.round((discount / cart.cartitem.length) * 100) / 100,
+        variantSku: item.productvariant?.sku ?? null,
+        variantSize: item.productvariant?.size?.sizeName ?? null,
+        variantGender: item.productvariant?.gender?.name ?? null,
+        customization: item.customization ?? undefined,
+      };
+    });
+
+    const grossAmount = total;
+    const netSettlement = grossAmount;
+
+    await prisma.$transaction(async (tx) => {
+      // Batch-create all order items in a single statement.
+      await tx.orderitem.createMany({ data: orderItemData });
+
+      // Parallel conditional stock decrements — each guarded by `stock >= qty`
+      // so a variant/product can never be pushed below zero under concurrency.
+      const stockUpdates: Promise<unknown>[] = [];
+      for (const item of cart.cartitem) {
+        if (item.productVariantId) {
+          stockUpdates.push(
+            tx.productvariant.updateMany({
+              where: {
+                id: item.productVariantId,
+                stock: { gte: item.quantity },
+              },
+              data: { stock: { decrement: item.quantity } },
+            }),
+          );
+        }
+        stockUpdates.push(
+          tx.product.updateMany({
+            where: { id: item.productId, stock: { gte: item.quantity } },
+            data: {
+              totalSold: { increment: item.quantity },
+              stock: { decrement: item.quantity },
+            },
+          }),
+        );
+      }
+      await Promise.all(stockUpdates);
+
+      if (couponId && discount > 0) {
+        await tx.couponUsage.create({
+          data: { couponId, userId: user.id, orderId: order.id },
+        });
+        await tx.coupon.update({
+          where: { id: couponId },
+          data: { usedCount: { increment: 1 } },
+        });
+      }
+
+      await tx.cartitem.deleteMany({ where: { cartId: cart.id } });
+
+      // Record the payment transaction for this order
+      await tx.paymentTransaction.create({
         data: {
           id: randomUUID(),
           orderId: order.id,
-          productId: item.productId,
-          quantity: item.quantity,
-          price: sellingPrice,
-          total: (sellingPrice + printUnit) * item.quantity,
-          sellingPriceSnapshot: sellingPrice,
-          mrpSnapshot: Number(item.product.sellingPrice),
-          costPriceSnapshot: costPrice,
-          gstSnapshot: Math.round(gstAmount * 100) / 100,
-          discountSnapshot: item.quantity === 0 ? 0 : Math.round((discount / user.cart.cartitem.length) * 100) / 100,
-          variantSku: item.productvariant?.sku ?? null,
-          variantSize: item.productvariant?.size?.sizeName ?? null,
-          variantGender: item.productvariant?.gender?.name ?? null,
-          customization: item.customization ?? undefined,
+          gateway: "COD",
+          paymentMethod: "COD",
+          grossAmount,
+          gatewayFee: 0,
+          gatewayGST: 0,
+          netSettlement: Math.round(netSettlement * 100) / 100,
+          settlementStatus: "PENDING",
+          paymentStatus: "PENDING",
         },
       });
 
-      if (item.productVariantId) {
-        await prisma.productvariant.updateMany({
-          where: { id: item.productVariantId, stock: { gte: item.quantity } },
-          data: { stock: { decrement: item.quantity } },
-        });
-      }
-      await prisma.product.updateMany({
-        where: { id: item.productId, stock: { gte: item.quantity } },
-        data: { totalSold: { increment: item.quantity }, stock: { decrement: item.quantity } },
-      });
-    }
-
-    if (couponId && discount > 0) {
-      await prisma.couponUsage.create({ data: { couponId, userId: user.id, orderId: order.id } });
-      await prisma.coupon.update({ where: { id: couponId }, data: { usedCount: { increment: 1 } } });
-    }
-
-    await prisma.cartitem.deleteMany({ where: { cartId: user.cart.id } });
-
-    // Record the payment transaction for this order
-    const grossAmount = total;
-    const netSettlement = grossAmount;
-    await prisma.paymentTransaction.create({
-      data: {
-        id: randomUUID(),
-        orderId: order.id,
-        gateway: "COD",
-        paymentMethod: "COD",
-        grossAmount,
-        gatewayFee: 0,
-        gatewayGST: 0,
-        netSettlement: Math.round(netSettlement * 100) / 100,
-        settlementStatus: "PENDING",
-        paymentStatus: "PENDING",
-      },
-    });
-
-    // Redeem loyalty reward if applied (transaction-safe, idempotent)
-    if (loyaltyDiscount > 0) {
-      const orderValue = subtotal + gst + shipping - discount;
-      const redemption = await prisma.$transaction((tx) =>
-        redeemLoyaltyReward(tx, {
+      // Redeem loyalty reward if applied (transaction-safe, idempotent)
+      if (loyaltyDiscount > 0) {
+        const orderValue = subtotal + gst + shipping - discount;
+        const redemption = await redeemLoyaltyReward(tx, {
           customerId: user.id,
           orderId: order.id,
           orderAmount: orderValue,
           source: "ONLINE",
-        })
-      );
-
-      if (redemption) {
-        await prisma.order.update({
-          where: { id: order.id },
-          data: {
-            loyaltyCycleId: redemption.cycleId,
-            loyaltyPurchaseCounted: true,
-          },
         });
+
+        if (redemption) {
+          await tx.order.update({
+            where: { id: order.id },
+            data: {
+              loyaltyCycleId: redemption.cycleId,
+              loyaltyPurchaseCounted: true,
+            },
+          });
+        }
       }
-    }
+    });
 
     createAdminNotification({
       title: "New Order Placed",
@@ -346,23 +449,48 @@ export async function POST(req: Request) {
         customerEmail: user.email,
         items: user.cart.cartitem.map((item) => ({
           name: item.product.name,
-          variant: [item.productvariant?.gender?.name, item.productvariant?.size?.sizeName ? `Size: ${item.productvariant.size.sizeName}` : null].filter(Boolean).join(" · ") || undefined,
+          variant:
+            [
+              item.productvariant?.gender?.name,
+              item.productvariant?.size?.sizeName
+                ? `Size: ${item.productvariant.size.sizeName}`
+                : null,
+            ]
+              .filter(Boolean)
+              .join(" · ") || undefined,
           qty: item.quantity,
-          price: (unitBaseByItemId.get(item.id)! + customizationUnitPrice(item.customization as import("@/types/custom-print").CustomPrintData | null)) * item.quantity,
+          price:
+            (unitBaseByItemId.get(item.id)! +
+              customizationUnitPrice(
+                item.customization as
+                  import("@/types/custom-print").CustomPrintData | null,
+              )) *
+            item.quantity,
         })),
         total,
         paymentMethod: "COD",
-        shippingAddress: [address.fullName, address.addressLine1, address.addressLine2, `${address.city}, ${address.state} — ${address.pincode}`].filter(Boolean).join("\n"),
+        shippingAddress: [
+          address.fullName,
+          address.addressLine1,
+          address.addressLine2,
+          `${address.city}, ${address.state} — ${address.pincode}`,
+        ]
+          .filter(Boolean)
+          .join("\n"),
       },
     }).catch(console.error);
 
     // Email the customer their COD order confirmation (fire-and-forget, deduped
     // atomically on the order's confirmationEmailSent flag).
     void sendOrderConfirmationEmail({ orderId: order.id, type: "COD" }).catch(
-      console.error
+      console.error,
     );
 
-    return NextResponse.json({ success: true, orderId: order.id, paymentMethod });
+    return NextResponse.json({
+      success: true,
+      orderId: order.id,
+      paymentMethod,
+    });
   } catch (error) {
     console.log(error);
     return NextResponse.json({ success: false }, { status: 500 });

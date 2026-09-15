@@ -13,7 +13,7 @@ interface AddToCartPayload {
 }
 
 type AddToCartOutcome =
-  | { ok: true }
+  | { ok: true; message?: string; capReached?: boolean; merged?: boolean }
   | { ok: false; status: number; message?: string };
 
 /**
@@ -22,7 +22,7 @@ type AddToCartOutcome =
  * with the same payload shape.
  */
 export async function addToCartRequest(
-  payload: AddToCartPayload
+  payload: AddToCartPayload,
 ): Promise<AddToCartOutcome> {
   try {
     const response = await fetch("/api/cart/add", {
@@ -38,7 +38,12 @@ export async function addToCartRequest(
         message: data.message || "Failed to add to cart.",
       };
     }
-    return { ok: true };
+    return {
+      ok: true,
+      message: typeof data.message === "string" ? data.message : undefined,
+      capReached: Boolean(data.capReached),
+      merged: Boolean(data.merged),
+    };
   } catch (error) {
     return {
       ok: false,
@@ -63,41 +68,43 @@ export default function AddToCartButton({
   disabled = false,
   customization = null,
 }: Props) {
-  const [loading, setLoading] =
-    useState(false);
+  const [loading, setLoading] = useState(false);
   const authModal = useOptionalAuthModal();
   // Hard guard so a fast double-tap can't fire two POSTs before React
   // flushes the disabled state.
   const inflightRef = useRef(false);
 
-  const addToCart =
-    async () => {
-      if (disabled || !productVariantId || inflightRef.current) return;
+  const addToCart = async () => {
+    if (disabled || !productVariantId || inflightRef.current) return;
 
-      try {
-        inflightRef.current = true;
-        setLoading(true);
+    try {
+      inflightRef.current = true;
+      setLoading(true);
 
-        const result = await addToCartRequest({
-          productId,
-          productVariantId,
-          quantity,
-          customization,
-        });
+      const result = await addToCartRequest({
+        productId,
+        productVariantId,
+        quantity,
+        customization,
+      });
 
-        if (result.ok) {
-          window.dispatchEvent(new Event("cart-updated"));
-          toast.success("Added to Cart");
-        } else if (result.status === 401) {
-          authModal?.openAuth("login");
+      if (result.ok) {
+        window.dispatchEvent(new Event("cart-updated"));
+        if (result.capReached && result.message) {
+          toast.info(result.message);
         } else {
-          toast.error(result.message || "Failed to add to cart.");
+          toast.success(result.message || "Added to Cart");
         }
-      } finally {
-        inflightRef.current = false;
-        setLoading(false);
+      } else if (result.status === 401) {
+        authModal?.openAuth("login");
+      } else {
+        toast.error(result.message || "Failed to add to cart.");
       }
-    };
+    } finally {
+      inflightRef.current = false;
+      setLoading(false);
+    }
+  };
 
   return (
     <button
@@ -119,11 +126,7 @@ export default function AddToCartButton({
             }),
       }}
     >
-      {loading
-        ? "Adding..."
-        : disabled
-        ? "Select Size"
-        : "Add To Cart"}
+      {loading ? "Adding..." : disabled ? "Select Size" : "Add To Cart"}
     </button>
   );
 }

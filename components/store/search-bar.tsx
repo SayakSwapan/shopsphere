@@ -3,6 +3,7 @@
 import { useRef, useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Search } from "lucide-react";
+import { optimizedImageUrl } from "@/lib/cloudinary-image";
 
 interface ProductHit {
   id: string;
@@ -19,7 +20,11 @@ interface Props {
   variant?: "light" | "dark";
 }
 
-export default function SearchBar({ autoFocus, inputClass = "w-44", variant = "light" }: Props) {
+export default function SearchBar({
+  autoFocus,
+  inputClass = "w-44",
+  variant = "light",
+}: Props) {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<ProductHit[]>([]);
@@ -37,7 +42,9 @@ export default function SearchBar({ autoFocus, inputClass = "w-44", variant = "l
       return;
     }
     try {
-      const res = await fetch(`/api/search/products?q=${encodeURIComponent(q)}`);
+      const res = await fetch(
+        `/api/search/products?q=${encodeURIComponent(q)}`,
+      );
       const data = await res.json();
       setResults(data.products || []);
       setOpen(data.products?.length > 0);
@@ -55,7 +62,10 @@ export default function SearchBar({ autoFocus, inputClass = "w-44", variant = "l
   useEffect(() => {
     if (!open) return;
     function handleClick(e: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(e.target as Node)
+      ) {
         setOpen(false);
       }
     }
@@ -92,16 +102,23 @@ export default function SearchBar({ autoFocus, inputClass = "w-44", variant = "l
         className="flex items-center gap-3 px-4 py-2"
         style={{
           background: isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.04)",
-          border: isDark ? "1px solid rgba(255,255,255,0.14)" : "1px solid var(--t-border-subtle)",
+          border: isDark
+            ? "1px solid rgba(255,255,255,0.14)"
+            : "1px solid var(--t-border-subtle)",
           borderRadius: "var(--t-radius-input)",
         }}
       >
-        <Search size={15} style={{ color: isDark ? "#9A9D9F" : "var(--t-text-muted-2)" }} />
+        <Search
+          size={15}
+          style={{ color: isDark ? "#9A9D9F" : "var(--t-text-muted-2)" }}
+        />
         <input
           ref={inputRef}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          onFocus={() => { if (results.length > 0) setOpen(true); }}
+          onFocus={() => {
+            if (results.length > 0) setOpen(true);
+          }}
           onKeyDown={onKeyDown}
           placeholder="Search products..."
           autoFocus={autoFocus}
@@ -115,7 +132,9 @@ export default function SearchBar({ autoFocus, inputClass = "w-44", variant = "l
           className="absolute top-full left-0 right-0 mt-1 z-50 border overflow-hidden"
           style={{
             background: isDark ? "#0E1319" : "var(--t-bg-card)",
-            borderColor: isDark ? "rgba(255,255,255,0.14)" : "var(--t-border-card)",
+            borderColor: isDark
+              ? "rgba(255,255,255,0.14)"
+              : "var(--t-border-card)",
             borderRadius: "var(--t-radius-card)",
             boxShadow: "var(--t-shadow-card-hover)",
           }}
@@ -127,12 +146,17 @@ export default function SearchBar({ autoFocus, inputClass = "w-44", variant = "l
               onMouseEnter={() => setHighlightIdx(i)}
               className="w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors"
               style={{
-                background: i === highlightIdx ? (isDark ? "rgba(255,255,255,0.06)" : "var(--t-bg-card-alt)") : "transparent",
+                background:
+                  i === highlightIdx
+                    ? isDark
+                      ? "rgba(255,255,255,0.06)"
+                      : "var(--t-bg-card-alt)"
+                    : "transparent",
               }}
             >
               {p.productimage?.[0]?.url && (
                 <img
-                  src={p.productimage[0].url}
+                  src={optimizedImageUrl(p.productimage[0].url, 40)}
                   alt=""
                   className="h-10 w-10 object-cover flex-shrink-0"
                   style={{ borderRadius: "var(--t-radius-badge)" }}
@@ -141,7 +165,9 @@ export default function SearchBar({ autoFocus, inputClass = "w-44", variant = "l
               <div className="min-w-0 flex-1">
                 <p
                   className="text-sm font-medium truncate"
-                  style={{ color: isDark ? "#F4F3EE" : "var(--t-text-heading)" }}
+                  style={{
+                    color: isDark ? "#F4F3EE" : "var(--t-text-heading)",
+                  }}
                 >
                   {p.name}
                 </p>

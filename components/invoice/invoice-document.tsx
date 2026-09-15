@@ -93,7 +93,6 @@ function LoyaltyBadgeIcon({
   icon,
   image,
   name,
-  color,
   size = 18,
 }: {
   icon?: string | null;
@@ -103,9 +102,13 @@ function LoyaltyBadgeIcon({
   size?: number;
 }) {
   if (image) {
-    // eslint-disable-next-line @next/next/no-img-element
     return (
-      <img src={image} alt={name ?? "loyalty"} style={{ width: size, height: size, objectFit: "contain" }} />
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={image}
+        alt={name ?? "loyalty"}
+        style={{ width: size, height: size, objectFit: "contain" }}
+      />
     );
   }
   switch (icon) {
@@ -266,10 +269,7 @@ function buildPolicy(order: InvoiceOrder): PolicyLine[] {
   const someReplaceable = items.some((i) => i.product.isReplaceable);
   const returnDays = items
     .filter((i) => i.product.isReturnable && i.product.returnDays)
-    .reduce(
-      (max, i) => Math.max(max, Number(i.product.returnDays) || 0),
-      0
-    );
+    .reduce((max, i) => Math.max(max, Number(i.product.returnDays) || 0), 0);
   const within = returnDays > 0 ? ` within ${returnDays} days of delivery` : "";
 
   if (allReturnable && allReplaceable) {
@@ -427,7 +427,9 @@ export default function InvoiceDocument({ order, business }: Props) {
               <p className="text-base font-black text-white">
                 Invoice No: {order.orderNumber}
               </p>
-              <p className="text-gray-300">Date: {formatDate(order.createdAt)}</p>
+              <p className="text-gray-300">
+                Date: {formatDate(order.createdAt)}
+              </p>
               <StatusChip status={order.status} />
             </div>
           </div>
@@ -459,7 +461,9 @@ export default function InvoiceDocument({ order, business }: Props) {
             Billed To
           </p>
           <p className="font-bold text-gray-900">{billingName}</p>
-          {billingEmail && <p className="mt-0.5 text-gray-600">{billingEmail}</p>}
+          {billingEmail && (
+            <p className="mt-0.5 text-gray-600">{billingEmail}</p>
+          )}
           <p className="text-gray-600">{order.phone}</p>
         </div>
         <div
@@ -478,7 +482,9 @@ export default function InvoiceDocument({ order, business }: Props) {
           </p>
           <p className="font-bold text-gray-900">{order.fullName}</p>
           <p className="text-gray-600">{order.addressLine1}</p>
-          {order.addressLine2 && <p className="text-gray-600">{order.addressLine2}</p>}
+          {order.addressLine2 && (
+            <p className="text-gray-600">{order.addressLine2}</p>
+          )}
           <p className="text-gray-600">
             {order.city}, {order.state} {order.pincode}
           </p>
@@ -535,14 +541,14 @@ export default function InvoiceDocument({ order, business }: Props) {
                   : 0;
               const gstTotal =
                 Math.round(
-                  (baseGstPerUnit + printGstPerUnit) * item.quantity * 100
+                  (baseGstPerUnit + printGstPerUnit) * item.quantity * 100,
                 ) / 100;
               const totalIncl = Math.round((item.total + gstTotal) * 100) / 100;
               const unitIncl =
                 Math.round((item.price + baseGstPerUnit) * 100) / 100;
 
               const hasCustom = Boolean(
-                custom && (custom.name || custom.number || custom.imageUrl)
+                custom && (custom.name || custom.number || custom.imageUrl),
               );
               const printDetails = [
                 custom?.name && `Name: "${custom.name}"`,
@@ -622,7 +628,9 @@ export default function InvoiceDocument({ order, business }: Props) {
                       {gstRate > 0 ? `${gstRate}%` : "—"}
                     </div>
                     <div className="text-[11px] text-gray-500">
-                      {baseGstPerUnit > 0 ? formatCurrency(baseGstPerUnit) : "—"}
+                      {baseGstPerUnit > 0
+                        ? formatCurrency(baseGstPerUnit)
+                        : "—"}
                     </div>
                   </td>
                   <td className="border-b border-gray-100 px-2 py-2 text-right font-bold text-gray-900">
@@ -748,8 +756,8 @@ export default function InvoiceDocument({ order, business }: Props) {
                 <p className="mt-0.5 text-sm text-gray-800">
                   {order.loyalty.purchaseCount ?? 0} of{" "}
                   {order.loyalty.requiredPurchases ?? 0} qualifying purchase
-                  {order.loyalty.requiredPurchases === 1 ? "" : "s"}{" "}
-                  collected toward your next reward.
+                  {order.loyalty.requiredPurchases === 1 ? "" : "s"} collected
+                  toward your next reward.
                 </p>
               )}
               {order.loyalty.badgeDescription && (

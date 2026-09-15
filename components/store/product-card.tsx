@@ -2,7 +2,13 @@ import Link from "next/link";
 import WishlistButton from "./wishlist-button";
 import CardRating from "./reviews/card-rating";
 import OfferCountdown from "./product/offer-countdown";
-import { getEffectivePrice, isFlatDiscount, isPercentDiscount, priceWithGst } from "@/lib/pricing";
+import {
+  getEffectivePrice,
+  isFlatDiscount,
+  isPercentDiscount,
+  priceWithGst,
+} from "@/lib/pricing";
+import { optimizedImageUrl } from "@/lib/cloudinary-image";
 
 interface Props {
   product: {
@@ -34,16 +40,12 @@ export default function ProductCard({ product }: Props) {
 
   const originalPrice = priceWithGst(
     Number(product.sellingPrice || 0),
-    gstRate
+    gstRate,
   );
 
-  const discountType = String(
-    product.discountType || ""
-  ).toUpperCase();
+  const discountType = String(product.discountType || "").toUpperCase();
 
-  const discountValue = Number(
-    product.discountValue || 0
-  );
+  const discountValue = Number(product.discountValue || 0);
 
   const now = new Date();
   const offerActive =
@@ -54,8 +56,7 @@ export default function ProductCard({ product }: Props) {
   const hasDiscount =
     offerActive &&
     discountValue > 0 &&
-    (isPercentDiscount(discountType) ||
-      isFlatDiscount(discountType));
+    (isPercentDiscount(discountType) || isFlatDiscount(discountType));
 
   // An offer is "upcoming" when a discount is configured with a start time in
   // the future — the sale price is shown, but we surface a countdown so the
@@ -65,17 +66,20 @@ export default function ProductCard({ product }: Props) {
     discountValue > 0 &&
     product.offerStart &&
     now < new Date(product.offerStart) &&
-    (isPercentDiscount(discountType) ||
-      isFlatDiscount(discountType));
+    (isPercentDiscount(discountType) || isFlatDiscount(discountType));
 
   // Only show the discounted price when the offer is actually active; a
   // scheduled/expired offer must not surface the sale price as if it were the
   // regular price (inconsistent with the badge/countdown that is hidden).
   const displayPrice = priceWithGst(
     hasDiscount
-      ? getEffectivePrice(product.salePrice, product.finalPrice, product.sellingPrice)
+      ? getEffectivePrice(
+          product.salePrice,
+          product.finalPrice,
+          product.sellingPrice,
+        )
       : Number(product.sellingPrice || 0),
-    gstRate
+    gstRate,
   );
 
   const availableSizes = Array.from(
@@ -83,8 +87,8 @@ export default function ProductCard({ product }: Props) {
       (product.productvariant ?? [])
         .filter((variant) => variant.stock > 0)
         .map((variant) => variant.size?.sizeName)
-        .filter(Boolean) as string[]
-    )
+        .filter(Boolean) as string[],
+    ),
   );
 
   let discountLabel = "";
@@ -99,7 +103,9 @@ export default function ProductCard({ product }: Props) {
 
     // Compute actual saving vs the GST-inclusive MRP (works for both % and flat).
     if (displayPrice < originalPrice && originalPrice > 0) {
-      offPercent = Math.round(((originalPrice - displayPrice) / originalPrice) * 100);
+      offPercent = Math.round(
+        ((originalPrice - displayPrice) / originalPrice) * 100,
+      );
     }
   }
 
@@ -117,7 +123,7 @@ export default function ProductCard({ product }: Props) {
         >
           <img
             src={
-              product.productimage?.[0]?.url ||
+              optimizedImageUrl(product.productimage?.[0]?.url, 800) ||
               "/placeholder.png"
             }
             alt={product.name}
@@ -133,7 +139,10 @@ export default function ProductCard({ product }: Props) {
           {product.isFeatured && (
             <span
               className="bg-primary px-1.5 sm:px-3 py-0.5 sm:py-1 text-[8px] sm:text-[10px] font-black uppercase tracking-wider"
-              style={{ borderRadius: "var(--t-radius-badge)", color: "var(--t-bg-page)" }}
+              style={{
+                borderRadius: "var(--t-radius-badge)",
+                color: "var(--t-bg-page)",
+              }}
             >
               Featured
             </span>
@@ -141,7 +150,10 @@ export default function ProductCard({ product }: Props) {
           {product.isTrending && (
             <span
               className="bg-accent px-1.5 sm:px-3 py-0.5 sm:py-1 text-[8px] sm:text-[10px] font-black uppercase tracking-wider"
-              style={{ borderRadius: "var(--t-radius-badge)", color: "var(--t-bg-page)" }}
+              style={{
+                borderRadius: "var(--t-radius-badge)",
+                color: "var(--t-bg-page)",
+              }}
             >
               Trending
             </span>
@@ -163,9 +175,7 @@ export default function ProductCard({ product }: Props) {
 
         {/* Name */}
         <Link href={`/products/${product.slug}`}>
-          <h3
-            className="text-xs sm:text-base lg:text-lg font-bold leading-5 sm:leading-7 text-text-heading transition-colors duration-300 group-hover:text-primary line-clamp-2 min-h-[32px] sm:min-h-[56px]"
-          >
+          <h3 className="text-xs sm:text-base lg:text-lg font-bold leading-5 sm:leading-7 text-text-heading transition-colors duration-300 group-hover:text-primary line-clamp-2 min-h-[32px] sm:min-h-[56px]">
             {product.name}
           </h3>
         </Link>
@@ -211,14 +221,22 @@ export default function ProductCard({ product }: Props) {
             <div className="mt-1.5 sm:mt-2 hidden sm:flex items-center gap-2">
               <span
                 className="inline-flex px-2.5 py-1 text-xs font-black text-success"
-                style={{ background: "color-mix(in srgb, var(--t-success) 12%, transparent)", borderRadius: "var(--t-radius-badge)" }}
+                style={{
+                  background:
+                    "color-mix(in srgb, var(--t-success) 12%, transparent)",
+                  borderRadius: "var(--t-radius-badge)",
+                }}
               >
                 {discountLabel}
               </span>
               {offPercent > 0 && (
                 <span
                   className="inline-flex px-2.5 py-1 text-xs font-black text-accent"
-                  style={{ background: "color-mix(in srgb, var(--t-accent) 12%, transparent)", borderRadius: "var(--t-radius-badge)" }}
+                  style={{
+                    background:
+                      "color-mix(in srgb, var(--t-accent) 12%, transparent)",
+                    borderRadius: "var(--t-radius-badge)",
+                  }}
                 >
                   Save {offPercent}%
                 </span>
@@ -227,7 +245,10 @@ export default function ProductCard({ product }: Props) {
           )}
 
           {hasDiscount && product.offerEnd && (
-            <OfferCountdown offerEnd={new Date(product.offerEnd).toISOString()} variant="card" />
+            <OfferCountdown
+              offerEnd={new Date(product.offerEnd).toISOString()}
+              variant="card"
+            />
           )}
 
           {offerUpcoming && product.offerStart && (
@@ -243,7 +264,11 @@ export default function ProductCard({ product }: Props) {
         <Link
           href={`/products/${product.slug}`}
           className="mt-4 sm:mt-6 hidden sm:flex h-12 items-center justify-center font-bold uppercase tracking-wider transition-all duration-300 bg-primary hover:opacity-90"
-          style={{ borderRadius: "var(--t-radius-button)", color: "var(--t-bg-page)", fontFamily: "var(--t-font-heading)" }}
+          style={{
+            borderRadius: "var(--t-radius-button)",
+            color: "var(--t-bg-page)",
+            fontFamily: "var(--t-font-heading)",
+          }}
         >
           View Product
         </Link>

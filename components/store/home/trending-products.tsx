@@ -1,7 +1,13 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { Star, Heart, ChevronRight } from "lucide-react";
-import { getEffectivePrice, isFlatDiscount, isPercentDiscount, priceWithGst } from "@/lib/pricing";
+import {
+  getEffectivePrice,
+  isFlatDiscount,
+  isPercentDiscount,
+  priceWithGst,
+} from "@/lib/pricing";
+import { optimizedImageUrl } from "@/lib/cloudinary-image";
 import QuickAddButton from "@/components/store/quick-add-button";
 
 export const dynamic = "force-dynamic";
@@ -37,7 +43,11 @@ export default async function TrendingProducts() {
         productimage: { take: 1 },
         category: true,
         review: true,
-        productvariant: { where: { stock: { gt: 0 } }, take: 1, select: { id: true } },
+        productvariant: {
+          where: { stock: { gt: 0 } },
+          take: 1,
+          select: { id: true },
+        },
       },
       orderBy: { createdAt: "desc" },
       take: 8,
@@ -56,13 +66,19 @@ export default async function TrendingProducts() {
           <div>
             <p
               className="text-[11px] font-black uppercase tracking-[0.3em] mb-3"
-              style={{ color: "var(--t-primary)", fontFamily: "var(--t-font-heading)" }}
+              style={{
+                color: "var(--t-primary)",
+                fontFamily: "var(--t-font-heading)",
+              }}
             >
               Handpicked
             </p>
             <h2
               className="text-3xl md:text-4xl font-black uppercase"
-              style={{ color: "var(--t-text-heading)", fontFamily: "var(--t-font-heading)" }}
+              style={{
+                color: "var(--t-text-heading)",
+                fontFamily: "var(--t-font-heading)",
+              }}
             >
               Trending This Week
             </h2>
@@ -71,7 +87,10 @@ export default async function TrendingProducts() {
           <Link
             href="/products"
             className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider transition-colors"
-            style={{ color: "var(--t-primary)", fontFamily: "var(--t-font-heading)" }}
+            style={{
+              color: "var(--t-primary)",
+              fontFamily: "var(--t-font-heading)",
+            }}
           >
             View All <ChevronRight size={14} strokeWidth={3} />
           </Link>
@@ -114,19 +133,31 @@ export default async function TrendingProducts() {
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
           {products.map((product) => {
             const gstRate = Number(product.gstPercentage || 0);
-            const originalPrice = priceWithGst(Number(product.sellingPrice || 0), gstRate);
+            const originalPrice = priceWithGst(
+              Number(product.sellingPrice || 0),
+              gstRate,
+            );
             const displayPrice = priceWithGst(
-              getEffectivePrice(product.salePrice, product.finalPrice, product.sellingPrice),
-              gstRate
+              getEffectivePrice(
+                product.salePrice,
+                product.finalPrice,
+                product.sellingPrice,
+              ),
+              gstRate,
             );
 
             const reviews = product.review ?? [];
             const avgRating =
               reviews.length > 0
-                ? reviews.reduce((sum: number, r: { rating: number }) => sum + r.rating, 0) / reviews.length
+                ? reviews.reduce(
+                    (sum: number, r: { rating: number }) => sum + r.rating,
+                    0,
+                  ) / reviews.length
                 : 0;
 
-            const discountType = String(product.discountType || "").toUpperCase();
+            const discountType = String(
+              product.discountType || "",
+            ).toUpperCase();
             const hasDiscount =
               Number(product.discountValue || 0) > 0 &&
               (isPercentDiscount(discountType) || isFlatDiscount(discountType));
@@ -150,7 +181,12 @@ export default async function TrendingProducts() {
                     aria-label={`View ${product.name}`}
                   >
                     <img
-                      src={product.productimage?.[0]?.url || "/placeholder.png"}
+                      src={
+                        optimizedImageUrl(
+                          product.productimage?.[0]?.url,
+                          800,
+                        ) || "/placeholder.png"
+                      }
                       alt={product.name}
                       className="w-full h-52 sm:h-64 md:h-72 object-cover transition-transform duration-700 group-hover:scale-110"
                     />
@@ -185,7 +221,10 @@ export default async function TrendingProducts() {
                     }}
                     aria-label="Add to wishlist"
                   >
-                    <Heart size={15} style={{ color: "var(--t-text-muted-1)" }} />
+                    <Heart
+                      size={15}
+                      style={{ color: "var(--t-text-muted-1)" }}
+                    />
                   </button>
                 </div>
 
@@ -195,7 +234,10 @@ export default async function TrendingProducts() {
                   {product.category && (
                     <p
                       className="text-[10px] font-bold uppercase tracking-wider mb-2"
-                      style={{ color: "var(--t-primary)", fontFamily: "var(--t-font-heading)" }}
+                      style={{
+                        color: "var(--t-primary)",
+                        fontFamily: "var(--t-font-heading)",
+                      }}
                     >
                       {product.category.name}
                     </p>
@@ -217,8 +259,16 @@ export default async function TrendingProducts() {
                       <Star
                         key={i}
                         size={12}
-                        fill={i < Math.round(avgRating) ? "var(--t-accent)" : "transparent"}
-                        color={i < Math.round(avgRating) ? "var(--t-accent)" : "var(--t-text-muted-3)"}
+                        fill={
+                          i < Math.round(avgRating)
+                            ? "var(--t-accent)"
+                            : "transparent"
+                        }
+                        color={
+                          i < Math.round(avgRating)
+                            ? "var(--t-accent)"
+                            : "var(--t-text-muted-3)"
+                        }
                         strokeWidth={1.5}
                       />
                     ))}

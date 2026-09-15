@@ -12,13 +12,9 @@ import PricingSection from "./pricing-section";
 import InventorySection from "./inventory-section";
 import ProductSwitches from "./product-switches";
 import CategorySelect from "./category-select";
-import VariantSection, {
-  VariantType,
-} from "./variant-section";
+import VariantSection, { VariantType } from "./variant-section";
 import ReturnPolicySection from "./return-policy-section";
-import CustomPrintSection, {
-  PrintTypeOption,
-} from "./custom-print-section";
+import CustomPrintSection, { PrintTypeOption } from "./custom-print-section";
 import DeliverySection from "./delivery-section";
 import RichTextEditor from "@/components/admin/ui/rich-text-editor";
 import SizeChartSection from "./size-chart-section";
@@ -44,7 +40,13 @@ interface ProductImage {
   url: string;
 }
 interface ProductVariant {
-  id: string; genderId: string; sizeId: string; sku: string; stock: number; gender: { id: string; name: string; }; size: { id: string; sizeName: string; };
+  id: string;
+  genderId: string;
+  sizeId: string;
+  sku: string;
+  stock: number;
+  gender: { id: string; name: string };
+  size: { id: string; sizeName: string };
 }
 export interface ProductData {
   metaDescription: string | null;
@@ -133,89 +135,84 @@ export default function ProductForm({
 }: Props) {
   const router = useRouter();
 
-  const {
-    register,
-    handleSubmit,
-    reset,
-    watch,
-    setValue,
-  } = useForm<ProductFormValues>({
-    defaultValues: {
-      name: "",
-      slug: "",
-      description: "",
+  const { register, handleSubmit, reset, watch, setValue } =
+    useForm<ProductFormValues>({
+      defaultValues: {
+        name: "",
+        slug: "",
+        description: "",
 
-      sellingPrice: 0,
-      costPrice: 0,
+        sellingPrice: 0,
+        costPrice: 0,
 
-      lastSellingProfitPercentage: Number(product?.lastSellingProfitPercentage) || 0,
-      lastSellingPrice: Number(product?.lastSellingPrice) || 0,
+        lastSellingProfitPercentage:
+          Number(product?.lastSellingProfitPercentage) || 0,
+        lastSellingPrice: Number(product?.lastSellingPrice) || 0,
 
-      maximumDiscount: 0,
+        maximumDiscount: 0,
 
-      gstPercentage: 0,
+        gstPercentage: 0,
 
-      taxIncluded: false,
+        taxIncluded: false,
 
-      weight: 0,
+        weight: 0,
 
-      stock: 0,
+        stock: 0,
 
-      lowStockAlert: 5,
+        lowStockAlert: 5,
 
-      categoryId: "",
+        categoryId: "",
 
-      status: true,
+        status: true,
 
-      isFeatured: false,
+        isFeatured: false,
 
-      isTrending: false,
+        isTrending: false,
 
-      isReturnable: false,
+        isReturnable: false,
 
-      isReplaceable: false,
+        isReplaceable: false,
 
-      returnDays: 0,
+        returnDays: 0,
 
-      replaceDays: 0,
+        replaceDays: 0,
 
-      customPrintEnabled: false,
-      customPrintName: false,
-      customPrintNumber: false,
-      customPrintImage: false,
-      customPrintTypeIds: [],
-      restrictedPincodes: [],
-      allowedPaymentMethods: "BOTH",
+        customPrintEnabled: false,
+        customPrintName: false,
+        customPrintNumber: false,
+        customPrintImage: false,
+        customPrintTypeIds: [],
+        restrictedPincodes: [],
+        allowedPaymentMethods: "BOTH",
 
-      metaTitle: "",
+        metaTitle: "",
 
-      metaDescription: "",
+        metaDescription: "",
 
-      metaKeywords: "",
+        metaKeywords: "",
 
-      mainImage: "",
+        mainImage: "",
 
-      images: [],
+        images: [],
 
-      variants: [],
-      discountType: "PERCENT",
+        variants: [],
+        discountType: "PERCENT",
 
-      discountValue: 0,
+        discountValue: 0,
 
-      salePrice: 0,
+        salePrice: 0,
 
-      finalPrice: 0,
+        finalPrice: 0,
 
-      offerStart: "",
+        offerStart: "",
 
-      offerEnd: "",
+        offerEnd: "",
 
-      sizeChartId: product?.sizeChartId ?? "",
-    },
-  });
+        sizeChartId: product?.sizeChartId ?? "",
+      },
+    });
 
-  const initialImages =
-    product?.productimage.map((i) => i.url) ?? [];
+  const initialImages = product?.productimage.map((i) => i.url) ?? [];
 
   const initialVariants: VariantType[] =
     product?.productvariant.map((v) => ({
@@ -228,18 +225,14 @@ export default function ProductForm({
       stock: v.stock,
     })) ?? [];
 
-  const [images, setImages] =
-    useState<string[]>(initialImages);
+  const [images, setImages] = useState<string[]>(initialImages);
 
-  const [variants, setVariants] =
-    useState<VariantType[]>(initialVariants);
+  const [variants, setVariants] = useState<VariantType[]>(initialVariants);
 
   const productStock = Number(watch("stock")) || 0;
   const selectedCategoryId = watch("categoryId");
 
-  const selectedCategory = categories.find(
-    (c) => c.id === selectedCategoryId
-  );
+  const selectedCategory = categories.find((c) => c.id === selectedCategoryId);
   const sizeCategory = selectedCategory?.sizeCategory ?? "";
 
   const filteredSizes = sizeCategory
@@ -261,15 +254,16 @@ export default function ProductForm({
           setExistingSlugs(
             data.products
               .map((p: { slug: string }) => p.slug)
-              .filter((s: string) => s !== product?.slug)
+              .filter((s: string) => s !== product?.slug),
           );
         }
       })
       .catch(() => {});
-  }, []);
+  }, [product?.slug]);
 
-  const [description, setDescription] =
-    useState<string>(product?.description ?? "");
+  const [description, setDescription] = useState<string>(
+    product?.description ?? "",
+  );
 
   useEffect(() => {
     if (!product) return;
@@ -282,7 +276,8 @@ export default function ProductForm({
       sellingPrice: Number(product.sellingPrice),
       costPrice: Number(product.costPrice),
 
-      lastSellingProfitPercentage: Number(product.lastSellingProfitPercentage) || 0,
+      lastSellingProfitPercentage:
+        Number(product.lastSellingProfitPercentage) || 0,
       lastSellingPrice: Number(product.lastSellingPrice) || 0,
 
       discountType: product.discountType,
@@ -295,15 +290,11 @@ export default function ProductForm({
       metaDescription: product.metaDescription ?? "",
       metaKeywords: product.metaKeywords ?? "",
       offerStart: product.offerStart
-        ? new Date(product.offerStart)
-          .toISOString()
-          .slice(0, 16)
+        ? new Date(product.offerStart).toISOString().slice(0, 16)
         : "",
 
       offerEnd: product.offerEnd
-        ? new Date(product.offerEnd)
-          .toISOString()
-          .slice(0, 16)
+        ? new Date(product.offerEnd).toISOString().slice(0, 16)
         : "",
 
       isReturnable: product.isReturnable,
@@ -311,13 +302,24 @@ export default function ProductForm({
       returnDays: product.returnDays,
       replaceDays: (product as { replaceDays?: number }).replaceDays ?? 0,
 
-      customPrintEnabled: (product as { customPrintEnabled?: boolean }).customPrintEnabled ?? false,
-      customPrintName: (product as { customPrintName?: boolean }).customPrintName ?? false,
-      customPrintNumber: (product as { customPrintNumber?: boolean }).customPrintNumber ?? false,
-      customPrintImage: (product as { customPrintImage?: boolean }).customPrintImage ?? false,
-      customPrintTypeIds: (product as { printTypes?: { id: string }[] }).printTypes?.map((pt) => pt.id) ?? [],
-      restrictedPincodes: (product as { restrictedPincodes?: string[] }).restrictedPincodes ?? [],
-      allowedPaymentMethods: (product as { allowedPaymentMethods?: string }).allowedPaymentMethods ?? "BOTH",
+      customPrintEnabled:
+        (product as { customPrintEnabled?: boolean }).customPrintEnabled ??
+        false,
+      customPrintName:
+        (product as { customPrintName?: boolean }).customPrintName ?? false,
+      customPrintNumber:
+        (product as { customPrintNumber?: boolean }).customPrintNumber ?? false,
+      customPrintImage:
+        (product as { customPrintImage?: boolean }).customPrintImage ?? false,
+      customPrintTypeIds:
+        (product as { printTypes?: { id: string }[] }).printTypes?.map(
+          (pt) => pt.id,
+        ) ?? [],
+      restrictedPincodes:
+        (product as { restrictedPincodes?: string[] }).restrictedPincodes ?? [],
+      allowedPaymentMethods:
+        (product as { allowedPaymentMethods?: string }).allowedPaymentMethods ??
+        "BOTH",
 
       stock: product.stock,
       lowStockAlert: product.lowStockAlert,
@@ -332,9 +334,7 @@ export default function ProductForm({
     });
   }, [product, reset]);
 
-  async function onSubmit(
-    data: ProductFormValues
-  ) {
+  async function onSubmit(data: ProductFormValues) {
     if (submitting) return;
 
     if (!data.name?.trim()) {
@@ -380,23 +380,16 @@ export default function ProductForm({
         ? `/api/admin/products/${product?.id}`
         : "/api/admin/products";
 
-    const method =
-      mode === "edit"
-        ? "PUT"
-        : "POST";
+    const method = mode === "edit" ? "PUT" : "POST";
 
     try {
-      const response = await fetch(
-        url,
-        {
-          method,
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
-          body: JSON.stringify(payload),
-        }
-      );
+      const response = await fetch(url, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
 
       const result = await response.json();
 
@@ -405,11 +398,7 @@ export default function ProductForm({
         return;
       }
 
-      toast.success(
-        mode === "edit"
-          ? "Product updated"
-          : "Product added"
-      );
+      toast.success(mode === "edit" ? "Product updated" : "Product added");
 
       router.push("/admin/products");
 
@@ -422,16 +411,11 @@ export default function ProductForm({
   }
 
   return (
-    <form
-      onSubmit={handleSubmit(onSubmit)}
-      className="space-y-8"
-    >
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
       <ProductGuide mode={mode === "edit" ? "edit" : "create"} defaultOpen />
 
       <div className="grid grid-cols-12 gap-6">
-
         <div className="col-span-8 space-y-6">
-
           <GeneralSection
             register={register}
             watch={watch}
@@ -444,7 +428,8 @@ export default function ProductForm({
               Product Description
             </h2>
             <p className="mb-6 text-xs text-slate-500">
-              Describe the product in detail — materials, fit, features, and care instructions. This text appears on the product page.
+              Describe the product in detail — materials, fit, features, and
+              care instructions. This text appears on the product page.
             </p>
 
             <RichTextEditor
@@ -456,10 +441,7 @@ export default function ProductForm({
             />
           </div>
 
-          <ImageUpload
-            images={images}
-            setImages={setImages}
-          />
+          <ImageUpload images={images} setImages={setImages} />
 
           {images.length === 0 && (
             <p className="mt-2 text-sm text-red-400">
@@ -477,15 +459,10 @@ export default function ProductForm({
           />
 
           <SeoSection register={register} />
-
         </div>
 
         <div className="col-span-4 space-y-6">
-
-          <CategorySelect
-            categories={categories}
-            register={register}
-          />
+          <CategorySelect categories={categories} register={register} />
 
           <SizeChartSection
             sizeCharts={filteredSizeCharts}
@@ -513,13 +490,8 @@ export default function ProductForm({
 
           <DeliverySection watch={watch} setValue={setValue} />
 
-          <ReturnPolicySection
-            register={register}
-            watch={watch}
-          />
-
+          <ReturnPolicySection register={register} watch={watch} />
         </div>
-
       </div>
       <div className="flex justify-end">
         <button

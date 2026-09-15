@@ -5,7 +5,13 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { Minus, Plus, ShoppingCart } from "lucide-react";
 import { useOptionalAuthModal } from "@/components/auth/auth-context";
-import { getEffectivePrice, isFlatDiscount, isPercentDiscount, priceWithGst } from "@/lib/pricing";
+import {
+  getEffectivePrice,
+  isFlatDiscount,
+  isPercentDiscount,
+  priceWithGst,
+} from "@/lib/pricing";
+import { optimizedImageUrl } from "@/lib/cloudinary-image";
 
 interface Variant {
   id: string;
@@ -55,7 +61,10 @@ function isFreeSize(label?: string | null): boolean {
   return FREE_SIZE_NAMES.has(label.trim().toLowerCase().replace(/\s+/g, ""));
 }
 
-export default function ComboQuickAddCard({ product, requiredQuantity = 1 }: Props) {
+export default function ComboQuickAddCard({
+  product,
+  requiredQuantity = 1,
+}: Props) {
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(requiredQuantity);
   const [loading, setLoading] = useState(false);
@@ -89,7 +98,7 @@ export default function ComboQuickAddCard({ product, requiredQuantity = 1 }: Pro
 
   const selectedGroup = useMemo(
     () => sizeGroups.find((g) => g.sizeName === selectedSize) ?? null,
-    [sizeGroups, selectedSize]
+    [sizeGroups, selectedSize],
   );
 
   // The exact variant to add: the chosen size's first in-stock variant, or the
@@ -126,14 +135,19 @@ export default function ComboQuickAddCard({ product, requiredQuantity = 1 }: Pro
       ? getEffectivePrice(
           product.salePrice ? Number(product.salePrice) : undefined,
           product.finalPrice ? Number(product.finalPrice) : undefined,
-          Number(product.sellingPrice || 0)
+          Number(product.sellingPrice || 0),
         )
       : Number(product.sellingPrice || 0),
-    gstRate
+    gstRate,
   );
-  const originalPrice = priceWithGst(Number(product.sellingPrice || 0), gstRate);
+  const originalPrice = priceWithGst(
+    Number(product.sellingPrice || 0),
+    gstRate,
+  );
 
-  const hasStock = sizeGroups.some((g) => g.inStock) || (product.productvariant?.length ?? 0) === 0;
+  const hasStock =
+    sizeGroups.some((g) => g.inStock) ||
+    (product.productvariant?.length ?? 0) === 0;
 
   const changeQuantity = (delta: number) => {
     setQuantity((q) => Math.min(Math.max(1, q + delta), stepperMax));
@@ -145,7 +159,7 @@ export default function ComboQuickAddCard({ product, requiredQuantity = 1 }: Pro
       toast.error(
         product.productvariant?.length
           ? "Please select a size first"
-          : "This product is out of stock"
+          : "This product is out of stock",
       );
       return;
     }
@@ -170,9 +184,12 @@ export default function ComboQuickAddCard({ product, requiredQuantity = 1 }: Pro
         authModal?.openAuth("login");
         throw new Error("Please login to add to cart");
       }
-      if (!res.ok || !data.success) throw new Error(data.message || "Failed to add to cart");
+      if (!res.ok || !data.success)
+        throw new Error(data.message || "Failed to add to cart");
       window.dispatchEvent(new Event("cart-updated"));
-      toast.success(quantity > 1 ? `${quantity} items added to Cart` : "Added to Cart");
+      toast.success(
+        quantity > 1 ? `${quantity} items added to Cart` : "Added to Cart",
+      );
     } catch (error) {
       toast.error((error as Error).message || "Failed to add to cart");
     } finally {
@@ -186,7 +203,8 @@ export default function ComboQuickAddCard({ product, requiredQuantity = 1 }: Pro
       : `₹${discountValue.toFixed(0)} OFF`
     : "";
 
-  const outOfStockProduct = (product.productvariant?.length ?? 0) > 0 && !hasStock;
+  const outOfStockProduct =
+    (product.productvariant?.length ?? 0) > 0 && !hasStock;
 
   return (
     <div
@@ -201,7 +219,10 @@ export default function ComboQuickAddCard({ product, requiredQuantity = 1 }: Pro
           aria-label={`View ${product.name}`}
         >
           <img
-            src={product.productimage?.[0]?.url || "/placeholder.png"}
+            src={
+              optimizedImageUrl(product.productimage?.[0]?.url, 800) ||
+              "/placeholder.png"
+            }
             alt={product.name}
             className="h-[260px] sm:h-[320px] lg:h-[420px] w-full object-cover transition-transform duration-700 group-hover:scale-110"
           />
@@ -214,7 +235,10 @@ export default function ComboQuickAddCard({ product, requiredQuantity = 1 }: Pro
           >
             <span
               className="bg-primary px-3 py-1 text-[10px] font-black uppercase tracking-wider inline-block"
-              style={{ borderRadius: "var(--t-radius-badge)", color: "var(--t-bg-page)" }}
+              style={{
+                borderRadius: "var(--t-radius-badge)",
+                color: "var(--t-bg-page)",
+              }}
             >
               {requiredQuantity} needed
             </span>
@@ -239,7 +263,10 @@ export default function ComboQuickAddCard({ product, requiredQuantity = 1 }: Pro
                 Sizes
               </span>
               {selectedGroup?.inStock && (
-                <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--t-success)" }}>
+                <span
+                  className="text-[10px] font-bold uppercase tracking-wider"
+                  style={{ color: "var(--t-success)" }}
+                >
                   in stock
                 </span>
               )}
@@ -247,7 +274,9 @@ export default function ComboQuickAddCard({ product, requiredQuantity = 1 }: Pro
             <div className="flex flex-wrap gap-1.5">
               {sizeGroups.map((g) => {
                 const isSelected = g.sizeName === selectedSize;
-                const disabled = !g.inStock || (selectedGroup != null && g.sizeName !== selectedSize);
+                const disabled =
+                  !g.inStock ||
+                  (selectedGroup != null && g.sizeName !== selectedSize);
                 return (
                   <button
                     key={g.sizeName}
@@ -256,10 +285,19 @@ export default function ComboQuickAddCard({ product, requiredQuantity = 1 }: Pro
                     onClick={() => {
                       setSelectedSize(g.sizeName);
                       const firstStock = g.variants.find((v) => v.stock > 0);
-                      setQuantity(firstStock ? Math.max(1, Math.min(requiredQuantity, firstStock.stock)) : 1);
+                      setQuantity(
+                        firstStock
+                          ? Math.max(
+                              1,
+                              Math.min(requiredQuantity, firstStock.stock),
+                            )
+                          : 1,
+                      );
                     }}
                     className={`inline-flex items-center justify-center px-3 py-1.5 text-[11px] font-bold transition-all duration-150 active:scale-95 disabled:opacity-40 disabled:pointer-events-none ${
-                      isSelected ? "text-bg-page" : "text-text-muted-1 border border-border-card bg-bg-card-nested"
+                      isSelected
+                        ? "text-bg-page"
+                        : "text-text-muted-1 border border-border-card bg-bg-card-nested"
                     }`}
                     style={{
                       borderRadius: "var(--t-radius-badge)",
@@ -267,7 +305,9 @@ export default function ComboQuickAddCard({ product, requiredQuantity = 1 }: Pro
                     }}
                   >
                     {g.sizeName}
-                    {!g.inStock && <span className="ml-1 opacity-70 line-through">OOS</span>}
+                    {!g.inStock && (
+                      <span className="ml-1 opacity-70 line-through">OOS</span>
+                    )}
                   </button>
                 );
               })}
@@ -303,7 +343,11 @@ export default function ComboQuickAddCard({ product, requiredQuantity = 1 }: Pro
             <div className="mt-2">
               <span
                 className="inline-flex px-2.5 py-1 text-xs font-black text-success"
-                style={{ background: "color-mix(in srgb, var(--t-success) 12%, transparent)", borderRadius: "var(--t-radius-badge)" }}
+                style={{
+                  background:
+                    "color-mix(in srgb, var(--t-success) 12%, transparent)",
+                  borderRadius: "var(--t-radius-badge)",
+                }}
               >
                 {discountLabel}
               </span>
@@ -326,7 +370,9 @@ export default function ComboQuickAddCard({ product, requiredQuantity = 1 }: Pro
             >
               <Minus size={14} strokeWidth={2.5} />
             </button>
-            <span className="w-8 text-center text-sm font-bold text-text-heading">{quantity}</span>
+            <span className="w-8 text-center text-sm font-bold text-text-heading">
+              {quantity}
+            </span>
             <button
               type="button"
               onClick={() => changeQuantity(1)}
@@ -341,7 +387,11 @@ export default function ComboQuickAddCard({ product, requiredQuantity = 1 }: Pro
           <button
             type="button"
             onClick={addToCart}
-            disabled={loading || outOfStockProduct || (sizeGroups.length > 0 && !isSizeless && !selectedGroup)}
+            disabled={
+              loading ||
+              outOfStockProduct ||
+              (sizeGroups.length > 0 && !isSizeless && !selectedGroup)
+            }
             className="flex-1 flex items-center justify-center gap-2 py-2.5 text-xs font-black uppercase tracking-wider transition-all duration-300 hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
             style={{
               background: "var(--t-primary)",
@@ -354,18 +404,24 @@ export default function ComboQuickAddCard({ product, requiredQuantity = 1 }: Pro
             {loading
               ? "Adding..."
               : outOfStockProduct
-              ? "Out of Stock"
-              : sizeGroups.length > 0 && !isSizeless && !selectedGroup
-              ? "Select Size"
-              : "Add to Cart"}
+                ? "Out of Stock"
+                : sizeGroups.length > 0 && !isSizeless && !selectedGroup
+                  ? "Select Size"
+                  : "Add to Cart"}
           </button>
         </div>
 
-        {selectedVariant && selectedVariant.stock < requiredQuantity && !loading && (
-          <p className="mt-2 text-[10px] font-medium" style={{ color: "var(--t-text-muted-2)" }}>
-            Only {selectedVariant.stock} in stock for this size — add remaining separately or choose a different size.
-          </p>
-        )}
+        {selectedVariant &&
+          selectedVariant.stock < requiredQuantity &&
+          !loading && (
+            <p
+              className="mt-2 text-[10px] font-medium"
+              style={{ color: "var(--t-text-muted-2)" }}
+            >
+              Only {selectedVariant.stock} in stock for this size — add
+              remaining separately or choose a different size.
+            </p>
+          )}
       </div>
     </div>
   );

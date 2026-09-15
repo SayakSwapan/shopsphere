@@ -3,8 +3,29 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { MapPin, X, Truck, Tag, ShieldCheck, BadgeCheck, Package, Minus, Plus, Trash2, Pencil, ChevronDown, Loader2, TriangleAlert, PartyPopper, Gift, Sparkles } from "lucide-react";
-import { customizationUnitPrice, customizationUnitPriceWithGst } from "@/lib/print-pricing";
+import {
+  MapPin,
+  X,
+  Truck,
+  Tag,
+  ShieldCheck,
+  BadgeCheck,
+  Package,
+  Minus,
+  Plus,
+  Trash2,
+  Pencil,
+  ChevronDown,
+  Loader2,
+  TriangleAlert,
+  PartyPopper,
+  Gift,
+  Sparkles,
+} from "lucide-react";
+import {
+  customizationUnitPrice,
+  customizationUnitPriceWithGst,
+} from "@/lib/print-pricing";
 import type { CustomPrintData } from "@/types/custom-print";
 import Modal from "@/components/common/modal";
 
@@ -12,7 +33,9 @@ import AddressSection from "./addressSection";
 import PaymentMethodSheet from "./PaymentMethodSheet";
 import PaymentChooser from "./PaymentChooser";
 import CouponSelector from "./CouponSelector";
-import CustomPrintSection, { StorePrintType } from "@/components/store/product/custom-print-section";
+import CustomPrintSection, {
+  StorePrintType,
+} from "@/components/store/product/custom-print-section";
 import type { Coupon } from "@/types/coupon";
 
 interface PincodeInfo {
@@ -104,7 +127,6 @@ export default function CheckoutClient({
   gst,
   pincodeInfo: initialPincodeInfo,
   restrictedItems: initialRestrictedItems = [],
-  totalWeightGrams,
   freeShippingThreshold,
   amountNeeded,
 }: Props) {
@@ -124,24 +146,36 @@ export default function CheckoutClient({
   } | null>(null);
   const [useLoyaltyReward, setUseLoyaltyReward] = useState(false);
   const [loyaltyLoading, setLoyaltyLoading] = useState(true);
-  const [pincodeInfo, setPincodeInfo] = useState<PincodeInfo | null>(initialPincodeInfo);
-  const [restrictedItems, setRestrictedItems] = useState<RestrictedItem[]>(initialRestrictedItems);
+  const [pincodeInfo, setPincodeInfo] = useState<PincodeInfo | null>(
+    initialPincodeInfo,
+  );
+  const [restrictedItems, setRestrictedItems] = useState<RestrictedItem[]>(
+    initialRestrictedItems,
+  );
   // Pop the warning immediately when the server already found restricted
   // products for the default address (customer skipped the pincode check).
-  const [showRestrictedPopup, setShowRestrictedPopup] = useState(initialRestrictedItems.length > 0);
+  const [showRestrictedPopup, setShowRestrictedPopup] = useState(
+    initialRestrictedItems.length > 0,
+  );
   const [method, setMethod] = useState<"COD" | "ONLINE">("ONLINE");
   const [showPaymentPicker, setShowPaymentPicker] = useState(false);
   const [showCouponModal, setShowCouponModal] = useState(false);
   const [loading, setLoading] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
-  const [savingCustomizeId, setSavingCustomizeId] = useState<string | null>(null);
-  const [expandedCustomizeId, setExpandedCustomizeId] = useState<string | null>(null);
+  const [savingCustomizeId, setSavingCustomizeId] = useState<string | null>(
+    null,
+  );
+  const [expandedCustomizeId, setExpandedCustomizeId] = useState<string | null>(
+    null,
+  );
   // Hard request guard for the payment/order mutation — prevents a second
   // order + payment session from being created even if a double tap slips
   // through before React flushes the disabled state.
   const paymentInFlightRef = useRef(false);
   const customizeSavedRef = useRef<Record<string, boolean>>({});
-  const customizeTimerRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const customizeTimerRef = useRef<
+    Record<string, ReturnType<typeof setTimeout>>
+  >({});
   const customizeSaveInflightRef = useRef<Record<string, Promise<void>>>({});
 
   // Warm up the Cashfree SDK as soon as the checkout mounts so "Proceed to
@@ -172,20 +206,24 @@ export default function CheckoutClient({
 
   const defaultAddress = useMemo(
     () => addresses.find((a) => a.isDefault) ?? addresses[0],
-    [addresses]
+    [addresses],
   );
 
-  const [selectedAddressId, setSelectedAddressId] = useState(defaultAddress?.id ?? "");
+  const [selectedAddressId, setSelectedAddressId] = useState(
+    defaultAddress?.id ?? "",
+  );
 
   const selectedAddress = useMemo(
     () => addresses.find((a) => a.id === selectedAddressId),
-    [addresses, selectedAddressId]
+    [addresses, selectedAddressId],
   );
 
   const couponDiscount = useMemo(() => {
     if (!selectedCoupon) return 0;
     const dv = Number(selectedCoupon.discountValue);
-    const md = selectedCoupon.maxDiscount ? Number(selectedCoupon.maxDiscount) : null;
+    const md = selectedCoupon.maxDiscount
+      ? Number(selectedCoupon.maxDiscount)
+      : null;
     let d = selectedCoupon.discountType === "FLAT" ? dv : (subtotal * dv) / 100;
     if (md !== null && d > md) d = md;
     if (d > subtotal) d = subtotal;
@@ -227,11 +265,11 @@ export default function CheckoutClient({
       if (!(item.id in customizationDraft)) continue;
       const draftIncl = customizationUnitPriceWithGst(
         effectiveCustomization(item),
-        item.product.gstPercentage || 0
+        item.product.gstPercentage || 0,
       );
       const savedIncl = customizationUnitPriceWithGst(
         item.customization,
-        item.product.gstPercentage || 0
+        item.product.gstPercentage || 0,
       );
       delta += (draftIncl - savedIncl) * item.quantity;
     }
@@ -249,8 +287,13 @@ export default function CheckoutClient({
         ? (amount * loyalty.loyalty.discountValue) / 100
         : loyalty.loyalty.discountValue;
     return Number(Math.min(d, amount).toFixed(2));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [useLoyaltyReward, loyalty, itemTotalInclGst, couponDiscount, effectiveShipping]);
+  }, [
+    useLoyaltyReward,
+    loyalty,
+    itemTotalInclGst,
+    couponDiscount,
+    effectiveShipping,
+  ]);
 
   const finalTotal = useMemo(
     () =>
@@ -260,9 +303,9 @@ export default function CheckoutClient({
           couponDiscount -
           loyaltyDiscount +
           effectiveShipping
-        ).toFixed(2)
+        ).toFixed(2),
       ),
-    [itemTotalInclGst, couponDiscount, loyaltyDiscount, effectiveShipping]
+    [itemTotalInclGst, couponDiscount, loyaltyDiscount, effectiveShipping],
   );
 
   const deliveryDate = useMemo(() => {
@@ -279,11 +322,11 @@ export default function CheckoutClient({
 
   const hasCustomisation = useMemo(
     () =>
-      items.some((item) =>
-        customizationUnitPrice(effectiveCustomization(item)) > 0
+      items.some(
+        (item) => customizationUnitPrice(effectiveCustomization(item)) > 0,
       ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [items, customizationDraft]
+    [items, customizationDraft],
   );
 
   // Per-product payment-method permissions set by the admin. Offline (POS)
@@ -294,9 +337,9 @@ export default function CheckoutClient({
         (i) =>
           !i.product.allowedPaymentMethods ||
           i.product.allowedPaymentMethods === "BOTH" ||
-          i.product.allowedPaymentMethods === "COD_ONLY"
+          i.product.allowedPaymentMethods === "COD_ONLY",
       ),
-    [items]
+    [items],
   );
 
   const productsAllowOnline = useMemo(
@@ -305,9 +348,9 @@ export default function CheckoutClient({
         (i) =>
           !i.product.allowedPaymentMethods ||
           i.product.allowedPaymentMethods === "BOTH" ||
-          i.product.allowedPaymentMethods === "ONLINE_ONLY"
+          i.product.allowedPaymentMethods === "ONLINE_ONLY",
       ),
-    [items]
+    [items],
   );
 
   // Never leave the user on a method their cart can't use — derive the
@@ -340,7 +383,7 @@ export default function CheckoutClient({
 
   const cartProductIds = useMemo(
     () => items.map((i) => i.product.id).join(","),
-    [items]
+    [items],
   );
 
   const hasRestrictedItems = restrictedItems.length > 0;
@@ -351,7 +394,9 @@ export default function CheckoutClient({
     const addr = addresses.find((a) => a.id === id);
     if (addr) {
       try {
-        const res = await fetch(`/api/pincodes/check?pincode=${addr.pincode}&productIds=${cartProductIds}`);
+        const res = await fetch(
+          `/api/pincodes/check?pincode=${addr.pincode}&productIds=${cartProductIds}`,
+        );
         const data = await res.json();
         if (data.success) {
           setPincodeInfo({
@@ -429,7 +474,7 @@ export default function CheckoutClient({
   // for the print charge to be saved before the server computes the amount.
   async function persistCustomization(
     item: CartItem,
-    data: CustomPrintData | null
+    data: CustomPrintData | null,
   ): Promise<void> {
     setSavingCustomizeId(item.id);
     try {
@@ -457,12 +502,10 @@ export default function CheckoutClient({
         delete next[item.id];
         return next;
       });
-      if (
-        !(
-          error instanceof Error &&
-          error.message === "Could not update customisation"
-        )
-      ) {
+      if (!(
+        error instanceof Error &&
+        error.message === "Could not update customisation"
+      )) {
         toast.error("Something went wrong.");
       }
       throw error;
@@ -498,10 +541,7 @@ export default function CheckoutClient({
     await Promise.all(jobs);
   }
 
-  function handleCustomizeChange(
-    item: CartItem,
-    data: CustomPrintData | null
-  ) {
+  function handleCustomizeChange(item: CartItem, data: CustomPrintData | null) {
     // Reflect the in-progress edit in the order summary immediately.
     setCustomizationDraft((prev) => ({ ...prev, [item.id]: data }));
 
@@ -538,7 +578,9 @@ export default function CheckoutClient({
     }
 
     if (hasRestrictedItems) {
-      toast.error("Some products in your cart are not deliverable to the selected pincode.");
+      toast.error(
+        "Some products in your cart are not deliverable to the selected pincode.",
+      );
       setShowRestrictedPopup(true);
       return;
     }
@@ -550,7 +592,7 @@ export default function CheckoutClient({
 
     if (effectiveMethod === "COD" && hasCustomisation) {
       toast.error(
-        "COD is not available for items with custom printing. Please use online payment."
+        "COD is not available for items with custom printing. Please use online payment.",
       );
       return;
     }
@@ -575,7 +617,10 @@ export default function CheckoutClient({
           }),
         });
         const data = await res.json();
-        if (!res.ok) { toast.error(data.message ?? "Unable to place order."); return; }
+        if (!res.ok) {
+          toast.error(data.message ?? "Unable to place order.");
+          return;
+        }
         router.push(`/order-success?id=${data.orderId}`);
         return;
       }
@@ -591,7 +636,10 @@ export default function CheckoutClient({
         }),
       });
       const data = await res.json();
-      if (!res.ok) { toast.error(data.message ?? "Unable to start payment."); return; }
+      if (!res.ok) {
+        toast.error(data.message ?? "Unable to start payment.");
+        return;
+      }
 
       // Release the button before the Cashfree checkout page takes over — the
       // hosted page has its own loading UI so the page shouldn't show one too.
@@ -608,7 +656,7 @@ export default function CheckoutClient({
       toast.error(
         error instanceof Error && error.message
           ? error.message
-          : "Something went wrong."
+          : "Something went wrong.",
       );
     } finally {
       paymentInFlightRef.current = false;
@@ -625,7 +673,9 @@ export default function CheckoutClient({
         >
           Checkout
         </h1>
-        <p className="mt-2 text-sm text-text-muted-1">{items.length} item{items.length > 1 ? "s" : ""} in your order</p>
+        <p className="mt-2 text-sm text-text-muted-1">
+          {items.length} item{items.length > 1 ? "s" : ""} in your order
+        </p>
       </div>
 
       <div className="grid gap-6 sm:gap-8 lg:grid-cols-5">
@@ -638,13 +688,24 @@ export default function CheckoutClient({
             <div className="flex items-center gap-3 border-b border-border-subtle px-4 sm:px-6 py-4 sm:py-5">
               <div
                 className="flex h-8 w-8 items-center justify-center"
-                style={{ borderRadius: "var(--t-radius-card)", background: "color-mix(in srgb, var(--t-primary) 15%, transparent)" }}
+                style={{
+                  borderRadius: "var(--t-radius-card)",
+                  background:
+                    "color-mix(in srgb, var(--t-primary) 15%, transparent)",
+                }}
               >
                 <MapPin size={16} className="text-primary" />
               </div>
               <div>
-                <p className="text-xs uppercase tracking-wider text-primary" style={{ fontFamily: "var(--t-font-heading)" }}>Step 1</p>
-                <h2 className="text-lg font-bold text-text-heading">Delivery Address</h2>
+                <p
+                  className="text-xs uppercase tracking-wider text-primary"
+                  style={{ fontFamily: "var(--t-font-heading)" }}
+                >
+                  Step 1
+                </p>
+                <h2 className="text-lg font-bold text-text-heading">
+                  Delivery Address
+                </h2>
               </div>
             </div>
             <div className="p-4 sm:p-6">
@@ -658,7 +719,8 @@ export default function CheckoutClient({
 
           {/* Personalise (optional) */}
           {items.some(
-            (item) => item.customPrintEnabled && (item.printTypes?.length ?? 0) > 0
+            (item) =>
+              item.customPrintEnabled && (item.printTypes?.length ?? 0) > 0,
           ) && (
             <section
               className="border border-border-card bg-bg-card"
@@ -667,28 +729,43 @@ export default function CheckoutClient({
               <div className="flex items-center gap-3 border-b border-border-subtle px-4 sm:px-6 py-4 sm:py-5">
                 <div
                   className="flex h-8 w-8 items-center justify-center"
-                  style={{ borderRadius: "var(--t-radius-card)", background: "color-mix(in srgb, var(--t-primary) 15%, transparent)" }}
+                  style={{
+                    borderRadius: "var(--t-radius-card)",
+                    background:
+                      "color-mix(in srgb, var(--t-primary) 15%, transparent)",
+                  }}
                 >
                   <Pencil size={16} className="text-primary" />
                 </div>
                 <div>
-                  <p className="text-xs uppercase tracking-wider text-primary" style={{ fontFamily: "var(--t-font-heading)" }}>Step 2 · Optional</p>
-                  <h2 className="text-lg font-bold text-text-heading">Personalise Your Items</h2>
+                  <p
+                    className="text-xs uppercase tracking-wider text-primary"
+                    style={{ fontFamily: "var(--t-font-heading)" }}
+                  >
+                    Step 2 · Optional
+                  </p>
+                  <h2 className="text-lg font-bold text-text-heading">
+                    Personalise Your Items
+                  </h2>
                 </div>
               </div>
               <div className="p-4 sm:p-6">
                 <p className="mb-4 text-xs text-text-muted-1">
-                  Add custom printing to any item before you buy. Items with custom
-                  printing are payable by online payment only (COD unavailable).
+                  Add custom printing to any item before you buy. Items with
+                  custom printing are payable by online payment only (COD
+                  unavailable).
                 </p>
                 <div className="space-y-4">
                   {items.map((item) => {
-                    if (!item.customPrintEnabled || (item.printTypes?.length ?? 0) === 0) {
+                    if (
+                      !item.customPrintEnabled ||
+                      (item.printTypes?.length ?? 0) === 0
+                    ) {
                       return null;
                     }
                     const printUnitIncl = customizationUnitPriceWithGst(
                       effectiveCustomization(item),
-                      item.product.gstPercentage || 0
+                      item.product.gstPercentage || 0,
                     );
                     const isOpen = expandedCustomizeId === item.id;
                     const isSaving = savingCustomizeId === item.id;
@@ -700,7 +777,9 @@ export default function CheckoutClient({
                       >
                         <button
                           type="button"
-                          onClick={() => setExpandedCustomizeId(isOpen ? null : item.id)}
+                          onClick={() =>
+                            setExpandedCustomizeId(isOpen ? null : item.id)
+                          }
                           className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition hover:bg-bg-card"
                           style={{
                             borderTopLeftRadius: "var(--t-radius-card)",
@@ -712,7 +791,9 @@ export default function CheckoutClient({
                               {item.product.name}
                             </p>
                             <p className="text-xs text-text-muted-2">
-                              {item.variantSize ? `Size ${item.variantSize} · ` : ""}
+                              {item.variantSize
+                                ? `Size ${item.variantSize} · `
+                                : ""}
                               Qty {item.quantity}
                             </p>
                           </div>
@@ -721,7 +802,8 @@ export default function CheckoutClient({
                               <span
                                 className="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-bold"
                                 style={{
-                                  background: "color-mix(in srgb, var(--t-primary) 12%, transparent)",
+                                  background:
+                                    "color-mix(in srgb, var(--t-primary) 12%, transparent)",
                                   color: "var(--t-primary)",
                                 }}
                               >
@@ -754,7 +836,9 @@ export default function CheckoutClient({
                               printTypes={item.printTypes ?? []}
                               gstPercentage={item.product.gstPercentage || 0}
                               initialValue={item.customization}
-                              onChange={(data) => handleCustomizeChange(item, data)}
+                              onChange={(data) =>
+                                handleCustomizeChange(item, data)
+                              }
                             />
                           </div>
                         )}
@@ -774,12 +858,21 @@ export default function CheckoutClient({
             <div className="flex items-center gap-3 border-b border-border-subtle px-4 sm:px-6 py-4 sm:py-5">
               <div
                 className="flex h-8 w-8 items-center justify-center"
-                style={{ borderRadius: "var(--t-radius-card)", background: "color-mix(in srgb, var(--t-primary) 15%, transparent)" }}
+                style={{
+                  borderRadius: "var(--t-radius-card)",
+                  background:
+                    "color-mix(in srgb, var(--t-primary) 15%, transparent)",
+                }}
               >
                 <Tag size={16} className="text-primary" />
               </div>
               <div>
-                <p className="text-xs uppercase tracking-wider text-primary" style={{ fontFamily: "var(--t-font-heading)" }}>Step 3</p>
+                <p
+                  className="text-xs uppercase tracking-wider text-primary"
+                  style={{ fontFamily: "var(--t-font-heading)" }}
+                >
+                  Step 3
+                </p>
                 <h2 className="text-lg font-bold text-text-heading">Coupon</h2>
               </div>
             </div>
@@ -789,7 +882,10 @@ export default function CheckoutClient({
                   type="button"
                   onClick={() => setShowCouponModal(true)}
                   className="inline-flex min-w-0 flex-1 items-center justify-center gap-2 px-4 py-3.5 text-sm font-black uppercase tracking-wider transition bg-bg-card-nested hover:opacity-90"
-                  style={{ borderRadius: "var(--t-radius-button)", fontFamily: "var(--t-font-heading)" }}
+                  style={{
+                    borderRadius: "var(--t-radius-button)",
+                    fontFamily: "var(--t-font-heading)",
+                  }}
                 >
                   <Tag size={15} className="text-primary" />
                   {selectedCoupon ? "Change Coupon" : "Apply Coupon"}
@@ -808,13 +904,22 @@ export default function CheckoutClient({
                   className="mt-3 flex items-center justify-between gap-2 border px-4 py-3"
                   style={{
                     borderRadius: "var(--t-radius-input)",
-                    borderColor: "color-mix(in srgb, var(--t-success) 30%, transparent)",
-                    background: "color-mix(in srgb, var(--t-success) 5%, transparent)",
+                    borderColor:
+                      "color-mix(in srgb, var(--t-success) 30%, transparent)",
+                    background:
+                      "color-mix(in srgb, var(--t-success) 5%, transparent)",
                   }}
                 >
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-bold" style={{ color: "var(--t-success)" }}>{selectedCoupon.code}</p>
-                    <p className="truncate text-xs text-text-muted-2">{selectedCoupon.title}</p>
+                    <p
+                      className="truncate text-sm font-bold"
+                      style={{ color: "var(--t-success)" }}
+                    >
+                      {selectedCoupon.code}
+                    </p>
+                    <p className="truncate text-xs text-text-muted-2">
+                      {selectedCoupon.title}
+                    </p>
                   </div>
                   <span className="shrink-0 text-sm font-bold text-text-heading">
                     -₹{couponDiscount.toLocaleString("en-IN")}
@@ -853,18 +958,29 @@ export default function CheckoutClient({
                   const printUnitIncl = liveCustomization
                     ? customizationUnitPriceWithGst(
                         liveCustomization,
-                        item.product.gstPercentage || 0
+                        item.product.gstPercentage || 0,
                       )
                     : 0;
                   const lineTotal = (unitIncl + printUnitIncl) * item.quantity;
-                  const atMax = item.stock !== null && item.quantity >= item.stock;
+                  const atMax =
+                    item.stock !== null && item.quantity >= item.stock;
                   const isUpdating = updatingId === item.id;
                   return (
-                    <div key={item.id} className={`checkout-mini-item flex items-center justify-between gap-3`}>
+                    <div
+                      key={item.id}
+                      className={`checkout-mini-item flex items-center justify-between gap-3`}
+                    >
                       <div className="min-w-0 flex-1">
-                        <p className={`checkout-mini-name truncate text-sm font-medium text-text-body`}>{item.product.name}</p>
-                        <p className={`checkout-mini-meta mt-0.5 text-xs text-text-muted-2`}>
-                          {item.variantSize ? `Size ${item.variantSize}` : ""} &times; {item.quantity}
+                        <p
+                          className={`checkout-mini-name truncate text-sm font-medium text-text-body`}
+                        >
+                          {item.product.name}
+                        </p>
+                        <p
+                          className={`checkout-mini-meta mt-0.5 text-xs text-text-muted-2`}
+                        >
+                          {item.variantSize ? `Size ${item.variantSize}` : ""}{" "}
+                          &times; {item.quantity}
                         </p>
                         {printUnitIncl > 0 && (
                           <p className="checkout-mini-meta mt-0.5 text-xs font-semibold text-primary">
@@ -884,7 +1000,9 @@ export default function CheckoutClient({
                               type="button"
                               aria-label="Decrease quantity"
                               disabled={isUpdating || item.quantity <= 1}
-                              onClick={() => changeQuantity(item, item.quantity - 1)}
+                              onClick={() =>
+                                changeQuantity(item, item.quantity - 1)
+                              }
                               className="flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center text-text-heading transition hover:bg-bg-card-alt disabled:cursor-not-allowed disabled:opacity-30"
                             >
                               <Minus size={12} />
@@ -896,11 +1014,15 @@ export default function CheckoutClient({
                               type="button"
                               aria-label="Increase quantity"
                               disabled={isUpdating || atMax}
-                              onClick={() => changeQuantity(item, item.quantity + 1)}
+                              onClick={() =>
+                                changeQuantity(item, item.quantity + 1)
+                              }
                               className="flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center text-text-heading transition hover:bg-bg-card-alt disabled:cursor-not-allowed disabled:opacity-30"
                             >
                               {atMax ? (
-                                <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-wider">Max</span>
+                                <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-wider">
+                                  Max
+                                </span>
                               ) : (
                                 <Plus size={12} />
                               )}
@@ -918,7 +1040,11 @@ export default function CheckoutClient({
                           </button>
                         </div>
                       </div>
-                      <span className={`checkout-mini-price flex-shrink-0 text-sm font-bold text-text-heading`}>₹{Math.round(lineTotal * 100) / 100}</span>
+                      <span
+                        className={`checkout-mini-price flex-shrink-0 text-sm font-bold text-text-heading`}
+                      >
+                        ₹{Math.round(lineTotal * 100) / 100}
+                      </span>
                     </div>
                   );
                 })}
@@ -928,13 +1054,20 @@ export default function CheckoutClient({
             <div className="border-t border-border-subtle px-4 sm:px-6 py-5 space-y-3">
               <div className="flex justify-between text-sm">
                 <span className="text-text-muted-1">Item Total</span>
-                <span className="font-medium text-text-body">₹{itemTotalInclGst.toLocaleString("en-IN")}</span>
+                <span className="font-medium text-text-body">
+                  ₹{itemTotalInclGst.toLocaleString("en-IN")}
+                </span>
               </div>
 
               {couponDiscount > 0 && (
                 <div className="flex justify-between text-sm">
                   <span className="text-text-muted-1">Coupon Discount</span>
-                  <span className="font-medium" style={{ color: "var(--t-success)" }}>-₹{couponDiscount.toLocaleString("en-IN")}</span>
+                  <span
+                    className="font-medium"
+                    style={{ color: "var(--t-success)" }}
+                  >
+                    -₹{couponDiscount.toLocaleString("en-IN")}
+                  </span>
                 </div>
               )}
 
@@ -945,13 +1078,30 @@ export default function CheckoutClient({
                       ? `${loyalty.loyalty.badgeName} Reward`
                       : "Loyalty Reward"}
                   </span>
-                  <span className="font-medium" style={{ color: "var(--t-success)" }}>-₹{loyaltyDiscount.toLocaleString("en-IN")}</span>
+                  <span
+                    className="font-medium"
+                    style={{ color: "var(--t-success)" }}
+                  >
+                    -₹{loyaltyDiscount.toLocaleString("en-IN")}
+                  </span>
                 </div>
               )}
 
               <div className="flex justify-between text-sm">
-                <span className="text-text-muted-1">Shipping {selectedCoupon?.freeShipping && <span style={{ color: "var(--t-success)" }}>(Free via coupon)</span>}</span>
-                <span className={`font-medium ${effectiveShipping === 0 ? "" : "text-text-body"}`} style={effectiveShipping === 0 ? { color: "var(--t-success)" } : {}}>
+                <span className="text-text-muted-1">
+                  Shipping{" "}
+                  {selectedCoupon?.freeShipping && (
+                    <span style={{ color: "var(--t-success)" }}>
+                      (Free via coupon)
+                    </span>
+                  )}
+                </span>
+                <span
+                  className={`font-medium ${effectiveShipping === 0 ? "" : "text-text-body"}`}
+                  style={
+                    effectiveShipping === 0 ? { color: "var(--t-success)" } : {}
+                  }
+                >
                   {effectiveShipping === 0 ? "FREE" : `₹${effectiveShipping}`}
                 </span>
               </div>
@@ -961,45 +1111,68 @@ export default function CheckoutClient({
                   className="flex items-center gap-2.5 px-4 py-3 -mx-1"
                   style={{
                     borderRadius: "var(--t-radius-card)",
-                    background: "color-mix(in srgb, var(--t-success) 10%, transparent)",
-                    border: "1px solid color-mix(in srgb, var(--t-success) 20%, transparent)",
+                    background:
+                      "color-mix(in srgb, var(--t-success) 10%, transparent)",
+                    border:
+                      "1px solid color-mix(in srgb, var(--t-success) 20%, transparent)",
                   }}
                 >
-                  <PartyPopper size={16} style={{ color: "var(--t-success)", flexShrink: 0 }} />
-                  <p className="text-xs font-semibold" style={{ color: "var(--t-success)" }}>
+                  <PartyPopper
+                    size={16}
+                    style={{ color: "var(--t-success)", flexShrink: 0 }}
+                  />
+                  <p
+                    className="text-xs font-semibold"
+                    style={{ color: "var(--t-success)" }}
+                  >
                     Yay! You&apos;ve got free shipping on this order.
                   </p>
                 </div>
               )}
 
-              {!selectedCoupon?.freeShipping && effectiveShipping > 0 && freeShippingThreshold !== null && amountNeeded > 0 && (
-                <div
-                  className="-mx-1 px-4 py-3"
-                  style={{
-                    borderRadius: "var(--t-radius-card)",
-                    background: "color-mix(in srgb, var(--t-primary) 8%, transparent)",
-                    border: "1px solid color-mix(in srgb, var(--t-primary) 18%, transparent)",
-                  }}
-                >
-                  <div className="flex items-center gap-2">
-                    <Truck size={15} className="text-primary" style={{ flexShrink: 0 }} />
-                    <p className="text-xs font-semibold text-text-heading">
-                      Add <span className="font-black text-primary">₹{amountNeeded.toLocaleString("en-IN")}</span> more to get free shipping!{" "}
-                      <span className="font-normal text-text-muted-2">(Free above ₹{freeShippingThreshold!.toLocaleString("en-IN")})</span>
-                    </p>
+              {!selectedCoupon?.freeShipping &&
+                effectiveShipping > 0 &&
+                freeShippingThreshold !== null &&
+                amountNeeded > 0 && (
+                  <div
+                    className="-mx-1 px-4 py-3"
+                    style={{
+                      borderRadius: "var(--t-radius-card)",
+                      background:
+                        "color-mix(in srgb, var(--t-primary) 8%, transparent)",
+                      border:
+                        "1px solid color-mix(in srgb, var(--t-primary) 18%, transparent)",
+                    }}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Truck
+                        size={15}
+                        className="text-primary"
+                        style={{ flexShrink: 0 }}
+                      />
+                      <p className="text-xs font-semibold text-text-heading">
+                        Add{" "}
+                        <span className="font-black text-primary">
+                          ₹{amountNeeded.toLocaleString("en-IN")}
+                        </span>{" "}
+                        more to get free shipping!{" "}
+                        <span className="font-normal text-text-muted-2">
+                          (Free above ₹
+                          {freeShippingThreshold!.toLocaleString("en-IN")})
+                        </span>
+                      </p>
+                    </div>
+                    <div className="mt-2.5 h-1.5 w-full overflow-hidden rounded-full bg-bg-card-nested">
+                      <div
+                        className="h-full rounded-full transition-all duration-500"
+                        style={{
+                          width: `${Math.min(100, Math.max(2, (subtotal / freeShippingThreshold) * 100))}%`,
+                          background: "var(--t-primary)",
+                        }}
+                      />
+                    </div>
                   </div>
-                  <div className="mt-2.5 h-1.5 w-full overflow-hidden rounded-full bg-bg-card-nested">
-                    <div
-                      className="h-full rounded-full transition-all duration-500"
-                      style={{
-                        width: `${Math.min(100, Math.max(2, (subtotal / freeShippingThreshold) * 100))}%`,
-                        background: "var(--t-primary)",
-                      }}
-                    />
-                  </div>
-                </div>
-              )}
-
+                )}
             </div>
 
             <div className="border-t border-border-subtle px-4 sm:px-6 py-5">
@@ -1024,7 +1197,9 @@ export default function CheckoutClient({
               <div className="border-t border-border-subtle px-4 sm:px-6 py-4">
                 <div className="flex items-center gap-2.5">
                   <Gift size={15} className="shrink-0 text-primary" />
-                  <p className="text-xs text-text-muted-2">Checking your reward…</p>
+                  <p className="text-xs text-text-muted-2">
+                    Checking your reward…
+                  </p>
                 </div>
               </div>
             ) : loyalty?.loyalty?.hasAvailableReward ? (
@@ -1037,7 +1212,8 @@ export default function CheckoutClient({
                         {loyalty.loyalty.badgeName || "Your Loyalty"} Reward
                       </p>
                       <p className="truncate text-[11px] text-text-muted-2">
-                        Save ₹{(loyaltyDiscount || 0).toLocaleString("en-IN")} on this order
+                        Save ₹{(loyaltyDiscount || 0).toLocaleString("en-IN")}{" "}
+                        on this order
                       </p>
                     </div>
                   </div>
@@ -1047,7 +1223,11 @@ export default function CheckoutClient({
                     aria-pressed={useLoyaltyReward}
                     onClick={() => setUseLoyaltyReward((v) => !v)}
                     className="shrink-0"
-                    style={{ color: useLoyaltyReward ? "var(--t-primary)" : "var(--t-text-muted-2)" }}
+                    style={{
+                      color: useLoyaltyReward
+                        ? "var(--t-primary)"
+                        : "var(--t-text-muted-2)",
+                    }}
                   >
                     <RadioDot active={useLoyaltyReward} />
                   </button>
@@ -1058,8 +1238,14 @@ export default function CheckoutClient({
                 <div className="flex items-center gap-2.5">
                   <Sparkles size={15} className="shrink-0 text-primary" />
                   <p className="min-w-0 truncate text-[11px] font-medium text-text-muted-1">
-                    {loyalty.loyalty.currentPurchaseCount} of {loyalty.loyalty.requiredPurchases} qualifying purchases —{" "}
-                    {Math.max(0, loyalty.loyalty.requiredPurchases - loyalty.loyalty.currentPurchaseCount)} to go
+                    {loyalty.loyalty.currentPurchaseCount} of{" "}
+                    {loyalty.loyalty.requiredPurchases} qualifying purchases —{" "}
+                    {Math.max(
+                      0,
+                      loyalty.loyalty.requiredPurchases -
+                        loyalty.loyalty.currentPurchaseCount,
+                    )}{" "}
+                    to go
                   </p>
                 </div>
                 <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-bg-card-nested">
@@ -1089,7 +1275,11 @@ export default function CheckoutClient({
               {!onlineAvailable && !codAvailable && (
                 <p
                   className="mt-3 px-3 py-2.5 text-xs text-danger"
-                  style={{ borderRadius: "var(--t-radius-input)", background: "color-mix(in srgb, var(--t-danger) 10%, transparent)" }}
+                  style={{
+                    borderRadius: "var(--t-radius-input)",
+                    background:
+                      "color-mix(in srgb, var(--t-danger) 10%, transparent)",
+                  }}
                 >
                   No payment methods available for this pincode.
                 </p>
@@ -1098,7 +1288,11 @@ export default function CheckoutClient({
               {deliveryBlocked && (
                 <div
                   className="mt-3 px-3 py-2.5 text-xs text-danger"
-                  style={{ borderRadius: "var(--t-radius-input)", background: "color-mix(in srgb, var(--t-danger) 10%, transparent)" }}
+                  style={{
+                    borderRadius: "var(--t-radius-input)",
+                    background:
+                      "color-mix(in srgb, var(--t-danger) 10%, transparent)",
+                  }}
                 >
                   {hasRestrictedItems
                     ? `Delivery unavailable for pincode ${selectedAddress?.pincode}: ${restrictedItems.map((r) => r.productName).join(", ")}.`
@@ -1110,12 +1304,19 @@ export default function CheckoutClient({
                 onClick={placeOrder}
                 disabled={loading || deliveryBlocked}
                 className="mt-4 inline-flex w-full items-center justify-center gap-2 py-4 text-base font-black uppercase tracking-wider transition-colors bg-primary hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-                style={{ borderRadius: "var(--t-radius-button)", color: "var(--t-bg-page)", fontFamily: "var(--t-font-heading)", minHeight: 52 }}
+                style={{
+                  borderRadius: "var(--t-radius-button)",
+                  color: "var(--t-bg-page)",
+                  fontFamily: "var(--t-font-heading)",
+                  minHeight: 52,
+                }}
               >
                 {loading ? (
                   <>
                     <Loader2 size={18} className="animate-spin" />
-                    {effectiveMethod === "ONLINE" ? "Creating Payment..." : "Placing Order..."}
+                    {effectiveMethod === "ONLINE"
+                      ? "Creating Payment..."
+                      : "Placing Order..."}
                   </>
                 ) : effectiveMethod === "ONLINE" ? (
                   "Proceed To Payment"
@@ -1130,15 +1331,24 @@ export default function CheckoutClient({
                 className="mx-4 sm:mx-6 mb-4 flex items-center gap-3 px-4 py-3"
                 style={{
                   borderRadius: "var(--t-radius-card)",
-                  background: "color-mix(in srgb, var(--t-primary) 10%, transparent)",
+                  background:
+                    "color-mix(in srgb, var(--t-primary) 10%, transparent)",
                 }}
               >
                 <Truck size={18} className="flex-shrink-0 text-primary" />
                 <div>
-                  <p className="text-sm font-bold text-text-heading">Estimated Delivery</p>
+                  <p className="text-sm font-bold text-text-heading">
+                    Estimated Delivery
+                  </p>
                   <p className="text-xs text-text-muted-1">
-                    {deliveryDate.toLocaleDateString("en-IN", { weekday: "short", month: "short", day: "numeric" })}
-                    {pincodeInfo?.estimatedDays ? ` (${pincodeInfo.estimatedDays} business day${pincodeInfo.estimatedDays > 1 ? "s" : ""})` : ""}
+                    {deliveryDate.toLocaleDateString("en-IN", {
+                      weekday: "short",
+                      month: "short",
+                      day: "numeric",
+                    })}
+                    {pincodeInfo?.estimatedDays
+                      ? ` (${pincodeInfo.estimatedDays} business day${pincodeInfo.estimatedDays > 1 ? "s" : ""})`
+                      : ""}
                   </p>
                 </div>
               </div>
@@ -1150,9 +1360,14 @@ export default function CheckoutClient({
                 { icon: BadgeCheck, label: "Genuine" },
                 { icon: Package, label: "Authentic" },
               ].map(({ icon: Icon, label }) => (
-                <div key={label} className="flex flex-col items-center gap-1.5 sm:gap-2 py-3 sm:py-4">
+                <div
+                  key={label}
+                  className="flex flex-col items-center gap-1.5 sm:gap-2 py-3 sm:py-4"
+                >
                   <Icon size={16} className="text-text-muted-2" />
-                  <span className="text-[10px] sm:text-[11px] font-medium text-text-muted-2">{label}</span>
+                  <span className="text-[10px] sm:text-[11px] font-medium text-text-muted-2">
+                    {label}
+                  </span>
                 </div>
               ))}
             </div>
@@ -1165,7 +1380,8 @@ export default function CheckoutClient({
       <div
         className="fixed inset-x-0 bottom-0 z-50 border-t border-border-card bg-bg-card lg:hidden"
         style={{
-          boxShadow: "0 -4px 16px color-mix(in srgb, var(--t-text-heading) 12%, transparent)",
+          boxShadow:
+            "0 -4px 16px color-mix(in srgb, var(--t-text-heading) 12%, transparent)",
           paddingBottom: "env(safe-area-inset-bottom)",
         }}
       >
@@ -1188,17 +1404,34 @@ export default function CheckoutClient({
                 type="button"
                 onClick={() => setShowPaymentPicker(true)}
                 className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-black uppercase tracking-wider"
-                style={{ color: "var(--t-primary)", fontFamily: "var(--t-font-heading)" }}
+                style={{
+                  color: "var(--t-primary)",
+                  fontFamily: "var(--t-font-heading)",
+                }}
               >
-                {effectiveMethod === "ONLINE" ? "Online Payment" : "Cash On Delivery"}
-                <ChevronDown size={13} className={showPaymentPicker ? "rotate-180 transition-transform" : "transition-transform"} />
+                {effectiveMethod === "ONLINE"
+                  ? "Online Payment"
+                  : "Cash On Delivery"}
+                <ChevronDown
+                  size={13}
+                  className={
+                    showPaymentPicker
+                      ? "rotate-180 transition-transform"
+                      : "transition-transform"
+                  }
+                />
               </button>
             </div>
             <button
               onClick={placeOrder}
               disabled={loading || deliveryBlocked}
               className="inline-flex flex-shrink-0 items-center justify-center gap-2 px-5 text-sm font-black uppercase tracking-wider transition-colors bg-primary hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-              style={{ borderRadius: "var(--t-radius-button)", color: "var(--t-bg-page)", fontFamily: "var(--t-font-heading)", minHeight: 48 }}
+              style={{
+                borderRadius: "var(--t-radius-button)",
+                color: "var(--t-bg-page)",
+                fontFamily: "var(--t-font-heading)",
+                minHeight: 48,
+              }}
             >
               {loading ? (
                 <Loader2 size={18} className="animate-spin" />
@@ -1271,14 +1504,13 @@ export default function CheckoutClient({
         maxWidth="max-w-lg"
       >
         <div className="p-6 sm:p-8">
-          <div
-            className="mb-4 flex items-center gap-3"
-          >
+          <div className="mb-4 flex items-center gap-3">
             <div
               className="flex h-11 w-11 shrink-0 items-center justify-center"
               style={{
                 borderRadius: "var(--t-radius-card)",
-                background: "color-mix(in srgb, var(--t-danger) 15%, transparent)",
+                background:
+                  "color-mix(in srgb, var(--t-danger) 15%, transparent)",
               }}
             >
               <TriangleAlert size={22} className="text-danger" />
@@ -1294,8 +1526,9 @@ export default function CheckoutClient({
           </div>
 
           <p className="text-sm text-text-body">
-            The following {restrictedItems.length === 1 ? "product is" : "products are"}{" "}
-            not deliverable to your pincode:
+            The following{" "}
+            {restrictedItems.length === 1 ? "product is" : "products are"} not
+            deliverable to your pincode:
           </p>
 
           <ul className="mt-3 space-y-2">
@@ -1305,8 +1538,10 @@ export default function CheckoutClient({
                 className="flex items-start gap-2 rounded-xl px-3 py-2.5"
                 style={{
                   borderRadius: "var(--t-radius-input)",
-                  background: "color-mix(in srgb, var(--t-danger) 8%, transparent)",
-                  border: "1px solid color-mix(in srgb, var(--t-danger) 20%, transparent)",
+                  background:
+                    "color-mix(in srgb, var(--t-danger) 8%, transparent)",
+                  border:
+                    "1px solid color-mix(in srgb, var(--t-danger) 20%, transparent)",
                 }}
               >
                 <span
@@ -1321,8 +1556,8 @@ export default function CheckoutClient({
           </ul>
 
           <p className="mt-4 text-xs text-text-muted-1">
-            Please choose a different delivery address, or remove these items from
-            your cart to continue.
+            Please choose a different delivery address, or remove these items
+            from your cart to continue.
           </p>
 
           <button
@@ -1351,7 +1586,9 @@ function RadioDot({ active }: { active: boolean }) {
         borderRadius: "50%",
         borderColor: active ? "var(--t-primary)" : "var(--t-text-muted-3)",
         background: active ? "var(--t-primary)" : "transparent",
-        boxShadow: active ? "inset 0 0 0 3px var(--t-bg-card-nested)" : undefined,
+        boxShadow: active
+          ? "inset 0 0 0 3px var(--t-bg-card-nested)"
+          : undefined,
       }}
     />
   );

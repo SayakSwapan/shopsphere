@@ -7,35 +7,20 @@ export async function DELETE(req: Request) {
     const session = await auth();
 
     if (!session?.user?.email) {
-      return NextResponse.json(
-        { success: false },
-        { status: 401 }
-      );
+      return NextResponse.json({ success: false }, { status: 401 });
     }
 
-    const user = await prisma.user.findUnique({
-      where: {
-        email: session.user.email,
-      },
-      select: { id: true },
-    });
+    const { cartItemId } = await req.json();
 
-    if (!user) {
-      return NextResponse.json(
-        { success: false },
-        { status: 401 }
-      );
-    }
-
-    const { cartItemId } =
-      await req.json();
-
-    // Ownership check: only delete items that belong to the caller's cart.
+    // Ownership check: only delete items that belong to the caller's cart
+    // (resolved through the session email — no separate user lookup).
     const deleted = await prisma.cartitem.deleteMany({
       where: {
         id: cartItemId,
         cart: {
-          userId: user.id,
+          user: {
+            email: session.user.email,
+          },
         },
       },
     });
@@ -43,7 +28,7 @@ export async function DELETE(req: Request) {
     if (deleted.count === 0) {
       return NextResponse.json(
         { success: false, message: "Item not found in your cart." },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -57,7 +42,7 @@ export async function DELETE(req: Request) {
       },
       {
         status: 500,
-      }
+      },
     );
   }
 }

@@ -46,8 +46,6 @@ export default function LoyaltyHistoryPage() {
       .finally(() => setLoading(false));
   }, [page]);
 
-  const totalDiscount = redemptions.reduce((s, r) => s + r.discountAmount, 0);
-
   return (
     <div className="max-w-6xl">
       <div className="px-6 py-4 border-b border-[#1E293B]">
@@ -73,7 +71,9 @@ export default function LoyaltyHistoryPage() {
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-500/10">
               <Trophy size={18} className="text-emerald-400" />
             </div>
-            <p className="mt-4 text-2xl font-bold text-white">₹{total.toLocaleString("en-IN")}</p>
+            <p className="mt-4 text-2xl font-bold text-white">
+              ₹{total.toLocaleString("en-IN")}
+            </p>
             <p className="mt-1 text-[11px] font-medium text-slate-400 uppercase tracking-wider">
               Discount Given (this page)
             </p>
@@ -106,7 +106,10 @@ export default function LoyaltyHistoryPage() {
                   </thead>
                   <tbody className="divide-y divide-[#1E293B]">
                     {redemptions.map((r) => (
-                      <tr key={r.id} className="hover:bg-[#151D2E] transition-colors">
+                      <tr
+                        key={r.id}
+                        className="hover:bg-[#151D2E] transition-colors"
+                      >
                         <td className="px-6 py-4">
                           <Link
                             href={`/admin/loyalty/customers/${r.customerId}`}
@@ -115,7 +118,9 @@ export default function LoyaltyHistoryPage() {
                             <p className="font-medium text-white group-hover:text-amber-400 transition-colors truncate">
                               {r.customerName}
                             </p>
-                            <p className="text-[11px] text-slate-500 truncate">{r.customerEmail}</p>
+                            <p className="text-[11px] text-slate-500 truncate">
+                              {r.customerEmail}
+                            </p>
                           </Link>
                         </td>
                         <td className="px-4 py-4">
@@ -126,13 +131,23 @@ export default function LoyaltyHistoryPage() {
                                 : "bg-orange-500/10 text-orange-400"
                             }`}
                           >
-                            {r.source === "ONLINE" ? <ShoppingBag size={11} /> : <Store size={11} />}
+                            {r.source === "ONLINE" ? (
+                              <ShoppingBag size={11} />
+                            ) : (
+                              <Store size={11} />
+                            )}
                             {r.source === "ONLINE" ? "Online" : "Offline"}
                           </span>
                         </td>
-                        <td className="px-4 py-4 text-slate-400">#{r.cycleNumber}</td>
-                        <td className="px-4 py-4 text-white">₹{r.orderAmount.toLocaleString("en-IN")}</td>
-                        <td className="px-4 py-4 font-bold text-emerald-400">−₹{r.discountAmount.toFixed(2)}</td>
+                        <td className="px-4 py-4 text-slate-400">
+                          #{r.cycleNumber}
+                        </td>
+                        <td className="px-4 py-4 text-white">
+                          ₹{r.orderAmount.toLocaleString("en-IN")}
+                        </td>
+                        <td className="px-4 py-4 font-bold text-emerald-400">
+                          −₹{r.discountAmount.toFixed(2)}
+                        </td>
                         <td className="px-4 py-4 text-slate-400 text-xs whitespace-nowrap">
                           {new Date(r.redeemedAt).toLocaleDateString("en-IN", {
                             day: "2-digit",

@@ -6,7 +6,6 @@ import {
   Star,
   Bot,
   Loader2,
-  Plus,
   ExternalLink,
   MessageSquare,
   Sparkles,
@@ -92,7 +91,7 @@ export default function GenerateReviewsClient({ products }: Props) {
   const [search, setSearch] = useState("");
 
   const filtered = products.filter((p) =>
-    p.name.toLowerCase().includes(search.toLowerCase())
+    p.name.toLowerCase().includes(search.toLowerCase()),
   );
 
   const selectedProduct = products.find((p) => p.id === selected);
@@ -158,16 +157,32 @@ export default function GenerateReviewsClient({ products }: Props) {
                 }`}
               >
                 <div className="flex items-center gap-2">
-                  <Icon size={18} className={isActive ? type.color : "text-slate-500"} />
-                  <span className={`text-sm font-bold ${isActive ? "text-white" : "text-slate-300"}`}>
+                  <Icon
+                    size={18}
+                    className={isActive ? type.color : "text-slate-500"}
+                  />
+                  <span
+                    className={`text-sm font-bold ${isActive ? "text-white" : "text-slate-300"}`}
+                  >
                     {type.label}
                   </span>
                 </div>
-                <p className="text-[11px] leading-4 text-slate-500">{type.description}</p>
+                <p className="text-[11px] leading-4 text-slate-500">
+                  {type.description}
+                </p>
                 {isActive && (
-                  <div className={`absolute -top-px -right-px h-5 w-5 rounded-bl-lg rounded-tr-xl ${type.bg} flex items-center justify-center`}>
+                  <div
+                    className={`absolute -top-px -right-px h-5 w-5 rounded-bl-lg rounded-tr-xl ${type.bg} flex items-center justify-center`}
+                  >
                     <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
-                      <path d="M1 4L3.5 6.5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={type.color} />
+                      <path
+                        d="M1 4L3.5 6.5L9 1"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className={type.color}
+                      />
                     </svg>
                   </div>
                 )}
@@ -211,7 +226,9 @@ export default function GenerateReviewsClient({ products }: Props) {
                 <MessageSquare size={16} className="text-slate-500" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold text-white">{product.name}</p>
+                <p className="truncate text-sm font-semibold text-white">
+                  {product.name}
+                </p>
                 <div className="mt-0.5 flex items-center gap-3 text-xs text-slate-500">
                   <span>₹{product.price.toLocaleString("en-IN")}</span>
                   <span className="flex items-center gap-1">
@@ -231,7 +248,9 @@ export default function GenerateReviewsClient({ products }: Props) {
 
         {filtered.length === 0 && (
           <div className="rounded-xl border border-white/5 bg-white/[0.02] p-8 text-center">
-            <p className="text-sm text-slate-500">No products match your search.</p>
+            <p className="text-sm text-slate-500">
+              No products match your search.
+            </p>
           </div>
         )}
       </div>
@@ -247,13 +266,17 @@ export default function GenerateReviewsClient({ products }: Props) {
 
         <div className="flex flex-wrap items-end gap-4">
           <div>
-            <label className="mb-1.5 block text-xs font-medium text-slate-400">Count</label>
+            <label className="mb-1.5 block text-xs font-medium text-slate-400">
+              Count
+            </label>
             <input
               type="number"
               min={1}
               max={20}
               value={count}
-              onChange={(e) => setCount(Math.min(20, Math.max(1, Number(e.target.value) || 1)))}
+              onChange={(e) =>
+                setCount(Math.min(20, Math.max(1, Number(e.target.value) || 1)))
+              }
               className="h-11 w-24 rounded-xl border border-slate-700 bg-[#0F172A] px-3 text-center text-sm text-white outline-none focus:border-amber-500/50"
             />
           </div>
@@ -268,7 +291,9 @@ export default function GenerateReviewsClient({ products }: Props) {
             ) : (
               <Zap size={16} />
             )}
-            {loading ? "Generating..." : `Generate ${selectedType?.label || ""} Reviews`}
+            {loading
+              ? "Generating..."
+              : `Generate ${selectedType?.label || ""} Reviews`}
           </button>
 
           {selectedProduct && (
@@ -284,7 +309,9 @@ export default function GenerateReviewsClient({ products }: Props) {
         </div>
 
         {!selected && (
-          <p className="mt-3 text-xs text-slate-600">Select a product above to enable generation.</p>
+          <p className="mt-3 text-xs text-slate-600">
+            Select a product above to enable generation.
+          </p>
         )}
       </div>
 
@@ -307,7 +334,10 @@ export default function GenerateReviewsClient({ products }: Props) {
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-3">
                     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-500/15 text-xs font-bold text-amber-400">
-                      {review.displayName.split(" ").map((n) => n[0]).join("")}
+                      {review.displayName
+                        .split(" ")
+                        .map((n) => n[0])
+                        .join("")}
                     </div>
                     <div>
                       <p className="flex items-center gap-2 text-sm font-bold text-white">
@@ -323,14 +353,18 @@ export default function GenerateReviewsClient({ products }: Props) {
                             key={n}
                             size={13}
                             color={n <= review.rating ? "#F5A623" : "#3A4455"}
-                            fill={n <= review.rating ? "#F5A623" : "transparent"}
+                            fill={
+                              n <= review.rating ? "#F5A623" : "transparent"
+                            }
                           />
                         ))}
                       </div>
                     </div>
                   </div>
                 </div>
-                <p className="mt-2.5 text-sm leading-5 text-slate-400">{review.comment}</p>
+                <p className="mt-2.5 text-sm leading-5 text-slate-400">
+                  {review.comment}
+                </p>
               </div>
             ))}
           </div>

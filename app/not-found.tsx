@@ -1,7 +1,7 @@
 import Link from "next/link";
 import Footer from "@/components/store/layout/footer";
 import NavbarWrapper from "@/components/store/layout/navbar-wrapper";
-import { Home, Search, ArrowLeft, ShoppingBag, Tag } from "lucide-react";
+import { Home, Search, ShoppingBag, Tag } from "lucide-react";
 
 export const metadata = {
   title: "Page Not Found",
@@ -29,7 +29,9 @@ export default function NotFound() {
         >
           404
         </h1>
-        <p className="mt-4 text-lg font-semibold text-text-heading">Page not found</p>
+        <p className="mt-4 text-lg font-semibold text-text-heading">
+          Page not found
+        </p>
         <p className="mt-2 max-w-md mx-auto text-sm leading-relaxed text-text-muted-1">
           The page you&apos;re looking for doesn&apos;t exist or has been moved.
           Try searching for what you need below.

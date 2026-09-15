@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { ChevronRight, Download, Truck } from "lucide-react";
+import { optimizedImageUrl } from "@/lib/cloudinary-image";
 
 import {
   ORDER_STATUS_STYLES,
@@ -99,13 +100,20 @@ export default function OrderCard({ order }: Props) {
   }
 
   return (
-    <div className="border border-border-card bg-bg-card overflow-hidden transition-all duration-300 hover:shadow-card-hover" style={{ borderRadius: "var(--t-radius-card)" }}>
+    <div
+      className="border border-border-card bg-bg-card overflow-hidden transition-all duration-300 hover:shadow-card-hover"
+      style={{ borderRadius: "var(--t-radius-card)" }}
+    >
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4 border-b border-border-subtle px-4 sm:px-6 py-3 sm:py-5">
         <div className="flex flex-wrap items-center gap-3 sm:gap-4">
           <div>
-            <p className="text-[10px] sm:text-xs text-text-muted-2">Order Number</p>
-            <h3 className="text-sm sm:text-base font-black text-text-heading">{order.orderNumber}</h3>
+            <p className="text-[10px] sm:text-xs text-text-muted-2">
+              Order Number
+            </p>
+            <h3 className="text-sm sm:text-base font-black text-text-heading">
+              {order.orderNumber}
+            </h3>
           </div>
           <div className="h-8 w-px bg-border-subtle hidden sm:block" />
           <div className="hidden sm:block">
@@ -126,7 +134,7 @@ export default function OrderCard({ order }: Props) {
         <div className="flex items-center gap-2 sm:gap-3">
           <span
             className={`rounded-full px-3 sm:px-4 py-1 sm:py-1.5 text-[10px] sm:text-xs font-bold ${getStatusBadge(
-              order.status
+              order.status,
             )}`}
           >
             {getStatusLabel(order.status)}
@@ -136,7 +144,12 @@ export default function OrderCard({ order }: Props) {
             <button
               onClick={handlePrint}
               className="flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 text-[10px] sm:text-xs font-bold transition print:hidden"
-              style={{ borderRadius: "var(--t-radius-badge)", background: "color-mix(in srgb, var(--t-primary) 15%, transparent)", color: "var(--t-primary)" }}
+              style={{
+                borderRadius: "var(--t-radius-badge)",
+                background:
+                  "color-mix(in srgb, var(--t-primary) 15%, transparent)",
+                color: "var(--t-primary)",
+              }}
               title="Download Invoice"
             >
               <Download size={12} />
@@ -163,10 +176,16 @@ export default function OrderCard({ order }: Props) {
               href={`/products/${slug}`}
               className="flex items-center gap-3 sm:gap-5 px-4 sm:px-6 py-3 sm:py-4 transition hover:bg-bg-card-nested"
             >
-              <div className="relative h-14 w-14 sm:h-16 sm:w-16 flex-shrink-0 overflow-hidden bg-bg-card-nested" style={{ borderRadius: "var(--t-radius-card)" }}>
+              <div
+                className="relative h-14 w-14 sm:h-16 sm:w-16 flex-shrink-0 overflow-hidden bg-bg-card-nested"
+                style={{ borderRadius: "var(--t-radius-card)" }}
+              >
                 <Image
                   src={
-                    item.product.productimage?.[0]?.url || "/placeholder.png"
+                    optimizedImageUrl(
+                      item.product.productimage?.[0]?.url,
+                      160,
+                    ) || "/placeholder.png"
                   }
                   alt={item.product.name}
                   fill
@@ -179,7 +198,9 @@ export default function OrderCard({ order }: Props) {
                   {item.product.name}
                 </h4>
                 {variant && (
-                  <p className="mt-0.5 text-[11px] text-text-muted-2">{variant}</p>
+                  <p className="mt-0.5 text-[11px] text-text-muted-2">
+                    {variant}
+                  </p>
                 )}
                 <p className="mt-0.5 text-[11px] text-text-muted-2">
                   {item.quantity} × {formatCurrency(item.price)}
@@ -192,7 +213,10 @@ export default function OrderCard({ order }: Props) {
                 </p>
               </div>
 
-              <ChevronRight size={14} className="text-text-muted-3 flex-shrink-0" />
+              <ChevronRight
+                size={14}
+                className="text-text-muted-3 flex-shrink-0"
+              />
             </Link>
           );
         })}
@@ -203,11 +227,16 @@ export default function OrderCard({ order }: Props) {
         {/* Price breakdown - compact */}
         <div className="space-y-1.5 text-xs mb-3">
           <div className="flex justify-between text-text-muted-2">
-            <span>{totalItems} item{totalItems !== 1 ? "s" : ""}</span>
+            <span>
+              {totalItems} item{totalItems !== 1 ? "s" : ""}
+            </span>
             <span>{formatCurrency(order.subtotal + order.gst)}</span>
           </div>
           {order.discount > 0 && (
-            <div className="flex justify-between" style={{ color: "var(--t-success)" }}>
+            <div
+              className="flex justify-between"
+              style={{ color: "var(--t-success)" }}
+            >
               <span>Discount</span>
               <span>-{formatCurrency(order.discount)}</span>
             </div>
@@ -220,7 +249,12 @@ export default function OrderCard({ order }: Props) {
               <Link
                 href={`/track?order=${order.id}`}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold transition hover:opacity-80 print:hidden"
-                style={{ borderRadius: "var(--t-radius-badge)", background: "color-mix(in srgb, var(--t-primary) 15%, transparent)", color: "var(--t-primary)" }}
+                style={{
+                  borderRadius: "var(--t-radius-badge)",
+                  background:
+                    "color-mix(in srgb, var(--t-primary) 15%, transparent)",
+                  color: "var(--t-primary)",
+                }}
               >
                 <Truck size={12} />
                 Track

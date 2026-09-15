@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { optimizedImageUrl } from "@/lib/cloudinary-image";
 import { toast } from "sonner";
 import {
   Check,
@@ -128,12 +129,19 @@ function isPercentDiscount(type: unknown): boolean {
 // One square chip per size name (gender ignored); a size is selectable if
 // ANY of its variants has stock — mirrors the PDP size picker.
 function sizeOptionsFor(product: ComboRoomProduct) {
-  const map = new Map<string, { sizeName: string; inStock: boolean; variantId: string }>();
+  const map = new Map<
+    string,
+    { sizeName: string; inStock: boolean; variantId: string }
+  >();
   for (const v of product.productvariant) {
     const key = v.sizeName || "Default";
     const existing = map.get(key);
     if (!existing || (Number(v.stock) > 0 && !existing.inStock)) {
-      map.set(key, { sizeName: key, inStock: Number(v.stock) > 0, variantId: v.id });
+      map.set(key, {
+        sizeName: key,
+        inStock: Number(v.stock) > 0,
+        variantId: v.id,
+      });
     }
   }
   return Array.from(map.values());
@@ -142,10 +150,11 @@ function sizeOptionsFor(product: ComboRoomProduct) {
 function getEffectivePrice(
   salePrice: number | null,
   finalPrice: number | null,
-  sellingPrice: number
+  sellingPrice: number,
 ): number {
   for (const value of [salePrice, finalPrice, sellingPrice]) {
-    if (Number.isFinite(Number(value)) && Number(value) > 0) return Number(value);
+    if (Number.isFinite(Number(value)) && Number(value) > 0)
+      return Number(value);
   }
   return Number(sellingPrice) || 0;
 }
@@ -160,7 +169,11 @@ function activeBase(p: ComboRoomProduct): number {
     (!p.offerStart || new Date() >= new Date(p.offerStart)) &&
     (!p.offerEnd || new Date() <= new Date(p.offerEnd));
   if (!offerActive) return Number(p.sellingPrice) || 0;
-  return getEffectivePrice(p.salePrice, p.finalPrice, Number(p.sellingPrice) || 0);
+  return getEffectivePrice(
+    p.salePrice,
+    p.finalPrice,
+    Number(p.sellingPrice) || 0,
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -171,7 +184,8 @@ const ROOM_KEY = (slug: string) => `combo-selection:${slug}`;
 
 export default function ComboOfferRoom({ offer }: { offer: ComboRoomOffer }) {
   const getCount = useMemo(() => {
-    if (offer.comboType === "PICK_ANY") return Math.max(2, Number(offer.minPick) || 2);
+    if (offer.comboType === "PICK_ANY")
+      return Math.max(2, Number(offer.minPick) || 2);
     return Math.max(2, Number(offer.getCount) || 2);
   }, [offer.comboType, offer.minPick, offer.getCount]);
 
@@ -206,18 +220,25 @@ export default function ComboOfferRoom({ offer }: { offer: ComboRoomOffer }) {
       return Array.isArray(parsed)
         ? parsed.filter(
             (s): s is Selection =>
-              s && typeof s.productId === "string" && pool.some((p) => p.id === s.productId)
+              s &&
+              typeof s.productId === "string" &&
+              pool.some((p) => p.id === s.productId),
           )
         : [];
     } catch {
       return [];
     }
   });
-  const [modalProduct, setModalProduct] = useState<ComboRoomProduct | null>(null);
+  const [modalProduct, setModalProduct] = useState<ComboRoomProduct | null>(
+    null,
+  );
 
   useEffect(() => {
     try {
-      window.localStorage.setItem(ROOM_KEY(offer.slug), JSON.stringify(selections));
+      window.localStorage.setItem(
+        ROOM_KEY(offer.slug),
+        JSON.stringify(selections),
+      );
     } catch {
       // storage may be unavailable — selections still work for this session
     }
@@ -225,7 +246,9 @@ export default function ComboOfferRoom({ offer }: { offer: ComboRoomOffer }) {
 
   // ── Pricing preview (server-authoritative) ──
   const [summary, setSummary] = useState<PriceSummary | null>(null);
-  const [pricingState, setPricingState] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [pricingState, setPricingState] = useState<
+    "idle" | "loading" | "success" | "error"
+  >("idle");
   const [pricingMessage, setPricingMessage] = useState<string>("");
 
   const selectionKey = useMemo(() => JSON.stringify(selections), [selections]);
@@ -245,14 +268,17 @@ export default function ComboOfferRoom({ offer }: { offer: ComboRoomOffer }) {
         });
         const data = await res.json();
         if (cancelled) return;
-        if (!res.ok || !data.success) throw new Error(data.message || "Pricing unavailable");
+        if (!res.ok || !data.success)
+          throw new Error(data.message || "Pricing unavailable");
         setSummary(data.summary as PriceSummary);
         setPricingState("success");
       } catch (error) {
         if (cancelled) return;
         setSummary(null);
         setPricingState("error");
-        setPricingMessage((error as Error).message || "Could not price this combo right now.");
+        setPricingMessage(
+          (error as Error).message || "Could not price this combo right now.",
+        );
       }
     })();
     return () => {
@@ -274,8 +300,8 @@ export default function ComboOfferRoom({ offer }: { offer: ComboRoomOffer }) {
       if (existing) {
         setSelections((prev) =>
           prev.map((s) =>
-            s.productId === productId ? { ...s, productVariantId } : s
-          )
+            s.productId === productId ? { ...s, productVariantId } : s,
+          ),
         );
         return;
       }
@@ -285,7 +311,7 @@ export default function ComboOfferRoom({ offer }: { offer: ComboRoomOffer }) {
       }
       setSelections((prev) => [...prev, { productId, productVariantId }]);
     },
-    [selections, getCount, canFulfil]
+    [selections, getCount, canFulfil],
   );
 
   const removeSelection = useCallback((productId: string) => {
@@ -305,13 +331,19 @@ export default function ComboOfferRoom({ offer }: { offer: ComboRoomOffer }) {
 
   const handleProductClick = useCallback(
     (product: ComboRoomProduct) => {
-      const alreadySelected = selections.some((s) => s.productId === product.id);
+      const alreadySelected = selections.some(
+        (s) => s.productId === product.id,
+      );
       const inStockVariants =
         product.productvariant && product.productvariant.length > 0
           ? product.productvariant.filter((v) => Number(v.stock) > 0)
           : [];
 
-      if (product.productvariant && product.productvariant.length > 0 && inStockVariants.length === 0) {
+      if (
+        product.productvariant &&
+        product.productvariant.length > 0 &&
+        inStockVariants.length === 0
+      ) {
         toast.error("This product is out of stock.");
         return;
       }
@@ -335,10 +367,13 @@ export default function ComboOfferRoom({ offer }: { offer: ComboRoomOffer }) {
       }
       setModalProduct(product);
     },
-    [selections, addSelection]
+    [selections, addSelection],
   );
 
-  const selectedIds = useMemo(() => new Set(selections.map((s) => s.productId)), [selections]);
+  const selectedIds = useMemo(
+    () => new Set(selections.map((s) => s.productId)),
+    [selections],
+  );
 
   const selectedItems = useMemo(
     () =>
@@ -346,19 +381,23 @@ export default function ComboOfferRoom({ offer }: { offer: ComboRoomOffer }) {
         .map((sel) => {
           const product = pool.find((p) => p.id === sel.productId);
           if (!product) return null;
-          const variant = product.productvariant.find((v) => v.id === sel.productVariantId) ?? null;
+          const variant =
+            product.productvariant.find((v) => v.id === sel.productVariantId) ??
+            null;
           return {
             product,
             variant,
-            summary: summary?.items?.find((i) => i.productId === product.id) ?? null,
+            summary:
+              summary?.items?.find((i) => i.productId === product.id) ?? null,
           };
         })
         .filter((x): x is NonNullable<typeof x> => x !== null),
-    [selections, pool, summary]
+    [selections, pool, summary],
   );
 
   const continueHref = `/combo-checkout?offer=${encodeURIComponent(offer.slug)}`;
-  const complete = hasCompleteSelection && pricingState === "success" && summary !== null;
+  const complete =
+    hasCompleteSelection && pricingState === "success" && summary !== null;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
@@ -368,7 +407,10 @@ export default function ComboOfferRoom({ offer }: { offer: ComboRoomOffer }) {
           {offer.badge && (
             <span
               className="inline-flex items-center gap-1 bg-primary px-3 py-1 text-[10px] font-black uppercase tracking-wider"
-              style={{ color: "var(--t-bg-page)", borderRadius: "var(--t-radius-badge)" }}
+              style={{
+                color: "var(--t-bg-page)",
+                borderRadius: "var(--t-radius-badge)",
+              }}
             >
               <Sparkles size={11} /> {offer.badge}
             </span>
@@ -377,7 +419,8 @@ export default function ComboOfferRoom({ offer }: { offer: ComboRoomOffer }) {
             className="inline-flex items-center text-[10px] font-black uppercase tracking-wider text-text-muted-2"
             style={{ borderRadius: "var(--t-radius-badge)" }}
           >
-            {getCount} products · pay {isFixedPrice ? formatCurrency(offer.customPrice ?? 0) : buyCount}
+            {getCount} products · pay{" "}
+            {isFixedPrice ? formatCurrency(offer.customPrice ?? 0) : buyCount}
           </span>
         </div>
         <h1
@@ -386,18 +429,29 @@ export default function ComboOfferRoom({ offer }: { offer: ComboRoomOffer }) {
         >
           {offer.title}
         </h1>
-        {offer.headline && <p className="mt-2 text-sm font-medium text-text-muted-1">{offer.headline}</p>}
+        {offer.headline && (
+          <p className="mt-2 text-sm font-medium text-text-muted-1">
+            {offer.headline}
+          </p>
+        )}
         {offer.description && (
-          <p className="mt-1.5 text-sm text-text-muted-2 max-w-2xl leading-relaxed">{offer.description}</p>
+          <p className="mt-1.5 text-sm text-text-muted-2 max-w-2xl leading-relaxed">
+            {offer.description}
+          </p>
         )}
       </div>
 
       {!canFulfil && (
         <div
           className="mb-8 border px-4 py-3 text-sm font-medium text-danger"
-          style={{ borderColor: "color-mix(in srgb, var(--t-danger) 30%, transparent)", background: "color-mix(in srgb, var(--t-danger) 8%, transparent)", borderRadius: "var(--t-radius-card)" }}
+          style={{
+            borderColor: "color-mix(in srgb, var(--t-danger) 30%, transparent)",
+            background: "color-mix(in srgb, var(--t-danger) 8%, transparent)",
+            borderRadius: "var(--t-radius-card)",
+          }}
         >
-          Not enough products are in stock to fulfil this offer right now. Please check back later.
+          Not enough products are in stock to fulfil this offer right now.
+          Please check back later.
         </div>
       )}
 
@@ -406,7 +460,8 @@ export default function ComboOfferRoom({ offer }: { offer: ComboRoomOffer }) {
         <div>
           <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-sm font-black uppercase tracking-wider text-text-heading flex items-center gap-2">
-              <PackagePlus size={16} className="text-primary" /> Pick up to {getCount} products
+              <PackagePlus size={16} className="text-primary" /> Pick up to{" "}
+              {getCount} products
             </h2>
             <span className="text-xs font-bold text-text-muted-2">
               {selections.length}/{getCount} selected
@@ -415,18 +470,28 @@ export default function ComboOfferRoom({ offer }: { offer: ComboRoomOffer }) {
 
           {pool.length === 0 ? (
             <div className="border border-border-card bg-bg-card rounded-2xl text-center py-16">
-              <TicketPercent size={42} className="mx-auto mb-3 text-text-muted-3" />
-              <p className="text-sm text-text-muted-2">No products available for this offer.</p>
+              <TicketPercent
+                size={42}
+                className="mx-auto mb-3 text-text-muted-3"
+              />
+              <p className="text-sm text-text-muted-2">
+                No products available for this offer.
+              </p>
             </div>
           ) : (
             <div className="grid grid-cols-2 max-[380px]:grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
               {pool.map((product) => {
                 const isSelected = selectedIds.has(product.id);
-                const inStockVariants = product.productvariant.filter((v) => Number(v.stock) > 0);
+                const inStockVariants = product.productvariant.filter(
+                  (v) => Number(v.stock) > 0,
+                );
                 const base = activeBase(product);
                 const displayPrice = priceWithGst(base, product.gstPercentage);
                 const chosenVariant = product.productvariant.find(
-                  (v) => v.id === selections.find((s) => s.productId === product.id)?.productVariantId
+                  (v) =>
+                    v.id ===
+                    selections.find((s) => s.productId === product.id)
+                      ?.productVariantId,
                 );
                 return (
                   <button
@@ -446,14 +511,22 @@ export default function ComboOfferRoom({ offer }: { offer: ComboRoomOffer }) {
                   >
                     <div className="relative">
                       <img
-                        src={product.productimage?.[0]?.url || "/placeholder.png"}
+                        src={
+                          optimizedImageUrl(
+                            product.productimage?.[0]?.url,
+                            480,
+                          ) || "/placeholder.png"
+                        }
                         alt={product.name}
                         className="h-36 sm:h-44 w-full object-cover"
                       />
                       {isSelected && (
                         <span
                           className="absolute left-3 top-3 inline-flex items-center gap-1 bg-primary px-2 py-1 text-[9px] font-black uppercase tracking-wider"
-                          style={{ borderRadius: "var(--t-radius-badge)", color: "var(--t-bg-page)" }}
+                          style={{
+                            borderRadius: "var(--t-radius-badge)",
+                            color: "var(--t-bg-page)",
+                          }}
                         >
                           <Check size={10} strokeWidth={3} /> Selected
                         </span>
@@ -463,18 +536,26 @@ export default function ComboOfferRoom({ offer }: { offer: ComboRoomOffer }) {
                       <h3 className="text-xs sm:text-sm font-bold text-text-heading leading-snug line-clamp-2 group-hover:text-primary transition-colors">
                         {product.name}
                       </h3>
-                      <p className="mt-2 text-base font-black text-text-heading">{formatCurrency(displayPrice)}</p>
+                      <p className="mt-2 text-base font-black text-text-heading">
+                        {formatCurrency(displayPrice)}
+                      </p>
                       {chosenVariant?.sizeName && (
                         <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-primary">
                           {chosenVariant.sizeName}
-                          {chosenVariant.genderName ? ` · ${chosenVariant.genderName}` : ""}
+                          {chosenVariant.genderName
+                            ? ` · ${chosenVariant.genderName}`
+                            : ""}
                         </p>
                       )}
                       {!isSelected && inStockVariants.length > 1 && (
-                        <p className="mt-1 text-[10px] font-semibold text-text-muted-2">Choose size</p>
+                        <p className="mt-1 text-[10px] font-semibold text-text-muted-2">
+                          Choose size
+                        </p>
                       )}
                       {isSelected && inStockVariants.length > 1 && (
-                        <p className="mt-1 text-[10px] font-semibold text-primary">Tap to change size</p>
+                        <p className="mt-1 text-[10px] font-semibold text-primary">
+                          Tap to change size
+                        </p>
                       )}
                     </div>
                   </button>
@@ -492,8 +573,12 @@ export default function ComboOfferRoom({ offer }: { offer: ComboRoomOffer }) {
           >
             <div className="p-4 sm:p-5">
               <div className="flex items-center justify-between">
-                <h2 className="text-sm font-black uppercase tracking-wider text-text-heading">Your Combo</h2>
-                <span className="text-xs font-bold text-text-muted-2">{selections.length}/{getCount}</span>
+                <h2 className="text-sm font-black uppercase tracking-wider text-text-heading">
+                  Your Combo
+                </h2>
+                <span className="text-xs font-bold text-text-muted-2">
+                  {selections.length}/{getCount}
+                </span>
               </div>
 
               {/* Progress */}
@@ -503,7 +588,9 @@ export default function ComboOfferRoom({ offer }: { offer: ComboRoomOffer }) {
               >
                 <div
                   className="h-full bg-primary transition-all duration-300"
-                  style={{ width: `${Math.min(100, (selections.length / getCount) * 100)}%` }}
+                  style={{
+                    width: `${Math.min(100, (selections.length / getCount) * 100)}%`,
+                  }}
                 />
               </div>
               <p className="mt-1.5 text-[11px] text-text-muted-2">
@@ -516,47 +603,62 @@ export default function ComboOfferRoom({ offer }: { offer: ComboRoomOffer }) {
             {/* Selected list */}
             {selectedItems.length > 0 && (
               <ul className="px-4 sm:px-5 pb-2 divide-y divide-border-subtle border-t border-border-subtle">
-                {selectedItems.map(({ product, variant, summary: itemSummary }) => (
-                  <li key={product.id} className="py-3 flex items-center gap-3">
-                    <div className="relative">
-                      <img
-                        src={product.productimage?.[0]?.url || "/placeholder.png"}
-                        alt={product.name}
-                        className="h-14 w-14 object-cover border border-border-card"
-                        style={{ borderRadius: "var(--t-radius-card)" }}
-                      />
-                      {itemSummary?.isFree && (
-                        <span
-                          className="absolute -top-1.5 -left-1.5 bg-success text-bg-page text-[8px] font-black uppercase px-1 py-0.5"
-                          style={{ borderRadius: "var(--t-radius-badge)" }}
-                        >
-                          FREE
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="truncate text-xs font-bold text-text-heading">{product.name}</p>
-                      <p className="text-[10px] text-text-muted-2 truncate">
-                        {variant?.sizeName ?? "Default"} · {formatCurrency(activeBase(product))}
-                      </p>
-                      {itemSummary && (
-                        <p
-                          className={`text-[11px] font-black mt-0.5 ${itemSummary.isFree ? "text-success" : "text-text-heading"}`}
-                        >
-                          {itemSummary.isFree ? "FREE" : formatCurrency(itemSummary.payInclGst)}
-                        </p>
-                      )}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => removeSelection(product.id)}
-                      className="p-1.5 text-text-muted-2 transition-colors hover:text-danger"
-                      aria-label={`Remove ${product.name}`}
+                {selectedItems.map(
+                  ({ product, variant, summary: itemSummary }) => (
+                    <li
+                      key={product.id}
+                      className="py-3 flex items-center gap-3"
                     >
-                      <Trash2 size={13} />
-                    </button>
-                  </li>
-                ))}
+                      <div className="relative">
+                        <img
+                          src={
+                            optimizedImageUrl(
+                              product.productimage?.[0]?.url,
+                              480,
+                            ) || "/placeholder.png"
+                          }
+                          alt={product.name}
+                          className="h-14 w-14 object-cover border border-border-card"
+                          style={{ borderRadius: "var(--t-radius-card)" }}
+                        />
+                        {itemSummary?.isFree && (
+                          <span
+                            className="absolute -top-1.5 -left-1.5 bg-success text-bg-page text-[8px] font-black uppercase px-1 py-0.5"
+                            style={{ borderRadius: "var(--t-radius-badge)" }}
+                          >
+                            FREE
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="truncate text-xs font-bold text-text-heading">
+                          {product.name}
+                        </p>
+                        <p className="text-[10px] text-text-muted-2 truncate">
+                          {variant?.sizeName ?? "Default"} ·{" "}
+                          {formatCurrency(activeBase(product))}
+                        </p>
+                        {itemSummary && (
+                          <p
+                            className={`text-[11px] font-black mt-0.5 ${itemSummary.isFree ? "text-success" : "text-text-heading"}`}
+                          >
+                            {itemSummary.isFree
+                              ? "FREE"
+                              : formatCurrency(itemSummary.payInclGst)}
+                          </p>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeSelection(product.id)}
+                        className="p-1.5 text-text-muted-2 transition-colors hover:text-danger"
+                        aria-label={`Remove ${product.name}`}
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </li>
+                  ),
+                )}
               </ul>
             )}
 
@@ -568,21 +670,31 @@ export default function ComboOfferRoom({ offer }: { offer: ComboRoomOffer }) {
                 </p>
               ) : pricingState === "loading" ? (
                 <div className="flex items-center justify-center gap-2 py-3 text-xs text-text-muted-2">
-                  <Loader2 size={14} className="animate-spin" /> Pricing your combo...
+                  <Loader2 size={14} className="animate-spin" /> Pricing your
+                  combo...
                 </div>
               ) : pricingState === "error" ? (
-                <p className="text-xs text-danger text-center py-3">{pricingMessage}</p>
+                <p className="text-xs text-danger text-center py-3">
+                  {pricingMessage}
+                </p>
               ) : summary ? (
                 <div className="space-y-1.5 text-xs">
                   <div className="flex items-center justify-between text-text-muted-1">
                     <span>Original value</span>
-                    <span className="line-through">{formatCurrency(summary.originalTotal)}</span>
+                    <span className="line-through">
+                      {formatCurrency(summary.originalTotal)}
+                    </span>
                   </div>
-                  <div className="flex items-center justify-between font-black" style={{ color: "var(--t-success)" }}>
+                  <div
+                    className="flex items-center justify-between font-black"
+                    style={{ color: "var(--t-success)" }}
+                  >
                     <span>Combo savings</span>
                     <span>
                       −{formatCurrency(summary.savingsInclGst)}
-                      <span className="ml-1 text-[10px] opacity-80">({Math.round(summary.savingsPct)}% OFF)</span>
+                      <span className="ml-1 text-[10px] opacity-80">
+                        ({Math.round(summary.savingsPct)}% OFF)
+                      </span>
                     </span>
                   </div>
                   <div className="flex items-center justify-between pt-1.5 text-sm font-black text-text-heading">
@@ -602,7 +714,11 @@ export default function ComboOfferRoom({ offer }: { offer: ComboRoomOffer }) {
                 <Link
                   href={continueHref}
                   className="flex items-center justify-center gap-2 w-full py-3 text-xs font-black uppercase tracking-wider text-bg-page transition-opacity hover:opacity-90"
-                  style={{ background: "var(--t-primary)", borderRadius: "var(--t-radius-button)", fontFamily: "var(--t-font-heading)" }}
+                  style={{
+                    background: "var(--t-primary)",
+                    borderRadius: "var(--t-radius-button)",
+                    fontFamily: "var(--t-font-heading)",
+                  }}
                 >
                   <CheckCircle2 size={15} /> Continue to Checkout
                 </Link>
@@ -611,7 +727,11 @@ export default function ComboOfferRoom({ offer }: { offer: ComboRoomOffer }) {
                   type="button"
                   disabled
                   className="flex items-center justify-center gap-2 w-full py-3 text-xs font-black uppercase tracking-wider text-text-muted-2 disabled:cursor-not-allowed"
-                  style={{ background: "var(--t-bg-card-nested)", borderRadius: "var(--t-radius-button)", fontFamily: "var(--t-font-heading)" }}
+                  style={{
+                    background: "var(--t-bg-card-nested)",
+                    borderRadius: "var(--t-radius-button)",
+                    fontFamily: "var(--t-font-heading)",
+                  }}
                 >
                   <Lock size={13} /> Select {getCount - selections.length} more
                 </button>
@@ -630,7 +750,10 @@ export default function ComboOfferRoom({ offer }: { offer: ComboRoomOffer }) {
       {modalProduct && (
         <div
           className="fixed inset-0 z-[80] flex items-center justify-center p-4"
-          style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(2px)" }}
+          style={{
+            background: "rgba(0,0,0,0.55)",
+            backdropFilter: "blur(2px)",
+          }}
           onClick={() => setModalProduct(null)}
         >
           <div
@@ -645,7 +768,10 @@ export default function ComboOfferRoom({ offer }: { offer: ComboRoomOffer }) {
           >
             <div className="relative">
               <img
-                src={modalProduct.productimage?.[0]?.url || "/placeholder.png"}
+                src={
+                  optimizedImageUrl(modalProduct.productimage?.[0]?.url, 800) ||
+                  "/placeholder.png"
+                }
                 alt={modalProduct.name}
                 className="h-44 w-full object-cover"
               />
@@ -653,7 +779,10 @@ export default function ComboOfferRoom({ offer }: { offer: ComboRoomOffer }) {
                 type="button"
                 onClick={() => setModalProduct(null)}
                 className="absolute right-3 top-3 p-1.5 text-text-heading"
-                style={{ background: "rgba(255,255,255,0.85)", borderRadius: "var(--t-radius-badge)" }}
+                style={{
+                  background: "rgba(255,255,255,0.85)",
+                  borderRadius: "var(--t-radius-badge)",
+                }}
                 aria-label="Close"
               >
                 <X size={15} />
@@ -661,18 +790,28 @@ export default function ComboOfferRoom({ offer }: { offer: ComboRoomOffer }) {
             </div>
 
             <div className="p-5">
-              <h3 className="text-base font-bold text-text-heading">{modalProduct.name}</h3>
+              <h3 className="text-base font-bold text-text-heading">
+                {modalProduct.name}
+              </h3>
               <p className="mt-1 text-sm font-black text-text-heading">
-                {formatCurrency(priceWithGst(activeBase(modalProduct), modalProduct.gstPercentage))}
+                {formatCurrency(
+                  priceWithGst(
+                    activeBase(modalProduct),
+                    modalProduct.gstPercentage,
+                  ),
+                )}
               </p>
 
               <p className="mt-3 text-[10px] font-bold uppercase tracking-wider text-text-muted-2">
-                {selections.some((s) => s.productId === modalProduct.id) ? "Change size" : "Choose a size"}
+                {selections.some((s) => s.productId === modalProduct.id)
+                  ? "Change size"
+                  : "Choose a size"}
               </p>
               <div className="mt-2 flex flex-wrap gap-2.5">
                 {sizeOptionsFor(modalProduct).map((option) => {
                   const isSelected =
-                    selections.find((s) => s.productId === modalProduct.id)?.productVariantId === option.variantId;
+                    selections.find((s) => s.productId === modalProduct.id)
+                      ?.productVariantId === option.variantId;
                   return (
                     <button
                       key={option.sizeName}
@@ -693,7 +832,10 @@ export default function ComboOfferRoom({ offer }: { offer: ComboRoomOffer }) {
 
               <p className="mt-3 text-[10px] text-text-muted-2">
                 Selected: {selections.length} of {getCount}.{" "}
-                <Link href={`/products/${modalProduct.slug}`} className="underline text-primary">
+                <Link
+                  href={`/products/${modalProduct.slug}`}
+                  className="underline text-primary"
+                >
                   View full details
                 </Link>
               </p>

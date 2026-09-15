@@ -10,18 +10,13 @@ export async function POST(req: Request) {
     if (!session?.user?.email) {
       return NextResponse.json(
         { success: false, message: "Unauthorized" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
     const body = await req.json();
 
-    const {
-      productId,
-      productVariantId,
-      quantity,
-      customization,
-    } = body;
+    const { productId, productVariantId, quantity, customization } = body;
 
     if (!productVariantId) {
       return NextResponse.json(
@@ -29,7 +24,7 @@ export async function POST(req: Request) {
           success: false,
           message: "Please select a size before adding to cart.",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -54,7 +49,7 @@ export async function POST(req: Request) {
           success: false,
           message: "Selected size is invalid for this product.",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -64,7 +59,7 @@ export async function POST(req: Request) {
           success: false,
           message: "Selected size is out of stock.",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -75,7 +70,7 @@ export async function POST(req: Request) {
           success: false,
           message: "Quantity must be at least 1.",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -85,7 +80,7 @@ export async function POST(req: Request) {
           success: false,
           message: `Only ${variant.stock} unit${variant.stock === 1 ? "" : "s"} available in this size.`,
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -95,14 +90,14 @@ export async function POST(req: Request) {
     if (customError) {
       return NextResponse.json(
         { success: false, message: customError },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (!user) {
       return NextResponse.json(
         { success: false, message: "User not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -125,7 +120,8 @@ export async function POST(req: Request) {
     // resolved in memory — no extra DB query.
     const existingItem = cart.cartitem.find(
       (item) =>
-        item.productId === productId && item.productVariantId === productVariantId
+        item.productId === productId &&
+        item.productVariantId === productVariantId,
     );
 
     // Customised items are treated as distinct lines — two different
@@ -137,11 +133,23 @@ export async function POST(req: Request) {
         ? existingItem
         : null;
 
+    // Merge state reported back to the client so the PDP can tell the customer
+    // exactly what happened: a fresh line, a merged quantity bump, a merge that
+    // hit the stock ceiling (some/all of the requested quantity couldn't be
+    // added), or a line that is already at the maximum.
+    let merged = false;
+    let capReached = false;
+    let mergedQuantity = parsedQuantity;
+
     if (existingMatching) {
-      const mergedQuantity = Math.min(
-        existingMatching.quantity + parsedQuantity,
-        variant.stock
-      );
+      merged = true;
+      const combinedQuantity = existingMatching.quantity + parsedQuantity;
+      if (combinedQuantity > variant.stock) {
+        capReached = true;
+        mergedQuantity = variant.stock;
+      } else {
+        mergedQuantity = combinedQuantity;
+      }
       await prisma.cartitem.update({
         where: {
           id: existingMatching.id,
@@ -171,9 +179,24 @@ export async function POST(req: Request) {
       },
     });
 
+    let responseMessage = "Added to cart";
+    if (capReached) {
+      responseMessage =
+        existingMatching && existingMatching.quantity >= variant.stock
+          ? `You already have the maximum ${variant.stock} unit${
+              variant.stock === 1 ? "" : "s"
+            } of this size in your cart.`
+          : `Only ${variant.stock} unit${
+              variant.stock === 1 ? "" : "s"
+            } available in this size — quantity set to the maximum.`;
+    }
+
     return NextResponse.json({
       success: true,
-      message: "Added to cart",
+      message: responseMessage,
+      merged,
+      capReached,
+      quantity: mergedQuantity,
     });
   } catch (error) {
     console.error(error);
@@ -185,7 +208,7 @@ export async function POST(req: Request) {
       },
       {
         status: 500,
-      }
+      },
     );
   }
 }

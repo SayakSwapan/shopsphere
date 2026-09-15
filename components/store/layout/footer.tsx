@@ -10,27 +10,10 @@ import {
 } from "lucide-react";
 import { getSiteSettings, getSiteLogo } from "@/lib/site-settings";
 import { getActiveTheme } from "@/lib/themes/config";
-import { prisma } from "@/lib/prisma";
+import { getFooterLinksGrouped } from "@/lib/footer-settings";
 import SiteBrand from "@/components/brand/site-brand";
 import SiteLogo from "@/components/brand/site-logo";
 import SportsFooter from "@/components/store/layout/sports-footer";
-
-async function getFooterLinks() {
-  try {
-    const links = await prisma.footerLink.findMany({
-      where: { isActive: true },
-      orderBy: { sortOrder: "asc" },
-    });
-    const grouped: Record<string, typeof links> = {};
-    for (const link of links) {
-      if (!grouped[link.group]) grouped[link.group] = [];
-      grouped[link.group].push(link);
-    }
-    return grouped;
-  } catch {
-    return {};
-  }
-}
 
 const FALLBACK_SHOP = [
   { label: "All Products", href: "/products" },
@@ -58,7 +41,7 @@ export default async function Footer() {
   const [s, activeTheme, groupedLinks] = await Promise.all([
     getSiteSettings(),
     getActiveTheme(),
-    getFooterLinks(),
+    getFooterLinksGrouped(),
   ]);
 
   if (activeTheme === "sports") {
@@ -67,7 +50,9 @@ export default async function Footer() {
 
   const siteName = s.site_name || "ShopSphere";
   const siteLogo = getSiteLogo(s);
-  const tagline = s.footer_tagline || "Premium marketplace for fashion, footwear, accessories and lifestyle products.";
+  const tagline =
+    s.footer_tagline ||
+    "Premium marketplace for fashion, footwear, accessories and lifestyle products.";
   const copyrightText = s.copyright_text || "All Rights Reserved.";
   const socialLinks = [
     { key: "social_facebook", icon: Globe, label: "Facebook" },
@@ -76,12 +61,21 @@ export default async function Footer() {
     { key: "social_youtube", icon: Play, label: "YouTube" },
   ].filter((l) => s[l.key]);
 
-  const shopLinks = groupedLinks["Shop"]?.map((l) => ({ label: l.label, href: l.url })) || FALLBACK_SHOP;
-  const customerLinks = groupedLinks["Customer"]?.map((l) => ({ label: l.label, href: l.url })) || FALLBACK_CUSTOMER;
-  const supportLinks = groupedLinks["Support"]?.map((l) => ({ label: l.label, href: l.url })) || FALLBACK_SUPPORT;
+  const shopLinks =
+    groupedLinks["Shop"]?.map((l) => ({ label: l.label, href: l.url })) ||
+    FALLBACK_SHOP;
+  const customerLinks =
+    groupedLinks["Customer"]?.map((l) => ({ label: l.label, href: l.url })) ||
+    FALLBACK_CUSTOMER;
+  const supportLinks =
+    groupedLinks["Support"]?.map((l) => ({ label: l.label, href: l.url })) ||
+    FALLBACK_SUPPORT;
 
   return (
-    <footer className="border-t border-border-subtle" style={{ background: "var(--t-bg-card)" }}>
+    <footer
+      className="border-t border-border-subtle"
+      style={{ background: "var(--t-bg-card)" }}
+    >
       {/* Newsletter */}
       {/* <div className="border-b border-border-subtle">
         <div className="max-w-7xl mx-auto px-6 py-14">
@@ -128,7 +122,10 @@ export default async function Footer() {
                   <SiteLogo src={siteLogo} alt={siteName} height={40} />
                   <span
                     className="text-xl font-black tracking-tight"
-                    style={{ color: "var(--t-text-heading)", fontFamily: "var(--t-font-heading)" }}
+                    style={{
+                      color: "var(--t-text-heading)",
+                      fontFamily: "var(--t-font-heading)",
+                    }}
                   >
                     {siteName}
                   </span>
@@ -151,7 +148,11 @@ export default async function Footer() {
                 { label: "Contact", href: "/contact" },
                 { label: "FAQs", href: "/faqs" },
               ].map((link) => (
-                <Link key={link.label} href={link.href} className="block text-sm text-text-muted-1 hover:text-primary transition-colors">
+                <Link
+                  key={link.label}
+                  href={link.href}
+                  className="block text-sm text-text-muted-1 hover:text-primary transition-colors"
+                >
                   {link.label}
                 </Link>
               ))}
@@ -186,7 +187,12 @@ export default async function Footer() {
             <ul className="space-y-3">
               {shopLinks.map((link) => (
                 <li key={link.label}>
-                  <Link href={link.href} className="text-sm text-text-muted-1 hover:text-primary transition-colors">{link.label}</Link>
+                  <Link
+                    href={link.href}
+                    className="text-sm text-text-muted-1 hover:text-primary transition-colors"
+                  >
+                    {link.label}
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -203,7 +209,12 @@ export default async function Footer() {
             <ul className="space-y-3">
               {customerLinks.map((link) => (
                 <li key={link.label}>
-                  <Link href={link.href} className="text-sm text-text-muted-1 hover:text-primary transition-colors">{link.label}</Link>
+                  <Link
+                    href={link.href}
+                    className="text-sm text-text-muted-1 hover:text-primary transition-colors"
+                  >
+                    {link.label}
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -220,7 +231,12 @@ export default async function Footer() {
             <ul className="space-y-3">
               {supportLinks.map((link) => (
                 <li key={link.label}>
-                  <Link href={link.href} className="text-sm text-text-muted-1 hover:text-primary transition-colors">{link.label}</Link>
+                  <Link
+                    href={link.href}
+                    className="text-sm text-text-muted-1 hover:text-primary transition-colors"
+                  >
+                    {link.label}
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -230,9 +246,21 @@ export default async function Footer() {
         {/* Trust Badges */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-8 pt-8 sm:mt-14 sm:pt-10 border-t border-border-subtle">
           {[
-            { icon: Truck, title: "Fast Delivery", text: "Pan India delivery support" },
-            { icon: ShieldCheck, title: "Secure Payments", text: "100% protected checkout" },
-            { icon: BadgeCheck, title: "Genuine Products", text: "100% authentic gear" },
+            {
+              icon: Truck,
+              title: "Fast Delivery",
+              text: "Pan India delivery support",
+            },
+            {
+              icon: ShieldCheck,
+              title: "Secure Payments",
+              text: "100% protected checkout",
+            },
+            {
+              icon: BadgeCheck,
+              title: "Genuine Products",
+              text: "100% authentic gear",
+            },
           ].map((item) => (
             <div
               key={item.title}
@@ -246,7 +274,9 @@ export default async function Footer() {
                 <item.icon size={22} className="text-primary" />
               </div>
               <div>
-                <h4 className="text-sm font-bold text-text-heading">{item.title}</h4>
+                <h4 className="text-sm font-bold text-text-heading">
+                  {item.title}
+                </h4>
                 <p className="text-xs text-text-muted-2 mt-0.5">{item.text}</p>
               </div>
             </div>
@@ -255,7 +285,9 @@ export default async function Footer() {
 
         {/* Bottom Bar */}
         <div className="mt-10 pt-8 border-t border-border-subtle flex flex-col sm:flex-row justify-between items-center gap-4">
-          <p className="text-xs text-text-muted-2">&copy; {new Date().getFullYear()} {siteName}. {copyrightText}</p>
+          <p className="text-xs text-text-muted-2">
+            &copy; {new Date().getFullYear()} {siteName}. {copyrightText}
+          </p>
         </div>
       </div>
     </footer>

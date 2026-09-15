@@ -3,14 +3,24 @@ import { NextResponse } from "next/server";
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { createPaymentSession, CashfreeError, cashfreeClientMode } from "@/lib/payment/cashfree";
+import {
+  createPaymentSession,
+  CashfreeError,
+  cashfreeClientMode,
+} from "@/lib/payment/cashfree";
 import { getGstBreakdown, getActivePriceBase } from "@/lib/pricing";
 import { calculateShipping } from "@/lib/shipping";
 import { calcTransactionFee } from "@/lib/finance/transaction-charge.service";
-import { customizationLetterCharge, customizationUnitPrice } from "@/lib/print-pricing";
-import { getRestrictedCartItems } from "@/lib/product-deliverability";
+import {
+  customizationLetterCharge,
+  customizationUnitPrice,
+} from "@/lib/print-pricing";
+import { getRestrictedCartItemsInline } from "@/lib/product-deliverability";
 import { createAdminNotification } from "@/lib/notifications";
-import { getLoyaltyProgram, calculateLoyaltyDiscountForProgram } from "@/lib/loyalty";
+import {
+  getLoyaltyProgram,
+  calculateLoyaltyDiscountForProgram,
+} from "@/lib/loyalty";
 import { cancelAbandonedPaymentOrders } from "@/lib/orders/abandoned";
 
 interface CouponResolution {
@@ -25,12 +35,19 @@ export async function POST(req: Request) {
     const session = await auth();
 
     if (!session?.user?.email) {
-      return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
+      return NextResponse.json(
+        { success: false, message: "Unauthorized" },
+        { status: 401 },
+      );
     }
     const userEmail = session.user.email;
 
     const { addressId, couponId, useLoyaltyReward } = await req.json();
-    if (!addressId) return NextResponse.json({ success: false, message: "Address is required." }, { status: 400 });
+    if (!addressId)
+      return NextResponse.json(
+        { success: false, message: "Address is required." },
+        { status: 400 },
+      );
 
     // ── Wave 1: independent lookups run in parallel (user+cart, address with
     //    ownership check via the caller's email). ────────────────────────────
@@ -55,9 +72,21 @@ export async function POST(req: Request) {
       }),
     ]);
 
-    if (!user) return NextResponse.json({ success: false, message: "User not found." }, { status: 404 });
-    if (!address) return NextResponse.json({ success: false, message: "Address not found." }, { status: 404 });
-    if (!user.cart || user.cart.cartitem.length === 0) return NextResponse.json({ success: false, message: "Cart is empty." }, { status: 400 });
+    if (!user)
+      return NextResponse.json(
+        { success: false, message: "User not found." },
+        { status: 404 },
+      );
+    if (!address)
+      return NextResponse.json(
+        { success: false, message: "Address not found." },
+        { status: 404 },
+      );
+    if (!user.cart || user.cart.cartitem.length === 0)
+      return NextResponse.json(
+        { success: false, message: "Cart is empty." },
+        { status: 400 },
+      );
 
     // A new checkout starting means any earlier online payment session this
     // customer never completed is abandoned — cancel it so it stops cluttering
@@ -65,30 +94,35 @@ export async function POST(req: Request) {
     await cancelAbandonedPaymentOrders(user.id);
 
     // Never trust the client — block any product that is explicitly restricted
-    // from being delivered to this pincode.
-    const restrictedItems = await getRestrictedCartItems(user.cart.cartitem, address.pincode);
+    // from being delivered to this pincode. Cart items already carry their full
+    // product row, so the check runs in memory (no extra query).
+    const restrictedItems = getRestrictedCartItemsInline(
+      user.cart.cartitem,
+      address.pincode,
+    );
     if (restrictedItems.length > 0) {
       return NextResponse.json(
         {
           success: false,
           message: `These products are not deliverable to pincode ${address.pincode}: ${restrictedItems.map((r) => r.productName).join(", ")}.`,
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     // Per-product payment-method permission — a product configured as COD-only
     // can never be paid online.
     const productBlocksOnline = user.cart.cartitem.some(
-      (item) => item.product.allowedPaymentMethods === "COD_ONLY"
+      (item) => item.product.allowedPaymentMethods === "COD_ONLY",
     );
     if (productBlocksOnline) {
       return NextResponse.json(
         {
           success: false,
-          message: "Online payment is not available for one or more items in your cart. Please choose Cash on Delivery instead.",
+          message:
+            "Online payment is not available for one or more items in your cart. Please choose Cash on Delivery instead.",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -101,7 +135,9 @@ export async function POST(req: Request) {
       if (item.productVariantId) {
         const variantStock = item.productvariant?.stock ?? 0;
         if (variantStock < item.quantity) {
-          stockIssues.push(`${item.product.name}${item.productvariant?.sku ? ` (${item.productvariant.sku})` : ""}`);
+          stockIssues.push(
+            `${item.product.name}${item.productvariant?.sku ? ` (${item.productvariant.sku})` : ""}`,
+          );
         }
       } else if ((Number(item.product.stock) || 0) < item.quantity) {
         stockIssues.push(item.product.name);
@@ -113,7 +149,7 @@ export async function POST(req: Request) {
           success: false,
           message: `Some items are no longer in stock: ${stockIssues.join(", ")}. Please adjust your cart and try again.`,
         },
-        { status: 409 }
+        { status: 409 },
       );
     }
 
@@ -139,21 +175,29 @@ export async function POST(req: Request) {
           discountValue: item.product.discountValue,
           offerStart: item.product.offerStart,
           offerEnd: item.product.offerEnd,
-        })
+        }),
       );
     });
 
     for (const item of cartItems) {
       const unitPrice = unitBaseByItemId.get(item.id)!;
-      const { gstAmount } = getGstBreakdown(unitPrice, Number(item.product.gstPercentage) || 0);
+      const { gstAmount } = getGstBreakdown(
+        unitPrice,
+        Number(item.product.gstPercentage) || 0,
+      );
 
       // Custom print charge (pre-GST) is billed per piece, so multiply by qty.
       const printUnit = customizationUnitPrice(
-        item.customization as import("@/types/custom-print").CustomPrintData | null
+        item.customization as
+          import("@/types/custom-print").CustomPrintData | null,
       );
-      const printGst = customizationLetterCharge(
-        item.customization as import("@/types/custom-print").CustomPrintData | null
-      ) * (Number(item.product.gstPercentage) || 0) / 100;
+      const printGst =
+        (customizationLetterCharge(
+          item.customization as
+            import("@/types/custom-print").CustomPrintData | null,
+        ) *
+          (Number(item.product.gstPercentage) || 0)) /
+        100;
 
       subtotal += (unitPrice + printUnit) * item.quantity;
       gst += (gstAmount + printGst) * item.quantity;
@@ -176,9 +220,16 @@ export async function POST(req: Request) {
     //    the coupon task resolves first synchronously when unused). ─────────
     const couponTask: Promise<CouponResolution> = couponId
       ? (async () => {
-          const coupon = await prisma.coupon.findUnique({ where: { id: couponId } });
+          const coupon = await prisma.coupon.findUnique({
+            where: { id: couponId },
+          });
 
-          if (!coupon || !coupon.isActive || coupon.startDate > new Date() || coupon.endDate < new Date()) {
+          if (
+            !coupon ||
+            !coupon.isActive ||
+            coupon.startDate > new Date() ||
+            coupon.endDate < new Date()
+          ) {
             return { discount: 0, couponFreeShipping: false, valid: false };
           }
           if (coupon.usageLimit && coupon.usedCount >= coupon.usageLimit) {
@@ -188,7 +239,9 @@ export async function POST(req: Request) {
           const [previousUsage, totalOrders] = await Promise.all([
             prisma.couponUsage.count({ where: { couponId, userId: user.id } }),
             coupon.firstOrderOnly
-              ? prisma.order.count({ where: { userId: user.id, paymentStatus: "PAID" } })
+              ? prisma.order.count({
+                  where: { userId: user.id, paymentStatus: "PAID" },
+                })
               : Promise.resolve(0),
           ]);
 
@@ -196,32 +249,50 @@ export async function POST(req: Request) {
             return { discount: 0, couponFreeShipping: false, valid: false };
           }
           if (coupon.firstOrderOnly && totalOrders > 0) {
-            return { discount: 0, couponFreeShipping: false, valid: false, firstOrderOnly: true };
+            return {
+              discount: 0,
+              couponFreeShipping: false,
+              valid: false,
+              firstOrderOnly: true,
+            };
           }
           if (!coupon.minimumOrder || subtotal >= Number(coupon.minimumOrder)) {
-            let d = coupon.discountType === "FLAT"
-              ? Number(coupon.discountValue)
-              : subtotal * Number(coupon.discountValue) / 100;
-            if (coupon.maxDiscount && d > Number(coupon.maxDiscount)) d = Number(coupon.maxDiscount);
+            let d =
+              coupon.discountType === "FLAT"
+                ? Number(coupon.discountValue)
+                : (subtotal * Number(coupon.discountValue)) / 100;
+            if (coupon.maxDiscount && d > Number(coupon.maxDiscount))
+              d = Number(coupon.maxDiscount);
             if (d > subtotal) d = subtotal;
-            return { discount: Number(d.toFixed(2)), couponFreeShipping: coupon.freeShipping, valid: true };
+            return {
+              discount: Number(d.toFixed(2)),
+              couponFreeShipping: coupon.freeShipping,
+              valid: true,
+            };
           }
           return { discount: 0, couponFreeShipping: false, valid: false };
         })()
-      : Promise.resolve({ discount: 0, couponFreeShipping: false, valid: false });
+      : Promise.resolve({
+          discount: 0,
+          couponFreeShipping: false,
+          valid: false,
+        });
 
     const [couponResult, shippingResult, loyaltyProgram] = await Promise.all([
       couponTask,
       couponId
         ? couponTask.then((c) =>
-            calculateShipping(shippingItems, c.couponFreeShipping, subtotal)
+            calculateShipping(shippingItems, c.couponFreeShipping, subtotal),
           )
         : calculateShipping(shippingItems, false, subtotal),
       getLoyaltyProgram(),
     ]);
 
     if (couponResult.firstOrderOnly) {
-      return NextResponse.json({ success: false, message: "Coupon valid only for first order." }, { status: 400 });
+      return NextResponse.json(
+        { success: false, message: "Coupon valid only for first order." },
+        { status: 400 },
+      );
     }
 
     const couponDiscount = couponResult.valid ? couponResult.discount : 0;
@@ -232,7 +303,11 @@ export async function POST(req: Request) {
     let loyaltyRewardId: string | null = null;
     if (loyaltyProgram.isActive && useLoyaltyReward !== false) {
       const orderValueBasis = subtotal + gst + shipping - couponDiscount;
-      const loyaltyCalc = await calculateLoyaltyDiscountForProgram(loyaltyProgram, user.id, orderValueBasis);
+      const loyaltyCalc = await calculateLoyaltyDiscountForProgram(
+        loyaltyProgram,
+        user.id,
+        orderValueBasis,
+      );
       if (loyaltyCalc.applicable && loyaltyCalc.discountAmount > 0) {
         loyaltyDiscount = loyaltyCalc.discountAmount;
         const loyalty = await prisma.customerLoyalty.findUnique({
@@ -289,7 +364,8 @@ export async function POST(req: Request) {
 
       const discountPerLine =
         couponDiscount > 0
-          ? Math.round((couponDiscount / Math.max(1, cartItemCount)) * 100) / 100
+          ? Math.round((couponDiscount / Math.max(1, cartItemCount)) * 100) /
+            100
           : 0;
 
       await tx.orderitem.createMany({
@@ -299,7 +375,8 @@ export async function POST(req: Request) {
           const gstPct = Number(item.product.gstPercentage) || 0;
           const { gstAmount } = getGstBreakdown(sellingPrice, gstPct);
           const printUnit = customizationUnitPrice(
-            item.customization as import("@/types/custom-print").CustomPrintData | null
+            item.customization as
+              import("@/types/custom-print").CustomPrintData | null,
           );
 
           return {
@@ -308,7 +385,9 @@ export async function POST(req: Request) {
             productId: item.productId,
             quantity: item.quantity,
             price: sellingPrice,
-            total: Math.round((sellingPrice + printUnit) * item.quantity * 100) / 100,
+            total:
+              Math.round((sellingPrice + printUnit) * item.quantity * 100) /
+              100,
             sellingPriceSnapshot: sellingPrice,
             mrpSnapshot: Number(item.product.sellingPrice),
             costPriceSnapshot: costPrice,
@@ -331,7 +410,8 @@ export async function POST(req: Request) {
           grossAmount: total,
           gatewayFee: finalTxFee.fee,
           gatewayGST: finalTxFee.gst,
-          netSettlement: Math.round((total - finalTxFee.totalCharge) * 100) / 100,
+          netSettlement:
+            Math.round((total - finalTxFee.totalCharge) * 100) / 100,
           settlementStatus: "PENDING",
           paymentStatus: "PENDING",
         },
@@ -381,13 +461,23 @@ export async function POST(req: Request) {
       cashfreeMode: cashfreeClientMode(),
       amount: paymentSession.amount,
       currency: paymentSession.currency,
-      customer: { name: address.fullName, email: user.email, contact: address.phone },
+      customer: {
+        name: address.fullName,
+        email: user.email,
+        contact: address.phone,
+      },
     });
   } catch (error) {
     if (error instanceof CashfreeError) {
-      return NextResponse.json({ success: false, message: error.message }, { status: error.status });
+      return NextResponse.json(
+        { success: false, message: error.message },
+        { status: error.status },
+      );
     }
     console.log(error);
-    return NextResponse.json({ success: false, message: "Unable to create payment." }, { status: 500 });
+    return NextResponse.json(
+      { success: false, message: "Unable to create payment." },
+      { status: 500 },
+    );
   }
 }

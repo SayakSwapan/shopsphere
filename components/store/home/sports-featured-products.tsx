@@ -1,7 +1,13 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { Star, ChevronRight } from "lucide-react";
-import { getEffectivePrice, isFlatDiscount, isPercentDiscount, priceWithGst } from "@/lib/pricing";
+import {
+  getEffectivePrice,
+  isFlatDiscount,
+  isPercentDiscount,
+  priceWithGst,
+} from "@/lib/pricing";
+import { optimizedImageUrl } from "@/lib/cloudinary-image";
 import QuickAddButton from "@/components/store/quick-add-button";
 import WishlistButton from "@/components/store/wishlist-button";
 import ProductCardCountdown from "@/components/store/product/offer-countdown";
@@ -33,7 +39,11 @@ export default async function SportsFeaturedProducts() {
     productimage: { take: 1 },
     category: true,
     review: { select: { rating: true } },
-    productvariant: { where: { stock: { gt: 0 } }, take: 1, select: { id: true } },
+    productvariant: {
+      where: { stock: { gt: 0 } },
+      take: 1,
+      select: { id: true },
+    },
   } as const;
 
   let productsRaw: unknown[] = [];
@@ -57,7 +67,11 @@ export default async function SportsFeaturedProducts() {
 
   if (!products.length) {
     productsRaw = await prisma.product.findMany({
-      where: { status: true, isFeatured: true, productvariant: { some: { stock: { gt: 0 } } } },
+      where: {
+        status: true,
+        isFeatured: true,
+        productvariant: { some: { stock: { gt: 0 } } },
+      },
       include: productInclude,
       orderBy: { createdAt: "desc" },
       take: 8,
@@ -100,22 +114,32 @@ export default async function SportsFeaturedProducts() {
                 >
                   <span
                     className="h-1.5 w-1.5 rounded-full"
-                    style={{ background: "var(--sports-volt)", animation: "sports-pulse-dot 1.6s ease-in-out infinite" }}
+                    style={{
+                      background: "var(--sports-volt)",
+                      animation: "sports-pulse-dot 1.6s ease-in-out infinite",
+                    }}
                   />
                   Game-Day Picks
                 </span>
                 <span
                   className="text-[10px] font-black uppercase tracking-[0.2em]"
-                  style={{ color: "var(--t-text-muted-3)", fontFamily: "var(--t-font-body)" }}
+                  style={{
+                    color: "var(--t-text-muted-3)",
+                    fontFamily: "var(--t-font-body)",
+                  }}
                 >
                   SZN &lsquo;26
                 </span>
               </div>
               <h2
                 className="text-3xl md:text-4xl font-black uppercase leading-none"
-                style={{ color: "var(--t-text-heading)", fontFamily: "'Anton', sans-serif" }}
+                style={{
+                  color: "var(--t-text-heading)",
+                  fontFamily: "'Anton', sans-serif",
+                }}
               >
-                Featured <span style={{ color: "var(--sports-volt)" }}>Gear</span>
+                Featured{" "}
+                <span style={{ color: "var(--sports-volt)" }}>Gear</span>
               </h2>
             </div>
           </div>
@@ -136,22 +160,33 @@ export default async function SportsFeaturedProducts() {
 
         <div
           className="h-[3px] mb-px"
-          style={{ background: "linear-gradient(90deg, var(--sports-volt), var(--t-primary), transparent)" }}
+          style={{
+            background:
+              "linear-gradient(90deg, var(--sports-volt), var(--t-primary), transparent)",
+          }}
         />
 
         {/* product grid */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
           {products.map((product) => {
             const gstRate = Number(product.gstPercentage || 0);
-            const originalPrice = priceWithGst(Number(product.sellingPrice || 0), gstRate);
+            const originalPrice = priceWithGst(
+              Number(product.sellingPrice || 0),
+              gstRate,
+            );
 
             const reviews = product.review ?? [];
             const avgRating =
               reviews.length > 0
-                ? reviews.reduce((sum: number, r: { rating: number }) => sum + r.rating, 0) / reviews.length
+                ? reviews.reduce(
+                    (sum: number, r: { rating: number }) => sum + r.rating,
+                    0,
+                  ) / reviews.length
                 : 0;
 
-            const discountType = String(product.discountType || "").toUpperCase();
+            const discountType = String(
+              product.discountType || "",
+            ).toUpperCase();
             const now = new Date();
             const offerActive =
               Number(product.discountValue || 0) > 0 &&
@@ -174,9 +209,13 @@ export default async function SportsFeaturedProducts() {
             // Only show the discounted price when the offer is active.
             const displayPrice = priceWithGst(
               hasDiscount
-                ? getEffectivePrice(product.salePrice, product.finalPrice, product.sellingPrice)
+                ? getEffectivePrice(
+                    product.salePrice,
+                    product.finalPrice,
+                    product.sellingPrice,
+                  )
                 : Number(product.sellingPrice || 0),
-              gstRate
+              gstRate,
             );
 
             return (
@@ -198,7 +237,12 @@ export default async function SportsFeaturedProducts() {
                     aria-label={`View ${product.name}`}
                   >
                     <img
-                      src={product.productimage?.[0]?.url || "/placeholder.png"}
+                      src={
+                        optimizedImageUrl(
+                          product.productimage?.[0]?.url,
+                          800,
+                        ) || "/placeholder.png"
+                      }
                       alt={product.name}
                       className="w-full h-52 sm:h-64 md:h-72 object-cover transition-transform duration-700 group-hover:scale-110"
                     />
@@ -247,7 +291,10 @@ export default async function SportsFeaturedProducts() {
                   {product.category && (
                     <p
                       className="text-[10px] font-bold uppercase tracking-wider mb-2"
-                      style={{ color: "var(--sports-volt)", fontFamily: "var(--t-font-body)" }}
+                      style={{
+                        color: "var(--sports-volt)",
+                        fontFamily: "var(--t-font-body)",
+                      }}
                     >
                       {product.category.name}
                     </p>
@@ -256,7 +303,10 @@ export default async function SportsFeaturedProducts() {
                   <Link href={`/products/${product.slug}`}>
                     <h3
                       className="text-sm md:text-base font-bold leading-5 mb-2 line-clamp-2 transition-colors duration-300 group-hover:text-[var(--sports-volt)]"
-                      style={{ color: "#F4F3EE", fontFamily: "var(--t-font-body)" }}
+                      style={{
+                        color: "#F4F3EE",
+                        fontFamily: "var(--t-font-body)",
+                      }}
                     >
                       {product.name}
                     </h3>
@@ -268,8 +318,12 @@ export default async function SportsFeaturedProducts() {
                       <Star
                         key={i}
                         size={12}
-                        fill={i < Math.round(avgRating) ? "#FF6A2B" : "transparent"}
-                        color={i < Math.round(avgRating) ? "#FF6A2B" : "#4A5159"}
+                        fill={
+                          i < Math.round(avgRating) ? "#FF6A2B" : "transparent"
+                        }
+                        color={
+                          i < Math.round(avgRating) ? "#FF6A2B" : "#4A5159"
+                        }
                         strokeWidth={1.5}
                       />
                     ))}
@@ -285,7 +339,10 @@ export default async function SportsFeaturedProducts() {
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mb-2">
                     <span
                       className="text-lg md:text-xl font-black"
-                      style={{ color: "#F4F3EE", fontFamily: "var(--t-font-body)" }}
+                      style={{
+                        color: "#F4F3EE",
+                        fontFamily: "var(--t-font-body)",
+                      }}
                     >
                       ₹{displayPrice.toLocaleString("en-IN")}
                     </span>
@@ -297,10 +354,12 @@ export default async function SportsFeaturedProducts() {
                         <span className="line-through">
                           ₹{originalPrice.toLocaleString("en-IN")}
                         </span>{" "}
-                        <span
-                          style={{ color: "var(--sports-volt)" }}
-                        >
-                          {Math.round(((originalPrice - displayPrice) / originalPrice) * 100)}% off
+                        <span style={{ color: "var(--sports-volt)" }}>
+                          {Math.round(
+                            ((originalPrice - displayPrice) / originalPrice) *
+                              100,
+                          )}
+                          % off
                         </span>
                       </span>
                     )}
@@ -308,7 +367,10 @@ export default async function SportsFeaturedProducts() {
 
                   {hasDiscount && product.offerEnd && (
                     <div className="mb-3">
-                      <ProductCardCountdown offerEnd={new Date(product.offerEnd).toISOString()} variant="card" />
+                      <ProductCardCountdown
+                        offerEnd={new Date(product.offerEnd).toISOString()}
+                        variant="card"
+                      />
                     </div>
                   )}
 

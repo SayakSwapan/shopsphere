@@ -1,4 +1,31 @@
 import { prisma } from "./prisma";
+import { TtlCache } from "./ttl-cache";
+
+interface StoreShippingSettings {
+  freeShippingEnabled: boolean;
+  freeShippingMinimum: number;
+}
+
+const storeShippingSettingsCache = new TtlCache<StoreShippingSettings | null>(
+  60_000,
+);
+
+/**
+ * The single free-shipping threshold toggle lives in `storeSetting`. It is read
+ * on every cart / checkout render, so it is cached for a minute (module-level,
+ * safe to call from both server components and route handlers).
+ */
+async function getStoreShippingSettings(): Promise<StoreShippingSettings | null> {
+  return storeShippingSettingsCache.get(async () => {
+    const storeSetting = await prisma.storeSetting.findFirst();
+    return storeSetting
+      ? {
+          freeShippingEnabled: storeSetting.freeShippingEnabled,
+          freeShippingMinimum: Number(storeSetting.freeShippingMinimum),
+        }
+      : null;
+  });
+}
 
 export interface ShippingResult {
   shipping: number;
@@ -18,14 +45,16 @@ export async function calculateShipping(
     product: { weight?: number; salePrice?: number; sellingPrice: number };
   }[],
   couponFreeShipping = false,
-  subtotalOverride?: number
+  subtotalOverride?: number,
 ): Promise<ShippingResult> {
   let totalWeightGrams = 0;
   let subtotal = 0;
 
   for (const item of cartItems) {
     totalWeightGrams += (item.product.weight || 0) * item.quantity;
-    const unitPrice = Number(item.product.salePrice || item.product.sellingPrice);
+    const unitPrice = Number(
+      item.product.salePrice || item.product.sellingPrice,
+    );
     subtotal += unitPrice * item.quantity;
   }
 
@@ -50,11 +79,10 @@ export async function calculateShipping(
     };
   }
 
-  const storeSetting = await prisma.storeSetting.findFirst();
-  const storeThreshold =
-    storeSetting?.freeShippingEnabled
-      ? Number(storeSetting.freeShippingMinimum)
-      : null;
+  const storeSetting = await getStoreShippingSettings();
+  const storeThreshold = storeSetting?.freeShippingEnabled
+    ? Number(storeSetting.freeShippingMinimum)
+    : null;
 
   const rule = await prisma.shippingRule.findFirst({
     where: {
@@ -78,8 +106,9 @@ export async function calculateShipping(
     };
   }
 
-  const ruleThreshold =
-    rule.freeShippingEnabled ? Number(rule.freeShippingAmount) : null;
+  const ruleThreshold = rule.freeShippingEnabled
+    ? Number(rule.freeShippingAmount)
+    : null;
 
   // Customer qualifies via StoreSetting threshold
   if (storeThreshold !== null && subtotal >= storeThreshold) {
@@ -110,7 +139,7 @@ export async function calculateShipping(
   // Not yet qualified — use the lowest active threshold so the banner
   // always shows the closest target the customer can actually reach.
   const thresholds = [storeThreshold, ruleThreshold].filter(
-    (t): t is number => t !== null
+    (t): t is number => t !== null,
   );
   const effectiveThreshold =
     thresholds.length > 0 ? Math.min(...thresholds) : null;
@@ -138,7 +167,7 @@ export interface PincodeInfo {
 }
 
 export async function getPincodeInfo(
-  pincode: string
+  pincode: string,
 ): Promise<PincodeInfo | null> {
   const record = await prisma.pincode.findUnique({
     where: { pincode },

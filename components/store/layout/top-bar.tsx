@@ -1,21 +1,7 @@
-import { prisma } from "@/lib/prisma";
-
-async function getSettings() {
-  try {
-    const rows = await prisma.siteSetting.findMany({
-      where: { key: { in: ["announcement_text", "announcement_enabled"] } },
-      select: { key: true, value: true },
-    });
-    const s: Record<string, string> = {};
-    for (const r of rows) s[r.key] = r.value;
-    return s;
-  } catch {
-    return {};
-  }
-}
+import { getSiteSettings } from "@/lib/site-settings";
 
 export default async function TopBar() {
-  const s = await getSettings();
+  const s = await getSiteSettings();
 
   if (s.announcement_enabled !== "true") return null;
 

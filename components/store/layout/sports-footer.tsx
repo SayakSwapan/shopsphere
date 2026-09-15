@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { prisma } from "@/lib/prisma";
+import { getSiteSettings, getSiteLogo } from "@/lib/site-settings";
+import { getFooterLinksGrouped, getSocialLinks } from "@/lib/footer-settings";
 import SiteLogo from "@/components/brand/site-logo";
 import {
   Globe,
@@ -15,50 +16,10 @@ import {
 
 export const dynamic = "force-dynamic";
 
-async function getFooterLinks() {
-  try {
-    const links = await prisma.footerLink.findMany({
-      where: { isActive: true },
-      orderBy: { sortOrder: "asc" },
-    });
-
-    const grouped: Record<string, typeof links> = {};
-    for (const link of links) {
-      if (!grouped[link.group]) grouped[link.group] = [];
-      grouped[link.group].push(link);
-    }
-    return grouped;
-  } catch {
-    return {};
-  }
-}
-
-async function getSocialLinks() {
-  try {
-    const rows = await prisma.socialLink.findMany({
-      where: { isActive: true },
-      orderBy: { createdAt: "asc" },
-    });
-    return rows;
-  } catch {
-    return [];
-  }
-}
-
-async function getSettings() {
-  try {
-    const rows = await prisma.siteSetting.findMany({
-      select: { key: true, value: true },
-    });
-    const s: Record<string, string> = {};
-    for (const r of rows) s[r.key] = r.value;
-    return s;
-  } catch {
-    return {};
-  }
-}
-
-const SOCIAL_ICONS: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
+const SOCIAL_ICONS: Record<
+  string,
+  React.ComponentType<{ size?: number; className?: string }>
+> = {
   facebook: Globe,
   instagram: Share2,
   twitter: ExternalLink,
@@ -69,7 +30,11 @@ const SKIP_GROUPS = new Set(["Company", "Careers", "Press", "Blog"]);
 
 const TRUST_BADGES = [
   { icon: Truck, title: "Fast Delivery", text: "Dispatched within 24 hours" },
-  { icon: ShieldCheck, title: "Secure Payments", text: "100% protected checkout" },
+  {
+    icon: ShieldCheck,
+    title: "Secure Payments",
+    text: "100% protected checkout",
+  },
   { icon: BadgeCheck, title: "Genuine Gear", text: "100% authentic products" },
 ];
 
@@ -90,23 +55,29 @@ const FALLBACK_SUPPORT = [
 
 export default async function SportsFooter() {
   const [groupedLinks, socialLinks, settings] = await Promise.all([
-    getFooterLinks(),
+    getFooterLinksGrouped(),
     getSocialLinks(),
-    getSettings(),
+    getSiteSettings(),
   ]);
 
   const siteName = settings.site_name || "ShopSphere";
-  const siteLogo = (settings.site_logo || "").trim();
+  const siteLogo = getSiteLogo(settings) || "";
   const tagline =
     settings.footer_tagline ||
     "Premium sports gear for athletes who demand performance. Official kits, footwear, equipment and accessories.";
   const copyrightText = settings.copyright_text || "All Rights Reserved.";
 
-  const groups = Object.entries(groupedLinks).filter(([group]) => !SKIP_GROUPS.has(group));
+  const groups = Object.entries(groupedLinks).filter(
+    ([group]) => !SKIP_GROUPS.has(group),
+  );
 
-  const brandSegments = siteName.split(/(?=[A-Z])/).flatMap((p) => p.split(/\s+/)).filter(Boolean);
+  const brandSegments = siteName
+    .split(/(?=[A-Z])/)
+    .flatMap((p) => p.split(/\s+/))
+    .filter(Boolean);
   const brandHead = brandSegments.slice(0, -1).join("") || siteName;
-  const brandAccent = brandSegments.length > 1 ? brandSegments[brandSegments.length - 1] : "";
+  const brandAccent =
+    brandSegments.length > 1 ? brandSegments[brandSegments.length - 1] : "";
 
   return (
     <footer style={{ background: "var(--sports-ink)" }}>
@@ -130,7 +101,10 @@ export default async function SportsFooter() {
             <div>
               <p
                 className="text-[11px] font-black uppercase tracking-[0.3em]"
-                style={{ color: "var(--sports-volt)", fontFamily: "var(--t-font-body)" }}
+                style={{
+                  color: "var(--sports-volt)",
+                  fontFamily: "var(--t-font-body)",
+                }}
               >
                 Not just gear. A mindset.
               </p>
@@ -139,14 +113,16 @@ export default async function SportsFooter() {
                 style={{ fontFamily: "'Anton', sans-serif", color: "#F4F3EE" }}
               >
                 Train hard.{" "}
-                <span style={{ color: "var(--sports-volt)" }}>Play harder.</span>
+                <span style={{ color: "var(--sports-volt)" }}>
+                  Play harder.
+                </span>
               </h2>
               <p
                 className="mt-3 max-w-lg text-sm"
                 style={{ color: "rgba(255,255,255,0.5)" }}
               >
-                Every product is field-tested by athletes before it reaches your hands. Gear up for
-                the next match.
+                Every product is field-tested by athletes before it reaches your
+                hands. Gear up for the next match.
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
@@ -193,7 +169,10 @@ export default async function SportsFooter() {
                   <SiteLogo src={siteLogo} alt={siteName} height={42} />
                   <span
                     className="text-2xl font-normal uppercase"
-                    style={{ fontFamily: "'Anton', sans-serif", color: "#F4F3EE" }}
+                    style={{
+                      fontFamily: "'Anton', sans-serif",
+                      color: "#F4F3EE",
+                    }}
                   >
                     {siteName}
                   </span>
@@ -211,11 +190,16 @@ export default async function SportsFooter() {
                   </span>
                   <span
                     className="text-2xl font-normal uppercase"
-                    style={{ fontFamily: "'Anton', sans-serif", color: "#F4F3EE" }}
+                    style={{
+                      fontFamily: "'Anton', sans-serif",
+                      color: "#F4F3EE",
+                    }}
                   >
                     {brandHead}
                     {brandAccent && (
-                      <span style={{ color: "var(--sports-volt)" }}>{brandAccent}</span>
+                      <span style={{ color: "var(--sports-volt)" }}>
+                        {brandAccent}
+                      </span>
                     )}
                   </span>
                 </>
@@ -231,7 +215,8 @@ export default async function SportsFooter() {
             {socialLinks.length > 0 && (
               <div className="mt-6 flex gap-3">
                 {socialLinks.map((social) => {
-                  const Icon = SOCIAL_ICONS[social.platform.toLowerCase()] || Globe;
+                  const Icon =
+                    SOCIAL_ICONS[social.platform.toLowerCase()] || Globe;
                   return (
                     <a
                       key={social.id}
@@ -259,7 +244,10 @@ export default async function SportsFooter() {
             <div key={group}>
               <h3
                 className="mb-5 text-xs font-black uppercase tracking-[0.2em]"
-                style={{ color: "var(--sports-volt)", fontFamily: "var(--t-font-body)" }}
+                style={{
+                  color: "var(--sports-volt)",
+                  fontFamily: "var(--t-font-body)",
+                }}
               >
                 {group}
               </h3>
@@ -285,7 +273,10 @@ export default async function SportsFooter() {
               <div>
                 <h3
                   className="mb-5 text-xs font-black uppercase tracking-[0.2em]"
-                  style={{ color: "var(--sports-volt)", fontFamily: "var(--t-font-body)" }}
+                  style={{
+                    color: "var(--sports-volt)",
+                    fontFamily: "var(--t-font-body)",
+                  }}
                 >
                   Shop
                 </h3>
@@ -306,7 +297,10 @@ export default async function SportsFooter() {
               <div>
                 <h3
                   className="mb-5 text-xs font-black uppercase tracking-[0.2em]"
-                  style={{ color: "var(--sports-volt)", fontFamily: "var(--t-font-body)" }}
+                  style={{
+                    color: "var(--sports-volt)",
+                    fontFamily: "var(--t-font-body)",
+                  }}
                 >
                   Support
                 </h3>
@@ -359,7 +353,10 @@ export default async function SportsFooter() {
                 >
                   {item.title}
                 </h4>
-                <p className="mt-0.5 text-xs" style={{ color: "rgba(255,255,255,0.45)" }}>
+                <p
+                  className="mt-0.5 text-xs"
+                  style={{ color: "rgba(255,255,255,0.45)" }}
+                >
                   {item.text}
                 </p>
               </div>
@@ -377,11 +374,17 @@ export default async function SportsFooter() {
           </p>
           <p
             className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.25em]"
-            style={{ color: "rgba(203,255,62,0.5)", fontFamily: "var(--t-font-body)" }}
+            style={{
+              color: "rgba(203,255,62,0.5)",
+              fontFamily: "var(--t-font-body)",
+            }}
           >
             <span
               className="h-1.5 w-1.5 rounded-full"
-              style={{ background: "var(--sports-volt)", animation: "sports-pulse-dot 1.6s ease-in-out infinite" }}
+              style={{
+                background: "var(--sports-volt)",
+                animation: "sports-pulse-dot 1.6s ease-in-out infinite",
+              }}
             />
             Built for the game
           </p>

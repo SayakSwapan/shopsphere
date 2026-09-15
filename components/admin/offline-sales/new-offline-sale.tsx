@@ -18,15 +18,19 @@ import {
   Sparkles,
   Lock,
   X,
+  ImageOff,
+  ZoomIn,
 } from "lucide-react";
 
 import { formatCurrency } from "@/lib/format";
 import { calculateOfflineItemPricing } from "@/lib/pricing/offline";
+import { optimizedImageUrl } from "@/lib/cloudinary-image";
 
 interface ProductOption {
   id: string;
   name: string;
   category: string | null;
+  image: string | null;
   sellingPrice: number;
   onlineSellingPrice: number;
   costPrice: number;
@@ -109,7 +113,11 @@ function Field({
     <div>
       <label className="mb-1.5 block text-sm font-medium text-slate-300">
         {label}
-        {hint && <span className="block text-[11px] font-normal text-slate-500">{hint}</span>}
+        {hint && (
+          <span className="block text-[11px] font-normal text-slate-500">
+            {hint}
+          </span>
+        )}
       </label>
       {children}
     </div>
@@ -129,9 +137,15 @@ const comboUnitIncl = (p: ComboProduct) =>
 /** Minimum number of distinct pool products a cashier must pick for a combo. */
 const comboPickRequired = (offer: ComboOfferOption): number => {
   if (offer.comboType === "PICK_ANY") {
-    return Math.min(Math.max(2, Number(offer.minPick) || 2), offer.products.length);
+    return Math.min(
+      Math.max(2, Number(offer.minPick) || 2),
+      offer.products.length,
+    );
   }
-  return Math.min(Math.max(2, Number(offer.getCount) || 2), offer.products.length);
+  return Math.min(
+    Math.max(2, Number(offer.getCount) || 2),
+    offer.products.length,
+  );
 };
 
 /**
@@ -141,7 +155,7 @@ const comboPickRequired = (offer: ComboOfferOption): number => {
  */
 function comboPickerRole(
   offer: ComboOfferOption,
-  selection: Record<string, { variantId: string; quantity: number }>
+  selection: Record<string, { variantId: string; quantity: number }>,
 ): {
   need: number;
   pickedCount: number;
@@ -154,12 +168,15 @@ function comboPickerRole(
   const need = comboPickRequired(offer);
   const qualifying = picked.length >= need;
 
-  const byProduct: Record<string, { payInclPerUnit: number; isFree: boolean }> = {};
+  const byProduct: Record<string, { payInclPerUnit: number; isFree: boolean }> =
+    {};
 
   if (offer.comboType === "FIXED_PRICE") {
     const baseTotal = picked.reduce(
-      (s, p) => s + (Number(p.onlineSellingPrice) || 0) * Math.max(1, p.comboQuantity || 1),
-      0
+      (s, p) =>
+        s +
+        (Number(p.onlineSellingPrice) || 0) * Math.max(1, p.comboQuantity || 1),
+      0,
     );
     const target =
       Number(offer.customPrice) > 0 ? Number(offer.customPrice) : baseTotal;
@@ -186,8 +203,8 @@ function comboPickerRole(
       originalTotal: round2(
         picked.reduce(
           (s, p) => s + comboUnitIncl(p) * Math.max(1, p.comboQuantity || 1),
-          0
-        )
+          0,
+        ),
       ),
       payableTotal: round2(payableTotal),
     };
@@ -198,7 +215,7 @@ function comboPickerRole(
     offer.comboType === "PICK_ANY"
       ? 1
       : Math.max(1, Number(offer.buyCount) || 1),
-    picked.reduce((s, p) => s + Math.max(1, p.comboQuantity || 1), 0)
+    picked.reduce((s, p) => s + Math.max(1, p.comboQuantity || 1), 0),
   );
   const units: { productId: string; unitIncl: number }[] = [];
   for (const p of picked) {
@@ -230,8 +247,8 @@ function comboPickerRole(
     originalTotal: round2(
       picked.reduce(
         (s, p) => s + comboUnitIncl(p) * Math.max(1, p.comboQuantity || 1),
-        0
-      )
+        0,
+      ),
     ),
     payableTotal: round2(payableTotal),
   };
@@ -264,7 +281,8 @@ export default function NewOfflineSale() {
   const [customerId, setCustomerId] = useState<string>("");
   const [customerSearch, setCustomerSearch] = useState("");
   const [customerResults, setCustomerResults] = useState<CustomerOption[]>([]);
-  const [selectedCustomer, setSelectedCustomer] = useState<CustomerOption | null>(null);
+  const [selectedCustomer, setSelectedCustomer] =
+    useState<CustomerOption | null>(null);
   const [customerOpen, setCustomerOpen] = useState(false);
 
   const [name, setName] = useState("");
@@ -286,14 +304,17 @@ export default function NewOfflineSale() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [loadingCustomer, setLoadingCustomer] = useState(false);
   const [lookingUpPhone, setLookingUpPhone] = useState(false);
-  const [phoneLookupFound, setPhoneLookupFound] = useState<CustomerOption | null>(null);
+  const [phoneLookupFound, setPhoneLookupFound] =
+    useState<CustomerOption | null>(null);
 
   const [items, setItems] = useState<LineItem[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
   const [combos, setCombos] = useState<ComboOfferOption[]>([]);
   const [combosLoading, setCombosLoading] = useState(true);
-  const [comboPrices, setComboPrices] = useState<Record<string, ComboPriceInfo>>({});
+  const [comboPrices, setComboPrices] = useState<
+    Record<string, ComboPriceInfo>
+  >({});
   const [comboApplied, setComboApplied] = useState<
     { offerId: string; title: string; badge?: string | null }[]
   >([]);
@@ -306,6 +327,10 @@ export default function NewOfflineSale() {
   >({});
   const [pickerSubmitting, setPickerSubmitting] = useState(false);
 
+  const [previewProduct, setPreviewProduct] = useState<ProductOption | null>(
+    null,
+  );
+
   const [useLoyaltyReward, setUseLoyaltyReward] = useState(false);
   const [loyalty, setLoyalty] = useState<{
     hasAvailableReward: boolean;
@@ -317,14 +342,25 @@ export default function NewOfflineSale() {
     availableReward: string;
   } | null>(null);
   const [loyaltyLoading, setLoyaltyLoading] = useState(false);
-  const [loyaltyPreviewDiscount, setLoyaltyPreviewDiscount] = useState<number | null>(null);
+  const [loyaltyPreviewDiscount, setLoyaltyPreviewDiscount] = useState<
+    number | null
+  >(null);
+
+  useEffect(() => {
+    if (!previewProduct) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setPreviewProduct(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [previewProduct]);
 
   const productQuery = async (q: string) => {
     setProductSearch(q);
     setSearching(true);
     try {
       const res = await fetch(
-        `/api/admin/offline/options?type=product&search=${encodeURIComponent(q)}&take=40`
+        `/api/admin/offline/options?type=product&search=${encodeURIComponent(q)}&take=40`,
       );
       const data = await res.json();
       if (data.success) {
@@ -345,13 +381,16 @@ export default function NewOfflineSale() {
     const q = productSearch.trim();
     try {
       const res = await fetch(
-        `/api/admin/offline/options?type=product&search=${encodeURIComponent(q)}&take=40&skip=${more}`
+        `/api/admin/offline/options?type=product&search=${encodeURIComponent(q)}&take=40&skip=${more}`,
       );
       const data = await res.json();
       if (data.success && data.products?.length) {
         setProductResults((prev) => {
           const existing = new Set(prev.map((p) => p.id));
-          return [...prev, ...data.products.filter((p: ProductOption) => !existing.has(p.id))];
+          return [
+            ...prev,
+            ...data.products.filter((p: ProductOption) => !existing.has(p.id)),
+          ];
         });
       }
     } catch {
@@ -393,7 +432,9 @@ export default function NewOfflineSale() {
     }
     setLoadingCustomer(true);
     try {
-      const res = await fetch(`/api/admin/offline/options?type=customers&search=${encodeURIComponent(q)}&take=10`);
+      const res = await fetch(
+        `/api/admin/offline/options?type=customers&search=${encodeURIComponent(q)}&take=10`,
+      );
       const data = await res.json();
       if (data.success) setCustomerResults(data.customers);
     } catch {
@@ -436,7 +477,15 @@ export default function NewOfflineSale() {
       totalCost += p.costPrice * it.quantity;
       totalQty += it.quantity;
     }
-    return { subtotal, gst, total: subtotal + gst, totalProfit, totalCost, totalQty, itemCount: items.length };
+    return {
+      subtotal,
+      gst,
+      total: subtotal + gst,
+      totalProfit,
+      totalCost,
+      totalQty,
+      itemCount: items.length,
+    };
   }, [items]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Live combo pricing preview: whenever the sale changes, ask the server for
@@ -463,7 +512,8 @@ export default function NewOfflineSale() {
         });
         const data = await res.json();
         if (!data.success) return;
-        const byId: Record<string, ComboPriceInfo> = data.result.byProductId || {};
+        const byId: Record<string, ComboPriceInfo> =
+          data.result.byProductId || {};
         setComboPrices(byId);
         setComboApplied(data.result.applied || []);
         setComboSavingsInclGst(data.result.comboSavingsInclGst || 0);
@@ -480,7 +530,7 @@ export default function NewOfflineSale() {
               return it;
             }
             return { ...it, customerPrice: target };
-          })
+          }),
         );
       } catch {
         // Preview is best-effort; the backend re-validates on submit.
@@ -491,7 +541,7 @@ export default function NewOfflineSale() {
     return () => {
       if (comboRefreshTimer.current) clearTimeout(comboRefreshTimer.current);
     };
-  }, [items]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [items]);
 
   // Load the selected customer's loyalty status whenever the cart total changes
   // so the reward availability / discount preview stays fresh.
@@ -499,8 +549,8 @@ export default function NewOfflineSale() {
     if (!selectedCustomer) return;
     let cancelled = false;
     Promise.all([
-      fetch(`/api/admin/loyalty/customer-status/${selectedCustomer.id}`).then((r) =>
-        r.json()
+      fetch(`/api/admin/loyalty/customer-status/${selectedCustomer.id}`).then(
+        (r) => r.json(),
       ),
       fetch("/api/admin/offline/loyalty-discount", {
         method: "POST",
@@ -531,7 +581,7 @@ export default function NewOfflineSale() {
         }
         const calc = previewRes.success ? previewRes.calculation : null;
         setLoyaltyPreviewDiscount(
-          calc && calc.applicable ? calc.discountAmount : null
+          calc && calc.applicable ? calc.discountAmount : null,
         );
       })
       .catch(() => {
@@ -558,10 +608,12 @@ export default function NewOfflineSale() {
     setLookingUpPhone(true);
     try {
       const res = await fetch(
-        `/api/admin/offline/options?type=customers&lookupPhone=${encodeURIComponent(digits)}`
+        `/api/admin/offline/options?type=customers&lookupPhone=${encodeURIComponent(digits)}`,
       );
       const data = await res.json();
-      const found = data.success ? (data.customer as CustomerOption | null) : null;
+      const found = data.success
+        ? (data.customer as CustomerOption | null)
+        : null;
       setPhoneLookupFound(found);
       if (found) {
         setName(found.name ?? "");
@@ -612,13 +664,18 @@ export default function NewOfflineSale() {
     toast.success(`${product.name} added to sale`);
   };
 
-  const alreadyAdded = (productId: string) => items.some((it) => it.product?.id === productId);
+  const alreadyAdded = (productId: string) =>
+    items.some((it) => it.product?.id === productId);
 
   const onlineIncl = (product: ProductOption) =>
-    round2(product.onlineSellingPrice * (1 + (product.gstPercentage || 0) / 100));
+    round2(
+      product.onlineSellingPrice * (1 + (product.gstPercentage || 0) / 100),
+    );
 
   const updateItem = (key: string, patch: Partial<LineItem>) => {
-    setItems((prev) => prev.map((it) => (it.key === key ? { ...it, ...patch } : it)));
+    setItems((prev) =>
+      prev.map((it) => (it.key === key ? { ...it, ...patch } : it)),
+    );
   };
 
   const removeItem = (key: string) => {
@@ -642,7 +699,8 @@ export default function NewOfflineSale() {
         delete next[product.id];
       } else {
         next[product.id] = {
-          variantId: product.variants.length === 1 ? product.variants[0].id : "",
+          variantId:
+            product.variants.length === 1 ? product.variants[0].id : "",
           quantity: Math.max(1, product.comboQuantity),
         };
       }
@@ -652,7 +710,7 @@ export default function NewOfflineSale() {
 
   const updatePickerProduct = (
     productId: string,
-    patch: { variantId?: string; quantity?: number }
+    patch: { variantId?: string; quantity?: number },
   ) => {
     setPickerSelection((prev) => {
       const cur = prev[productId];
@@ -662,7 +720,9 @@ export default function NewOfflineSale() {
   };
 
   const setPickerQuantity = (productId: string, quantity: number) =>
-    updatePickerProduct(productId, { quantity: Math.max(1, Number(quantity) || 1) });
+    updatePickerProduct(productId, {
+      quantity: Math.max(1, Number(quantity) || 1),
+    });
 
   const addPickedComboToSale = (offer: ComboOfferOption) => {
     const role = comboPickerRole(offer, pickerSelection);
@@ -674,14 +734,15 @@ export default function NewOfflineSale() {
         for (const p of offer.products) {
           const sel = pickerSelection[p.id];
           if (!sel) continue;
-          const fallbackVariant = p.variants.length === 1 ? p.variants[0].id : "";
+          const fallbackVariant =
+            p.variants.length === 1 ? p.variants[0].id : "";
           const variantId =
             p.variants.length > 1 ? sel.variantId || "" : fallbackVariant;
           const qty = Math.max(1, sel.quantity || p.comboQuantity || 1);
           const roleInfo = role.byProduct[p.id];
           const price = roleInfo ? roleInfo.payInclPerUnit : onlineIncl(p);
           const existing = next.find(
-            (it) => it.product?.id === p.id && it.variantId === variantId
+            (it) => it.product?.id === p.id && it.variantId === variantId,
           );
           if (existing) {
             next[next.indexOf(existing)] = {
@@ -704,7 +765,7 @@ export default function NewOfflineSale() {
         return next;
       });
       toast.success(
-        `Combo "${offer.title}" added — price is fixed, no negotiation.`
+        `Combo "${offer.title}" added — price is fixed, no negotiation.`,
       );
       closeComboPicker();
     } finally {
@@ -730,7 +791,8 @@ export default function NewOfflineSale() {
   };
 
   const validate = (): string | null => {
-    if (mode === "existing" && !selectedCustomer) return "Select an existing customer.";
+    if (mode === "existing" && !selectedCustomer)
+      return "Select an existing customer.";
     if (mode === "walkin" && !name.trim()) return "Customer name is required.";
     if (items.length === 0) return "Add at least one product.";
 
@@ -821,7 +883,7 @@ export default function NewOfflineSale() {
           ? isPartial
             ? `Offline due sale ${data.orderNumber} opened — ₹${paidAmount.toFixed(2)} received.`
             : `Offline sale ${data.orderNumber} completed.`
-          : `Offline sale ${data.orderNumber} saved as draft.`
+          : `Offline sale ${data.orderNumber} saved as draft.`,
       );
       router.push(`/admin/offline-sales/${data.orderId}`);
       router.refresh();
@@ -848,7 +910,10 @@ export default function NewOfflineSale() {
           />
 
           <div className="relative">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+            <Search
+              size={16}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
+            />
             <input
               value={productSearch}
               onChange={(e) => productQuery(e.target.value)}
@@ -856,7 +921,10 @@ export default function NewOfflineSale() {
               className="h-11 w-full rounded-xl border border-slate-700 bg-[#0F172A] pl-10 pr-4 text-sm text-white outline-none focus:border-indigo-500"
             />
             {searching && (
-              <Loader2 size={16} className="absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-indigo-400" />
+              <Loader2
+                size={16}
+                className="absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-indigo-400"
+              />
             )}
           </div>
 
@@ -870,57 +938,110 @@ export default function NewOfflineSale() {
             ) : productResults.length === 0 ? (
               <div className="col-span-full flex flex-col items-center justify-center gap-2 py-16 text-slate-400">
                 <Search size={24} />
-                <span className="text-sm">No products found. Try a different search.</span>
+                <span className="text-sm">
+                  No products found. Try a different search.
+                </span>
               </div>
             ) : (
               productResults.map((p) => {
                 const added = alreadyAdded(p.id);
                 const outOfStock = p.stock <= 0;
                 return (
-                  <button
+                  <div
                     key={p.id}
-                    type="button"
-                    onClick={() => !outOfStock && addProduct(p)}
-                    disabled={outOfStock}
                     className={`group relative flex flex-col rounded-xl border p-3 text-left transition ${
                       outOfStock
                         ? "cursor-not-allowed border-slate-800 bg-[#0F172A] opacity-50"
                         : added
-                        ? "border-emerald-500 bg-emerald-500/10 hover:border-emerald-400"
-                        : "border-slate-700 bg-[#0F172A] hover:border-indigo-500 hover:bg-indigo-500/5"
+                          ? "border-emerald-500 bg-emerald-500/10 hover:border-emerald-400"
+                          : "border-slate-700 bg-[#0F172A] hover:border-indigo-500 hover:bg-indigo-500/5"
                     }`}
                   >
                     {added && (
-                      <span className="absolute right-2 top-2 rounded bg-emerald-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                      <span className="absolute right-2 top-2 z-10 rounded bg-emerald-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
                         Added
                       </span>
                     )}
-                    <div className="line-clamp-2 min-h-[2.5rem] text-sm font-bold leading-snug text-white">
-                      {p.name}
-                    </div>
-                    <div className="mt-0.5 truncate text-[11px] text-slate-500">
-                      {p.category || "No category"}
-                    </div>
-                    <div className="mt-auto pt-3">
-                      <div className="text-sm font-bold text-indigo-300">
-                        {formatCurrency(p.onlineSellingPrice)}
+
+                    {/* Jersey image thumbnail — click to view popup */}
+                    <button
+                      type="button"
+                      title={p.image ? "View image" : "No image available"}
+                      disabled={!p.image || outOfStock}
+                      onClick={() => p.image && setPreviewProduct(p)}
+                      className="relative mb-2 flex h-32 w-full flex-col items-center justify-center overflow-hidden rounded-lg border border-slate-700/70 bg-slate-800/60 transition hover:border-indigo-400 disabled:cursor-default"
+                    >
+                      {p.image ? (
+                        <>
+                          <img
+                            src={optimizedImageUrl(p.image, 640)}
+                            alt={p.name}
+                            className="h-full w-full object-contain"
+                          />
+                          <span className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition group-hover:bg-black/25 group-hover:opacity-100">
+                            <span className="flex items-center gap-1 rounded-md bg-black/60 px-2 py-1 text-[10px] font-semibold text-white">
+                              <ZoomIn size={12} />
+                              View Image
+                            </span>
+                          </span>
+                        </>
+                      ) : (
+                        <div className="flex flex-col items-center gap-1 text-slate-500">
+                          <ImageOff size={20} />
+                          <span className="text-[10px]">No image</span>
+                        </div>
+                      )}
+                    </button>
+
+                    {/* Add-to-sale body */}
+                    <div
+                      role="button"
+                      tabIndex={outOfStock ? -1 : 0}
+                      onClick={() => !outOfStock && addProduct(p)}
+                      onKeyDown={(e) => {
+                        if (
+                          (e.key === "Enter" || e.key === " ") &&
+                          !outOfStock
+                        ) {
+                          e.preventDefault();
+                          addProduct(p);
+                        }
+                      }}
+                      className="flex flex-1 cursor-pointer flex-col"
+                    >
+                      <div className="line-clamp-2 min-h-[2.5rem] text-sm font-bold leading-snug text-white">
+                        {p.name}
                       </div>
-                      <div className="mt-0.5 flex items-center justify-between text-[11px]">
-                        <span className={outOfStock ? "text-rose-400" : "text-emerald-400"}>
-                          {outOfStock ? "Out of stock" : `Stock: ${p.stock}`}
-                        </span>
-                        {p.lastSellingPrice != null ? (
-                          <span className="text-slate-500">Min {formatCurrency(p.lastSellingPrice)}</span>
-                        ) : (
-                          <span className="text-rose-400">No min price</span>
-                        )}
+                      <div className="mt-0.5 truncate text-[11px] text-slate-500">
+                        {p.category || "No category"}
+                      </div>
+                      <div className="mt-auto pt-3">
+                        <div className="text-sm font-bold text-indigo-300">
+                          {formatCurrency(p.onlineSellingPrice)}
+                        </div>
+                        <div className="mt-0.5 flex items-center justify-between text-[11px]">
+                          <span
+                            className={
+                              outOfStock ? "text-rose-400" : "text-emerald-400"
+                            }
+                          >
+                            {outOfStock ? "Out of stock" : `Stock: ${p.stock}`}
+                          </span>
+                          {p.lastSellingPrice != null ? (
+                            <span className="text-slate-500">
+                              Min {formatCurrency(p.lastSellingPrice)}
+                            </span>
+                          ) : (
+                            <span className="text-rose-400">No min price</span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="mt-2 inline-flex items-center justify-center gap-1 rounded-lg bg-indigo-600/80 px-2 py-1.5 text-[11px] font-semibold text-white transition group-hover:bg-indigo-500">
+                        <Plus size={12} />
+                        {added ? "In Sale" : "Add"}
                       </div>
                     </div>
-                    <div className="mt-2 inline-flex items-center justify-center gap-1 rounded-lg bg-indigo-600/80 px-2 py-1.5 text-[11px] font-semibold text-white transition group-hover:bg-indigo-500">
-                      <Plus size={12} />
-                      {added ? "In Sale" : "Add"}
-                    </div>
-                  </button>
+                  </div>
                 );
               })
             )}
@@ -982,7 +1103,10 @@ export default function NewOfflineSale() {
           ) : (
             <div className="grid gap-3 sm:grid-cols-2">
               {combos.map((c) => (
-                <div key={c.id} className="rounded-xl border border-amber-600/30 bg-[#0F172A] p-3">
+                <div
+                  key={c.id}
+                  className="rounded-xl border border-amber-600/30 bg-[#0F172A] p-3"
+                >
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
@@ -991,7 +1115,9 @@ export default function NewOfflineSale() {
                             {c.badge}
                           </span>
                         )}
-                        <span className="truncate text-sm font-bold text-white">{c.title}</span>
+                        <span className="truncate text-sm font-bold text-white">
+                          {c.title}
+                        </span>
                       </div>
                       <div className="mt-0.5 text-[11px] text-slate-400">
                         {c.comboType === "FIXED_PRICE" ? (
@@ -999,13 +1125,31 @@ export default function NewOfflineSale() {
                         ) : c.comboType === "PICK_ANY" ? (
                           <>
                             Pick any{" "}
-                            <span className="font-semibold text-amber-300">{Math.min(Math.max(2, Number(c.minPick) || 2), c.products.length)}+</span>{" "}
-                            from the pool — pay the single priciest, every other picked item FREE
+                            <span className="font-semibold text-amber-300">
+                              {Math.min(
+                                Math.max(2, Number(c.minPick) || 2),
+                                c.products.length,
+                              )}
+                              +
+                            </span>{" "}
+                            from the pool — pay the single priciest, every other
+                            picked item FREE
                           </>
                         ) : (
                           <>
                             Pay for the{" "}
-                            <span className="font-semibold text-amber-300">{Math.max(1, Math.min(c.buyCount || 1, c.products.reduce((s, p) => s + p.comboQuantity, 0)))}</span>{" "}
+                            <span className="font-semibold text-amber-300">
+                              {Math.max(
+                                1,
+                                Math.min(
+                                  c.buyCount || 1,
+                                  c.products.reduce(
+                                    (s, p) => s + p.comboQuantity,
+                                    0,
+                                  ),
+                                ),
+                              )}
+                            </span>{" "}
                             most expensive — the rest of the set is FREE
                           </>
                         )}
@@ -1065,15 +1209,42 @@ export default function NewOfflineSale() {
                       ? pricing.actualSellingPrice < p.lastSellingPrice
                       : false;
                   return (
-                    <div key={item.key} className="rounded-xl border border-slate-700 bg-[#0F172A] p-3">
+                    <div
+                      key={item.key}
+                      className="rounded-xl border border-slate-700 bg-[#0F172A] p-3"
+                    >
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
-                          <div className="truncate text-sm font-bold text-white">{p.name}</div>
+                          <div className="truncate text-sm font-bold text-white">
+                            {p.name}
+                          </div>
                           <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-slate-400">
-                            <span>Cost: <span className="text-slate-200">{formatCurrency(p.costPrice)}</span></span>
-                            <span>Online: <span className="text-slate-200">{formatCurrency(p.onlineSellingPrice)}</span></span>
-                            <span>Min: <span className="text-indigo-300">{p.lastSellingPrice != null ? formatCurrency(p.lastSellingPrice) : "—"}</span></span>
-                            <span>GST: <span className="text-slate-200">{p.gstPercentage}%</span></span>
+                            <span>
+                              Cost:{" "}
+                              <span className="text-slate-200">
+                                {formatCurrency(p.costPrice)}
+                              </span>
+                            </span>
+                            <span>
+                              Online:{" "}
+                              <span className="text-slate-200">
+                                {formatCurrency(p.onlineSellingPrice)}
+                              </span>
+                            </span>
+                            <span>
+                              Min:{" "}
+                              <span className="text-indigo-300">
+                                {p.lastSellingPrice != null
+                                  ? formatCurrency(p.lastSellingPrice)
+                                  : "—"}
+                              </span>
+                            </span>
+                            <span>
+                              GST:{" "}
+                              <span className="text-slate-200">
+                                {p.gstPercentage}%
+                              </span>
+                            </span>
                           </div>
                           {comboLocked && comboInfo && (
                             <div className="mt-1.5 flex items-center gap-1.5">
@@ -1085,11 +1256,15 @@ export default function NewOfflineSale() {
                                 }`}
                               >
                                 <Lock size={10} />
-                                {comboInfo.isFree ? "FREE — Combo" : "Combo — fixed price"}
+                                {comboInfo.isFree
+                                  ? "FREE — Combo"
+                                  : "Combo — fixed price"}
                               </span>
                               {comboInfo.combos.length > 0 && (
                                 <span className="truncate text-[10px] text-slate-500">
-                                  {comboInfo.combos.map((c) => c.title).join(", ")}
+                                  {comboInfo.combos
+                                    .map((c) => c.title)
+                                    .join(", ")}
                                 </span>
                               )}
                             </div>
@@ -1112,13 +1287,18 @@ export default function NewOfflineSale() {
                           </label>
                           <select
                             value={item.variantId}
-                            onChange={(e) => updateItem(item.key, { variantId: e.target.value })}
+                            onChange={(e) =>
+                              updateItem(item.key, {
+                                variantId: e.target.value,
+                              })
+                            }
                             className={inputCls}
                           >
                             <option value="">Primary / No variant</option>
                             {p.variants.map((v) => (
                               <option key={v.id} value={v.id}>
-                                {v.genderName} / {v.sizeName} ({v.sku}) — stock {v.stock}
+                                {v.genderName} / {v.sizeName} ({v.sku}) — stock{" "}
+                                {v.stock}
                               </option>
                             ))}
                           </select>
@@ -1149,7 +1329,12 @@ export default function NewOfflineSale() {
                             min={1}
                             value={item.quantity}
                             onChange={(e) =>
-                              updateItem(item.key, { quantity: Math.max(0, Number(e.target.value) || 0) })
+                              updateItem(item.key, {
+                                quantity: Math.max(
+                                  0,
+                                  Number(e.target.value) || 0,
+                                ),
+                              })
                             }
                             className={inputCls}
                           />
@@ -1163,9 +1348,15 @@ export default function NewOfflineSale() {
                             min={0}
                             step="0.01"
                             disabled={comboLocked}
-                            value={Number.isFinite(item.customerPrice) ? item.customerPrice : ""}
+                            value={
+                              Number.isFinite(item.customerPrice)
+                                ? item.customerPrice
+                                : ""
+                            }
                             onChange={(e) =>
-                              updateItem(item.key, { customerPrice: Number(e.target.value) || 0 })
+                              updateItem(item.key, {
+                                customerPrice: Number(e.target.value) || 0,
+                              })
                             }
                             className={`${inputCls} ${
                               comboLocked
@@ -1178,18 +1369,36 @@ export default function NewOfflineSale() {
 
                       {belowMin && p.lastSellingPrice != null && (
                         <p className="mt-1.5 text-xs text-rose-400">
-                          Cannot be lower than min {formatCurrency(p.lastSellingPrice)}
+                          Cannot be lower than min{" "}
+                          {formatCurrency(p.lastSellingPrice)}
                         </p>
                       )}
 
                       {pricing && (
                         <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 border-t border-slate-700 pt-2 text-[11px] text-slate-400">
-                          <span>Amount: <span className="text-white">{formatCurrency(pricing.lineTotal)}</span></span>
-                          <span>GST: <span className="text-white">{formatCurrency(pricing.lineGst)}</span></span>
+                          <span>
+                            Amount:{" "}
+                            <span className="text-white">
+                              {formatCurrency(pricing.lineTotal)}
+                            </span>
+                          </span>
+                          <span>
+                            GST:{" "}
+                            <span className="text-white">
+                              {formatCurrency(pricing.lineGst)}
+                            </span>
+                          </span>
                           <span>
                             Profit:{" "}
-                            <span className={pricing.lineProfit >= 0 ? "text-emerald-400" : "text-rose-400"}>
-                              {formatCurrency(pricing.lineProfit)} ({pricing.profitPercent}%)
+                            <span
+                              className={
+                                pricing.lineProfit >= 0
+                                  ? "text-emerald-400"
+                                  : "text-rose-400"
+                              }
+                            >
+                              {formatCurrency(pricing.lineProfit)} (
+                              {pricing.profitPercent}%)
                             </span>
                           </span>
                         </div>
@@ -1213,12 +1422,18 @@ export default function NewOfflineSale() {
                 title="Customer Information"
               />
               <span className="rounded p-1 text-slate-400 xl:hidden">
-                {customerOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                {customerOpen ? (
+                  <ChevronUp size={18} />
+                ) : (
+                  <ChevronDown size={18} />
+                )}
               </span>
             </button>
 
             {/* Always visible on xl, toggled on smaller screens */}
-            <div className={`${customerOpen || mode === "existing" ? "block" : "hidden"} xl:block`}>
+            <div
+              className={`${customerOpen || mode === "existing" ? "block" : "hidden"} xl:block`}
+            >
               <div className="mb-3 flex flex-wrap gap-2">
                 <button
                   type="button"
@@ -1263,7 +1478,9 @@ export default function NewOfflineSale() {
                           Searching...
                         </p>
                       ) : customerResults.length === 0 ? (
-                        <p className="p-4 text-sm text-slate-400">No customers found.</p>
+                        <p className="p-4 text-sm text-slate-400">
+                          No customers found.
+                        </p>
                       ) : (
                         customerResults.map((c) => (
                           <button
@@ -1276,11 +1493,15 @@ export default function NewOfflineSale() {
                               setLoyaltyPreviewDiscount(null);
                               setSelectedCustomer(c);
                               setCustomerId(c.id);
-                              setCustomerSearch(`${c.name ?? "Customer"} • ${c.phone ?? c.email}`);
+                              setCustomerSearch(
+                                `${c.name ?? "Customer"} • ${c.phone ?? c.email}`,
+                              );
                               setCustomerResults([]);
                             }}
                             className={`block w-full px-4 py-3 text-left text-sm transition hover:bg-slate-800 ${
-                              selectedCustomer?.id === c.id ? "bg-slate-800" : ""
+                              selectedCustomer?.id === c.id
+                                ? "bg-slate-800"
+                                : ""
                             }`}
                           >
                             <div className="font-semibold text-white">
@@ -1299,12 +1520,18 @@ export default function NewOfflineSale() {
                       )}
                     </div>
                   )}
-                  {customerId && <input type="hidden" value={customerId} readOnly />}
+                  {customerId && (
+                    <input type="hidden" value={customerId} readOnly />
+                  )}
                 </div>
               ) : (
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <Field label="Customer Name">
-                    <input value={name} onChange={(e) => setName(e.target.value)} className={inputCls} />
+                    <input
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className={inputCls}
+                    />
                   </Field>
                   <Field label="Phone Number">
                     <div className="relative">
@@ -1334,30 +1561,57 @@ export default function NewOfflineSale() {
                         </span>
                       </p>
                     )}
-                    {!lookingUpPhone && !phoneLookupFound && phone.replace(/\D/g, "").length >= 10 && (
-                      <p className="mt-1 text-xs text-slate-500">
-                        No existing customer with this number — will be saved as new.
-                      </p>
-                    )}
+                    {!lookingUpPhone &&
+                      !phoneLookupFound &&
+                      phone.replace(/\D/g, "").length >= 10 && (
+                        <p className="mt-1 text-xs text-slate-500">
+                          No existing customer with this number — will be saved
+                          as new.
+                        </p>
+                      )}
                   </Field>
                   <Field label="Email (optional)">
-                    <input value={email} onChange={(e) => setEmail(e.target.value)} className={inputCls} />
+                    <input
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className={inputCls}
+                    />
                   </Field>
                   <Field label="Address Line 1 (optional)">
-                    <input value={addr1} onChange={(e) => setAddr1(e.target.value)} className={inputCls} />
+                    <input
+                      value={addr1}
+                      onChange={(e) => setAddr1(e.target.value)}
+                      className={inputCls}
+                    />
                   </Field>
                   <Field label="Address Line 2 (optional)">
-                    <input value={addr2} onChange={(e) => setAddr2(e.target.value)} className={inputCls} />
+                    <input
+                      value={addr2}
+                      onChange={(e) => setAddr2(e.target.value)}
+                      className={inputCls}
+                    />
                   </Field>
                   <div className="grid grid-cols-3 gap-2 sm:col-span-2">
                     <Field label="City">
-                      <input value={city} onChange={(e) => setCity(e.target.value)} className={inputCls} />
+                      <input
+                        value={city}
+                        onChange={(e) => setCity(e.target.value)}
+                        className={inputCls}
+                      />
                     </Field>
                     <Field label="State">
-                      <input value={state} onChange={(e) => setState(e.target.value)} className={inputCls} />
+                      <input
+                        value={state}
+                        onChange={(e) => setState(e.target.value)}
+                        className={inputCls}
+                      />
                     </Field>
                     <Field label="Pincode">
-                      <input value={pincode} onChange={(e) => setPincode(e.target.value)} className={inputCls} />
+                      <input
+                        value={pincode}
+                        onChange={(e) => setPincode(e.target.value)}
+                        className={inputCls}
+                      />
                     </Field>
                   </div>
                 </div>
@@ -1374,7 +1628,8 @@ export default function NewOfflineSale() {
               />
               {loyaltyLoading ? (
                 <p className="flex items-center gap-2 py-3 text-sm text-slate-400">
-                  <Loader2 size={14} className="animate-spin" /> Checking loyalty…
+                  <Loader2 size={14} className="animate-spin" /> Checking
+                  loyalty…
                 </p>
               ) : loyalty.hasAvailableReward ? (
                 <div className="space-y-3">
@@ -1400,7 +1655,9 @@ export default function NewOfflineSale() {
                       onChange={(e) => {
                         setUseLoyaltyReward(e.target.checked);
                         if (e.target.checked && !loyaltyPreviewDiscount) {
-                          toast.info("Reward will be applied at checkout / completion.");
+                          toast.info(
+                            "Reward will be applied at checkout / completion.",
+                          );
                         }
                       }}
                       className="mt-0.5"
@@ -1410,7 +1667,8 @@ export default function NewOfflineSale() {
                         Apply reward to this sale
                       </span>
                       <span className="block text-xs text-slate-400">
-                        Uses the unlocked reward. This purchase won&apos;t count toward a new reward.
+                        Uses the unlocked reward. This purchase won&apos;t count
+                        toward a new reward.
                       </span>
                     </span>
                   </label>
@@ -1419,10 +1677,12 @@ export default function NewOfflineSale() {
                 <div className="flex items-center justify-between gap-2 rounded-lg border border-slate-700 bg-[#0F172A] p-3">
                   <div>
                     <p className="text-sm font-semibold text-white">
-                      Progress {loyalty.currentPurchaseCount}/{loyalty.requiredPurchases}
+                      Progress {loyalty.currentPurchaseCount}/
+                      {loyalty.requiredPurchases}
                     </p>
                     <p className="text-xs text-slate-400">
-                      No reward available yet — this sale will count toward progress.
+                      No reward available yet — this sale will count toward
+                      progress.
                     </p>
                   </div>
                   {loyalty.availableReward === "REDEED" && (
@@ -1467,9 +1727,12 @@ export default function NewOfflineSale() {
                     className="mt-0.5"
                   />
                   <span>
-                    <span className="block font-semibold text-white">Full Payment</span>
+                    <span className="block font-semibold text-white">
+                      Full Payment
+                    </span>
                     <span className="block text-xs text-slate-400">
-                      Customer pays the entire amount now. Final invoice generated immediately.
+                      Customer pays the entire amount now. Final invoice
+                      generated immediately.
                     </span>
                   </span>
                 </label>
@@ -1487,9 +1750,11 @@ export default function NewOfflineSale() {
                       Part Payment (Due Sale)
                     </span>
                     <span className="block text-xs text-amber-300/80">
-                      Customer pays a part now and the balance later. Tracks due and sends a
-                      24h follow-up reminder until cleared.{" "}
-                      <span className="font-bold text-rose-400">No returns accepted on due sales.</span>
+                      Customer pays a part now and the balance later. Tracks due
+                      and sends a 24h follow-up reminder until cleared.{" "}
+                      <span className="font-bold text-rose-400">
+                        No returns accepted on due sales.
+                      </span>
                     </span>
                   </span>
                 </label>
@@ -1498,7 +1763,10 @@ export default function NewOfflineSale() {
 
             {invoiceMode === "partial" && (
               <div className="mt-3">
-                <Field label="Paid Amount Now" hint="What the customer pays upfront. The rest becomes the due.">
+                <Field
+                  label="Paid Amount Now"
+                  hint="What the customer pays upfront. The rest becomes the due."
+                >
                   <input
                     type="number"
                     min={0}
@@ -1516,15 +1784,22 @@ export default function NewOfflineSale() {
                     <div className="mt-2 rounded-lg bg-amber-500/10 px-3 py-2 text-sm">
                       <div className="flex justify-between text-slate-300">
                         <span>Paid</span>
-                        <span className="font-semibold text-emerald-400">{formatCurrency(Math.max(0, Math.min(paid, summary.total)))}</span>
+                        <span className="font-semibold text-emerald-400">
+                          {formatCurrency(
+                            Math.max(0, Math.min(paid, summary.total)),
+                          )}
+                        </span>
                       </div>
                       <div className="mt-1 flex justify-between text-slate-300">
                         <span>Due after this</span>
-                        <span className="font-semibold text-amber-400">{formatCurrency(Math.max(0, due))}</span>
+                        <span className="font-semibold text-amber-400">
+                          {formatCurrency(Math.max(0, due))}
+                        </span>
                       </div>
-                      {(paid > 0 && paid < summary.total) && (
+                      {paid > 0 && paid < summary.total && (
                         <p className="mt-2 text-[11px] font-semibold text-rose-400">
-                          No returns accepted on this due sale. Invoice generated once fully paid.
+                          No returns accepted on this due sale. Invoice
+                          generated once fully paid.
                         </p>
                       )}
                     </div>
@@ -1535,20 +1810,36 @@ export default function NewOfflineSale() {
 
             <div className="mt-4 grid grid-cols-2 gap-3 rounded-xl bg-[#0F172A] p-4">
               <div>
-                <div className="text-xs uppercase tracking-wide text-slate-500">Total Items</div>
-                <div className="mt-1 text-lg font-bold text-white">{summary.itemCount}</div>
+                <div className="text-xs uppercase tracking-wide text-slate-500">
+                  Total Items
+                </div>
+                <div className="mt-1 text-lg font-bold text-white">
+                  {summary.itemCount}
+                </div>
               </div>
               <div>
-                <div className="text-xs uppercase tracking-wide text-slate-500">Quantity</div>
-                <div className="mt-1 text-lg font-bold text-white">{summary.totalQty}</div>
+                <div className="text-xs uppercase tracking-wide text-slate-500">
+                  Quantity
+                </div>
+                <div className="mt-1 text-lg font-bold text-white">
+                  {summary.totalQty}
+                </div>
               </div>
               <div>
-                <div className="text-xs uppercase tracking-wide text-slate-500">Total Cost</div>
-                <div className="mt-1 text-lg font-bold text-slate-300">{formatCurrency(summary.totalCost)}</div>
+                <div className="text-xs uppercase tracking-wide text-slate-500">
+                  Total Cost
+                </div>
+                <div className="mt-1 text-lg font-bold text-slate-300">
+                  {formatCurrency(summary.totalCost)}
+                </div>
               </div>
               <div>
-                <div className="text-xs uppercase tracking-wide text-slate-500">Total Profit</div>
-                <div className={`mt-1 text-lg font-bold ${summary.totalProfit >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                <div className="text-xs uppercase tracking-wide text-slate-500">
+                  Total Profit
+                </div>
+                <div
+                  className={`mt-1 text-lg font-bold ${summary.totalProfit >= 0 ? "text-emerald-400" : "text-rose-400"}`}
+                >
                   {formatCurrency(summary.totalProfit)}
                 </div>
               </div>
@@ -1557,11 +1848,15 @@ export default function NewOfflineSale() {
             <div className="mt-3 space-y-1.5 rounded-xl bg-[#0F172A] p-4 text-sm">
               <div className="flex items-center justify-between">
                 <span className="text-slate-400">Subtotal (pre-GST)</span>
-                <span className="font-semibold text-white">{formatCurrency(summary.subtotal)}</span>
+                <span className="font-semibold text-white">
+                  {formatCurrency(summary.subtotal)}
+                </span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-slate-400">Total GST</span>
-                <span className="font-semibold text-white">{formatCurrency(summary.gst)}</span>
+                <span className="font-semibold text-white">
+                  {formatCurrency(summary.gst)}
+                </span>
               </div>
               {comboSavingsInclGst > 0 && (
                 <div className="flex items-center justify-between pt-1 text-emerald-400">
@@ -1569,14 +1864,20 @@ export default function NewOfflineSale() {
                     <Sparkles size={13} />
                     Combo savings (fixed — no bargaining)
                   </span>
-                  <span className="font-semibold">{formatCurrency(comboSavingsInclGst)}</span>
+                  <span className="font-semibold">
+                    {formatCurrency(comboSavingsInclGst)}
+                  </span>
                 </div>
               )}
             </div>
 
             <div className="mt-3 flex items-center justify-between rounded-xl bg-indigo-600/10 px-4 py-3">
-              <span className="text-sm font-semibold text-indigo-200">Grand Total (incl. GST)</span>
-              <span className="text-xl font-black text-indigo-300">{formatCurrency(summary.total)}</span>
+              <span className="text-sm font-semibold text-indigo-200">
+                Grand Total (incl. GST)
+              </span>
+              <span className="text-xl font-black text-indigo-300">
+                {formatCurrency(summary.total)}
+              </span>
             </div>
 
             <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -1594,7 +1895,11 @@ export default function NewOfflineSale() {
                 disabled={submitting}
                 className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-50"
               >
-                {submitting ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
+                {submitting ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <CheckCircle2 size={16} />
+                )}
                 Complete Sale
               </button>
             </div>
@@ -1621,13 +1926,11 @@ export default function NewOfflineSale() {
                       </span>
                     </div>
                     <p className="mt-1 text-xs text-slate-400">
-                      {pickerOffer.comboType === "FIXED_PRICE" ? (
-                        `Fixed price ₹${Number(pickerOffer.customPrice ?? 0).toLocaleString("en-IN")} + GST for the whole set`
-                      ) : pickerOffer.comboType === "PICK_ANY" ? (
-                        `Pick any ${role.need}+ from the pool — pay the single priciest, every other picked item FREE`
-                      ) : (
-                        `Pay for the ${Math.max(1, pickerOffer.buyCount || 1)} most expensive — the rest of the picked set is FREE`
-                      )}
+                      {pickerOffer.comboType === "FIXED_PRICE"
+                        ? `Fixed price ₹${Number(pickerOffer.customPrice ?? 0).toLocaleString("en-IN")} + GST for the whole set`
+                        : pickerOffer.comboType === "PICK_ANY"
+                          ? `Pick any ${role.need}+ from the pool — pay the single priciest, every other picked item FREE`
+                          : `Pay for the ${Math.max(1, pickerOffer.buyCount || 1)} most expensive — the rest of the picked set is FREE`}
                     </p>
                   </div>
                   <button
@@ -1649,7 +1952,9 @@ export default function NewOfflineSale() {
                       }`}
                     >
                       Picked {role.pickedCount} /{" "}
-                      {pickerOffer.comboType === "PICK_ANY" ? `min ${role.need}` : role.need}
+                      {pickerOffer.comboType === "PICK_ANY"
+                        ? `min ${role.need}`
+                        : role.need}
                     </span>
                     {role.qualifying ? (
                       <span className="rounded-full bg-emerald-500/10 px-3 py-1 font-semibold text-emerald-400">
@@ -1677,8 +1982,8 @@ export default function NewOfflineSale() {
                       const stock = singleVariant
                         ? singleVariant.stock
                         : p.variants.length > 1 && sel && sel.variantId
-                        ? chosenVariant?.stock ?? 0
-                        : p.stock;
+                          ? (chosenVariant?.stock ?? 0)
+                          : p.stock;
                       const out = stock <= 0;
                       return (
                         <div
@@ -1696,6 +2001,19 @@ export default function NewOfflineSale() {
                               disabled={out}
                               className="flex min-w-0 flex-1 items-center gap-3 text-left"
                             >
+                              {p.image ? (
+                                <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-slate-700 bg-slate-800">
+                                  <img
+                                    src={optimizedImageUrl(p.image, 160)}
+                                    alt={p.name}
+                                    className="h-full w-full object-contain"
+                                  />
+                                </span>
+                              ) : (
+                                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-slate-700 bg-slate-800 text-slate-600">
+                                  <ImageOff size={16} />
+                                </span>
+                              )}
                               <span
                                 className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md border ${
                                   sel
@@ -1711,23 +2029,25 @@ export default function NewOfflineSale() {
                                 </span>
                                 <span className="mt-0.5 block text-[11px] text-slate-400">
                                   {formatCurrency(comboUnitIncl(p))} each ×{" "}
-                                  {Math.max(1, p.comboQuantity || 1)} · Stock {stock}
+                                  {Math.max(1, p.comboQuantity || 1)} · Stock{" "}
+                                  {stock}
                                 </span>
                                 {sel && roleInfo && (
                                   <span
                                     className={`mt-1 inline-block rounded px-1.5 py-0.5 text-[10px] font-bold ${
                                       roleInfo.isFree
                                         ? "bg-rose-500/10 text-rose-400"
-                                        : pickerOffer.comboType === "FIXED_PRICE"
-                                        ? "bg-indigo-500/10 text-indigo-300"
-                                        : "bg-emerald-500/10 text-emerald-400"
+                                        : pickerOffer.comboType ===
+                                            "FIXED_PRICE"
+                                          ? "bg-indigo-500/10 text-indigo-300"
+                                          : "bg-emerald-500/10 text-emerald-400"
                                     }`}
                                   >
                                     {roleInfo.isFree
                                       ? "FREE"
                                       : pickerOffer.comboType === "FIXED_PRICE"
-                                      ? `Set share ${formatCurrency(roleInfo.payInclPerUnit)}`
-                                      : `Pay ${formatCurrency(roleInfo.payInclPerUnit)}`}
+                                        ? `Set share ${formatCurrency(roleInfo.payInclPerUnit)}`
+                                        : `Pay ${formatCurrency(roleInfo.payInclPerUnit)}`}
                                   </span>
                                 )}
                               </span>
@@ -1737,14 +2057,21 @@ export default function NewOfflineSale() {
                               <select
                                 value={sel?.variantId ?? ""}
                                 onChange={(e) =>
-                                  updatePickerProduct(p.id, { variantId: e.target.value })
+                                  updatePickerProduct(p.id, {
+                                    variantId: e.target.value,
+                                  })
                                 }
                                 className={inputCls}
                               >
                                 <option value="">Primary / No variant</option>
                                 {p.variants.map((v) => (
-                                  <option key={v.id} value={v.id} disabled={v.stock <= 0}>
-                                    {v.genderName} / {v.sizeName} ({v.sku}) — stock {v.stock}
+                                  <option
+                                    key={v.id}
+                                    value={v.id}
+                                    disabled={v.stock <= 0}
+                                  >
+                                    {v.genderName} / {v.sizeName} ({v.sku}) —
+                                    stock {v.stock}
                                   </option>
                                 ))}
                               </select>
@@ -1752,14 +2079,19 @@ export default function NewOfflineSale() {
 
                             {sel && (
                               <div className="flex items-center gap-1.5">
-                                <label className="text-[11px] text-slate-500">Qty</label>
+                                <label className="text-[11px] text-slate-500">
+                                  Qty
+                                </label>
                                 <input
                                   type="number"
                                   min={1}
                                   max={Math.max(1, stock)}
                                   value={sel.quantity}
                                   onChange={(e) =>
-                                    setPickerQuantity(p.id, Number(e.target.value) || 1)
+                                    setPickerQuantity(
+                                      p.id,
+                                      Number(e.target.value) || 1,
+                                    )
                                   }
                                   className="h-9 w-16 rounded-lg border border-slate-700 bg-[#0F172A] px-2 text-sm text-white outline-none focus:border-indigo-500"
                                 />
@@ -1781,16 +2113,23 @@ export default function NewOfflineSale() {
                       <span className="text-lg font-bold text-white">
                         {formatCurrency(role.payableTotal)}
                       </span>
-                      <span className="text-[11px] text-slate-500">incl. GST</span>
+                      <span className="text-[11px] text-slate-500">
+                        incl. GST
+                      </span>
                     </div>
-                    {role.qualifying && role.originalTotal - role.payableTotal > 0 && (
-                      <p className="mt-1 text-xs font-semibold text-emerald-400">
-                        Customer saves {formatCurrency(role.originalTotal - role.payableTotal)}
-                      </p>
-                    )}
+                    {role.qualifying &&
+                      role.originalTotal - role.payableTotal > 0 && (
+                        <p className="mt-1 text-xs font-semibold text-emerald-400">
+                          Customer saves{" "}
+                          {formatCurrency(
+                            role.originalTotal - role.payableTotal,
+                          )}
+                        </p>
+                      )}
                     {!role.qualifying && (
                       <p className="mt-1 text-xs text-slate-500">
-                        Not enough products picked — items would be charged at regular prices.
+                        Not enough products picked — items would be charged at
+                        regular prices.
                       </p>
                     )}
                   </div>
@@ -1821,6 +2160,56 @@ export default function NewOfflineSale() {
             </div>
           );
         })()}
+
+      {/* Product image popup */}
+      {previewProduct && previewProduct.image && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-3 sm:p-6"
+          onClick={() => setPreviewProduct(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-label={previewProduct.name}
+        >
+          <div
+            className="relative w-full max-w-3xl overflow-hidden rounded-2xl border border-slate-700 bg-[#111827] shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setPreviewProduct(null)}
+              aria-label="Close image preview"
+              className="absolute right-3 top-3 z-10 rounded-lg bg-black/60 p-2 text-white transition hover:bg-black/80"
+            >
+              <X size={18} />
+            </button>
+            <div className="flex max-h-[70vh] items-center justify-center bg-slate-900 p-4">
+              <img
+                src={optimizedImageUrl(previewProduct.image, 1400)}
+                alt={previewProduct.name}
+                className="max-h-[68vh] w-auto object-contain"
+              />
+            </div>
+            <div className="p-4 sm:p-5">
+              <div className="truncate text-base font-bold text-white">
+                {previewProduct.name}
+              </div>
+              <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-slate-400">
+                <span>{previewProduct.category || "No category"}</span>
+                <span className="font-semibold text-indigo-300">
+                  {formatCurrency(previewProduct.onlineSellingPrice)}
+                </span>
+                {previewProduct.stock > 0 ? (
+                  <span className="text-emerald-400">
+                    Stock: {previewProduct.stock}
+                  </span>
+                ) : (
+                  <span className="text-rose-400">Out of stock</span>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

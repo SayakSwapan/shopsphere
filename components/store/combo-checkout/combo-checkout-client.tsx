@@ -113,17 +113,21 @@ export default function ComboCheckoutClient({ addresses, offerSlug }: Props) {
 
   const defaultAddress = useMemo(
     () => addresses.find((a) => a.isDefault) ?? addresses[0] ?? null,
-    [addresses]
+    [addresses],
   );
-  const [selectedAddressId, setSelectedAddressId] = useState(defaultAddress?.id ?? "");
+  const [selectedAddressId, setSelectedAddressId] = useState(
+    defaultAddress?.id ?? "",
+  );
   const selectedAddress = useMemo(
     () => addresses.find((a) => a.id === selectedAddressId) ?? null,
-    [addresses, selectedAddressId]
+    [addresses, selectedAddressId],
   );
 
   const [summary, setSummary] = useState<PriceSummary | null>(null);
   const [shipping, setShipping] = useState<ShippingPreview | null>(null);
-  const [pricingState, setPricingState] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [pricingState, setPricingState] = useState<
+    "idle" | "loading" | "success" | "error"
+  >("idle");
   const [pricingMessage, setPricingMessage] = useState("");
   const pricingRef = useRef(0);
 
@@ -140,11 +144,11 @@ export default function ComboCheckoutClient({ addresses, offerSlug }: Props) {
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed)) {
           stored = parsed
-            .filter(
-              (s): s is Selection =>
-                s && typeof s.productId === "string"
-            )
-            .map((s) => ({ productId: s.productId, productVariantId: s.productVariantId ?? null }));
+            .filter((s): s is Selection => s && typeof s.productId === "string")
+            .map((s) => ({
+              productId: s.productId,
+              productVariantId: s.productVariantId ?? null,
+            }));
         }
       }
     } catch {
@@ -183,6 +187,9 @@ export default function ComboCheckoutClient({ addresses, offerSlug }: Props) {
     return () => {
       cancelled = true;
     };
+    // Load offer meta once on mount; `method` is intentionally read from the
+    // initial render only so a method toggle doesn't reload + reset selections.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [storageKey, offerSlug]);
 
   // ── Pricing + shipping preview whenever selection or address changes ──
@@ -204,14 +211,25 @@ export default function ComboCheckoutClient({ addresses, offerSlug }: Props) {
         });
         const data = await res.json();
         if (reqId !== pricingRef.current) return;
-        if (!res.ok || !data.success) throw new Error(data.message || "Pricing unavailable");
+        if (!res.ok || !data.success)
+          throw new Error(data.message || "Pricing unavailable");
         setSummary(data.summary as PriceSummary);
         setShipping(data.shipping as ShippingPreview | null);
         setPricingState("success");
-        if (data.shipping && !data.shipping.deliverable && method === "COD" && !data.shipping.allowCod) {
+        if (
+          data.shipping &&
+          !data.shipping.deliverable &&
+          method === "COD" &&
+          !data.shipping.allowCod
+        ) {
           setMethod("CASHFREE");
         }
-        if (data.shipping && !data.shipping.deliverable && method === "CASHFREE" && !data.shipping.allowOnline) {
+        if (
+          data.shipping &&
+          !data.shipping.deliverable &&
+          method === "CASHFREE" &&
+          !data.shipping.allowOnline
+        ) {
           setMethod("COD");
         }
       } catch (error) {
@@ -219,7 +237,9 @@ export default function ComboCheckoutClient({ addresses, offerSlug }: Props) {
         setPricingState("error");
         setSummary(null);
         setShipping(null);
-        setPricingMessage((error as Error).message || "Could not load your combo.");
+        setPricingMessage(
+          (error as Error).message || "Could not load your combo.",
+        );
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -246,7 +266,7 @@ export default function ComboCheckoutClient({ addresses, offerSlug }: Props) {
   const showStickyBar =
     ready && (getCount === null || selections!.length === getCount);
 
-  const shippingCost = shipping?.deliverable ? shipping.shipping ?? 0 : null;
+  const shippingCost = shipping?.deliverable ? (shipping.shipping ?? 0) : null;
   const payTotal = summary
     ? Number((summary.payableTotal + (shippingCost ?? 0)).toFixed(2))
     : 0;
@@ -256,13 +276,18 @@ export default function ComboCheckoutClient({ addresses, offerSlug }: Props) {
 
   // Offer-level payment method restriction (BOTH / ONLINE_ONLY / COD_ONLY).
   const offerAllowsCod =
-    !offer || offer.allowedPaymentMethods === "BOTH" || offer.allowedPaymentMethods === "COD_ONLY";
+    !offer ||
+    offer.allowedPaymentMethods === "BOTH" ||
+    offer.allowedPaymentMethods === "COD_ONLY";
   const offerAllowsOnline =
-    !offer || offer.allowedPaymentMethods === "BOTH" || offer.allowedPaymentMethods === "ONLINE_ONLY";
+    !offer ||
+    offer.allowedPaymentMethods === "BOTH" ||
+    offer.allowedPaymentMethods === "ONLINE_ONLY";
   // Per-product payment-method permissions (admin-set on each product).
   const productsAllowCod = !offer || offer.productAllowsCod !== false;
   const productsAllowOnline = !offer || offer.productAllowsOnline !== false;
-  const showOnline = onlineAvailable && offerAllowsOnline && productsAllowOnline;
+  const showOnline =
+    onlineAvailable && offerAllowsOnline && productsAllowOnline;
   const showCod = codAvailable && offerAllowsCod && productsAllowCod;
 
   // Disable reasons surfaced in the shared payment UI.
@@ -282,12 +307,15 @@ export default function ComboCheckoutClient({ addresses, offerSlug }: Props) {
         : undefined;
 
   const [showPaymentPicker, setShowPaymentPicker] = useState(false);
-  const paymentMethodNormalized: "ONLINE" | "COD" = method === "CASHFREE" ? "ONLINE" : "COD";
+  const paymentMethodNormalized: "ONLINE" | "COD" =
+    method === "CASHFREE" ? "ONLINE" : "COD";
   const selectPayment = (m: "ONLINE" | "COD") =>
     setMethod(m === "ONLINE" ? "CASHFREE" : "COD");
 
   // Address edit modal reused from the regular checkout.
-  const [editingAddress, setEditingAddress] = useState<Address | undefined>(undefined);
+  const [editingAddress, setEditingAddress] = useState<Address | undefined>(
+    undefined,
+  );
   const [addressModalOpen, setAddressModalOpen] = useState(false);
 
   const shortPreview = (addr: Address) => {
@@ -315,7 +343,7 @@ export default function ComboCheckoutClient({ addresses, offerSlug }: Props) {
     }
     if (shipping.restrictedItems.length > 0) {
       toast.error(
-        `Not deliverable to ${selectedAddress.pincode}: ${shipping.restrictedItems.map((r) => r.productName).join(", ")}.`
+        `Not deliverable to ${selectedAddress.pincode}: ${shipping.restrictedItems.map((r) => r.productName).join(", ")}.`,
       );
       return;
     }
@@ -364,12 +392,20 @@ export default function ComboCheckoutClient({ addresses, offerSlug }: Props) {
       toast.error(
         err instanceof Error && err.message
           ? err.message
-          : "Something went wrong."
+          : "Something went wrong.",
       );
     } finally {
       setPlacing(false);
     }
-  }, [complete, selectedAddress, shipping, method, offerSlug, selections, router]);
+  }, [
+    complete,
+    selectedAddress,
+    shipping,
+    method,
+    offerSlug,
+    selections,
+    router,
+  ]);
 
   // ── Render ──
   return (
@@ -393,7 +429,10 @@ export default function ComboCheckoutClient({ addresses, offerSlug }: Props) {
             {offer.badge && (
               <span
                 className="inline-flex items-center bg-primary px-2 py-0.5 text-[9px] font-black uppercase tracking-wider"
-                style={{ color: "var(--t-bg-page)", borderRadius: "var(--t-radius-badge)" }}
+                style={{
+                  color: "var(--t-bg-page)",
+                  borderRadius: "var(--t-radius-badge)",
+                }}
               >
                 <Gift size={10} className="mr-1" /> {offer.badge}
               </span>
@@ -424,7 +463,10 @@ export default function ComboCheckoutClient({ addresses, offerSlug }: Props) {
           <Link
             href={`/combo-offers/${encodeURIComponent(offerSlug)}`}
             className="inline-block bg-primary text-bg-page text-xs font-black uppercase tracking-wider px-6 py-3"
-            style={{ borderRadius: "var(--t-radius-button)", fontFamily: "var(--t-font-heading)" }}
+            style={{
+              borderRadius: "var(--t-radius-button)",
+              fontFamily: "var(--t-font-heading)",
+            }}
           >
             Complete My Combo
           </Link>
@@ -441,13 +483,24 @@ export default function ComboCheckoutClient({ addresses, offerSlug }: Props) {
               <div className="flex items-center gap-3 border-b border-border-subtle px-4 sm:px-6 py-4 sm:py-5">
                 <div
                   className="flex h-8 w-8 items-center justify-center"
-                  style={{ borderRadius: "var(--t-radius-card)", background: "color-mix(in srgb, var(--t-primary) 15%, transparent)" }}
+                  style={{
+                    borderRadius: "var(--t-radius-card)",
+                    background:
+                      "color-mix(in srgb, var(--t-primary) 15%, transparent)",
+                  }}
                 >
                   <MapPin size={16} className="text-primary" />
                 </div>
                 <div>
-                  <p className="text-xs uppercase tracking-wider text-primary" style={{ fontFamily: "var(--t-font-heading)" }}>Step 1</p>
-                  <h2 className="text-lg font-bold text-text-heading">Delivery Address</h2>
+                  <p
+                    className="text-xs uppercase tracking-wider text-primary"
+                    style={{ fontFamily: "var(--t-font-heading)" }}
+                  >
+                    Step 1
+                  </p>
+                  <h2 className="text-lg font-bold text-text-heading">
+                    Delivery Address
+                  </h2>
                 </div>
               </div>
 
@@ -455,7 +508,10 @@ export default function ComboCheckoutClient({ addresses, offerSlug }: Props) {
                 {addresses.length === 0 ? (
                   <p className="text-sm text-text-muted-2">
                     You have no saved addresses.{" "}
-                    <Link href="/account/addresses" className="text-primary underline">
+                    <Link
+                      href="/account/addresses"
+                      className="text-primary underline"
+                    >
                       Add one now
                     </Link>
                   </p>
@@ -468,8 +524,14 @@ export default function ComboCheckoutClient({ addresses, offerSlug }: Props) {
                         className="w-full cursor-pointer border p-4 text-left transition"
                         style={{
                           borderRadius: "var(--t-radius-card)",
-                          borderColor: selectedAddressId === addr.id ? "var(--t-primary)" : "var(--t-border-card)",
-                          background: selectedAddressId === addr.id ? "color-mix(in srgb, var(--t-primary) 8%, var(--t-bg-card))" : "var(--t-bg-card-nested)",
+                          borderColor:
+                            selectedAddressId === addr.id
+                              ? "var(--t-primary)"
+                              : "var(--t-border-card)",
+                          background:
+                            selectedAddressId === addr.id
+                              ? "color-mix(in srgb, var(--t-primary) 8%, var(--t-bg-card))"
+                              : "var(--t-bg-card-nested)",
                         }}
                       >
                         <div className="flex items-start justify-between gap-3">
@@ -479,22 +541,33 @@ export default function ComboCheckoutClient({ addresses, offerSlug }: Props) {
                                 {addr.fullName}
                               </p>
                               {addr.isDefault && (
-                                <span className="shrink-0 rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-primary"
-                                  style={{ background: "color-mix(in srgb, var(--t-primary) 14%, transparent)" }}
+                                <span
+                                  className="shrink-0 rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-primary"
+                                  style={{
+                                    background:
+                                      "color-mix(in srgb, var(--t-primary) 14%, transparent)",
+                                  }}
                                 >
                                   Default
                                 </span>
                               )}
                             </div>
-                            <p className="mt-1 truncate text-xs text-text-muted-2" title={[
-                              addr.addressLine1,
-                              addr.addressLine2,
-                              `${addr.city}, ${addr.state}`,
-                              `${addr.country} - ${addr.pincode}`,
-                            ].filter(Boolean).join(", ")}>
+                            <p
+                              className="mt-1 truncate text-xs text-text-muted-2"
+                              title={[
+                                addr.addressLine1,
+                                addr.addressLine2,
+                                `${addr.city}, ${addr.state}`,
+                                `${addr.country} - ${addr.pincode}`,
+                              ]
+                                .filter(Boolean)
+                                .join(", ")}
+                            >
                               {shortPreview(addr)}
                             </p>
-                            <p className="mt-0.5 text-xs text-text-muted-2">{addr.phone}</p>
+                            <p className="mt-0.5 text-xs text-text-muted-2">
+                              {addr.phone}
+                            </p>
                           </div>
                           <div className="flex shrink-0 items-center gap-1.5">
                             <button
@@ -521,18 +594,26 @@ export default function ComboCheckoutClient({ addresses, offerSlug }: Props) {
                                 if (!ok) return;
                                 await fetch("/api/address", {
                                   method: "DELETE",
-                                  headers: { "Content-Type": "application/json" },
+                                  headers: {
+                                    "Content-Type": "application/json",
+                                  },
                                   body: JSON.stringify({ id: addr.id }),
                                 });
                                 router.refresh();
                               }}
                               className="flex h-8 w-8 items-center justify-center text-white transition hover:opacity-90"
-                              style={{ borderRadius: "var(--t-radius-button)", background: "var(--t-danger)" }}
+                              style={{
+                                borderRadius: "var(--t-radius-button)",
+                                background: "var(--t-danger)",
+                              }}
                             >
                               <Trash2 size={14} />
                             </button>
                             {selectedAddressId === addr.id && (
-                              <CheckCircle2 size={18} className="shrink-0 text-primary" />
+                              <CheckCircle2
+                                size={18}
+                                className="shrink-0 text-primary"
+                              />
                             )}
                           </div>
                         </div>
@@ -546,13 +627,21 @@ export default function ComboCheckoutClient({ addresses, offerSlug }: Props) {
                     <Truck size={13} className="mt-0.5 shrink-0 text-primary" />
                     {pricingState === "loading" ? (
                       <span className="inline-flex items-center gap-1.5">
-                        <Loader2 size={11} className="animate-spin" /> Checking pincode {selectedAddress.pincode}...
+                        <Loader2 size={11} className="animate-spin" /> Checking
+                        pincode {selectedAddress.pincode}...
                       </span>
                     ) : shipping && !shipping.deliverable ? (
-                      <span className="text-danger">Delivery is not available at pincode {selectedAddress.pincode}.</span>
+                      <span className="text-danger">
+                        Delivery is not available at pincode{" "}
+                        {selectedAddress.pincode}.
+                      </span>
                     ) : shipping && shipping.restrictedItems.length > 0 ? (
                       <span className="text-danger">
-                        Not deliverable to {selectedAddress.pincode}: {shipping.restrictedItems.map((r) => r.productName).join(", ")}.
+                        Not deliverable to {selectedAddress.pincode}:{" "}
+                        {shipping.restrictedItems
+                          .map((r) => r.productName)
+                          .join(", ")}
+                        .
                       </span>
                     ) : shipping ? (
                       <span className="text-success">
@@ -575,9 +664,15 @@ export default function ComboCheckoutClient({ addresses, offerSlug }: Props) {
 
           {/* RIGHT: Order Summary */}
           <div className="lg:col-span-2">
-            <div className="lg:sticky lg:top-24 overflow-hidden border border-border-card bg-bg-card" style={{ borderRadius: "var(--t-radius-card)" }}>
+            <div
+              className="lg:sticky lg:top-24 overflow-hidden border border-border-card bg-bg-card"
+              style={{ borderRadius: "var(--t-radius-card)" }}
+            >
               <div className="px-4 sm:px-6 py-5 sm:pt-6">
-                <h2 className="text-lg font-black uppercase tracking-wider text-text-heading" style={{ fontFamily: "var(--t-font-heading)" }}>
+                <h2
+                  className="text-lg font-black uppercase tracking-wider text-text-heading"
+                  style={{ fontFamily: "var(--t-font-heading)" }}
+                >
                   Order Summary
                 </h2>
               </div>
@@ -602,12 +697,18 @@ export default function ComboCheckoutClient({ addresses, offerSlug }: Props) {
                       )}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-bold text-text-heading">{item.productName}</p>
+                      <p className="truncate text-sm font-bold text-text-heading">
+                        {item.productName}
+                      </p>
                       {item.variantSize && (
-                        <p className="text-xs text-text-muted-2">Size {item.variantSize}</p>
+                        <p className="text-xs text-text-muted-2">
+                          Size {item.variantSize}
+                        </p>
                       )}
                     </div>
-                    <p className={`text-sm font-black shrink-0 ${item.isFree ? "text-success" : "text-text-heading"}`}>
+                    <p
+                      className={`text-sm font-black shrink-0 ${item.isFree ? "text-success" : "text-text-heading"}`}
+                    >
                       {item.isFree ? "FREE" : formatCurrency(item.payInclGst)}
                     </p>
                   </div>
@@ -617,13 +718,20 @@ export default function ComboCheckoutClient({ addresses, offerSlug }: Props) {
                   <div className="space-y-1.5 border-t border-border-subtle pt-3 text-xs">
                     <div className="flex items-center justify-between text-text-muted-1">
                       <span>Original value</span>
-                      <span className="line-through">{formatCurrency(summary.originalTotal)}</span>
+                      <span className="line-through">
+                        {formatCurrency(summary.originalTotal)}
+                      </span>
                     </div>
-                    <div className="flex items-center justify-between font-black" style={{ color: "var(--t-success)" }}>
+                    <div
+                      className="flex items-center justify-between font-black"
+                      style={{ color: "var(--t-success)" }}
+                    >
                       <span>Combo savings</span>
                       <span>
                         −{formatCurrency(summary.savingsInclGst)}
-                        <span className="ml-1 text-[10px] opacity-80">({Math.round(summary.savingsPct)}% OFF)</span>
+                        <span className="ml-1 text-[10px] opacity-80">
+                          ({Math.round(summary.savingsPct)}% OFF)
+                        </span>
                       </span>
                     </div>
                     <div className="flex items-center justify-between text-text-body">
@@ -636,8 +744,8 @@ export default function ComboCheckoutClient({ addresses, offerSlug }: Props) {
                         {shipping?.freeShipping
                           ? "FREE"
                           : shippingCost === null
-                          ? "—"
-                          : formatCurrency(shippingCost)}
+                            ? "—"
+                            : formatCurrency(shippingCost)}
                       </span>
                     </div>
                     <div className="flex items-center justify-between pt-1.5 text-sm font-black text-text-heading">
@@ -663,7 +771,11 @@ export default function ComboCheckoutClient({ addresses, offerSlug }: Props) {
                 {!showOnline && !showCod && (
                   <p
                     className="mt-3 px-3 py-2.5 text-xs text-danger"
-                    style={{ borderRadius: "var(--t-radius-input)", background: "color-mix(in srgb, var(--t-danger) 10%, transparent)" }}
+                    style={{
+                      borderRadius: "var(--t-radius-input)",
+                      background:
+                        "color-mix(in srgb, var(--t-danger) 10%, transparent)",
+                    }}
                   >
                     No payment methods available for this pincode.
                   </p>
@@ -672,7 +784,11 @@ export default function ComboCheckoutClient({ addresses, offerSlug }: Props) {
                 {!shipping?.deliverable && (
                   <p
                     className="mt-3 px-3 py-2.5 text-xs text-danger"
-                    style={{ borderRadius: "var(--t-radius-input)", background: "color-mix(in srgb, var(--t-danger) 10%, transparent)" }}
+                    style={{
+                      borderRadius: "var(--t-radius-input)",
+                      background:
+                        "color-mix(in srgb, var(--t-danger) 10%, transparent)",
+                    }}
                   >
                     Delivery is not available at the selected pincode.
                   </p>
@@ -681,7 +797,11 @@ export default function ComboCheckoutClient({ addresses, offerSlug }: Props) {
                 {pricingState === "error" && (
                   <p
                     className="mt-3 px-3 py-2.5 text-xs text-danger"
-                    style={{ borderRadius: "var(--t-radius-input)", background: "color-mix(in srgb, var(--t-danger) 10%, transparent)" }}
+                    style={{
+                      borderRadius: "var(--t-radius-input)",
+                      background:
+                        "color-mix(in srgb, var(--t-danger) 10%, transparent)",
+                    }}
                   >
                     {pricingMessage}
                   </p>
@@ -689,19 +809,32 @@ export default function ComboCheckoutClient({ addresses, offerSlug }: Props) {
 
                 <button
                   onClick={placeOrder}
-                  disabled={placing || !complete || pricingState !== "success" || !shipping?.deliverable}
+                  disabled={
+                    placing ||
+                    !complete ||
+                    pricingState !== "success" ||
+                    !shipping?.deliverable
+                  }
                   className="mt-4 inline-flex w-full items-center justify-center gap-2 py-4 text-base font-black uppercase tracking-wider transition-colors bg-primary hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-                  style={{ borderRadius: "var(--t-radius-button)", color: "var(--t-bg-page)", fontFamily: "var(--t-font-heading)", minHeight: 52 }}
+                  style={{
+                    borderRadius: "var(--t-radius-button)",
+                    color: "var(--t-bg-page)",
+                    fontFamily: "var(--t-font-heading)",
+                    minHeight: 52,
+                  }}
                 >
                   {placing ? (
                     <>
-                      <Loader2 size={18} className="animate-spin" /> Processing...
+                      <Loader2 size={18} className="animate-spin" />{" "}
+                      Processing...
                     </>
-                  ) : pricingState === "loading"
-                    ? "Checking availability..."
-                    : method === "CASHFREE"
-                    ? "Proceed To Payment"
-                    : "Place Order"}
+                  ) : pricingState === "loading" ? (
+                    "Checking availability..."
+                  ) : method === "CASHFREE" ? (
+                    "Proceed To Payment"
+                  ) : (
+                    "Place Order"
+                  )}
                 </button>
               </div>
             </div>
@@ -715,7 +848,8 @@ export default function ComboCheckoutClient({ addresses, offerSlug }: Props) {
         <div
           className="fixed inset-x-0 bottom-0 z-50 border-t border-border-card bg-bg-card lg:hidden"
           style={{
-            boxShadow: "0 -4px 16px color-mix(in srgb, var(--t-text-heading) 12%, transparent)",
+            boxShadow:
+              "0 -4px 16px color-mix(in srgb, var(--t-text-heading) 12%, transparent)",
             paddingBottom: "env(safe-area-inset-bottom)",
           }}
         >
@@ -737,25 +871,47 @@ export default function ComboCheckoutClient({ addresses, offerSlug }: Props) {
                 type="button"
                 onClick={() => setShowPaymentPicker(true)}
                 className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-black uppercase tracking-wider"
-                style={{ color: "var(--t-primary)", fontFamily: "var(--t-font-heading)" }}
+                style={{
+                  color: "var(--t-primary)",
+                  fontFamily: "var(--t-font-heading)",
+                }}
               >
                 {method === "CASHFREE" ? "Online Payment" : "Cash On Delivery"}
-                <ChevronDown size={13} className={showPaymentPicker ? "rotate-180 transition-transform" : "transition-transform"} />
+                <ChevronDown
+                  size={13}
+                  className={
+                    showPaymentPicker
+                      ? "rotate-180 transition-transform"
+                      : "transition-transform"
+                  }
+                />
               </button>
             </div>
             <button
               onClick={placeOrder}
-              disabled={placing || !complete || pricingState !== "success" || !shipping?.deliverable}
+              disabled={
+                placing ||
+                !complete ||
+                pricingState !== "success" ||
+                !shipping?.deliverable
+              }
               className="inline-flex flex-shrink-0 items-center justify-center gap-2 px-5 text-sm font-black uppercase tracking-wider transition-colors bg-primary hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-              style={{ borderRadius: "var(--t-radius-button)", color: "var(--t-bg-page)", fontFamily: "var(--t-font-heading)", minHeight: 48 }}
+              style={{
+                borderRadius: "var(--t-radius-button)",
+                color: "var(--t-bg-page)",
+                fontFamily: "var(--t-font-heading)",
+                minHeight: 48,
+              }}
             >
               {placing ? (
                 <Loader2 size={18} className="animate-spin" />
-              ) : pricingState === "loading"
-                ? "Checking..."
-                : method === "CASHFREE"
-                ? "Proceed To Payment"
-                : "Place Order"}
+              ) : pricingState === "loading" ? (
+                "Checking..."
+              ) : method === "CASHFREE" ? (
+                "Proceed To Payment"
+              ) : (
+                "Place Order"
+              )}
             </button>
           </div>
         </div>

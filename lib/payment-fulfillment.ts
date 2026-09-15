@@ -16,7 +16,7 @@ import { sendOrderConfirmationEmail } from "@/lib/email/order-emails";
 export async function markOrderPaid(
   orderId: string,
   gatewayPaymentId: string,
-  gatewayRef: string
+  gatewayRef: string,
 ): Promise<{ processed: boolean }> {
   const order = await prisma.order.findFirst({
     where: { id: orderId },
@@ -62,7 +62,9 @@ export async function markOrderPaid(
   }
 
   // Update the associated PaymentTransaction
-  const tx = await prisma.paymentTransaction.findFirst({ where: { orderId: order.id } });
+  const tx = await prisma.paymentTransaction.findFirst({
+    where: { orderId: order.id },
+  });
   if (tx) {
     await prisma.paymentTransaction.update({
       where: { id: tx.id },
@@ -96,7 +98,10 @@ export async function markOrderPaid(
         },
       });
     } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2002"
+      ) {
         // Coupon already consumed — treat as success
       } else {
         throw error;
@@ -106,43 +111,63 @@ export async function markOrderPaid(
 
   /**
    * Stock Update
+   *
+   * Batched + parallel: all variant lookups happen in ONE query (by product
+   * id) and every variant/product decrement runs concurrently. Each update is
+   * still conditionally guarded (`stock >= quantity`) so a multi-level stock
+   * revalidation safety net remains at payment time — a variant/product can
+   * never be pushed below zero even under concurrency.
    */
+  const productsById = new Map<string, { id: string; sku: string }[]>();
+  const variantLookup = await prisma.productvariant.findMany({
+    where: {
+      productId: {
+        in: [...new Set(order.orderitem.map((item) => item.productId))],
+      },
+    },
+    select: { id: true, productId: true, sku: true },
+  });
+  for (const v of variantLookup) {
+    const list = productsById.get(v.productId) ?? [];
+    list.push(v);
+    productsById.set(v.productId, list);
+  }
 
+  const updates: Promise<unknown>[] = [];
   for (const item of order.orderitem) {
-    const variant =
-      await prisma.productvariant.findFirst({
-        where: {
-          productId: item.productId,
-          sku: item.variantSku ?? undefined,
-        },
-      });
+    const candidates = productsById.get(item.productId);
+    const variant = item.variantSku
+      ? candidates?.find((c) => c.sku === item.variantSku)
+      : candidates?.[0];
 
-    // Conditional decrement — a multi-level stock revalidation safety net at
-    // payment time. Even if the cart was validated at add-time, we never push
-    // a variant/product below zero (prevents overselling under concurrency).
     if (variant) {
-      await prisma.productvariant.updateMany({
+      updates.push(
+        prisma.productvariant.updateMany({
+          where: {
+            id: variant.id,
+            stock: { gte: item.quantity },
+          },
+          data: {
+            stock: { decrement: item.quantity },
+          },
+        }),
+      );
+    }
+
+    updates.push(
+      prisma.product.updateMany({
         where: {
-          id: variant.id,
+          id: item.productId,
           stock: { gte: item.quantity },
         },
         data: {
           stock: { decrement: item.quantity },
+          totalSold: { increment: item.quantity },
         },
-      });
-    }
-
-    await prisma.product.updateMany({
-      where: {
-        id: item.productId,
-        stock: { gte: item.quantity },
-      },
-      data: {
-        stock: { decrement: item.quantity },
-        totalSold: { increment: item.quantity },
-      },
-    });
+      }),
+    );
   }
+  await Promise.all(updates);
 
   /**
    * Empty Cart — but NOT for dedicated combo orders. Combo orders are a
@@ -174,14 +199,27 @@ export async function markOrderPaid(
       customerEmail: order.user?.email ?? undefined,
       items: order.orderitem.map((item) => ({
         name: item.product.name,
-        variant: [item.variantGender, item.variantSize ? `Size: ${item.variantSize}` : null].filter(Boolean).join(" · ") || undefined,
+        variant:
+          [
+            item.variantGender,
+            item.variantSize ? `Size: ${item.variantSize}` : null,
+          ]
+            .filter(Boolean)
+            .join(" · ") || undefined,
         qty: item.quantity,
         price: Number(item.total),
       })),
       total: Number(order.totalAmount),
       paymentMethod: order.paymentMethod,
       paymentStatus: "PAID",
-      shippingAddress: [order.fullName, order.addressLine1, order.addressLine2, `${order.city}, ${order.state} — ${order.pincode}`].filter(Boolean).join("\n"),
+      shippingAddress: [
+        order.fullName,
+        order.addressLine1,
+        order.addressLine2,
+        `${order.city}, ${order.state} — ${order.pincode}`,
+      ]
+        .filter(Boolean)
+        .join("\n"),
     },
   }).catch(console.error);
 
@@ -201,7 +239,7 @@ export async function markOrderPaid(
           orderId: order.id,
           orderAmount: orderValue,
           source: "ONLINE",
-        })
+        }),
       );
       if (redemption && !order.loyaltyCycleId) {
         await prisma.order.update({
@@ -229,7 +267,7 @@ export async function markOrderPaid(
   // atomic PENDING→PAID claim above means this code path runs exactly once,
   // and the confirmationEmailSent flag is the second dedupe safety net.
   void sendOrderConfirmationEmail({ orderId: order.id, type: "PAID" }).catch(
-    console.error
+    console.error,
   );
 
   return { processed: true };

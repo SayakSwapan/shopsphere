@@ -157,9 +157,13 @@ function LoyaltyBadgeIcon({
   size?: number;
 }) {
   if (image) {
-    // eslint-disable-next-line @next/next/no-img-element
     return (
-      <img src={image} alt={name ?? "loyalty"} style={{ width: size, height: size, objectFit: "contain" }} />
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={image}
+        alt={name ?? "loyalty"}
+        style={{ width: size, height: size, objectFit: "contain" }}
+      />
     );
   }
   switch (icon) {
@@ -196,8 +200,7 @@ export default function OfflineInvoice({
   const total = Number(order.totalAmount) || 0;
 
   const showNoReturn =
-    order.isPartial &&
-    (offlinePolicy ? offlinePolicy.noReturnEnabled : true);
+    order.isPartial && (offlinePolicy ? offlinePolicy.noReturnEnabled : true);
   const noReturnHeader = offlinePolicy
     ? offlinePolicy.dueHeader
     : "NO RETURNS / REFUND";
@@ -290,9 +293,14 @@ export default function OfflineInvoice({
               <p className="text-base font-black text-white">
                 Invoice No: {order.orderNumber}
               </p>
-              <p className="text-gray-300">Date: {formatDate(order.createdAt)}</p>
               <p className="text-gray-300">
-                Payment: <span className="font-semibold text-gray-100">{paymentLabel}</span>
+                Date: {formatDate(order.createdAt)}
+              </p>
+              <p className="text-gray-300">
+                Payment:{" "}
+                <span className="font-semibold text-gray-100">
+                  {paymentLabel}
+                </span>
               </p>
             </div>
           </div>
@@ -301,7 +309,9 @@ export default function OfflineInvoice({
 
       {/* Accent strip */}
       <div
-        style={{ background: `linear-gradient(90deg, ${PRIMARY}, var(--t-accent))` }}
+        style={{
+          background: `linear-gradient(90deg, ${PRIMARY}, var(--t-accent))`,
+        }}
         className="h-1.5"
       />
 
@@ -339,7 +349,9 @@ export default function OfflineInvoice({
           >
             Address
           </p>
-          {addressLine1 && <p className="font-semibold text-gray-900">{addressLine1}</p>}
+          {addressLine1 && (
+            <p className="font-semibold text-gray-900">{addressLine1}</p>
+          )}
           {addressLine2 && <p className="text-gray-600">{addressLine2}</p>}
           {(city || state || pincode) && (
             <p className="text-gray-600">
@@ -363,18 +375,26 @@ export default function OfflineInvoice({
               <th className="w-8 px-2 py-2 font-bold">#</th>
               <th className="px-2 py-2 font-bold">Item Description</th>
               <th className="w-12 px-2 py-2 text-center font-bold">Qty</th>
-              <th className="w-32 px-2 py-2 text-right font-bold">Rate (Incl. GST)</th>
+              <th className="w-32 px-2 py-2 text-right font-bold">
+                Rate (Incl. GST)
+              </th>
               <th className="w-16 px-2 py-2 text-center font-bold">GST</th>
               <th className="w-28 px-2 py-2 text-right font-bold">Amount</th>
             </tr>
           </thead>
           <tbody>
             {order.orderitem.map((item, idx) => {
-              const variant = [item.variantGender, item.variantSize, item.variantSku]
+              const variant = [
+                item.variantGender,
+                item.variantSize,
+                item.variantSku,
+              ]
                 .filter(Boolean)
                 .join(" · ");
               const rateIncl = round2(item.price + (item.gstAmountAtSale ?? 0));
-              const gstTotal = round2((item.gstAmountAtSale ?? 0) * item.quantity);
+              const gstTotal = round2(
+                (item.gstAmountAtSale ?? 0) * item.quantity,
+              );
               return (
                 <tr
                   key={item.id}
@@ -388,28 +408,38 @@ export default function OfflineInvoice({
                     {idx + 1}
                   </td>
                   <td className="border-b border-gray-100 px-2 py-2">
-                    <div className="font-bold text-gray-900">{item.product.name}</div>
-                    {variant && <div className="text-xs text-gray-500">{variant}</div>}
+                    <div className="font-bold text-gray-900">
+                      {item.product.name}
+                    </div>
+                    {variant && (
+                      <div className="text-xs text-gray-500">{variant}</div>
+                    )}
                   </td>
                   <td className="border-b border-gray-100 px-2 py-2 text-center font-semibold text-gray-800">
                     {item.quantity}
                   </td>
                   <td className="border-b border-gray-100 px-2 py-2 text-right">
-                    <div className="font-semibold text-gray-800">{formatCurrency(rateIncl)}</div>
+                    <div className="font-semibold text-gray-800">
+                      {formatCurrency(rateIncl)}
+                    </div>
                     <div className="text-[11px] text-gray-500">
                       Base: {formatCurrency(item.price)}
                     </div>
                   </td>
                   <td className="border-b border-gray-100 px-2 py-2 text-center">
                     <div className="font-bold" style={{ color: PRIMARY_TEXT }}>
-                      {item.gstPercentageAtSale ? `${item.gstPercentageAtSale}%` : "—"}
+                      {item.gstPercentageAtSale
+                        ? `${item.gstPercentageAtSale}%`
+                        : "—"}
                     </div>
                     <div className="text-[11px] text-gray-500">
                       {gstTotal > 0 ? formatCurrency(gstTotal) : "—"}
                     </div>
                   </td>
                   <td className="border-b border-gray-100 px-2 py-2 text-right font-bold text-gray-900">
-                    {formatCurrency(round2(item.price * item.quantity + gstTotal))}
+                    {formatCurrency(
+                      round2(item.price * item.quantity + gstTotal),
+                    )}
                   </td>
                 </tr>
               );
@@ -427,16 +457,22 @@ export default function OfflineInvoice({
           >
             Amount in Words
           </p>
-          <p className="mt-1 font-semibold text-gray-800">{amountInWords(total)}</p>
+          <p className="mt-1 font-semibold text-gray-800">
+            {amountInWords(total)}
+          </p>
         </div>
         <div className="w-80 space-y-0.5 text-sm">
           <div className="flex items-center justify-between py-1">
             <span className="text-gray-600">Subtotal (Excl. GST)</span>
-            <span className="font-semibold text-gray-800">{formatCurrency(subtotal)}</span>
+            <span className="font-semibold text-gray-800">
+              {formatCurrency(subtotal)}
+            </span>
           </div>
           <div className="flex items-center justify-between py-1">
             <span className="text-gray-600">Total GST</span>
-            <span className="font-semibold text-gray-800">{formatCurrency(gst)}</span>
+            <span className="font-semibold text-gray-800">
+              {formatCurrency(gst)}
+            </span>
           </div>
           {order.loyaltyDiscount ? (
             <div className="flex items-center justify-between py-1">
@@ -474,15 +510,16 @@ export default function OfflineInvoice({
               <span className="font-black" style={{ color: PRIMARY_TEXT }}>
                 Total Payable
               </span>
-              <span className="font-black text-gray-900">{formatCurrency(total)}</span>
+              <span className="font-black text-gray-900">
+                {formatCurrency(total)}
+              </span>
             </div>
           </div>
           {showNoReturn && (
-            <div
-              className="mt-2 rounded-lg border border-rose-300 bg-rose-50 px-3 py-2"
-            >
+            <div className="mt-2 rounded-lg border border-rose-300 bg-rose-50 px-3 py-2">
               <p className="text-xs font-black text-rose-700">
-                {noReturnHeader} — ₹{Number(order.dueAmount ?? 0).toFixed(2)} due
+                {noReturnHeader} — ₹{Number(order.dueAmount ?? 0).toFixed(2)}{" "}
+                due
               </p>
               <p className="mt-1 text-[11px] font-semibold leading-relaxed text-rose-600">
                 {noReturnText}
@@ -549,7 +586,9 @@ export default function OfflineInvoice({
         style={{ borderColor: PRIMARY_BORDER }}
       >
         {business.notes && (
-          <p className="text-xs leading-relaxed text-gray-500">{business.notes}</p>
+          <p className="text-xs leading-relaxed text-gray-500">
+            {business.notes}
+          </p>
         )}
         <p
           className="mt-1.5 text-center text-xs font-bold"

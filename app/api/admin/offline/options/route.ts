@@ -15,7 +15,10 @@ export async function GET(req: Request) {
   try {
     const session = await getAdminSession();
     if (!session || session.user.role !== "ADMIN") {
-      return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
+      return NextResponse.json(
+        { success: false, message: "Unauthorized" },
+        { status: 401 },
+      );
     }
 
     const { searchParams } = new URL(req.url);
@@ -125,6 +128,11 @@ export async function GET(req: Request) {
         lastSellingPrice: true,
         lastSellingProfitPercentage: true,
         category: { select: { name: true } },
+        productimage: {
+          take: 1,
+          orderBy: { createdAt: "asc" },
+          select: { url: true },
+        },
         productvariant: {
           select: {
             id: true,
@@ -144,14 +152,18 @@ export async function GET(req: Request) {
       id: p.id,
       name: p.name,
       category: p.category?.name ?? null,
+      image: p.productimage[0]?.url ?? null,
       sellingPrice: Number(p.sellingPrice),
       onlineSellingPrice: Number(p.salePrice || p.sellingPrice || 0),
       costPrice: Number(p.costPrice),
       gstPercentage: Number(p.gstPercentage) || 0,
       stock: p.stock,
-      lastSellingPrice: p.lastSellingPrice != null ? Number(p.lastSellingPrice) : null,
+      lastSellingPrice:
+        p.lastSellingPrice != null ? Number(p.lastSellingPrice) : null,
       lastSellingProfitPercentage:
-        p.lastSellingProfitPercentage != null ? Number(p.lastSellingProfitPercentage) : null,
+        p.lastSellingProfitPercentage != null
+          ? Number(p.lastSellingProfitPercentage)
+          : null,
       variants: p.productvariant.map((v) => ({
         id: v.id,
         sku: v.sku,
@@ -166,6 +178,9 @@ export async function GET(req: Request) {
     return NextResponse.json({ success: true, products: serialized });
   } catch (error) {
     console.error("OFFLINE OPTIONS ERROR:", error);
-    return NextResponse.json({ success: false, message: "Failed to load options" }, { status: 500 });
+    return NextResponse.json(
+      { success: false, message: "Failed to load options" },
+      { status: 500 },
+    );
   }
 }

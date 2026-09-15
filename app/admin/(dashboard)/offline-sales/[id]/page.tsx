@@ -1,11 +1,15 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Printer } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 
 import PageContainer from "@/components/admin/common/page-container";
 import OfflineOrderDetail from "@/components/admin/offline-sales/offline-order-detail";
 import { prisma } from "@/lib/prisma";
-import { getSiteSettings, getInvoiceBusiness, getOfflinePolicy } from "@/lib/site-settings";
+import {
+  getSiteSettings,
+  getInvoiceBusiness,
+  getOfflinePolicy,
+} from "@/lib/site-settings";
 
 export const dynamic = "force-dynamic";
 
@@ -21,11 +25,25 @@ export default async function OfflineSaleDetailPage({ params }: Props) {
       where: { id },
       include: {
         user: {
-          select: { id: true, name: true, phone: true, email: true, isWalkIn: true },
+          select: {
+            id: true,
+            name: true,
+            phone: true,
+            email: true,
+            isWalkIn: true,
+          },
         },
         createdBy: { select: { name: true, email: true } },
         orderitem: {
-          include: { product: { select: { id: true, name: true, category: { select: { name: true } } } } },
+          include: {
+            product: {
+              select: {
+                id: true,
+                name: true,
+                category: { select: { name: true } },
+              },
+            },
+          },
         },
         stockmovement: {
           orderBy: { createdAt: "desc" },
@@ -54,7 +72,11 @@ export default async function OfflineSaleDetailPage({ params }: Props) {
         Back to Offline Sales
       </Link>
 
-      <OfflineOrderDetail order={order} business={business} offlinePolicy={offlinePolicy} />
+      <OfflineOrderDetail
+        order={order}
+        business={business}
+        offlinePolicy={offlinePolicy}
+      />
     </PageContainer>
   );
 }

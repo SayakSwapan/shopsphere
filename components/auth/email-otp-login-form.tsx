@@ -89,7 +89,7 @@ export default function EmailOtpLoginForm({ onBack }: { onBack: () => void }) {
         return;
       }
 
-      toast.success("Welcome back!");
+      toast.success(data.isWelcomeBack ? "Welcome back!" : "Welcome!");
 
       const redirectTo = getLoginRedirect("/");
       const currentUrl = window.location.pathname + window.location.search;

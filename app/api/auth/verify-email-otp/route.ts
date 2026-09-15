@@ -109,6 +109,11 @@ export async function POST(req: Request) {
     // month) never trigger it again.
     const ONE_MONTH_MS = 30 * 24 * 60 * 60 * 1000;
     const lastSeen = user.lastLogin ?? user.createdAt;
+    const isWelcomeBack = !!(
+      wasAlreadyVerified &&
+      lastSeen &&
+      NOW.getTime() - lastSeen.getTime() > ONE_MONTH_MS
+    );
     if (
       wasAlreadyVerified &&
       lastSeen &&
@@ -153,8 +158,9 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       success: true,
-      email: user.email,
+      email: email,
       token: createPhoneOtpToken(user.email),
+      isWelcomeBack,
     });
   } catch (error) {
     console.error(error);

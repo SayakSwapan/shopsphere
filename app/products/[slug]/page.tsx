@@ -338,9 +338,9 @@ export default async function ProductPage({ params }: Props) {
           </nav>
 
           {/* Main grid */}
-          <div className="grid gap-6 sm:gap-8 pb-10 lg:grid-cols-2 lg:gap-12 lg:pb-16">
+          <div className="grid grid-cols-1 gap-6 sm:gap-8 pb-10 lg:grid-cols-2 lg:gap-12 lg:pb-16">
             {/* Gallery */}
-            <div className="relative lg:sticky lg:top-24 lg:self-start">
+            <div className="relative min-w-0 lg:sticky lg:top-24 lg:self-start">
               {(product.isFeatured || product.isTrending) && (
                 <div className="absolute left-3 top-3 z-10 flex flex-wrap gap-2">
                   {product.isFeatured && (

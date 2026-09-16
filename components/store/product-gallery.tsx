@@ -187,7 +187,7 @@ export default function ProductGallery({
                   className="relative shrink-0 snap-start cursor-pointer"
                   style={{
                     ...imageStyle,
-                    width: "100%",
+                    flex: "0 0 100%",
                     boxShadow: "0 35px 120px rgba(0,0,0,0.12)",
                   }}
                   onClick={() => openZoom(image.url, altText)}

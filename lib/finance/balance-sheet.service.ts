@@ -1,7 +1,20 @@
 import { prisma } from "@/lib/prisma";
 import { getCompletedRefundMap, refundForOrder } from "./refund.service";
 
-const MONTH_NAMES = ["Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"];
+const MONTH_NAMES = [
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+  "Jan",
+  "Feb",
+  "Mar",
+];
 
 export interface BalanceSheetMonth {
   month: string;
@@ -45,7 +58,8 @@ function parseFY(fy: string): { startYear: number; endYear: number } {
   if (parts.length === 2) {
     const s = parseInt(parts[0], 10);
     const e = parseInt(parts[1], 10);
-    if (!isNaN(s) && !isNaN(e)) return { startYear: s, endYear: e < 100 ? 2000 + e : e };
+    if (!isNaN(s) && !isNaN(e))
+      return { startYear: s, endYear: e < 100 ? 2000 + e : e };
   }
   const now = new Date();
   return {
@@ -54,7 +68,9 @@ function parseFY(fy: string): { startYear: number; endYear: number } {
   };
 }
 
-export async function generateBalanceSheet(fyParam?: string): Promise<BalanceSheetData> {
+export async function generateBalanceSheet(
+  fyParam?: string,
+): Promise<BalanceSheetData> {
   const { startYear, endYear } = parseFY(fyParam || "");
   const fyStart = new Date(startYear, 3, 1);
   const fyEnd = new Date(endYear, 2, 31, 23, 59, 59);
@@ -62,12 +78,27 @@ export async function generateBalanceSheet(fyParam?: string): Promise<BalanceShe
 
   const [orders, expenses, returnRequests] = await Promise.all([
     prisma.order.findMany({
-      where: { createdAt: { gte: fyStart, lte: fyEnd }, status: { notIn: ["CANCELLED"] } },
+      where: {
+        createdAt: { gte: fyStart, lte: fyEnd },
+        status: { notIn: ["CANCELLED", "ABANDONED"] },
+      },
       select: {
-        id: true, totalAmount: true, gst: true, shipping: true, discount: true,
-        paymentMethod: true, paymentStatus: true, createdAt: true,
+        id: true,
+        totalAmount: true,
+        gst: true,
+        shipping: true,
+        discount: true,
+        paymentMethod: true,
+        paymentStatus: true,
+        createdAt: true,
         orderitem: {
-          select: { quantity: true, price: true, productId: true, costPriceSnapshot: true, product: { select: { costPrice: true } } },
+          select: {
+            quantity: true,
+            price: true,
+            productId: true,
+            costPriceSnapshot: true,
+            product: { select: { costPrice: true } },
+          },
         },
       },
     }),
@@ -76,7 +107,10 @@ export async function generateBalanceSheet(fyParam?: string): Promise<BalanceShe
       include: { category: true },
     }),
     prisma.return_request.findMany({
-      where: { createdAt: { gte: fyStart, lte: fyEnd }, status: { in: ["APPROVED", "COMPLETED"] } },
+      where: {
+        createdAt: { gte: fyStart, lte: fyEnd },
+        status: { in: ["APPROVED", "COMPLETED"] },
+      },
       select: { orderId: true, createdAt: true },
     }),
   ]);
@@ -85,29 +119,55 @@ export async function generateBalanceSheet(fyParam?: string): Promise<BalanceShe
 
   const monthly: BalanceSheetMonth[] = MONTH_NAMES.map((name, idx) => {
     const mStart = new Date(idx < 9 ? startYear : endYear, idx + 3, 1);
-    const mEnd = new Date(idx < 9 ? startYear : endYear, idx + 4, 0, 23, 59, 59);
+    const mEnd = new Date(
+      idx < 9 ? startYear : endYear,
+      idx + 4,
+      0,
+      23,
+      59,
+      59,
+    );
 
-    const monthOrders = orders.filter((o) => o.createdAt >= mStart && o.createdAt <= mEnd);
-    const monthExpenses = expenses.filter((e) => e.date >= mStart && e.date <= mEnd);
+    const monthOrders = orders.filter(
+      (o) => o.createdAt >= mStart && o.createdAt <= mEnd,
+    );
+    const monthExpenses = expenses.filter(
+      (e) => e.date >= mStart && e.date <= mEnd,
+    );
 
-    const grossRevenue = monthOrders.reduce((s, o) => s + Number(o.totalAmount), 0);
-    const refunds = monthOrders.reduce((s, o) => s + refundForOrder(o, refundLedger), 0);
+    const grossRevenue = monthOrders.reduce(
+      (s, o) => s + Number(o.totalAmount),
+      0,
+    );
+    const refunds = monthOrders.reduce(
+      (s, o) => s + refundForOrder(o, refundLedger),
+      0,
+    );
     const netRevenue = grossRevenue - refunds;
 
-    const nonRefunded = monthOrders.filter((o) => !refundLedger.has(o.id) && o.paymentStatus !== "REFUNDED");
+    const nonRefunded = monthOrders.filter(
+      (o) => !refundLedger.has(o.id) && o.paymentStatus !== "REFUNDED",
+    );
     let cogs = 0;
     for (const o of nonRefunded) {
       for (const item of o.orderitem) {
-        const cp = item.costPriceSnapshot ? Number(item.costPriceSnapshot) : Number(item.product.costPrice);
+        const cp = item.costPriceSnapshot
+          ? Number(item.costPriceSnapshot)
+          : Number(item.product.costPrice);
         cogs += item.quantity * cp;
       }
     }
 
     const gst = monthOrders.reduce((s, o) => s + Number(o.gst || 0), 0);
-    const expensesTotal = monthExpenses.reduce((s, e) => s + Number(e.amount), 0);
+    const expensesTotal = monthExpenses.reduce(
+      (s, e) => s + Number(e.amount),
+      0,
+    );
     const grossProfit = netRevenue - cogs;
     const netProfit = grossProfit - expensesTotal;
-    const returns = returnRequests.filter((r) => r.createdAt >= mStart && r.createdAt <= mEnd).length;
+    const returns = returnRequests.filter(
+      (r) => r.createdAt >= mStart && r.createdAt <= mEnd,
+    ).length;
 
     return {
       month: `${name} ${idx < 9 ? startYear : endYear}`,
@@ -131,21 +191,31 @@ export async function generateBalanceSheet(fyParam?: string): Promise<BalanceShe
   }
 
   let totalCOGS = 0;
-  const nonRefundedAll = orders.filter((o) => !refundLedger.has(o.id) && o.paymentStatus !== "REFUNDED");
+  const nonRefundedAll = orders.filter(
+    (o) => !refundLedger.has(o.id) && o.paymentStatus !== "REFUNDED",
+  );
   for (const o of nonRefundedAll) {
     for (const item of o.orderitem) {
-      const cp = item.costPriceSnapshot ? Number(item.costPriceSnapshot) : Number(item.product.costPrice);
+      const cp = item.costPriceSnapshot
+        ? Number(item.costPriceSnapshot)
+        : Number(item.product.costPrice);
       totalCOGS += item.quantity * cp;
     }
   }
 
   const summary: BalanceSheetSummary = {
-    grossRevenue: Math.round(orders.reduce((s, o) => s + Number(o.totalAmount), 0)),
-    refunds: Math.round(orders.reduce((s, o) => s + refundForOrder(o, refundLedger), 0)),
+    grossRevenue: Math.round(
+      orders.reduce((s, o) => s + Number(o.totalAmount), 0),
+    ),
+    refunds: Math.round(
+      orders.reduce((s, o) => s + refundForOrder(o, refundLedger), 0),
+    ),
     netRevenue: 0,
     cogs: Math.round(totalCOGS),
     grossProfit: 0,
-    totalExpenses: Math.round(expenses.reduce((s, e) => s + Number(e.amount), 0)),
+    totalExpenses: Math.round(
+      expenses.reduce((s, e) => s + Number(e.amount), 0),
+    ),
     netProfit: 0,
     gst: Math.round(orders.reduce((s, o) => s + Number(o.gst || 0), 0)),
     totalOrders: orders.length,
@@ -160,10 +230,30 @@ export async function generateBalanceSheet(fyParam?: string): Promise<BalanceShe
     .sort((a, b) => b.total - a.total);
 
   const paymentBreakdown = {
-    cod: Math.round(orders.filter((o) => o.paymentMethod === "COD").reduce((s, o) => s + Number(o.totalAmount), 0)),
-    razorpay: Math.round(orders.filter((o) => o.paymentMethod === "RAZORPAY").reduce((s, o) => s + Number(o.totalAmount), 0)),
-    cashfree: Math.round(orders.filter((o) => o.paymentMethod === "CASHFREE").reduce((s, o) => s + Number(o.totalAmount), 0)),
+    cod: Math.round(
+      orders
+        .filter((o) => o.paymentMethod === "COD")
+        .reduce((s, o) => s + Number(o.totalAmount), 0),
+    ),
+    razorpay: Math.round(
+      orders
+        .filter((o) => o.paymentMethod === "RAZORPAY")
+        .reduce((s, o) => s + Number(o.totalAmount), 0),
+    ),
+    cashfree: Math.round(
+      orders
+        .filter((o) => o.paymentMethod === "CASHFREE")
+        .reduce((s, o) => s + Number(o.totalAmount), 0),
+    ),
   };
 
-  return { fy, startYear, endYear, summary, monthly, expenseBreakdown, paymentBreakdown };
+  return {
+    fy,
+    startYear,
+    endYear,
+    summary,
+    monthly,
+    expenseBreakdown,
+    paymentBreakdown,
+  };
 }

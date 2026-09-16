@@ -15,14 +15,14 @@ export const SUCCESSFUL_ORDER_FILTER: Prisma.orderWhereInput = {
 
 /**
  * Orders that are archived — an online order where the payment never
- * succeeded. Orders that were explicitly marked CANCELLED (abandoned checkout
- * sessions we auto-cancel) are not shown here; only genuinely initiated
- * payments that remain unpaid/failed.
+ * succeeded. Abandoned checkouts (status ABANDONED) and orders that were
+ * explicitly cancelled (status CANCELLED) are not shown here; only genuinely
+ * initiated payments that remain unpaid/failed.
  */
 export const ARCHIVED_ORDER_FILTER: Prisma.orderWhereInput = {
   paymentMethod: { in: ["RAZORPAY", "CASHFREE"] },
   paymentStatus: { in: ["PENDING", "FAILED"] as PaymentStatus[] },
-  status: { not: "CANCELLED" },
+  status: { notIn: ["CANCELLED", "ABANDONED"] },
 };
 
 export interface AdminOrderRow {
@@ -50,7 +50,7 @@ export interface AdminOrderRow {
  * show their own error state.
  */
 export async function getAdminOrderRows(
-  where: Prisma.orderWhereInput
+  where: Prisma.orderWhereInput,
 ): Promise<AdminOrderRow[]> {
   const orders = await prisma.order.findMany({
     where,

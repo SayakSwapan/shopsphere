@@ -2,22 +2,20 @@ import { prisma } from "./prisma";
 import { getCompletedRefundMap } from "./finance/refund.service";
 
 export async function getDashboardAnalytics() {
-
-  const orders =
-    await prisma.order.findMany({
-      where: {
-        status: { notIn: ["CANCELLED"] },
-      },
-      select: {
-        createdAt: true,
-        totalAmount: true,
-        id: true,
-      },
-    });
+  const orders = await prisma.order.findMany({
+    where: {
+      status: { notIn: ["CANCELLED", "ABANDONED"] },
+    },
+    select: {
+      createdAt: true,
+      totalAmount: true,
+      id: true,
+    },
+  });
 
   const refundMap = await getCompletedRefundMap(orders.map((o) => o.id));
 
-  const revenueData=[
+  const revenueData = [
     "Jan",
     "Feb",
     "Mar",
@@ -30,33 +28,22 @@ export async function getDashboardAnalytics() {
     "Oct",
     "Nov",
     "Dec",
-  ].map(month=>({
-
+  ].map((month) => ({
     month,
 
-    revenue:0,
+    revenue: 0,
 
-    orders:0,
-
+    orders: 0,
   }));
 
-  orders.forEach(order=>{
+  orders.forEach((order) => {
+    const month = order.createdAt.getMonth();
 
-    const month=
-      order.createdAt.getMonth();
+    revenueData[month].revenue +=
+      Number(order.totalAmount) - (refundMap.get(order.id) ?? 0);
 
-    revenueData[
-      month
-    ].revenue+=Number(
-      order.totalAmount
-    ) - (refundMap.get(order.id) ?? 0);
-
-    revenueData[
-      month
-    ].orders++;
-
+    revenueData[month].orders++;
   });
 
   return revenueData;
-
 }

@@ -3,13 +3,24 @@ import { prisma } from "@/lib/prisma";
 import { getGstBreakdown } from "@/lib/pricing";
 
 async function main() {
-  console.log("Backfilling order item snapshots and PaymentTransaction records...");
+  console.log(
+    "Backfilling order item snapshots and PaymentTransaction records...",
+  );
 
   const orders = await prisma.order.findMany({
-    where: { status: { notIn: ["CANCELLED"] } },
+    where: { status: { notIn: ["CANCELLED", "ABANDONED"] } },
     include: {
       orderitem: {
-        include: { product: { select: { costPrice: true, gstPercentage: true, salePrice: true, sellingPrice: true } } },
+        include: {
+          product: {
+            select: {
+              costPrice: true,
+              gstPercentage: true,
+              salePrice: true,
+              sellingPrice: true,
+            },
+          },
+        },
       },
     },
   });
@@ -18,12 +29,18 @@ async function main() {
   let transactionsCreated = 0;
 
   for (const order of orders) {
-    const discountPerItem = order.orderitem.length > 0 ? Number(order.discount) / order.orderitem.length : 0;
+    const discountPerItem =
+      order.orderitem.length > 0
+        ? Number(order.discount) / order.orderitem.length
+        : 0;
 
     for (const item of order.orderitem) {
-      if (item.sellingPriceSnapshot != null && item.costPriceSnapshot != null) continue;
+      if (item.sellingPriceSnapshot != null && item.costPriceSnapshot != null)
+        continue;
 
-      const sellingPrice = Number(item.product.salePrice || item.product.sellingPrice);
+      const sellingPrice = Number(
+        item.product.salePrice || item.product.sellingPrice,
+      );
       const costPrice = Number(item.product.costPrice);
       const gstPct = Number(item.product.gstPercentage) || 0;
       const { gstAmount } = getGstBreakdown(sellingPrice, gstPct);
@@ -40,7 +57,9 @@ async function main() {
       itemsUpdated++;
     }
 
-    const existingTx = await prisma.paymentTransaction.findFirst({ where: { orderId: order.id } });
+    const existingTx = await prisma.paymentTransaction.findFirst({
+      where: { orderId: order.id },
+    });
     if (!existingTx) {
       const totalAmount = Number(order.totalAmount);
       await prisma.paymentTransaction.create({
@@ -52,8 +71,13 @@ async function main() {
           grossAmount: totalAmount,
           gatewayFee: order.transactionFee ? Number(order.transactionFee) : 0,
           gatewayGST: 0,
-          netSettlement: order.paymentMethod === "COD" ? totalAmount : totalAmount - (order.transactionFee ? Number(order.transactionFee) : 0),
-          settlementStatus: order.paymentStatus === "PAID" ? "SETTLED" : "PENDING",
+          netSettlement:
+            order.paymentMethod === "COD"
+              ? totalAmount
+              : totalAmount -
+                (order.transactionFee ? Number(order.transactionFee) : 0),
+          settlementStatus:
+            order.paymentStatus === "PAID" ? "SETTLED" : "PENDING",
           paymentStatus: order.paymentStatus || "PENDING",
           settlementDate: order.paidAt || null,
         },
@@ -62,7 +86,9 @@ async function main() {
     }
   }
 
-  console.log(`Done. Updated ${itemsUpdated} order items, created ${transactionsCreated} PaymentTransaction records.`);
+  console.log(
+    `Done. Updated ${itemsUpdated} order items, created ${transactionsCreated} PaymentTransaction records.`,
+  );
   process.exit(0);
 }
 

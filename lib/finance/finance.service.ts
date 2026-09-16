@@ -1,13 +1,21 @@
 import { prisma } from "@/lib/prisma";
-import { calculateProfit, buildMonthlyProfit, MonthlyProfit } from "./profit.service";
+import {
+  calculateProfit,
+  buildMonthlyProfit,
+  MonthlyProfit,
+} from "./profit.service";
 import { calculateGSTCollected } from "./gst.service";
 import { calculateInventoryValue } from "./inventory-finance.service";
 import { aggregateSettlements, SettlementSummary } from "./settlement.service";
 import { buildCashFlow, CashFlowSummary } from "./cash-flow.service";
-import { groupExpensesByCategory, ExpenseCategoryBreakdown } from "./expense.service";
+import {
+  groupExpensesByCategory,
+  ExpenseCategoryBreakdown,
+} from "./expense.service";
 import { getCompletedRefundMap, refundForOrder } from "./refund.service";
 
-export type PeriodType = "daily" | "weekly" | "monthly" | "quarterly" | "yearly" | "custom";
+export type PeriodType =
+  "daily" | "weekly" | "monthly" | "quarterly" | "yearly" | "custom";
 
 export interface PeriodConfig {
   startDate: Date;
@@ -83,51 +91,77 @@ function resolvePeriod(type: PeriodType): PeriodConfig {
   }
 }
 
-export async function getFinanceSummary(period: PeriodType = "monthly"): Promise<FinanceSummary> {
+export async function getFinanceSummary(
+  period: PeriodType = "monthly",
+): Promise<FinanceSummary> {
   const config = resolvePeriod(period);
 
   const yearStart = new Date(new Date().getFullYear(), 0, 1);
 
-  const [orders, expenses, allProducts, paymentTransactions] = await Promise.all([
-    prisma.order.findMany({
-      where: {
-        createdAt: { gte: period === "monthly" || period === "quarterly" || period === "yearly" ? yearStart : config.startDate },
-        status: { notIn: ["CANCELLED"] },
-      },
-      select: {
-        id: true,
-        totalAmount: true,
-        shipping: true,
-        discount: true,
-        gst: true,
-        createdAt: true,
-        paymentMethod: true,
-        paymentStatus: true,
-        transactionFee: true,
-        orderType: true,
-        orderitem: {
-          select: {
-            quantity: true,
-            costPriceSnapshot: true,
-            gstSnapshot: true,
-            product: { select: { costPrice: true } },
+  const [orders, expenses, allProducts, paymentTransactions] =
+    await Promise.all([
+      prisma.order.findMany({
+        where: {
+          createdAt: {
+            gte:
+              period === "monthly" ||
+              period === "quarterly" ||
+              period === "yearly"
+                ? yearStart
+                : config.startDate,
+          },
+          status: { notIn: ["CANCELLED", "ABANDONED"] },
+        },
+        select: {
+          id: true,
+          totalAmount: true,
+          shipping: true,
+          discount: true,
+          gst: true,
+          createdAt: true,
+          paymentMethod: true,
+          paymentStatus: true,
+          transactionFee: true,
+          orderType: true,
+          orderitem: {
+            select: {
+              quantity: true,
+              costPriceSnapshot: true,
+              gstSnapshot: true,
+              product: { select: { costPrice: true } },
+            },
           },
         },
-      },
-    }),
-    prisma.expense.findMany({
-      where: {
-        date: { gte: period === "monthly" || period === "quarterly" || period === "yearly" ? yearStart : config.startDate },
-      },
-      include: { category: true },
-    }),
-    prisma.product.findMany({
-      select: { costPrice: true, stock: true },
-    }),
-    prisma.paymentTransaction.findMany({
-      where: { createdAt: { gte: period === "monthly" || period === "quarterly" || period === "yearly" ? yearStart : config.startDate } },
-    }),
-  ]);
+      }),
+      prisma.expense.findMany({
+        where: {
+          date: {
+            gte:
+              period === "monthly" ||
+              period === "quarterly" ||
+              period === "yearly"
+                ? yearStart
+                : config.startDate,
+          },
+        },
+        include: { category: true },
+      }),
+      prisma.product.findMany({
+        select: { costPrice: true, stock: true },
+      }),
+      prisma.paymentTransaction.findMany({
+        where: {
+          createdAt: {
+            gte:
+              period === "monthly" ||
+              period === "quarterly" ||
+              period === "yearly"
+                ? yearStart
+                : config.startDate,
+          },
+        },
+      }),
+    ]);
 
   const refundLedger = await getCompletedRefundMap(orders.map((o) => o.id));
   const refundAmounts = new Map<string, number>();
@@ -136,19 +170,41 @@ export async function getFinanceSummary(period: PeriodType = "monthly"): Promise
     if (amount > 0) refundAmounts.set(o.id, amount);
   }
 
-  const profit = await calculateProfit(orders, expenses, paymentTransactions, refundAmounts);
+  const profit = await calculateProfit(
+    orders,
+    expenses,
+    paymentTransactions,
+    refundAmounts,
+  );
   const gstData = calculateGSTCollected(orders);
   const totalInvestment = await calculateInventoryValue(allProducts);
   const expensesByCategory = groupExpensesByCategory(expenses);
   const settlementSummary = await aggregateSettlements(paymentTransactions);
   const cashFlow = buildCashFlow(orders, expenses, paymentTransactions);
 
-  const monthlyData = period === "monthly" || period === "quarterly" || period === "yearly"
-    ? await buildMonthlyProfit(orders, expenses, paymentTransactions, refundAmounts, new Date().getFullYear())
-    : [];
+  const monthlyData =
+    period === "monthly" || period === "quarterly" || period === "yearly"
+      ? await buildMonthlyProfit(
+          orders,
+          expenses,
+          paymentTransactions,
+          refundAmounts,
+          new Date().getFullYear(),
+        )
+      : [];
 
   // ── Online vs Offline channel split ──
-  const emptyChannel: ChannelSplit = { revenue: 0, orders: 0, cogs: 0, grossProfit: 0, expenses: 0, transactionFees: 0, gatewayCharges: 0, netProfit: 0, refunds: 0 };
+  const emptyChannel: ChannelSplit = {
+    revenue: 0,
+    orders: 0,
+    cogs: 0,
+    grossProfit: 0,
+    expenses: 0,
+    transactionFees: 0,
+    gatewayCharges: 0,
+    netProfit: 0,
+    refunds: 0,
+  };
   const online = { ...emptyChannel };
   const offline = { ...emptyChannel };
 
@@ -164,7 +220,9 @@ export async function getFinanceSummary(period: PeriodType = "monthly"): Promise
     let orderCogs = 0;
     if (!refundAmounts.has(o.id)) {
       for (const item of o.orderitem) {
-        const cp = item.costPriceSnapshot ? Number(item.costPriceSnapshot) : Number(item.product.costPrice);
+        const cp = item.costPriceSnapshot
+          ? Number(item.costPriceSnapshot)
+          : Number(item.product.costPrice);
         orderCogs += item.quantity * cp;
       }
     }
@@ -192,8 +250,16 @@ export async function getFinanceSummary(period: PeriodType = "monthly"): Promise
     offline.gatewayCharges = profit.gatewayCharges * offlineTxFeeShare;
   }
 
-  online.netProfit = online.grossProfit - online.expenses - online.transactionFees - online.gatewayCharges;
-  offline.netProfit = offline.grossProfit - offline.expenses - offline.transactionFees - offline.gatewayCharges;
+  online.netProfit =
+    online.grossProfit -
+    online.expenses -
+    online.transactionFees -
+    online.gatewayCharges;
+  offline.netProfit =
+    offline.grossProfit -
+    offline.expenses -
+    offline.transactionFees -
+    offline.gatewayCharges;
 
   return {
     period,
@@ -225,13 +291,74 @@ export async function getDashboardWidgets() {
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const yearStart = new Date(now.getFullYear(), 0, 1);
 
-  const [todayOrders, monthOrders, yearOrders, allProducts, todayExpenses, pendingTx] = await Promise.all([
-    prisma.order.findMany({ where: { createdAt: { gte: todayStart }, status: { notIn: ["CANCELLED"] } }, select: { id: true, totalAmount: true, transactionFee: true, gst: true, paymentStatus: true } }),
-    prisma.order.findMany({ where: { createdAt: { gte: monthStart }, status: { notIn: ["CANCELLED"] } }, select: { id: true, totalAmount: true, transactionFee: true, gst: true, paymentStatus: true, orderitem: { select: { quantity: true, costPriceSnapshot: true, product: { select: { costPrice: true } } } } } }),
-    prisma.order.findMany({ where: { createdAt: { gte: yearStart }, status: { notIn: ["CANCELLED"] } }, select: { id: true, totalAmount: true, transactionFee: true, gst: true, paymentStatus: true } }),
+  const [
+    todayOrders,
+    monthOrders,
+    yearOrders,
+    allProducts,
+    todayExpenses,
+    pendingTx,
+  ] = await Promise.all([
+    prisma.order.findMany({
+      where: {
+        createdAt: { gte: todayStart },
+        status: { notIn: ["CANCELLED"] },
+      },
+      select: {
+        id: true,
+        totalAmount: true,
+        transactionFee: true,
+        gst: true,
+        paymentStatus: true,
+      },
+    }),
+    prisma.order.findMany({
+      where: {
+        createdAt: { gte: monthStart },
+        status: { notIn: ["CANCELLED"] },
+      },
+      select: {
+        id: true,
+        totalAmount: true,
+        transactionFee: true,
+        gst: true,
+        paymentStatus: true,
+        orderitem: {
+          select: {
+            quantity: true,
+            costPriceSnapshot: true,
+            product: { select: { costPrice: true } },
+          },
+        },
+      },
+    }),
+    prisma.order.findMany({
+      where: {
+        createdAt: { gte: yearStart },
+        status: { notIn: ["CANCELLED"] },
+      },
+      select: {
+        id: true,
+        totalAmount: true,
+        transactionFee: true,
+        gst: true,
+        paymentStatus: true,
+      },
+    }),
     prisma.product.findMany({ select: { costPrice: true, stock: true } }),
-    prisma.expense.findMany({ where: { date: { gte: todayStart } }, select: { amount: true } }),
-    prisma.paymentTransaction.findMany({ where: { settlementStatus: "PENDING" }, select: { grossAmount: true, netSettlement: true, gatewayFee: true, gatewayGST: true } }),
+    prisma.expense.findMany({
+      where: { date: { gte: todayStart } },
+      select: { amount: true },
+    }),
+    prisma.paymentTransaction.findMany({
+      where: { settlementStatus: "PENDING" },
+      select: {
+        grossAmount: true,
+        netSettlement: true,
+        gatewayFee: true,
+        gatewayGST: true,
+      },
+    }),
   ]);
 
   const [todayRefundMap, monthRefundMap, yearRefundMap] = await Promise.all([
@@ -240,41 +367,85 @@ export async function getDashboardWidgets() {
     getCompletedRefundMap(yearOrders.map((o) => o.id)),
   ]);
 
-  const todayRevenue = todayOrders.reduce((s, o) => s + Number(o.totalAmount), 0);
-  const todayRefunds = todayOrders.reduce((s, o) => s + refundForOrder(o, todayRefundMap), 0);
+  const todayRevenue = todayOrders.reduce(
+    (s, o) => s + Number(o.totalAmount),
+    0,
+  );
+  const todayRefunds = todayOrders.reduce(
+    (s, o) => s + refundForOrder(o, todayRefundMap),
+    0,
+  );
   const todayNetRevenue = todayRevenue - todayRefunds;
-  const todayTxFees = todayOrders.reduce((s, o) => s + (o.transactionFee ? Number(o.transactionFee) : 0), 0);
+  const todayTxFees = todayOrders.reduce(
+    (s, o) => s + (o.transactionFee ? Number(o.transactionFee) : 0),
+    0,
+  );
   const todayGST = todayOrders.reduce((s, o) => s + Number(o.gst ?? 0), 0);
-  const todayExpensesTotal = todayExpenses.reduce((s, e) => s + Number(e.amount), 0);
+  const todayExpensesTotal = todayExpenses.reduce(
+    (s, e) => s + Number(e.amount),
+    0,
+  );
 
   const { totalCOGS: monthCOGS } = await (async () => {
     let cogs = 0;
     for (const o of monthOrders) {
       if (monthRefundMap.has(o.id)) continue;
       for (const item of o.orderitem) {
-        const cp = item.costPriceSnapshot ? Number(item.costPriceSnapshot) : Number(item.product.costPrice);
+        const cp = item.costPriceSnapshot
+          ? Number(item.costPriceSnapshot)
+          : Number(item.product.costPrice);
         cogs += item.quantity * cp;
       }
     }
     return { totalCOGS: Math.round(cogs * 100) / 100 };
   })();
 
-  const monthRevenue = monthOrders.reduce((s, o) => s + Number(o.totalAmount), 0);
-  const monthRefunds = monthOrders.reduce((s, o) => s + refundForOrder(o, monthRefundMap), 0);
+  const monthRevenue = monthOrders.reduce(
+    (s, o) => s + Number(o.totalAmount),
+    0,
+  );
+  const monthRefunds = monthOrders.reduce(
+    (s, o) => s + refundForOrder(o, monthRefundMap),
+    0,
+  );
   const monthNetRevenue = monthRevenue - monthRefunds;
-  const monthExpensesTotal = (await prisma.expense.findMany({ where: { date: { gte: monthStart } }, select: { amount: true } })).reduce((s, e) => s + Number(e.amount), 0);
+  const monthExpensesTotal = (
+    await prisma.expense.findMany({
+      where: { date: { gte: monthStart } },
+      select: { amount: true },
+    })
+  ).reduce((s, e) => s + Number(e.amount), 0);
 
   const yearRevenue = yearOrders.reduce((s, o) => s + Number(o.totalAmount), 0);
-  const yearRefunds = yearOrders.reduce((s, o) => s + refundForOrder(o, yearRefundMap), 0);
+  const yearRefunds = yearOrders.reduce(
+    (s, o) => s + refundForOrder(o, yearRefundMap),
+    0,
+  );
   const yearNetRevenue = yearRevenue - yearRefunds;
 
   const totalInvestment = await calculateInventoryValue(allProducts);
-  const pendingSettlements = pendingTx.reduce((s, t) => s + Number(t.netSettlement ?? t.grossAmount), 0);
-  const pendingFees = pendingTx.reduce((s, t) => s + Number(t.gatewayFee ?? 0) + Number(t.gatewayGST ?? 0), 0);
+  const pendingSettlements = pendingTx.reduce(
+    (s, t) => s + Number(t.netSettlement ?? t.grossAmount),
+    0,
+  );
+  const pendingFees = pendingTx.reduce(
+    (s, t) => s + Number(t.gatewayFee ?? 0) + Number(t.gatewayGST ?? 0),
+    0,
+  );
 
   return {
-    today: { revenue: Math.round(todayNetRevenue), profit: Math.round(todayNetRevenue - todayExpensesTotal), expenses: Math.round(todayExpensesTotal), gatewayCharges: Math.round(todayTxFees), gst: Math.round(todayGST) },
-    month: { revenue: Math.round(monthNetRevenue), profit: Math.round(monthNetRevenue - monthCOGS - monthExpensesTotal), expenses: Math.round(monthExpensesTotal) },
+    today: {
+      revenue: Math.round(todayNetRevenue),
+      profit: Math.round(todayNetRevenue - todayExpensesTotal),
+      expenses: Math.round(todayExpensesTotal),
+      gatewayCharges: Math.round(todayTxFees),
+      gst: Math.round(todayGST),
+    },
+    month: {
+      revenue: Math.round(monthNetRevenue),
+      profit: Math.round(monthNetRevenue - monthCOGS - monthExpensesTotal),
+      expenses: Math.round(monthExpensesTotal),
+    },
     year: { revenue: Math.round(yearNetRevenue) },
     inventoryInvestment: Math.round(totalInvestment),
     pendingSettlements: Math.round(pendingSettlements),

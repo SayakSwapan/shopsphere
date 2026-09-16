@@ -31,25 +31,64 @@ export default async function DashboardPage() {
 
   try {
     const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const todayStart = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+    );
 
-    const [products, orders, customers, revenue, tOrders, tRevenue, refundSum, tRefundSum] = await Promise.all([
+    const [
+      products,
+      orders,
+      customers,
+      revenue,
+      tOrders,
+      tRevenue,
+      refundSum,
+      tRefundSum,
+    ] = await Promise.all([
       prisma.product.count(),
-      prisma.order.count({ where: { status: { notIn: ["CANCELLED"] } } }),
+      prisma.order.count({
+        where: { status: { notIn: ["CANCELLED", "ABANDONED"] } },
+      }),
       prisma.user.count({ where: { role: "CUSTOMER" } }),
-      prisma.order.aggregate({ _sum: { totalAmount: true }, where: { status: { notIn: ["CANCELLED"] } } }),
-      prisma.order.count({ where: { createdAt: { gte: todayStart }, status: { notIn: ["CANCELLED"] } } }),
-      prisma.order.aggregate({ _sum: { totalAmount: true }, where: { createdAt: { gte: todayStart }, status: { notIn: ["CANCELLED"] } } }),
-      prisma.refund.aggregate({ _sum: { amount: true }, where: { status: "COMPLETED", completedAt: { not: null } } }),
-      prisma.refund.aggregate({ _sum: { amount: true }, where: { status: "COMPLETED", completedAt: { gte: todayStart } } }),
+      prisma.order.aggregate({
+        _sum: { totalAmount: true },
+        where: { status: { notIn: ["CANCELLED", "ABANDONED"] } },
+      }),
+      prisma.order.count({
+        where: {
+          createdAt: { gte: todayStart },
+          status: { notIn: ["CANCELLED", "ABANDONED"] },
+        },
+      }),
+      prisma.order.aggregate({
+        _sum: { totalAmount: true },
+        where: {
+          createdAt: { gte: todayStart },
+          status: { notIn: ["CANCELLED", "ABANDONED"] },
+        },
+      }),
+      prisma.refund.aggregate({
+        _sum: { amount: true },
+        where: { status: "COMPLETED", completedAt: { not: null } },
+      }),
+      prisma.refund.aggregate({
+        _sum: { amount: true },
+        where: { status: "COMPLETED", completedAt: { gte: todayStart } },
+      }),
     ]);
 
     totalProducts = products;
     totalOrders = orders;
     totalCustomers = customers;
-    totalRevenue = Number(revenue._sum.totalAmount ?? 0) - Number(refundSum._sum.amount ?? 0);
+    totalRevenue =
+      Number(revenue._sum.totalAmount ?? 0) -
+      Number(refundSum._sum.amount ?? 0);
     todayOrders = tOrders;
-    todayRevenue = Number(tRevenue._sum.totalAmount ?? 0) - Number(tRefundSum._sum.amount ?? 0);
+    todayRevenue =
+      Number(tRevenue._sum.totalAmount ?? 0) -
+      Number(tRefundSum._sum.amount ?? 0);
 
     chartData = await getDashboardAnalytics();
   } catch {

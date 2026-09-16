@@ -4,10 +4,13 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 /**
- * Mark a single unpaid online order as abandoned/cancelled. Called by the
+ * Mark a single unpaid online order as abandoned (never paid). Called by the
  * client-side payment result screen when the buyer returns from Cashfree
- * without a confirmed payment. Ownership is verified against the session
- * cookie so an attacker can never cancel someone else's order.
+ * without a confirmed payment. The order was never actually processed, so it
+ * gets the distinct ABANDONED status — NOT CANCELLED, which is reserved for
+ * orders that were really placed (paid / COD) and then cancelled. Ownership is
+ * verified against the session cookie so an attacker can never touch someone
+ * else's order.
  */
 export async function POST(req: Request) {
   try {
@@ -36,7 +39,7 @@ export async function POST(req: Request) {
         paymentStatus: { not: "PAID" },
       },
       data: {
-        status: "CANCELLED",
+        status: "ABANDONED",
         paymentStatus: "FAILED",
       },
     });

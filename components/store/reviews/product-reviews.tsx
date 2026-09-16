@@ -294,7 +294,13 @@ export default function ProductReviews({
               </p>
             </div>
           ) : (
-            <div className="space-y-3 sm:space-y-4">
+            <div
+              className="max-h-[60vh] space-y-3 overflow-y-auto overscroll-contain pr-1.5 sm:max-h-[34rem] sm:space-y-4 sm:pr-2"
+              style={{
+                scrollbarWidth: "thin",
+                WebkitOverflowScrolling: "touch",
+              }}
+            >
               {reviews.map((review) => (
                 <div
                   key={review.id}

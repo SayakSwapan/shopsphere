@@ -180,23 +180,75 @@ export async function PUT(req: Request, { params }: Params) {
       }
 
       // Variant rows are fully replaced on every update, but cartitem has a
-      // non-cascading FK to productvariant — so detach any cart items pointing
-      // at this product's current variants before deleting them, otherwise the
-      // delete throws a foreign key constraint error ("Update Failed").
+      // non-cascading FK to productvariant. Before replacing them we re-link
+      // any cart items sitting on the old variants to the matching freshly
+      // created variant (same sizeId + genderId), otherwise every admin edit
+      // silently strips the chosen size from items already in customers' carts.
+      // Items for sizes that were removed from the product get nulled instead.
       const oldVariants = await tx.productvariant.findMany({
         where: { productId: id },
-        select: { id: true },
+        select: { id: true, genderId: true, sizeId: true },
       });
 
-      if (oldVariants.length) {
-        await tx.cartitem.updateMany({
-          where: {
-            productVariantId: {
-              in: oldVariants.map((v) => v.id),
-            },
-          },
-          data: { productVariantId: null },
+      const oldVariantIds = oldVariants.map((v) => v.id);
+
+      const cartItems = oldVariantIds.length
+        ? await tx.cartitem.findMany({
+            where: { productVariantId: { in: oldVariantIds } },
+            select: { id: true, productVariantId: true },
+          })
+        : [];
+
+      const variantInputs = (body.variants ?? []).map(
+        (v: {
+          genderId: string;
+          sizeId: string;
+          sku: string;
+          stock: number;
+        }) => ({
+          id: crypto.randomUUID(),
+          productId: id,
+          genderId: v.genderId,
+          sizeId: v.sizeId,
+          sku: v.sku,
+          stock: Number(v.stock),
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        }),
+      );
+
+      if (variantInputs.length) {
+        await tx.productvariant.createMany({
+          data: variantInputs,
         });
+      }
+
+      if (cartItems.length) {
+        const newVariantIdByOldKey = new Map<string, string>();
+        for (const v of variantInputs) {
+          const key = `${v.genderId}|${v.sizeId}`;
+          if (!newVariantIdByOldKey.has(key)) {
+            newVariantIdByOldKey.set(key, v.id);
+          }
+        }
+
+        const oldVariantKey = new Map(
+          oldVariants.map((v) => [v.id, `${v.genderId}|${v.sizeId}`]),
+        );
+
+        for (const item of cartItems) {
+          const key = item.productVariantId
+            ? oldVariantKey.get(item.productVariantId)
+            : undefined;
+          await tx.cartitem.update({
+            where: { id: item.id },
+            data: {
+              productVariantId: key
+                ? (newVariantIdByOldKey.get(key) ?? null)
+                : null,
+            },
+          });
+        }
       }
 
       await tx.productvariant.deleteMany({
@@ -204,28 +256,6 @@ export async function PUT(req: Request, { params }: Params) {
           productId: id,
         },
       });
-
-      if (body.variants?.length) {
-        await tx.productvariant.createMany({
-          data: body.variants.map(
-            (v: {
-              genderId: string;
-              sizeId: string;
-              sku: string;
-              stock: number;
-            }) => ({
-              id: crypto.randomUUID(),
-              productId: id,
-              genderId: v.genderId,
-              sizeId: v.sizeId,
-              sku: v.sku,
-              stock: Number(v.stock),
-              createdAt: new Date(),
-              updatedAt: new Date(),
-            }),
-          ),
-        });
-      }
     });
 
     return NextResponse.json({

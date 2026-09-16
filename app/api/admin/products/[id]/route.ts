@@ -252,11 +252,13 @@ export async function PUT(req: Request, { params }: Params) {
         }
       }
 
-      await tx.productvariant.deleteMany({
-        where: {
-          productId: id,
-        },
-      });
+      if (oldVariantIds.length) {
+        await tx.productvariant.deleteMany({
+          where: {
+            id: { in: oldVariantIds },
+          },
+        });
+      }
     });
 
     return NextResponse.json({

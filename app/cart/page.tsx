@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 
 import { auth } from "@/lib/auth";
+import { clampText } from "@/lib/clamp-text";
 import { prisma } from "@/lib/prisma";
 import {
   getGstBreakdown,
@@ -270,17 +271,22 @@ export default async function CartPage() {
                         >
                           <div className="min-w-0 flex-1">
                             <p
-                              className="cart-mini-name line-clamp-1 text-sm font-medium text-text-body"
+                              className="cart-mini-name text-sm font-medium text-text-body"
                               title={item.product.name}
                             >
-                              {item.product.name}
+                              {clampText(item.product.name, 22)}
+                              {item.productvariant?.size?.sizeName && (
+                                <span
+                                  className="ml-1.5 whitespace-nowrap font-black text-xs text-primary"
+                                  style={{
+                                    fontFamily: "var(--t-font-heading)",
+                                  }}
+                                >
+                                  (Size {item.productvariant.size.sizeName})
+                                </span>
+                              )}
                             </p>
                             <p className="cart-mini-meta mt-0.5 text-xs text-text-muted-2">
-                              {item.productvariant?.size?.sizeName ? (
-                                <span className="whitespace-nowrap font-semibold">
-                                  Size {item.productvariant.size.sizeName}
-                                </span>
-                              ) : null}{" "}
                               <span className="whitespace-nowrap">
                                 &times; {item.quantity}
                               </span>

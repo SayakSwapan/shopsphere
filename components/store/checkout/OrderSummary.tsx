@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useTheme } from "@/lib/themes/theme-provider";
 import { customizationUnitPriceWithGst } from "@/lib/print-pricing";
+import { clampText } from "@/lib/clamp-text";
 import { optimizedImageUrl } from "@/lib/cloudinary-image";
 
 interface CartItem {
@@ -156,7 +157,7 @@ export default function OrderSummary({
               <div className="flex flex-1 flex-col justify-between">
                 <div>
                   <h3
-                    className={`line-clamp-2 font-bold text-text-heading text-sm ${
+                    className={`font-bold text-text-heading text-sm ${
                       themeId === "sports"
                         ? "uppercase tracking-wider"
                         : themeId === "fashion"
@@ -169,13 +170,16 @@ export default function OrderSummary({
                         : undefined
                     }
                   >
-                    {item.product.name}
+                    {clampText(item.product.name, 22)}
+                    {item.variantSize && (
+                      <span
+                        className="ml-1.5 font-black text-xs text-primary"
+                        style={{ fontFamily: "var(--t-font-heading)" }}
+                      >
+                        (Size {item.variantSize})
+                      </span>
+                    )}
                   </h3>
-                  {item.variantSize && (
-                    <p className="mt-1 text-sm text-text-muted-2">
-                      Size : {item.variantSize}
-                    </p>
-                  )}
                   {item.customization &&
                     (item.customization.name ||
                       item.customization.number ||

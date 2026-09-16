@@ -26,6 +26,7 @@ import {
   customizationUnitPrice,
   customizationUnitPriceWithGst,
 } from "@/lib/print-pricing";
+import { clampText } from "@/lib/clamp-text";
 import type { CustomPrintData } from "@/types/custom-print";
 import Modal from "@/components/common/modal";
 
@@ -1018,17 +1019,20 @@ export default function CheckoutClient({
                     >
                       <div className="min-w-0 flex-1">
                         <p
-                          className="checkout-mini-name line-clamp-1 text-sm font-medium text-text-body"
+                          className="checkout-mini-name text-sm font-medium text-text-body"
                           title={item.product.name}
                         >
-                          {item.product.name}
+                          {clampText(item.product.name, 22)}
+                          {item.variantSize && (
+                            <span
+                              className="ml-1.5 whitespace-nowrap font-black text-xs text-primary"
+                              style={{ fontFamily: "var(--t-font-heading)" }}
+                            >
+                              (Size {item.variantSize})
+                            </span>
+                          )}
                         </p>
                         <p className="checkout-mini-meta mt-0.5 text-xs text-text-muted-2">
-                          {item.variantSize ? (
-                            <span className="whitespace-nowrap font-semibold">
-                              Size {item.variantSize}
-                            </span>
-                          ) : null}{" "}
                           <span className="whitespace-nowrap">
                             &times; {qty}
                           </span>

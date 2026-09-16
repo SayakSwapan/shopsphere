@@ -1,3 +1,5 @@
+import { SITE_NAME_FALLBACK } from "@/lib/site-settings";
+
 // Window.Razorpay and RazorpayOptions declared in types/razorpay.d.ts
 
 export function loadRazorpayScript(): Promise<boolean> {
@@ -12,8 +14,7 @@ export function loadRazorpayScript(): Promise<boolean> {
 
     const script = document.createElement("script");
 
-    script.src =
-      "https://checkout.razorpay.com/v1/checkout.js";
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
     script.async = true;
 
     script.onload = () => resolve(true);
@@ -43,9 +44,7 @@ interface HandlePaymentArgs {
   payload?: Record<string, unknown>;
   siteName?: string;
 
-  onSuccess?: (
-    response: RazorpaySuccess
-  ) => void | Promise<void>;
+  onSuccess?: (response: RazorpaySuccess) => void | Promise<void>;
   onDismiss?: () => void;
   onError?: (message: string) => void;
 }
@@ -64,41 +63,33 @@ export async function handlePayment({
     const loaded = await loadRazorpayScript();
 
     if (!loaded) {
-      throw new Error(
-        "Failed to load Razorpay. Check your connection."
-      );
+      throw new Error("Failed to load Razorpay. Check your connection.");
     }
 
-    const response = await fetch(
-      initiateOrderBackendUrl,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          amount,
-          ...payload,
-        }),
-      }
-    );
+    const response = await fetch(initiateOrderBackendUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        amount,
+        ...payload,
+      }),
+    });
 
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(
-        data.message ?? "Unable to create order"
-      );
+      throw new Error(data.message ?? "Unable to create order");
     }
 
-    const prefill =
-      customerDetails ?? data.customer ?? {};
+    const prefill = customerDetails ?? data.customer ?? {};
 
     const options = {
       key: data.key,
       amount: data.order.amount,
       currency: data.order.currency,
-      name: siteName || "ShopSphere",
+      name: siteName || SITE_NAME_FALLBACK,
       description: "Order Payment",
       order_id: data.order.id,
 
@@ -112,8 +103,7 @@ export async function handlePayment({
         color: "#F5A623",
       },
 
-      handler: (response: RazorpaySuccess) =>
-        onSuccess?.(response),
+      handler: (response: RazorpaySuccess) => onSuccess?.(response),
 
       modal: {
         ondismiss: () => onDismiss?.(),
@@ -125,9 +115,7 @@ export async function handlePayment({
     razorpay.open();
   } catch (error) {
     onError?.(
-      error instanceof Error
-        ? error.message
-        : "Unable to start payment"
+      error instanceof Error ? error.message : "Unable to start payment",
     );
   }
 }

@@ -1,5 +1,9 @@
 import Link from "next/link";
-import { getSiteSettings, getSiteLogo } from "@/lib/site-settings";
+import {
+  getSiteSettings,
+  getSiteLogo,
+  getShowStorefrontName,
+} from "@/lib/site-settings";
 import { getFooterLinksGrouped, getSocialLinks } from "@/lib/footer-settings";
 import SiteLogo from "@/components/brand/site-logo";
 import {
@@ -60,7 +64,8 @@ export default async function SportsFooter() {
     getSiteSettings(),
   ]);
 
-  const siteName = settings.site_name || "ShopSphere";
+  const siteName = (settings.site_name || "").trim();
+  const showStorefrontName = getShowStorefrontName(settings);
   const siteLogo = getSiteLogo(settings) || "";
   const tagline =
     settings.footer_tagline ||
@@ -167,17 +172,19 @@ export default async function SportsFooter() {
               {siteLogo ? (
                 <>
                   <SiteLogo src={siteLogo} alt={siteName} height={42} />
-                  <span
-                    className="text-2xl font-normal uppercase"
-                    style={{
-                      fontFamily: "'Anton', sans-serif",
-                      color: "#F4F3EE",
-                    }}
-                  >
-                    {siteName}
-                  </span>
+                  {showStorefrontName && siteName && (
+                    <span
+                      className="text-2xl font-normal uppercase"
+                      style={{
+                        fontFamily: "'Anton', sans-serif",
+                        color: "#F4F3EE",
+                      }}
+                    >
+                      {siteName}
+                    </span>
+                  )}
                 </>
-              ) : (
+              ) : showStorefrontName && siteName ? (
                 <>
                   <span
                     className="flex h-9 w-9 items-center justify-center"
@@ -203,7 +210,7 @@ export default async function SportsFooter() {
                     )}
                   </span>
                 </>
-              )}
+              ) : null}
             </Link>
             <p
               className="mt-4 max-w-sm text-sm leading-relaxed"
@@ -370,7 +377,8 @@ export default async function SportsFooter() {
           style={{ borderTop: "1px solid rgba(203,255,62,0.12)" }}
         >
           <p className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>
-            &copy; {new Date().getFullYear()} {siteName}. {copyrightText}
+            &copy; {new Date().getFullYear()}
+            {showStorefrontName ? ` ${siteName}` : ""}. {copyrightText}
           </p>
           <p
             className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.25em]"

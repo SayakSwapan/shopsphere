@@ -1,10 +1,14 @@
 "use client";
 
 import { createContext, useContext } from "react";
-import { SITE_DEFAULT_SETTINGS, getSiteName, getSiteLogo } from "@/lib/site-settings";
+import {
+  SITE_DEFAULT_SETTINGS,
+  getSiteName,
+  getSiteLogo,
+} from "@/lib/site-settings";
 
 const SiteSettingsContext = createContext<Record<string, string>>(
-  SITE_DEFAULT_SETTINGS
+  SITE_DEFAULT_SETTINGS,
 );
 
 export function SiteSettingsProvider({
@@ -27,6 +31,16 @@ export function useSiteSettings(): Record<string, string> {
 
 export function useSiteName(): string {
   return getSiteName(useSiteSettings());
+}
+
+/** Raw site name without any fallback (blank stays blank). */
+export function useRawSiteName(): string {
+  return (useSiteSettings().site_name || "").trim();
+}
+
+/** Whether the storefront navbar & footer should print the site name text. */
+export function useShowStorefrontName(): boolean {
+  return useSiteSettings().show_site_name_storefront !== "false";
 }
 
 export function useSiteLogo(): string {

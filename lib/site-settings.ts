@@ -2,9 +2,12 @@ import { cache } from "react";
 import { prisma } from "@/lib/prisma";
 import { TtlCache } from "@/lib/ttl-cache";
 
+export const SITE_NAME_FALLBACK = "TrinovaSports";
+
 export const SITE_DEFAULT_SETTINGS: Record<string, string> = {
-  site_name: "ShopSphere",
+  site_name: SITE_NAME_FALLBACK,
   site_logo: "",
+  show_site_name_storefront: "true",
   footer_tagline:
     "Premium marketplace for fashion, footwear, accessories and lifestyle products.",
   copyright_text: "All Rights Reserved.",
@@ -27,7 +30,8 @@ export const SITE_DEFAULT_SETTINGS: Record<string, string> = {
   business_address: "Shop No. 12, MG Road, Mumbai, Maharashtra 400001",
   business_phone: "+91 98765 43210",
   business_email: "support@shopsphere.com",
-  invoice_notes: "Goods once sold will not be taken back or exchanged unless defective.",
+  invoice_notes:
+    "Goods once sold will not be taken back or exchanged unless defective.",
   // Email identity used on every outgoing transactional email (OTP, order
   // confirmations, replies). Empty values fall back to the business default /
   // SMTP `EMAIL_USER` / `site_name`.
@@ -45,22 +49,24 @@ export const SITE_DEFAULT_SETTINGS: Record<string, string> = {
 
 const settingsCache = new TtlCache<Record<string, string>>(60_000);
 
-export const getSiteSettings = cache(async (): Promise<Record<string, string>> => {
-  return settingsCache.get(async () => {
-    try {
-      const rows = await prisma.siteSetting.findMany({
-        select: { key: true, value: true },
-      });
-      const settings: Record<string, string> = { ...SITE_DEFAULT_SETTINGS };
-      for (const row of rows) {
-        settings[row.key] = row.value;
+export const getSiteSettings = cache(
+  async (): Promise<Record<string, string>> => {
+    return settingsCache.get(async () => {
+      try {
+        const rows = await prisma.siteSetting.findMany({
+          select: { key: true, value: true },
+        });
+        const settings: Record<string, string> = { ...SITE_DEFAULT_SETTINGS };
+        for (const row of rows) {
+          settings[row.key] = row.value;
+        }
+        return settings;
+      } catch {
+        return { ...SITE_DEFAULT_SETTINGS };
       }
-      return settings;
-    } catch {
-      return { ...SITE_DEFAULT_SETTINGS };
-    }
-  });
-});
+    });
+  },
+);
 
 /** Drop the cached copy so the next read re-fetches from the database. */
 export function invalidateSiteSettingsCache(): void {
@@ -68,7 +74,14 @@ export function invalidateSiteSettingsCache(): void {
 }
 
 export function getSiteName(settings: Record<string, string>): string {
-  return settings.site_name || SITE_DEFAULT_SETTINGS.site_name;
+  return settings.site_name || SITE_NAME_FALLBACK;
+}
+
+/** Whether the storefront navbar & footer should print the site name text. */
+export function getShowStorefrontName(
+  settings: Record<string, string>,
+): boolean {
+  return settings.show_site_name_storefront !== "false";
 }
 
 export function getSiteLogo(settings: Record<string, string>): string {
@@ -101,7 +114,7 @@ export interface InvoiceBusiness {
 }
 
 export function getInvoiceBusiness(
-  settings: Record<string, string>
+  settings: Record<string, string>,
 ): InvoiceBusiness {
   const brand =
     settings.site_name || settings.business_name || getSiteName(settings);
@@ -132,7 +145,9 @@ export interface OfflinePolicy {
  * Admin-generated offline (POS) policies, editable under
  * Admin → Site Settings → Offline Sale Policies.
  */
-export function getOfflinePolicy(settings: Record<string, string>): OfflinePolicy {
+export function getOfflinePolicy(
+  settings: Record<string, string>,
+): OfflinePolicy {
   return {
     noReturnPolicy:
       settings.offline_no_return_policy ||
@@ -157,7 +172,9 @@ export interface EmailIdentity {
  * outgoing transactional email. Never hardcodes a store name or address:
  * admins configure it under Admin → Site Settings → Email Identity.
  */
-export function getEmailIdentity(settings: Record<string, string>): EmailIdentity {
+export function getEmailIdentity(
+  settings: Record<string, string>,
+): EmailIdentity {
   const siteName = getSiteName(settings);
   const senderEmail =
     settings.email_sender_email?.trim() ||

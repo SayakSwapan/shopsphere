@@ -13,7 +13,8 @@ import SiteBrand from "@/components/brand/site-brand";
 import FitText from "@/components/brand/fit-text";
 import SiteLogo from "@/components/brand/site-logo";
 import {
-  useSiteName,
+  useRawSiteName,
+  useShowStorefrontName,
   useSiteLogo,
 } from "@/components/store/site-settings-provider";
 import SportsNavbar from "./sports-navbar";
@@ -31,7 +32,8 @@ interface NavbarProps {
 export default function Navbar({ session, announcement }: NavbarProps) {
   const { openAuth } = useAuthModal();
   const { themeId } = useTheme();
-  const siteName = useSiteName();
+  const siteName = useRawSiteName();
+  const showStorefrontName = useShowStorefrontName();
   const siteLogo = useSiteLogo();
 
   const [searchOpen, setSearchOpen] = useState(false);
@@ -177,16 +179,18 @@ export default function Navbar({ session, announcement }: NavbarProps) {
                     className="hidden shrink sm:block"
                   />
                 )}
-                <span className="min-w-0 flex-1">
-                  <FitText
-                    baseSize={30}
-                    minSize={13}
-                    maxWidth={600}
-                    className="block truncate uppercase leading-none"
-                  >
-                    <SiteBrand name={siteName} />
-                  </FitText>
-                </span>
+                {showStorefrontName && siteName && (
+                  <span className="min-w-0 flex-1">
+                    <FitText
+                      baseSize={30}
+                      minSize={13}
+                      maxWidth={600}
+                      className="block truncate uppercase leading-none"
+                    >
+                      <SiteBrand name={siteName} />
+                    </FitText>
+                  </span>
+                )}
               </div>
             </Link>
 

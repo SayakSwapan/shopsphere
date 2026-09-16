@@ -8,7 +8,11 @@ import {
   ExternalLink,
   Play,
 } from "lucide-react";
-import { getSiteSettings, getSiteLogo } from "@/lib/site-settings";
+import {
+  getSiteSettings,
+  getSiteLogo,
+  getShowStorefrontName,
+} from "@/lib/site-settings";
 import { getActiveTheme } from "@/lib/themes/config";
 import { getFooterLinksGrouped } from "@/lib/footer-settings";
 import SiteBrand from "@/components/brand/site-brand";
@@ -48,7 +52,8 @@ export default async function Footer() {
     return <SportsFooter />;
   }
 
-  const siteName = s.site_name || "ShopSphere";
+  const siteName = (s.site_name || "").trim();
+  const showStorefrontName = getShowStorefrontName(s);
   const siteLogo = getSiteLogo(s);
   const tagline =
     s.footer_tagline ||
@@ -120,23 +125,28 @@ export default async function Footer() {
               {siteLogo ? (
                 <>
                   <SiteLogo src={siteLogo} alt={siteName} height={40} />
-                  <span
-                    className="text-xl font-black tracking-tight"
-                    style={{
-                      color: "var(--t-text-heading)",
-                      fontFamily: "var(--t-font-heading)",
-                    }}
-                  >
-                    {siteName}
-                  </span>
+                  {showStorefrontName && siteName && (
+                    <span
+                      className="text-xl font-black tracking-tight"
+                      style={{
+                        color: "var(--t-text-heading)",
+                        fontFamily: "var(--t-font-heading)",
+                      }}
+                    >
+                      {siteName}
+                    </span>
+                  )}
                 </>
               ) : (
-                <h2
-                  className="text-2xl font-black text-text-heading"
-                  style={{ fontFamily: "var(--t-font-heading)" }}
-                >
-                  <SiteBrand name={siteName} />
-                </h2>
+                showStorefrontName &&
+                siteName && (
+                  <h2
+                    className="text-2xl font-black text-text-heading"
+                    style={{ fontFamily: "var(--t-font-heading)" }}
+                  >
+                    <SiteBrand name={siteName} />
+                  </h2>
+                )
               )}
             </Link>
             <p className="mt-4 text-sm text-text-muted-1 leading-relaxed max-w-xs">
@@ -286,7 +296,8 @@ export default async function Footer() {
         {/* Bottom Bar */}
         <div className="mt-10 pt-8 border-t border-border-subtle flex flex-col sm:flex-row justify-between items-center gap-4">
           <p className="text-xs text-text-muted-2">
-            &copy; {new Date().getFullYear()} {siteName}. {copyrightText}
+            &copy; {new Date().getFullYear()}
+            {showStorefrontName ? ` ${siteName}` : ""}. {copyrightText}
           </p>
         </div>
       </div>

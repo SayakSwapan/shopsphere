@@ -17,7 +17,8 @@ import UserMenu from "../auth/user-menu";
 import { useAuthModal } from "@/components/auth/auth-context";
 import { useTheme } from "@/lib/themes/theme-provider";
 import {
-  useSiteName,
+  useRawSiteName,
+  useShowStorefrontName,
   useSiteLogo,
 } from "@/components/store/site-settings-provider";
 import SearchBar from "@/components/store/search-bar";
@@ -51,7 +52,8 @@ interface Props {
 export default function SportsNavbar({ session, announcement }: Props) {
   const { openAuth } = useAuthModal();
   const { themeId } = useTheme();
-  const siteName = useSiteName();
+  const siteName = useRawSiteName();
+  const showStorefrontName = useShowStorefrontName();
   const siteLogo = useSiteLogo();
 
   const [searchOpen, setSearchOpen] = useState(false);
@@ -139,26 +141,28 @@ export default function SportsNavbar({ session, announcement }: Props) {
                   <Zap size={18} fill="#0A0E13" className="text-[#0A0E13]" />
                 </span>
               )}
-              <span className="min-w-0 flex-1">
-                <FitText
-                  baseSize={26}
-                  minSize={13}
-                  maxWidth={600}
-                  className="block truncate uppercase leading-none"
-                  style={{
-                    fontFamily: "'Anton', sans-serif",
-                    color: "#F4F3EE",
-                    letterSpacing: "0.02em",
-                  }}
-                >
-                  {brandHead}
-                  {brandAccent && (
-                    <span style={{ color: "var(--sports-volt)" }}>
-                      {brandAccent}
-                    </span>
-                  )}
-                </FitText>
-              </span>
+              {showStorefrontName && siteName && (
+                <span className="min-w-0 flex-1">
+                  <FitText
+                    baseSize={26}
+                    minSize={13}
+                    maxWidth={600}
+                    className="block truncate uppercase leading-none"
+                    style={{
+                      fontFamily: "'Anton', sans-serif",
+                      color: "#F4F3EE",
+                      letterSpacing: "0.02em",
+                    }}
+                  >
+                    {brandHead}
+                    {brandAccent && (
+                      <span style={{ color: "var(--sports-volt)" }}>
+                        {brandAccent}
+                      </span>
+                    )}
+                  </FitText>
+                </span>
+              )}
             </Link>
 
             {/* Desktop nav */}

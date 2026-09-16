@@ -29,7 +29,10 @@ import {
 } from "lucide-react";
 import dynamic from "next/dynamic";
 
-const RichTextEditor = dynamic(() => import("@/components/admin/ui/rich-text-editor"), { ssr: false });
+const RichTextEditor = dynamic(
+  () => import("@/components/admin/ui/rich-text-editor"),
+  { ssr: false },
+);
 
 interface Settings {
   [key: string]: string;
@@ -49,7 +52,15 @@ interface DayHours {
   hours: string;
 }
 
-const ALL_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+const ALL_DAYS = [
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+  "Sunday",
+];
 
 const QUICK_HOURS = [
   "9:00 AM - 6:00 PM",
@@ -125,7 +136,9 @@ function AccordionSection({
               </span>
             )}
           </div>
-          <p className="text-[11px] text-slate-500 mt-0.5 truncate">{description}</p>
+          <p className="text-[11px] text-slate-500 mt-0.5 truncate">
+            {description}
+          </p>
         </div>
         <ChevronDown
           size={16}
@@ -154,10 +167,17 @@ function FieldInput({
 }) {
   return (
     <div className="space-y-1.5">
-      <label className="block text-sm font-medium text-slate-300">{field.label}</label>
+      <label className="block text-sm font-medium text-slate-300">
+        {field.label}
+      </label>
       {field.hint && <p className="text-[11px] text-slate-500">{field.hint}</p>}
       {field.type === "rich" ? (
-        <RichTextEditor value={value} onChange={onChange} placeholder={field.placeholder} minHeight={120} />
+        <RichTextEditor
+          value={value}
+          onChange={onChange}
+          placeholder={field.placeholder}
+          minHeight={120}
+        />
       ) : field.type === "select" ? (
         <div className="relative">
           <select
@@ -165,12 +185,19 @@ function FieldInput({
             onChange={(e) => onChange(e.target.value)}
             className="w-full bg-[#0A0F1E] border border-[#1E293B] text-white rounded-lg px-4 py-2.5 text-sm focus:border-amber-500/50 outline-none appearance-none cursor-pointer"
           >
-            <option value="" disabled>{field.placeholder}</option>
+            <option value="" disabled>
+              {field.placeholder}
+            </option>
             {field.options?.map((opt) => (
-              <option key={opt} value={opt}>{opt}</option>
+              <option key={opt} value={opt}>
+                {opt}
+              </option>
             ))}
           </select>
-          <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
+          <ChevronDown
+            size={14}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none"
+          />
         </div>
       ) : field.type === "textarea" ? (
         <textarea
@@ -192,7 +219,9 @@ function FieldInput({
             <div className="w-10 h-5 rounded-full bg-[#1E293B] peer-checked:bg-amber-500 transition-colors" />
             <div className="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform peer-checked:translate-x-5" />
           </div>
-          <span className="text-sm text-slate-300">{value !== "false" ? "Enabled" : "Disabled"}</span>
+          <span className="text-sm text-slate-300">
+            {value !== "false" ? "Enabled" : "Disabled"}
+          </span>
         </label>
       ) : (
         <input
@@ -211,13 +240,17 @@ function FieldInput({
 function BrandEditor({
   siteName,
   logo,
+  showStorefrontName,
   onSiteName,
   onLogoChange,
+  onShowStorefrontName,
 }: {
   siteName: string;
   logo: string;
+  showStorefrontName: string;
   onSiteName: (v: string) => void;
   onLogoChange: (v: string) => void;
+  onShowStorefrontName: (v: string) => void;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -247,7 +280,9 @@ function BrandEditor({
       <div className="space-y-1.5">
         <label className="block text-sm font-medium text-slate-300">Logo</label>
         <p className="text-[11px] text-slate-500">
-          Optional. Upload a transparent PNG (square, ~512x512px, logo about 70-80% of the frame). It replaces the text brand in the header, footer and on invoices. Leave empty to keep showing the site name.
+          Optional. Upload a transparent PNG (square, ~512x512px, logo about
+          70-80% of the frame). It replaces the text brand in the header, footer
+          and on invoices. Leave empty to keep showing the site name.
         </p>
         <div className="flex items-center gap-4">
           <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-[#1E293B] bg-[#0A0F1E]">
@@ -256,7 +291,11 @@ function BrandEditor({
               <img
                 src={logo}
                 alt="Logo preview"
-                style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }}
+                style={{
+                  maxWidth: "100%",
+                  maxHeight: "100%",
+                  objectFit: "contain",
+                }}
               />
             ) : (
               <span className="px-2 text-center text-[10px] uppercase tracking-wider text-slate-600">
@@ -276,7 +315,11 @@ function BrandEditor({
               ) : (
                 <Upload size={14} />
               )}
-              {uploading ? "Uploading\u2026" : logo ? "Replace Logo" : "Upload Logo"}
+              {uploading
+                ? "Uploading\u2026"
+                : logo
+                  ? "Replace Logo"
+                  : "Upload Logo"}
             </button>
             {logo && (
               <button
@@ -302,11 +345,23 @@ function BrandEditor({
         field={{
           key: "site_name",
           label: "Business / Brand Name",
-          placeholder: "ProCourt",
-          hint: "Change this one field and the new name appears across the whole project: the browser tab title, the storefront header & footer, admin pages, and on every invoice.",
+          placeholder: "TrinovaSports",
+          hint: "Shown in the browser tab. Also rendered as text in the storefront navbar & footer when the toggle below is enabled. Leave empty to use the default project name.",
         }}
         value={siteName}
         onChange={onSiteName}
+      />
+
+      <FieldInput
+        field={{
+          key: "show_site_name_storefront",
+          label: "Show Site Name on Storefront Navbar & Footer",
+          placeholder: "true",
+          type: "toggle" as const,
+          hint: "When enabled, the site name is printed as text next to the logo in the storefront navbar and footer. Turn it off to show only the logo there — the browser tab still uses the site name.",
+        }}
+        value={showStorefrontName}
+        onChange={onShowStorefrontName}
       />
     </div>
   );
@@ -353,7 +408,9 @@ function EmailIdentityEditor({
           !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
         return (
           <div key={f.key} className="space-y-1.5">
-            <label className="block text-sm font-medium text-slate-300">{f.label}</label>
+            <label className="block text-sm font-medium text-slate-300">
+              {f.label}
+            </label>
             {f.hint && <p className="text-[11px] text-slate-500">{f.hint}</p>}
             <input
               type={f.type ?? "text"}
@@ -363,22 +420,30 @@ function EmailIdentityEditor({
               className={`w-full bg-[#0A0F1E] border ${invalid ? "border-red-500/60" : "border-[#1E293B]"} text-white rounded-lg px-4 py-2.5 text-sm focus:border-amber-500/50 outline-none`}
             />
             {invalid && (
-              <p className="text-[11px] text-red-400">Enter a valid email address or leave it empty.</p>
+              <p className="text-[11px] text-red-400">
+                Enter a valid email address or leave it empty.
+              </p>
             )}
           </div>
         );
       })}
       <p className="text-[11px] text-slate-600">
-        SMTP credentials (<code className="text-amber-400/70">EMAIL_USER</code> /{" "}
-        <code className="text-amber-400/70">EMAIL_PASS</code>) stay in your environment
-        variables and are never exposed to the browser.
+        SMTP credentials (<code className="text-amber-400/70">EMAIL_USER</code>{" "}
+        / <code className="text-amber-400/70">EMAIL_PASS</code>) stay in your
+        environment variables and are never exposed to the browser.
       </p>
     </div>
   );
 }
 
 /* ─── Business Hours Editor ─── */
-function BusinessHoursEditor({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+function BusinessHoursEditor({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+}) {
   const [rows, setRows] = useState<DayHours[]>(() => parseHoursToRows(value));
 
   const update = (newRows: DayHours[]) => {
@@ -394,7 +459,9 @@ function BusinessHoursEditor({ value, onChange }: { value: string; onChange: (v:
     <div className="space-y-4">
       {/* Quick presets */}
       <div className="p-3 bg-[#0A0F1E] border border-[#1E293B] rounded-lg">
-        <p className="text-[11px] text-slate-500 mb-2 font-medium uppercase tracking-wider">Quick set all days</p>
+        <p className="text-[11px] text-slate-500 mb-2 font-medium uppercase tracking-wider">
+          Quick set all days
+        </p>
         <div className="flex flex-wrap gap-1.5">
           {QUICK_HOURS.map((qh) => (
             <button
@@ -429,14 +496,22 @@ function BusinessHoursEditor({ value, onChange }: { value: string; onChange: (v:
               key={row.day}
               className="flex items-center gap-3 p-2.5 rounded-lg transition-colors"
               style={{
-                background: isToday ? "rgba(245, 158, 11, 0.08)" : "transparent",
-                border: isToday ? "1px solid rgba(245, 158, 11, 0.2)" : "1px solid transparent",
+                background: isToday
+                  ? "rgba(245, 158, 11, 0.08)"
+                  : "transparent",
+                border: isToday
+                  ? "1px solid rgba(245, 158, 11, 0.2)"
+                  : "1px solid transparent",
               }}
             >
               <div className="w-24 shrink-0">
                 <div className="flex items-center gap-1.5">
-                  {isToday && <span className="h-1.5 w-1.5 rounded-full bg-amber-400 shrink-0" />}
-                  <span className={`text-sm ${isToday ? "text-amber-400 font-semibold" : "text-slate-300 font-medium"}`}>
+                  {isToday && (
+                    <span className="h-1.5 w-1.5 rounded-full bg-amber-400 shrink-0" />
+                  )}
+                  <span
+                    className={`text-sm ${isToday ? "text-amber-400 font-semibold" : "text-slate-300 font-medium"}`}
+                  >
                     {row.day}
                   </span>
                 </div>
@@ -452,7 +527,10 @@ function BusinessHoursEditor({ value, onChange }: { value: string; onChange: (v:
                       type="button"
                       onClick={() => {
                         const next = [...rows];
-                        next[idx] = { ...next[idx], hours: "9:00 AM - 6:00 PM" };
+                        next[idx] = {
+                          ...next[idx],
+                          hours: "9:00 AM - 6:00 PM",
+                        };
                         update(next);
                       }}
                       className="px-3 py-2 text-[11px] font-semibold rounded-lg text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors shrink-0"
@@ -494,7 +572,8 @@ function BusinessHoursEditor({ value, onChange }: { value: string; onChange: (v:
 
       <p className="text-[11px] text-slate-600 flex items-center gap-1.5">
         <Info size={11} />
-        Today is highlighted with an amber dot. Changes are saved when you click &quot;Save All&quot;.
+        Today is highlighted with an amber dot. Changes are saved when you click
+        &quot;Save All&quot;.
       </p>
     </div>
   );
@@ -539,7 +618,13 @@ function FooterLinksEditor() {
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [form, setForm] = useState({ group: "Shop", label: "", url: "", sortOrder: 0, isActive: true });
+  const [form, setForm] = useState({
+    group: "Shop",
+    label: "",
+    url: "",
+    sortOrder: 0,
+    isActive: true,
+  });
   const [customUrl, setCustomUrl] = useState("");
   const [isCustomUrl, setIsCustomUrl] = useState(false);
 
@@ -566,8 +651,16 @@ function FooterLinksEditor() {
       });
       if (!res.ok) throw new Error("Failed to create");
       const created = await res.json();
-      setLinks((prev) => [...prev, created].sort((a, b) => a.sortOrder - b.sortOrder));
-      setForm({ group: "Shop", label: "", url: "", sortOrder: 0, isActive: true });
+      setLinks((prev) =>
+        [...prev, created].sort((a, b) => a.sortOrder - b.sortOrder),
+      );
+      setForm({
+        group: "Shop",
+        label: "",
+        url: "",
+        sortOrder: 0,
+        isActive: true,
+      });
       setCustomUrl("");
       setIsCustomUrl(false);
       setShowAddForm(false);
@@ -602,7 +695,9 @@ function FooterLinksEditor() {
   const handleDelete = async (id: string) => {
     setSaving(true);
     try {
-      const res = await fetch(`/api/admin/footer-links/${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/admin/footer-links/${id}`, {
+        method: "DELETE",
+      });
       if (!res.ok) throw new Error("Failed to delete");
       setLinks((prev) => prev.filter((l) => l.id !== id));
       toast.success("Footer link deleted");
@@ -630,15 +725,24 @@ function FooterLinksEditor() {
     }
   };
 
-  const updateLinkField = (id: string, field: keyof FooterLinkItem, value: string | number) => {
-    setLinks((prev) => prev.map((l) => (l.id === id ? { ...l, [field]: value } : l)));
+  const updateLinkField = (
+    id: string,
+    field: keyof FooterLinkItem,
+    value: string | number,
+  ) => {
+    setLinks((prev) =>
+      prev.map((l) => (l.id === id ? { ...l, [field]: value } : l)),
+    );
   };
 
-  const grouped = links.reduce<Record<string, FooterLinkItem[]>>((acc, link) => {
-    if (!acc[link.group]) acc[link.group] = [];
-    acc[link.group].push(link);
-    return acc;
-  }, {});
+  const grouped = links.reduce<Record<string, FooterLinkItem[]>>(
+    (acc, link) => {
+      if (!acc[link.group]) acc[link.group] = [];
+      acc[link.group].push(link);
+      return acc;
+    },
+    {},
+  );
 
   if (loading) {
     return (
@@ -653,7 +757,9 @@ function FooterLinksEditor() {
       {/* Existing links grouped */}
       {Object.entries(grouped).map(([group, groupLinks]) => (
         <div key={group}>
-          <h4 className="text-xs font-bold text-amber-400 uppercase tracking-wider mb-2">{group}</h4>
+          <h4 className="text-xs font-bold text-amber-400 uppercase tracking-wider mb-2">
+            {group}
+          </h4>
           <div className="space-y-1.5">
             {groupLinks.map((link) => (
               <div
@@ -665,24 +771,32 @@ function FooterLinksEditor() {
                     <div className="flex-1 grid grid-cols-3 gap-2">
                       <select
                         value={link.group}
-                        onChange={(e) => updateLinkField(link.id, "group", e.target.value)}
+                        onChange={(e) =>
+                          updateLinkField(link.id, "group", e.target.value)
+                        }
                         className="bg-[#111827] border border-[#1E293B] text-white rounded px-2 py-1 text-xs focus:border-amber-500/50 outline-none"
                       >
                         {FOOTER_GROUPS.map((g) => (
-                          <option key={g} value={g}>{g}</option>
+                          <option key={g} value={g}>
+                            {g}
+                          </option>
                         ))}
                       </select>
                       <input
                         type="text"
                         value={link.label}
-                        onChange={(e) => updateLinkField(link.id, "label", e.target.value)}
+                        onChange={(e) =>
+                          updateLinkField(link.id, "label", e.target.value)
+                        }
                         className="bg-[#111827] border border-[#1E293B] text-white rounded px-2 py-1 text-xs focus:border-amber-500/50 outline-none"
                         placeholder="Label"
                       />
                       <input
                         type="text"
                         value={link.url}
-                        onChange={(e) => updateLinkField(link.id, "url", e.target.value)}
+                        onChange={(e) =>
+                          updateLinkField(link.id, "url", e.target.value)
+                        }
                         className="bg-[#111827] border border-[#1E293B] text-white rounded px-2 py-1 text-xs focus:border-amber-500/50 outline-none"
                         placeholder="URL"
                       />
@@ -703,15 +817,24 @@ function FooterLinksEditor() {
                   </>
                 ) : (
                   <>
-                    <GripVertical size={14} className="text-slate-600 shrink-0" />
+                    <GripVertical
+                      size={14}
+                      className="text-slate-600 shrink-0"
+                    />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5">
-                        <span className="text-xs font-medium text-white">{link.label}</span>
-                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${link.isActive ? "bg-emerald-500/15 text-emerald-400" : "bg-slate-500/15 text-slate-500"}`}>
+                        <span className="text-xs font-medium text-white">
+                          {link.label}
+                        </span>
+                        <span
+                          className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${link.isActive ? "bg-emerald-500/15 text-emerald-400" : "bg-slate-500/15 text-slate-500"}`}
+                        >
                           {link.isActive ? "Active" : "Off"}
                         </span>
                       </div>
-                      <p className="text-[10px] text-slate-600 truncate mt-0.5">{link.url}</p>
+                      <p className="text-[10px] text-slate-600 truncate mt-0.5">
+                        {link.url}
+                      </p>
                     </div>
                     <button
                       onClick={() => toggleActive(link.id)}
@@ -751,19 +874,25 @@ function FooterLinksEditor() {
         <div className="bg-[#0A0F1E] border border-[#1E293B] rounded-lg p-3 space-y-3">
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="block text-[10px] font-medium text-slate-400 mb-1">Group</label>
+              <label className="block text-[10px] font-medium text-slate-400 mb-1">
+                Group
+              </label>
               <select
                 value={form.group}
                 onChange={(e) => setForm({ ...form, group: e.target.value })}
                 className="w-full bg-[#111827] border border-[#1E293B] text-white rounded px-3 py-1.5 text-xs focus:border-amber-500/50 outline-none appearance-none cursor-pointer"
               >
                 {FOOTER_GROUPS.map((g) => (
-                  <option key={g} value={g}>{g}</option>
+                  <option key={g} value={g}>
+                    {g}
+                  </option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="block text-[10px] font-medium text-slate-400 mb-1">Label</label>
+              <label className="block text-[10px] font-medium text-slate-400 mb-1">
+                Label
+              </label>
               <input
                 type="text"
                 value={form.label}
@@ -774,7 +903,9 @@ function FooterLinksEditor() {
             </div>
           </div>
           <div>
-            <label className="block text-[10px] font-medium text-slate-400 mb-1">URL</label>
+            <label className="block text-[10px] font-medium text-slate-400 mb-1">
+              URL
+            </label>
             <div className="flex gap-2">
               {isCustomUrl ? (
                 <input
@@ -792,7 +923,9 @@ function FooterLinksEditor() {
                 >
                   <option value="">Select a path</option>
                   {AVAILABLE_PATHS.map((p) => (
-                    <option key={p.value} value={p.value}>{p.label} ({p.value})</option>
+                    <option key={p.value} value={p.value}>
+                      {p.label} ({p.value})
+                    </option>
                   ))}
                 </select>
               )}
@@ -814,7 +947,9 @@ function FooterLinksEditor() {
               <input
                 type="checkbox"
                 checked={form.isActive}
-                onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
+                onChange={(e) =>
+                  setForm({ ...form, isActive: e.target.checked })
+                }
                 className="w-3 h-3 rounded border-[#1E293B] bg-[#0A0F1E] text-amber-500 focus:ring-amber-500/50"
               />
               <span className="text-[11px] text-slate-400">Active</span>
@@ -824,14 +959,20 @@ function FooterLinksEditor() {
               <input
                 type="number"
                 value={form.sortOrder}
-                onChange={(e) => setForm({ ...form, sortOrder: Number(e.target.value) })}
+                onChange={(e) =>
+                  setForm({ ...form, sortOrder: Number(e.target.value) })
+                }
                 className="w-14 bg-[#111827] border border-[#1E293B] text-white rounded px-2 py-1 text-xs focus:border-amber-500/50 outline-none"
               />
             </div>
           </div>
           <div className="flex justify-end gap-2 pt-1">
             <button
-              onClick={() => { setShowAddForm(false); setIsCustomUrl(false); setCustomUrl(""); }}
+              onClick={() => {
+                setShowAddForm(false);
+                setIsCustomUrl(false);
+                setCustomUrl("");
+              }}
               className="px-3 py-1.5 text-[11px] text-slate-400 hover:text-white transition-colors"
             >
               Cancel
@@ -874,15 +1015,15 @@ const SECTIONS: Array<{
     icon: Store,
     title: "Business Name & Branding",
     description:
-      "The store name shown everywhere — browser tab, header, footer and printed invoices.",
-    badge: "Shown everywhere",
+      "Site name (browser tab), uploaded logo, and whether the name prints as text in the storefront navbar & footer.",
+    badge: "Logo & name",
     defaultOpen: true,
     fields: [
       {
         key: "site_name",
         label: "Business / Brand Name",
-        placeholder: "ProCourt",
-        hint: "Change this one field and the new name appears across the whole project: the browser tab title, the storefront header & footer, admin pages, and on every invoice.",
+        placeholder: "TrinovaSports",
+        hint: "Shown in the browser tab. Also rendered as text in the storefront navbar & footer when the toggle below is enabled. Leave empty to use the default project name.",
       },
     ],
   },
@@ -899,11 +1040,35 @@ const SECTIONS: Array<{
         placeholder: "ShopSphere Retail Pvt. Ltd.",
         hint: "Optional separate registered name. When set, it is printed on the invoice under the brand name; leave empty to use the Business / Brand Name everywhere.",
       },
-      { key: "gstin", label: "GSTIN", placeholder: "22ABCDE1234F1Z5", hint: "15-digit GST identification number" },
-      { key: "business_address", label: "Business Address", placeholder: "Shop No. 12, MG Road, Mumbai, Maharashtra 400001", type: "textarea" as const },
-      { key: "business_phone", label: "Business Phone", placeholder: "+91 98765 43210" },
-      { key: "business_email", label: "Business Email", placeholder: "support@shopsphere.com" },
-      { key: "invoice_notes", label: "Invoice Footer Notes", placeholder: "Goods once sold will not be taken back or exchanged unless defective.", type: "textarea" as const },
+      {
+        key: "gstin",
+        label: "GSTIN",
+        placeholder: "22ABCDE1234F1Z5",
+        hint: "15-digit GST identification number",
+      },
+      {
+        key: "business_address",
+        label: "Business Address",
+        placeholder: "Shop No. 12, MG Road, Mumbai, Maharashtra 400001",
+        type: "textarea" as const,
+      },
+      {
+        key: "business_phone",
+        label: "Business Phone",
+        placeholder: "+91 98765 43210",
+      },
+      {
+        key: "business_email",
+        label: "Business Email",
+        placeholder: "support@shopsphere.com",
+      },
+      {
+        key: "invoice_notes",
+        label: "Invoice Footer Notes",
+        placeholder:
+          "Goods once sold will not be taken back or exchanged unless defective.",
+        type: "textarea" as const,
+      },
     ],
   },
   {
@@ -913,10 +1078,26 @@ const SECTIONS: Array<{
     description: "Footer social icons — paste full URLs",
     badge: "4 links",
     fields: [
-      { key: "social_facebook", label: "Facebook", placeholder: "https://facebook.com/yourpage" },
-      { key: "social_instagram", label: "Instagram", placeholder: "https://instagram.com/yourpage" },
-      { key: "social_twitter", label: "Twitter / X", placeholder: "https://x.com/yourpage" },
-      { key: "social_youtube", label: "YouTube", placeholder: "https://youtube.com/yourchannel" },
+      {
+        key: "social_facebook",
+        label: "Facebook",
+        placeholder: "https://facebook.com/yourpage",
+      },
+      {
+        key: "social_instagram",
+        label: "Instagram",
+        placeholder: "https://instagram.com/yourpage",
+      },
+      {
+        key: "social_twitter",
+        label: "Twitter / X",
+        placeholder: "https://x.com/yourpage",
+      },
+      {
+        key: "social_youtube",
+        label: "YouTube",
+        placeholder: "https://youtube.com/yourchannel",
+      },
     ],
   },
   {
@@ -925,15 +1106,25 @@ const SECTIONS: Array<{
     title: "Footer Content",
     description: "Tagline and copyright text in the footer",
     fields: [
-      { key: "footer_tagline", label: "Footer Tagline", placeholder: "Premium marketplace...", type: "rich" as const },
-      { key: "copyright_text", label: "Copyright Text", placeholder: "All Rights Reserved." },
+      {
+        key: "footer_tagline",
+        label: "Footer Tagline",
+        placeholder: "Premium marketplace...",
+        type: "rich" as const,
+      },
+      {
+        key: "copyright_text",
+        label: "Copyright Text",
+        placeholder: "All Rights Reserved.",
+      },
     ],
   },
   {
     id: "footer_links",
     icon: Link2,
     title: "Footer Links",
-    description: "Manage navigation links shown in the footer (Shop, Customer, Support)",
+    description:
+      "Manage navigation links shown in the footer (Shop, Customer, Support)",
     badge: "Dynamic",
   },
   {
@@ -942,8 +1133,17 @@ const SECTIONS: Array<{
     title: "About Section",
     description: "Content shown on the About page and footer",
     fields: [
-      { key: "about_heading", label: "Heading", placeholder: "About ShopSphere" },
-      { key: "about_text", label: "About Text", placeholder: "Tell customers about your brand...", type: "rich" as const },
+      {
+        key: "about_heading",
+        label: "Heading",
+        placeholder: "About ShopSphere",
+      },
+      {
+        key: "about_text",
+        label: "About Text",
+        placeholder: "Tell customers about your brand...",
+        type: "rich" as const,
+      },
     ],
   },
   {
@@ -953,8 +1153,18 @@ const SECTIONS: Array<{
     description: "Scrolling marquee at the top of every page",
     badge: "Top bar",
     fields: [
-      { key: "announcement_text", label: "Text", placeholder: "Free Shipping On Orders Above ₹1999", hint: "Displays as a scrolling marquee in the top bar" },
-      { key: "announcement_enabled", label: "Enabled", placeholder: "true", hint: "Type \"true\" to show, anything else to hide" },
+      {
+        key: "announcement_text",
+        label: "Text",
+        placeholder: "Free Shipping On Orders Above ₹1999",
+        hint: "Displays as a scrolling marquee in the top bar",
+      },
+      {
+        key: "announcement_enabled",
+        label: "Enabled",
+        placeholder: "true",
+        hint: 'Type "true" to show, anything else to hide',
+      },
     ],
   },
   {
@@ -963,7 +1173,14 @@ const SECTIONS: Array<{
     title: "Homepage Ticker",
     description: "Scrolling bar below the hero banner",
     fields: [
-      { key: "ticker_texts", label: "Ticker Items", placeholder: "Free shipping over ₹999|New arrivals weekly|Easy 30-day returns", type: "textarea" as const, hint: "Separate each item with | (pipe)" },
+      {
+        key: "ticker_texts",
+        label: "Ticker Items",
+        placeholder:
+          "Free shipping over ₹999|New arrivals weekly|Easy 30-day returns",
+        type: "textarea" as const,
+        hint: "Separate each item with | (pipe)",
+      },
     ],
   },
   {
@@ -972,16 +1189,29 @@ const SECTIONS: Array<{
     title: "Contact Information",
     description: "Email, phone, and address on the Contact Us page",
     fields: [
-      { key: "contact_email", label: "Email Address", placeholder: "support@shopsphere.com" },
-      { key: "contact_phone", label: "Phone Number", placeholder: "+91 98765 43210" },
-      { key: "contact_address", label: "Address", placeholder: "Mumbai, Maharashtra, India" },
+      {
+        key: "contact_email",
+        label: "Email Address",
+        placeholder: "support@shopsphere.com",
+      },
+      {
+        key: "contact_phone",
+        label: "Phone Number",
+        placeholder: "+91 98765 43210",
+      },
+      {
+        key: "contact_address",
+        label: "Address",
+        placeholder: "Mumbai, Maharashtra, India",
+      },
     ],
   },
   {
     id: "email_identity",
     icon: Mail,
     title: "Email Identity",
-    description: "Sender name/email and support contact used on every outgoing email (OTP, order confirmations, support replies).",
+    description:
+      "Sender name/email and support contact used on every outgoing email (OTP, order confirmations, support replies).",
     badge: "Emails",
   },
   {
@@ -1013,7 +1243,8 @@ const SECTIONS: Array<{
     id: "admin_notifications",
     icon: Bell,
     title: "Admin Notifications",
-    description: "Get notified on WhatsApp when customers place orders or send queries",
+    description:
+      "Get notified on WhatsApp when customers place orders or send queries",
     badge: "Alerts",
     fields: [
       {
@@ -1049,7 +1280,8 @@ const SECTIONS: Array<{
     id: "offline_policy",
     icon: Ban,
     title: "Offline Sale Policies",
-    description: "No-return policy text & due-sale rules shown on offline (POS) invoices",
+    description:
+      "No-return policy text & due-sale rules shown on offline (POS) invoices",
     badge: "Due sales",
     fields: [
       {
@@ -1061,7 +1293,8 @@ const SECTIONS: Array<{
       {
         key: "offline_no_return_policy",
         label: "No-Return Policy Text",
-        placeholder: "This is a part-payment / due sale. Since the full amount was not paid at the time of purchase, no returns, exchanges or refunds will be accepted for any item in this invoice.",
+        placeholder:
+          "This is a part-payment / due sale. Since the full amount was not paid at the time of purchase, no returns, exchanges or refunds will be accepted for any item in this invoice.",
         type: "textarea" as const,
         hint: "Your own wording. This exact text is printed on every due-sale invoice so the customer is clearly informed.",
       },
@@ -1132,7 +1365,9 @@ export default function SiteSettingsPage() {
       <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 bg-[#0A0F1E] border-b border-[#1E293B]">
         <div>
           <h1 className="text-2xl font-bold text-white">Site Settings</h1>
-          <p className="text-sm text-slate-400 mt-1">Manage your store&apos;s public information</p>
+          <p className="text-sm text-slate-400 mt-1">
+            Manage your store&apos;s public information
+          </p>
         </div>
         <button
           onClick={handleSave}
@@ -1170,8 +1405,14 @@ export default function SiteSettingsPage() {
               <BrandEditor
                 siteName={settings.site_name || ""}
                 logo={settings.site_logo || ""}
+                showStorefrontName={
+                  settings.show_site_name_storefront || "true"
+                }
                 onSiteName={(val) => updateField("site_name", val)}
                 onLogoChange={(val) => updateField("site_logo", val)}
+                onShowStorefrontName={(val) =>
+                  updateField("show_site_name_storefront", val)
+                }
               />
             ) : section.id === "admin_notifications" ? (
               <div>
@@ -1179,29 +1420,71 @@ export default function SiteSettingsPage() {
                 <div className="mb-6 rounded-xl border border-amber-500/20 bg-amber-500/5 p-5">
                   <div className="flex items-center gap-2 mb-3">
                     <MessageCircle size={16} className="text-amber-400" />
-                    <h4 className="text-sm font-bold text-amber-400">How Admin Notifications Work</h4>
+                    <h4 className="text-sm font-bold text-amber-400">
+                      How Admin Notifications Work
+                    </h4>
                   </div>
                   <div className="space-y-2 text-[13px] text-slate-400 leading-relaxed">
-                    <p>When a customer performs any of the actions below, you&apos;ll receive an <strong className="text-slate-300">instant WhatsApp message</strong> on the phone number above — even if you&apos;re not at your computer.</p>
+                    <p>
+                      When a customer performs any of the actions below,
+                      you&apos;ll receive an{" "}
+                      <strong className="text-slate-300">
+                        instant WhatsApp message
+                      </strong>{" "}
+                      on the phone number above — even if you&apos;re not at
+                      your computer.
+                    </p>
                     <div className="mt-3 space-y-1.5">
                       <div className="flex items-start gap-2">
                         <span className="mt-1 h-1.5 w-1.5 rounded-full bg-amber-400 shrink-0" />
-                        <span><strong className="text-slate-300">New Order</strong> — You&apos;ll get order number, customer name, amount, and payment method (COD/Online).</span>
+                        <span>
+                          <strong className="text-slate-300">New Order</strong>{" "}
+                          — You&apos;ll get order number, customer name, amount,
+                          and payment method (COD/Online).
+                        </span>
                       </div>
                       <div className="flex items-start gap-2">
                         <span className="mt-1 h-1.5 w-1.5 rounded-full bg-amber-400 shrink-0" />
-                        <span><strong className="text-slate-300">Product Query</strong> — Customer asks a question about a product. You can reply from Admin &gt; Product Queries.</span>
+                        <span>
+                          <strong className="text-slate-300">
+                            Product Query
+                          </strong>{" "}
+                          — Customer asks a question about a product. You can
+                          reply from Admin &gt; Product Queries.
+                        </span>
                       </div>
                       <div className="flex items-start gap-2">
                         <span className="mt-1 h-1.5 w-1.5 rounded-full bg-amber-400 shrink-0" />
-                        <span><strong className="text-slate-300">Contact / Callback</strong> — Customer submits a contact form or requests a callback.</span>
+                        <span>
+                          <strong className="text-slate-300">
+                            Contact / Callback
+                          </strong>{" "}
+                          — Customer submits a contact form or requests a
+                          callback.
+                        </span>
                       </div>
                       <div className="flex items-start gap-2">
                         <span className="mt-1 h-1.5 w-1.5 rounded-full bg-amber-400 shrink-0" />
-                        <span><strong className="text-slate-300">Returns &amp; Replacements</strong> — When a customer requests a return or replacement.</span>
+                        <span>
+                          <strong className="text-slate-300">
+                            Returns &amp; Replacements
+                          </strong>{" "}
+                          — When a customer requests a return or replacement.
+                        </span>
                       </div>
                     </div>
-                    <p className="mt-3 text-xs text-slate-500">Requires WhatsApp Business API credentials (<code className="text-amber-400/70">WHATSAPP_API_TOKEN</code> and <code className="text-amber-400/70">WHATSAPP_PHONE_NUMBER_ID</code>) in your environment variables. If not configured, in-app notifications still work via the bell icon above.</p>
+                    <p className="mt-3 text-xs text-slate-500">
+                      Requires WhatsApp Business API credentials (
+                      <code className="text-amber-400/70">
+                        WHATSAPP_API_TOKEN
+                      </code>{" "}
+                      and{" "}
+                      <code className="text-amber-400/70">
+                        WHATSAPP_PHONE_NUMBER_ID
+                      </code>
+                      ) in your environment variables. If not configured, in-app
+                      notifications still work via the bell icon above.
+                    </p>
                   </div>
                 </div>
 

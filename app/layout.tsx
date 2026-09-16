@@ -14,7 +14,12 @@ import SessionProvider from "@/components/providers/session-provider";
 import RootThemeShell from "@/components/store/theme/root-theme-shell";
 import { SiteSettingsProvider } from "@/components/store/site-settings-provider";
 import { getActiveTheme } from "@/lib/themes/config";
-import { getSiteSettings, getSiteName, getSiteLogo } from "@/lib/site-settings";
+import {
+  getSiteSettings,
+  getSiteName,
+  getSiteLogo,
+  SITE_NAME_FALLBACK,
+} from "@/lib/site-settings";
 import { auth } from "@/lib/auth";
 
 const geistSans = Geist({
@@ -39,7 +44,11 @@ export async function generateMetadata(): Promise<Metadata> {
     const siteName = getSiteName(settings);
     const logo = getSiteLogo(settings);
     return {
-      metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || "https://trinovasports.com"),
+      metadataBase: new URL(
+        process.env.NEXT_PUBLIC_SITE_URL ||
+          process.env.NEXT_PUBLIC_APP_URL ||
+          "https://trinovasports.com",
+      ),
       title: {
         template: `%s | ${siteName}`,
         default: siteName,
@@ -64,15 +73,15 @@ export async function generateMetadata(): Promise<Metadata> {
     return {
       metadataBase: new URL("https://trinovasports.com"),
       title: {
-        template: "%s | ShopSphere",
-        default: "ShopSphere",
+        template: `%s | ${SITE_NAME_FALLBACK}`,
+        default: SITE_NAME_FALLBACK,
       },
       description: "Premium sportswear, sneakers & fashion",
       openGraph: {
         type: "website",
         locale: "en_IN",
-        siteName: "ShopSphere",
-        title: "ShopSphere",
+        siteName: SITE_NAME_FALLBACK,
+        title: SITE_NAME_FALLBACK,
         description: "Premium sportswear, sneakers & fashion",
       },
       twitter: {
@@ -115,9 +124,7 @@ export default async function RootLayout({
           <SessionProvider session={session}>
             <AuthProviderContext>
               <RootThemeShell initialTheme={activeTheme}>
-                <main className="min-h-[80vh]">
-                  {children}
-                </main>
+                <main className="min-h-[80vh]">{children}</main>
                 <AuthModal />
               </RootThemeShell>
               <Suspense fallback={null}>

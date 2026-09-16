@@ -236,21 +236,17 @@ function FieldInput({
   );
 }
 
-/* ─── Brand (Name + Logo) Editor ─── */
-function BrandEditor({
-  siteName,
-  logo,
-  showStorefrontName,
-  onSiteName,
-  onLogoChange,
-  onShowStorefrontName,
+/* ─── Shared Logo Upload Block ─── */
+function LogoUpload({
+  label,
+  hint,
+  value,
+  onChange,
 }: {
-  siteName: string;
-  logo: string;
-  showStorefrontName: string;
-  onSiteName: (v: string) => void;
-  onLogoChange: (v: string) => void;
-  onShowStorefrontName: (v: string) => void;
+  label: string;
+  hint: string;
+  value: string;
+  onChange: (v: string) => void;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -265,7 +261,7 @@ function BrandEditor({
       const res = await fetch("/api/upload", { method: "POST", body: form });
       const data = await res.json();
       if (!res.ok || !data.url) throw new Error("upload failed");
-      onLogoChange(data.url);
+      onChange(data.url);
       toast.success("Logo uploaded");
     } catch {
       toast.error("Logo upload failed");
@@ -276,70 +272,101 @@ function BrandEditor({
   }
 
   return (
-    <div className="space-y-5">
-      <div className="space-y-1.5">
-        <label className="block text-sm font-medium text-slate-300">Logo</label>
-        <p className="text-[11px] text-slate-500">
-          Optional. Upload a transparent PNG (square, ~512x512px, logo about
-          70-80% of the frame). It replaces the text brand in the header, footer
-          and on invoices. Leave empty to keep showing the site name.
-        </p>
-        <div className="flex items-center gap-4">
-          <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-[#1E293B] bg-[#0A0F1E]">
-            {logo ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={logo}
-                alt="Logo preview"
-                style={{
-                  maxWidth: "100%",
-                  maxHeight: "100%",
-                  objectFit: "contain",
-                }}
-              />
+    <div className="space-y-1.5">
+      <label className="block text-sm font-medium text-slate-300">
+        {label}
+      </label>
+      <p className="text-[11px] text-slate-500">{hint}</p>
+      <div className="flex items-center gap-4">
+        <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-[#1E293B] bg-[#0A0F1E]">
+          {value ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={value}
+              alt="Logo preview"
+              style={{
+                maxWidth: "100%",
+                maxHeight: "100%",
+                objectFit: "contain",
+              }}
+            />
+          ) : (
+            <span className="px-2 text-center text-[10px] uppercase tracking-wider text-slate-600">
+              No logo
+            </span>
+          )}
+        </div>
+        <div className="space-y-2">
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            disabled={uploading}
+            className="flex items-center gap-2 rounded-lg border border-[#1E293B] px-4 py-2 text-sm text-slate-300 transition-colors hover:border-slate-600 hover:text-white disabled:opacity-50"
+          >
+            {uploading ? (
+              <Loader2 size={14} className="animate-spin" />
             ) : (
-              <span className="px-2 text-center text-[10px] uppercase tracking-wider text-slate-600">
-                No logo
-              </span>
+              <Upload size={14} />
             )}
-          </div>
-          <div className="space-y-2">
+            {uploading ? "Uploading\u2026" : value ? "Replace" : "Upload"}
+          </button>
+          {value && (
             <button
               type="button"
-              onClick={() => fileRef.current?.click()}
-              disabled={uploading}
-              className="flex items-center gap-2 rounded-lg border border-[#1E293B] px-4 py-2 text-sm text-slate-300 transition-colors hover:border-slate-600 hover:text-white disabled:opacity-50"
+              onClick={() => onChange("")}
+              className="flex items-center gap-2 text-sm text-red-400 transition-colors hover:text-red-300"
             >
-              {uploading ? (
-                <Loader2 size={14} className="animate-spin" />
-              ) : (
-                <Upload size={14} />
-              )}
-              {uploading
-                ? "Uploading\u2026"
-                : logo
-                  ? "Replace Logo"
-                  : "Upload Logo"}
+              <X size={14} /> Remove
             </button>
-            {logo && (
-              <button
-                type="button"
-                onClick={() => onLogoChange("")}
-                className="flex items-center gap-2 text-sm text-red-400 transition-colors hover:text-red-300"
-              >
-                <X size={14} /> Remove Logo
-              </button>
-            )}
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/png,image/webp,image/svg+xml"
-              className="hidden"
-              onChange={handleFile}
-            />
-          </div>
+          )}
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/png,image/webp,image/svg+xml"
+            className="hidden"
+            onChange={handleFile}
+          />
         </div>
       </div>
+    </div>
+  );
+}
+
+/* ─── Brand (Name + Logo) Editor ─── */
+function BrandEditor({
+  siteName,
+  logo,
+  invoiceLogo,
+  showStorefrontName,
+  onSiteName,
+  onLogoChange,
+  onInvoiceLogoChange,
+  onShowStorefrontName,
+}: {
+  siteName: string;
+  logo: string;
+  invoiceLogo: string;
+  showStorefrontName: string;
+  onSiteName: (v: string) => void;
+  onLogoChange: (v: string) => void;
+  onInvoiceLogoChange: (v: string) => void;
+  onShowStorefrontName: (v: string) => void;
+}) {
+  return (
+    <div className="space-y-5">
+      <LogoUpload
+        label="Storefront Logo"
+        hint="Optional. Upload a transparent PNG (square, ~512x512px, logo about 70-80% of the frame). It replaces the text brand in the storefront header & footer. Leave empty to keep showing the site name."
+        value={logo}
+        onChange={onLogoChange}
+      />
+
+      <LogoUpload
+        label="Invoice Logo"
+        hint="Shown on printed invoices and the offline invoice email. Leave empty to reuse the storefront logo above."
+        value={invoiceLogo}
+        onChange={onInvoiceLogoChange}
+      />
 
       <FieldInput
         field={{
@@ -1015,7 +1042,7 @@ const SECTIONS: Array<{
     icon: Store,
     title: "Business Name & Branding",
     description:
-      "Site name (browser tab), uploaded logo, and whether the name prints as text in the storefront navbar & footer.",
+      "Site name (browser tab), storefront logo, invoice logo, and whether the name prints as text in the storefront navbar & footer.",
     badge: "Logo & name",
     defaultOpen: true,
     fields: [
@@ -1405,11 +1432,13 @@ export default function SiteSettingsPage() {
               <BrandEditor
                 siteName={settings.site_name || ""}
                 logo={settings.site_logo || ""}
+                invoiceLogo={settings.invoice_logo || ""}
                 showStorefrontName={
                   settings.show_site_name_storefront || "true"
                 }
                 onSiteName={(val) => updateField("site_name", val)}
                 onLogoChange={(val) => updateField("site_logo", val)}
+                onInvoiceLogoChange={(val) => updateField("invoice_logo", val)}
                 onShowStorefrontName={(val) =>
                   updateField("show_site_name_storefront", val)
                 }

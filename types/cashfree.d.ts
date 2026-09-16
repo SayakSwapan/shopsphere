@@ -10,12 +10,14 @@ declare module "@cashfreepayments/cashfree-js" {
 
   export interface CashfreeCheckoutOptions {
     paymentSessionId: string;
-    /** "modal" opens a popup; "self" navigates the current tab to the hosted page. */
-    redirectTarget: "modal" | "self";
+    /** "_self"/"_top" navigate the current tab; "_blank" opens a new tab; "_modal" opens a popup; a DOM element embeds inline. Must be a valid HTML form target — "_self", not "self". */
+    redirectTarget: "_self" | "_blank" | "_top" | "_modal" | HTMLElement;
   }
 
   export interface CashfreeSDK {
-    checkout(options: CashfreeCheckoutOptions): Promise<CashfreeCheckoutResponse>;
+    checkout(
+      options: CashfreeCheckoutOptions,
+    ): Promise<CashfreeCheckoutResponse>;
   }
 
   export type CashfreeMode = "sandbox" | "production";

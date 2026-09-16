@@ -35,9 +35,25 @@ export function escapeEmailHtml(value: unknown): string {
     .replace(/'/g, "&#39;");
 }
 
+/**
+ * The email header brand block: the logo image when provided, otherwise a
+ * styled store-name heading. Used for `{{logoBlock}}` in every email — callers
+ * can hand a different logo/name (e.g. the dedicated invoice logo) when the
+ * email is an invoice.
+ */
+export function buildLogoBlock(
+  logo: string,
+  name: string,
+  tagline: string,
+): string {
+  return logo
+    ? `<img src="${escapeEmailHtml(logo)}" alt="${escapeEmailHtml(name)}" width="140" style="max-width:200px;max-height:64px;object-fit:contain;display:inline-block;" />`
+    : `<h1 style="color:#111827;font-size:28px;font-weight:800;margin:0 0 4px 0;">${escapeEmailHtml(name)}</h1><p style="color:#6B7280;font-size:13px;margin:0;">${escapeEmailHtml(tagline)}</p>`;
+}
+
 export function replaceEmailPlaceholders(
   text: string,
-  placeholders: Record<string, string>
+  placeholders: Record<string, string>,
 ): string {
   let result = text;
   for (const [key, value] of Object.entries(placeholders)) {
@@ -77,9 +93,7 @@ async function basePlaceholders(): Promise<{
   const siteLogo = getSiteLogo(settings);
   const tagline =
     settings.footer_tagline?.trim() || "Premium Fashion & Lifestyle";
-  const logoBlock = siteLogo
-    ? `<img src="${escapeEmailHtml(siteLogo)}" alt="${escapeEmailHtml(siteName)}" width="140" style="max-width:200px;max-height:64px;object-fit:contain;display:inline-block;" />`
-    : `<h1 style="color:#111827;font-size:28px;font-weight:800;margin:0 0 4px 0;">${escapeEmailHtml(siteName)}</h1><p style="color:#6B7280;font-size:13px;margin:0;">${escapeEmailHtml(tagline)}</p>`;
+  const logoBlock = buildLogoBlock(siteLogo, siteName, tagline);
   return {
     siteName,
     storeName: siteName,
@@ -94,8 +108,11 @@ async function basePlaceholders(): Promise<{
  * Sends an email from the configured EmailTemplate (DB) when active, otherwise
  * from the provided fallback subject/body. Used by all OTP + admin flows.
  */
-export async function sendTemplatedEmail(options: SendEmailOptions): Promise<boolean> {
-  const { to, templateKey, placeholders, fallbackSubject, fallbackBody } = options;
+export async function sendTemplatedEmail(
+  options: SendEmailOptions,
+): Promise<boolean> {
+  const { to, templateKey, placeholders, fallbackSubject, fallbackBody } =
+    options;
 
   const injected = await basePlaceholders();
   const allPlaceholders = {
@@ -105,7 +122,7 @@ export async function sendTemplatedEmail(options: SendEmailOptions): Promise<boo
     storeName: injected.storeName,
     year: placeholders.year ?? injected.year,
     siteLogo: injected.siteLogo,
-    logoBlock: injected.logoBlock,
+    logoBlock: placeholders.logoBlock ?? injected.logoBlock,
   };
 
   const template = await prisma.emailTemplate.findUnique({

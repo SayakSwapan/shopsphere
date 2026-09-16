@@ -8,9 +8,7 @@ let preloadPromise: Promise<void> | null = null;
  * "Proceed to Payment". Safe to call anytime — it is idempotent and never
  * throws to the caller.
  */
-export function preloadCashfree(
-  mode: "production" | "sandbox"
-): Promise<void> {
+export function preloadCashfree(mode: "production" | "sandbox"): Promise<void> {
   if (!preloadPromise) {
     preloadPromise = load({ mode })
       .then(() => undefined)
@@ -38,11 +36,11 @@ export function preloadCashfree(
  */
 export async function openCashfreeCheckout(
   paymentSessionId: string,
-  mode: "production" | "sandbox"
+  mode: "production" | "sandbox",
 ): Promise<{ redirect: boolean }> {
   if (!paymentSessionId) {
     throw new Error(
-      "Payment session is missing. Please go back and try again."
+      "Payment session is missing. Please go back and try again.",
     );
   }
 
@@ -62,16 +60,16 @@ export async function openCashfreeCheckout(
   } catch (err) {
     console.error("[cashfree-checkout] SDK load failed", err);
     throw new Error(
-      "The payment page could not be loaded. Please allow scripts from sdk.cashfree.com (or disable your ad blocker) and try again."
+      "The payment page could not be loaded. Please allow scripts from sdk.cashfree.com (or disable your ad blocker) and try again.",
     );
   }
 
   try {
     await cashfree.checkout({
       paymentSessionId,
-      redirectTarget: "self",
+      redirectTarget: "_self",
     });
-    // With redirectTarget "self" the browser is already being navigated to the
+    // With redirectTarget "_self" the browser is already being navigated to the
     // Cashfree checkout page; the order outcome is confirmed by /payment/result.
     return { redirect: true };
   } catch (err) {

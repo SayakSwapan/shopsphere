@@ -7,6 +7,7 @@ import {
   createPaymentSession,
   CashfreeError,
   cashfreeClientMode,
+  cashfreeReturnUrlBase,
 } from "@/lib/payment/cashfree";
 import { getGstBreakdown, getActivePriceBase } from "@/lib/pricing";
 import { calculateShipping } from "@/lib/shipping";
@@ -423,14 +424,14 @@ export async function POST(req: Request) {
 
     // Our db order id doubles as the Cashfree order id (unique + matches
     // Cashfree's allowed order_id charset), which lets us verify payment
-    // status server-side without any extra lookup.
-    const proto = req.headers.get("x-forwarded-proto") ?? "http";
-    const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host");
+    // status server-side without any extra lookup. The return_url must be an
+    // absolute HTTPS URL in production — Cashfree rejects http:// (see
+    // cashfreeReturnUrlBase).
     const paymentSession = await createPaymentSession({
       orderId: order.id,
       amount: total,
       note: order.orderNumber,
-      redirectUrl: `${proto}://${host}/payment/result?orderId=${order.id}`,
+      redirectUrl: `${cashfreeReturnUrlBase(req)}/payment/result?orderId=${order.id}`,
       customer: {
         customerId: user.id,
         customerName: address.fullName,

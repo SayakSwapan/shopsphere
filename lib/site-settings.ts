@@ -7,6 +7,7 @@ export const SITE_NAME_FALLBACK = "TrinovaSports";
 export const SITE_DEFAULT_SETTINGS: Record<string, string> = {
   site_name: SITE_NAME_FALLBACK,
   site_logo: "",
+  invoice_logo: "",
   show_site_name_storefront: "true",
   footer_tagline:
     "Premium marketplace for fashion, footwear, accessories and lifestyle products.",
@@ -88,6 +89,16 @@ export function getSiteLogo(settings: Record<string, string>): string {
   return (settings.site_logo || "").trim();
 }
 
+/**
+ * Logo used on invoices (printed + emailed). Admins may upload a dedicated
+ * invoice logo under Site Settings → Branding; when left empty it falls back
+ * to the storefront site logo so invoices never lose their brand.
+ */
+export function getInvoiceLogo(settings: Record<string, string>): string {
+  const invoice = (settings.invoice_logo || "").trim();
+  return invoice || getSiteLogo(settings);
+}
+
 export async function fetchSiteName(): Promise<string> {
   try {
     const row = await prisma.siteSetting.findUnique({
@@ -102,7 +113,10 @@ export async function fetchSiteName(): Promise<string> {
 export interface InvoiceBusiness {
   /** Storefront brand displayed everywhere — header, footer, browser tab and invoices. */
   name: string;
-  /** Uploaded transparent site logo; rendered on the invoice header when set. */
+  /**
+   * Logo rendered on the invoice header. Prefers the dedicated invoice logo
+   * (`invoice_logo`) and falls back to the storefront site logo (`site_logo`).
+   */
   logo?: string;
   /** Optional separate legal / registered name (shown on the invoice when set). */
   legalName?: string;
@@ -124,7 +138,7 @@ export function getInvoiceBusiness(
       : undefined;
   return {
     name: brand,
-    logo: getSiteLogo(settings) || undefined,
+    logo: getInvoiceLogo(settings) || undefined,
     legalName,
     gstin: settings.gstin || undefined,
     address: settings.business_address || settings.contact_address || undefined,

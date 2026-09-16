@@ -2,7 +2,7 @@
  * Cashfree Payment Gateway — server-side client (temporarily replacing
  * Razorpay as the online gateway).
  *
-* Flow:
+ * Flow:
  *  1. createPaymentSession()  → /pg/orders → payment_session_id
  *  2. Client opens the Cashfree hosted checkout (redirectTarget: "self") with
  *     that session id — the CURRENT tab navigates to Cashfree's page.
@@ -27,8 +27,7 @@ export class CashfreeError extends Error {
 
 export function cashfreeEnabled(): boolean {
   return Boolean(
-    process.env.CASHFREE_CLIENT_ID &&
-      process.env.CASHFREE_CLIENT_SECRET
+    process.env.CASHFREE_CLIENT_ID && process.env.CASHFREE_CLIENT_SECRET,
   );
 }
 
@@ -50,6 +49,37 @@ function cashfreeBaseUrl(): string {
  */
 export function cashfreeClientMode(): "production" | "sandbox" {
   return isCashfreeProd() ? "production" : "sandbox";
+}
+
+/**
+ * Absolute base URL for the Cashfree order `return_url` (where the buyer is
+ * redirected after the checkout page finishes).
+ *
+ * We never trust the request headers blindly: Cashfree's production API
+ * hard-rejects non-HTTPS return URLs (`order_meta.return_url: url should be
+ * https`), which breaks order creation — and the whole checkout — whenever a
+ * proxy reports `http` (local dev servers, custom nginx setups, etc.).
+ *
+ * Resolution order:
+ *  1. `NEXT_PUBLIC_APP_URL` when set — but ALWAYS forced to https in
+ *     production mode so a stray `http://…` value can't be rejected.
+ *  2. Otherwise the request origin, again forced to https in production.
+ */
+export function cashfreeReturnUrlBase(request?: Request): string {
+  const configured = process.env.NEXT_PUBLIC_APP_URL?.trim().replace(
+    /\/+$/,
+    "",
+  );
+  if (configured) {
+    return isCashfreeProd()
+      ? `https://${configured.replace(/^https?:\/\//i, "")}`
+      : configured;
+  }
+  const proto = request?.headers.get("x-forwarded-proto");
+  const host =
+    request?.headers.get("x-forwarded-host") ?? request?.headers.get("host");
+  const protocol = isCashfreeProd() ? "https" : (proto ?? "http");
+  return `${protocol}://${host ?? ""}`.replace(/\/+$/, "");
 }
 
 function cashfreeHeaders(): Record<string, string> {
@@ -112,7 +142,7 @@ interface CashfreeErrorBody {
 
 async function cashfreeFetch(
   path: string,
-  init?: RequestInit
+  init?: RequestInit,
 ): Promise<unknown> {
   if (!cashfreeEnabled()) {
     throw new CashfreeError("Cashfree is not configured.", 503);
@@ -125,9 +155,10 @@ async function cashfreeFetch(
   if (!res.ok) {
     throw new CashfreeError(
       `Cashfree ${init?.method === "POST" ? "order" : "payment"} request failed (${res.status}): ${
-        (data as CashfreeErrorBody)?.message ?? JSON.stringify(data).slice(0, 200)
+        (data as CashfreeErrorBody)?.message ??
+        JSON.stringify(data).slice(0, 200)
       }`,
-      res.status
+      res.status,
     );
   }
   return data;
@@ -184,11 +215,13 @@ export async function createPaymentSession(input: {
  * Fetch the latest payment attempt for an order and map it to a simple shape.
  * Returns `null` when Cashfree has no payment record for the order yet.
  */
-export async function fetchPayment(orderId: string): Promise<CashfreePayment | null> {
+export async function fetchPayment(
+  orderId: string,
+): Promise<CashfreePayment | null> {
   let data: unknown;
   try {
     data = await cashfreeFetch(
-      `/pg/orders/${encodeURIComponent(orderId)}/payments`
+      `/pg/orders/${encodeURIComponent(orderId)}/payments`,
     );
   } catch (err) {
     console.error("[cashfree.fetchPayment] API error for", orderId, err);
@@ -200,9 +233,13 @@ export async function fetchPayment(orderId: string): Promise<CashfreePayment | n
   const payments: CashfreePaymentRaw[] = Array.isArray(raw)
     ? (raw as CashfreePaymentRaw[])
     : Array.isArray((raw as { data?: unknown })?.data)
-      ? ((raw as { data: CashfreePaymentRaw[] }).data)
+      ? (raw as { data: CashfreePaymentRaw[] }).data
       : [];
-  console.log("[cashfree.fetchPayment] raw response for", orderId, JSON.stringify(raw).slice(0, 1000));
+  console.log(
+    "[cashfree.fetchPayment] raw response for",
+    orderId,
+    JSON.stringify(raw).slice(0, 1000),
+  );
   // Attempt order is NOT guaranteed newest-first. Never rely on the first
   // entry: pick a successful attempt if one exists, otherwise the most recent.
   const successAttempt = payments.find((p) => p.payment_status === "SUCCESS");
@@ -216,7 +253,9 @@ export async function fetchPayment(orderId: string): Promise<CashfreePayment | n
     status: latest.payment_status ?? "UNKNOWN",
     method:
       typeof latest.payment_method === "string" ? latest.payment_method : null,
-    captured: Boolean(latest.payment_status === "SUCCESS" && latest.captured !== false),
+    captured: Boolean(
+      latest.payment_status === "SUCCESS" && latest.captured !== false,
+    ),
   };
 }
 
@@ -225,12 +264,12 @@ export async function fetchPayment(orderId: string): Promise<CashfreePayment | n
  * signal: Cashfree sets `order_status` to "PAID" only when the full order
  * amount has been captured (independent of payment-attempt ordering).
  */
-export async function fetchOrderStatus(orderId: string): Promise<CashfreePayment | null> {
+export async function fetchOrderStatus(
+  orderId: string,
+): Promise<CashfreePayment | null> {
   let data: unknown;
   try {
-    data = await cashfreeFetch(
-      `/pg/orders/${encodeURIComponent(orderId)}`
-    );
+    data = await cashfreeFetch(`/pg/orders/${encodeURIComponent(orderId)}`);
   } catch (err) {
     console.error("[cashfree.fetchOrderStatus] API error for", orderId, err);
     throw err;
@@ -241,7 +280,11 @@ export async function fetchOrderStatus(orderId: string): Promise<CashfreePayment
     order_amount?: string | number;
     cf_order_id?: string;
   };
-  console.log("[cashfree.fetchOrderStatus] raw response for", orderId, JSON.stringify(raw).slice(0, 1000));
+  console.log(
+    "[cashfree.fetchOrderStatus] raw response for",
+    orderId,
+    JSON.stringify(raw).slice(0, 1000),
+  );
   if (!raw || typeof raw !== "object" || !raw.order_status) return null;
 
   return {
@@ -260,10 +303,12 @@ export async function fetchOrderStatus(orderId: string): Promise<CashfreePayment
  * status returned by the Get Order endpoint. Paid MORE than billed is allowed
  * (some gateways pass customer surcharges on top of the order amount), never LESS.
  */
-export function isPaymentSuccessful(payment: CashfreePayment | null, expectedAmount: number): boolean {
+export function isPaymentSuccessful(
+  payment: CashfreePayment | null,
+  expectedAmount: number,
+): boolean {
   if (!payment) return false;
-  const isConfirmed =
-    payment.status === "SUCCESS" || payment.status === "PAID";
+  const isConfirmed = payment.status === "SUCCESS" || payment.status === "PAID";
   return (
     isConfirmed &&
     payment.amount >= Math.round(expectedAmount * 100) / 100 - 0.01

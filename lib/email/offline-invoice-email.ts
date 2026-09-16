@@ -3,8 +3,13 @@ import { formatCurrency, formatDate } from "@/lib/format";
 import {
   sendTemplatedEmail,
   escapeEmailHtml,
+  buildLogoBlock,
 } from "@/lib/email-service";
-import { getSiteSettings, getInvoiceBusiness } from "@/lib/site-settings";
+import {
+  getSiteSettings,
+  getInvoiceBusiness,
+  getInvoiceLogo,
+} from "@/lib/site-settings";
 import { PAYMENT_METHOD_LABELS } from "@/lib/constants/order-status";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -60,7 +65,9 @@ type OfflineOrderForEmail = {
   customerName: string;
 };
 
-async function loadOrder(orderId: string): Promise<OfflineOrderForEmail | null> {
+async function loadOrder(
+  orderId: string,
+): Promise<OfflineOrderForEmail | null> {
   const order = await prisma.order.findUnique({
     where: { id: orderId },
     include: {
@@ -85,7 +92,9 @@ async function loadOrder(orderId: string): Promise<OfflineOrderForEmail | null> 
     const gstTotal = perGst * i.quantity;
     return {
       productName: i.product.name,
-      variant: [i.variantGender, i.variantSize, i.variantSku].filter(Boolean).join(" · "),
+      variant: [i.variantGender, i.variantSize, i.variantSku]
+        .filter(Boolean)
+        .join(" · "),
       quantity: i.quantity,
       rateInclGst,
       gstPercent: i.gstPercentageAtSale,
@@ -102,7 +111,9 @@ async function loadOrder(orderId: string): Promise<OfflineOrderForEmail | null> 
     subtotal: order.subtotal != null ? Number(order.subtotal) : null,
     gst: order.gst != null ? Number(order.gst) : null,
     loyaltyDiscount:
-      order.loyaltyDiscountAmount != null ? Number(order.loyaltyDiscountAmount) : null,
+      order.loyaltyDiscountAmount != null
+        ? Number(order.loyaltyDiscountAmount)
+        : null,
     loyaltyRewardApplied: order.loyaltyRewardApplied,
     paidAmount: order.paidAmount != null ? Number(order.paidAmount) : null,
     dueAmount: order.dueAmount != null ? Number(order.dueAmount) : null,
@@ -137,7 +148,7 @@ function buildItemsTable(items: OfflineItemRow[]): string {
     ${item.gstAmount > 0 ? `<div style="color:#9AA4B2;font-size:11px;">GST: ${formatCurrency(item.gstAmount)}</div>` : ""}
   </td>
   <td align="right" style="padding:10px 12px;border-bottom:1px solid #EDF0F5;color:#111827;font-size:14px;font-weight:bold;">${formatCurrency(item.amount)}</td>
-</tr>`
+</tr>`,
     )
     .join("");
 
@@ -160,7 +171,13 @@ function buildTotalsTable(order: OfflineOrderForEmail): string {
   lines.push(row("Total GST", formatCurrency(order.gst ?? 0)));
 
   if (order.loyaltyDiscount && order.loyaltyRewardApplied) {
-    lines.push(row("Loyalty Reward", `-${formatCurrency(order.loyaltyDiscount)}`, "#059669"));
+    lines.push(
+      row(
+        "Loyalty Reward",
+        `-${formatCurrency(order.loyaltyDiscount)}`,
+        "#059669",
+      ),
+    );
   }
 
   if (order.isPartialPayment && order.paidAmount != null) {
@@ -184,11 +201,17 @@ function row(label: string, value: string, valueColor = "#111827"): string {
 </tr>`;
 }
 
-function buildFallbackBody(order: OfflineOrderForEmail, storeName: string, invoiceNotes: string): string {
+function buildFallbackBody(
+  order: OfflineOrderForEmail,
+  storeName: string,
+  invoiceNotes: string,
+): string {
   const billingAddress = [
     order.offlineAddressLine1,
     order.offlineAddressLine2 || null,
-    [order.offlineCity, order.offlineState, order.offlinePincode].filter(Boolean).join(", "),
+    [order.offlineCity, order.offlineState, order.offlinePincode]
+      .filter(Boolean)
+      .join(", "),
   ]
     .filter(Boolean)
     .join("<br/>");
@@ -222,11 +245,15 @@ function buildFallbackBody(order: OfflineOrderForEmail, storeName: string, invoi
         ${buildItemsTable(order.items)}
         ${buildTotalsTable(order)}
 
-        ${(order.offlineAddressLine1 || order.offlineCity || order.offlineState) ? `
+        ${
+          order.offlineAddressLine1 || order.offlineCity || order.offlineState
+            ? `
         <p style="color:#9AA4B2;font-size:11px;text-transform:uppercase;letter-spacing:2px;margin:28px 0 10px 0;">Billing Details</p>
         <p style="color:#111827;font-size:14px;font-weight:bold;line-height:1.6;margin:0 0 4px 0;">${escapeEmailHtml(order.fullName || "Walk-in Customer")}</p>
         <p style="color:#6B7280;font-size:13px;line-height:1.7;margin:0;">${billingAddress}</p>
-        ${order.phone ? `<p style="color:#6B7280;font-size:13px;line-height:1.7;margin:4px 0 0 0;">Phone: ${escapeEmailHtml(order.phone)}</p>` : ""}` : ""}
+        ${order.phone ? `<p style="color:#6B7280;font-size:13px;line-height:1.7;margin:4px 0 0 0;">Phone: ${escapeEmailHtml(order.phone)}</p>` : ""}`
+            : ""
+        }
 
         ${invoiceNotes ? `<p style="color:#9AA4B2;font-size:11px;line-height:1.6;margin:28px 0 0 0;">${escapeEmailHtml(invoiceNotes)}</p>` : ""}
 
@@ -256,7 +283,7 @@ export interface SendOfflineInvoiceEmailResult {
  * ensures the email is sent at most once per order.
  */
 export async function sendOfflineInvoiceEmail(
-  options: SendOfflineInvoiceEmailOptions
+  options: SendOfflineInvoiceEmailOptions,
 ): Promise<SendOfflineInvoiceEmailResult> {
   const { orderId, force } = options;
 
@@ -271,10 +298,21 @@ export async function sendOfflineInvoiceEmail(
     if (claimed.count === 0) return { sent: false, reason: "already-sent" };
   }
 
-  const business = getInvoiceBusiness(await getSiteSettings());
+  const settings = await getSiteSettings();
+  const business = getInvoiceBusiness(settings);
 
   const storeName = business.name || "Store";
   const invoiceNotes = business.notes || "";
+
+  // Invoices carry their own brand header: prefer the dedicated invoice logo,
+  // falling back to the site logo, and inject it into {{logoBlock}}.
+  const tagline =
+    settings.footer_tagline?.trim() || "Premium Fashion & Lifestyle";
+  const invoiceLogoBlock = buildLogoBlock(
+    getInvoiceLogo(settings),
+    storeName,
+    tagline,
+  );
 
   const paymentLabel = order.paymentMethod
     ? (PAYMENT_METHOD_LABELS[order.paymentMethod] ?? order.paymentMethod)
@@ -286,21 +324,30 @@ export async function sendOfflineInvoiceEmail(
     orderDate: formatDate(order.createdAt),
     paymentMethod: escapeEmailHtml(paymentLabel),
     total: formatCurrency(order.totalAmount),
-    messageHeadline: order.isPartialPayment ? "Partial Payment Received — Invoice" : "Invoice for Your Offline Purchase",
+    messageHeadline: order.isPartialPayment
+      ? "Partial Payment Received — Invoice"
+      : "Invoice for Your Offline Purchase",
     messageBody: order.isPartialPayment
       ? `Here is the invoice for your offline purchase #${order.orderNumber}. Please note there is an outstanding due amount.`
       : `Thank you for your offline purchase at ${escapeEmailHtml(storeName)}! Here is your invoice for order #${order.orderNumber}.`,
     subtotal: formatCurrency(order.subtotal ?? 0),
     gst: formatCurrency(order.gst ?? 0),
-    discount: order.loyaltyDiscount && order.loyaltyRewardApplied ? `-${formatCurrency(order.loyaltyDiscount)}` : "—",
-    paidAmount: order.paidAmount != null ? formatCurrency(order.paidAmount) : "—",
+    discount:
+      order.loyaltyDiscount && order.loyaltyRewardApplied
+        ? `-${formatCurrency(order.loyaltyDiscount)}`
+        : "—",
+    paidAmount:
+      order.paidAmount != null ? formatCurrency(order.paidAmount) : "—",
     dueAmount: order.dueAmount != null ? formatCurrency(order.dueAmount) : "—",
     customerEmail: escapeEmailHtml(order.customerEmail),
+    logoBlock: invoiceLogoBlock,
     itemsTable: buildItemsTable(order.items),
     customerAddress: [
       order.offlineAddressLine1,
       order.offlineAddressLine2,
-      [order.offlineCity, order.offlineState, order.offlinePincode].filter(Boolean).join(", "),
+      [order.offlineCity, order.offlineState, order.offlinePincode]
+        .filter(Boolean)
+        .join(", "),
     ]
       .filter(Boolean)
       .join(", "),

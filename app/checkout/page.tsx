@@ -37,7 +37,9 @@ export default async function CheckoutPage() {
       include: {
         cartitem: {
           include: {
-            product: { include: { productimage: true } },
+            product: {
+              include: { productimage: { orderBy: { sortOrder: "asc" } } },
+            },
             productvariant: { include: { size: true } },
           },
         },

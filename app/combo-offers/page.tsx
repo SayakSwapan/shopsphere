@@ -38,7 +38,20 @@ export default async function ComboOffersPage() {
       buyCount: true,
       getCount: true,
       minPick: true,
-      items: { select: { product: { select: { stock: true, productimage: { select: { url: true }, take: 1 } } } } },
+      items: {
+        select: {
+          product: {
+            select: {
+              stock: true,
+              productimage: {
+                select: { url: true },
+                take: 1,
+                orderBy: { sortOrder: "asc" },
+              },
+            },
+          },
+        },
+      },
     },
     orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
   });
@@ -50,7 +63,9 @@ export default async function ComboOffersPage() {
         ? Math.max(2, Number(o.minPick) || 2)
         : Math.max(2, Number(o.getCount) || 2),
     inStockCount: o.items.filter((it) => it.product.stock > 0).length,
-    sampleImage: o.items.find((it) => it.product.productimage[0])?.product.productimage[0]?.url ?? null,
+    sampleImage:
+      o.items.find((it) => it.product.productimage[0])?.product.productimage[0]
+        ?.url ?? null,
   }));
 
   return (
@@ -60,10 +75,15 @@ export default async function ComboOffersPage() {
       {/* Hero */}
       <div
         className="relative overflow-hidden border-b border-border-subtle"
-        style={{ background: "color-mix(in srgb, var(--t-bg-card) 60%, var(--t-bg-page))" }}
+        style={{
+          background:
+            "color-mix(in srgb, var(--t-bg-card) 60%, var(--t-bg-page))",
+        }}
       >
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-10 sm:py-14">
-          <p className="text-xs font-bold uppercase tracking-[0.3em] text-primary mb-2">● Limited Time</p>
+          <p className="text-xs font-bold uppercase tracking-[0.3em] text-primary mb-2">
+            ● Limited Time
+          </p>
           <h1
             className="text-4xl sm:text-5xl lg:text-6xl font-black uppercase leading-none tracking-tight text-text-heading"
             style={{ fontFamily: "var(--t-font-heading)" }}
@@ -71,27 +91,38 @@ export default async function ComboOffersPage() {
             Combo <span className="text-primary">Offers</span>
           </h1>
           <p className="mt-3 text-sm max-w-md leading-relaxed text-text-muted-1">
-            Pick the products you love and pay only for the highest-priced ones. Every
-            other item in your combo is FREE.
+            Pick the products you love and pay only for the highest-priced ones.
+            Every other item in your combo is FREE.
           </p>
           {visible.length > 0 && (
             <div
               className="mt-4 inline-flex items-center gap-2 bg-primary text-bg-page text-xs font-bold px-3 py-1.5"
               style={{ borderRadius: "var(--t-radius-badge)" }}
             >
-              <Gift size={13} /> {visible.length} live offer{visible.length === 1 ? "" : "s"}
+              <Gift size={13} /> {visible.length} live offer
+              {visible.length === 1 ? "" : "s"}
             </div>
           )}
         </div>
-        <div className="h-[2px]" style={{ background: "linear-gradient(90deg, var(--t-primary), transparent)" }} />
+        <div
+          className="h-[2px]"
+          style={{
+            background: "linear-gradient(90deg, var(--t-primary), transparent)",
+          }}
+        />
       </div>
 
       {/* Offer grid */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
         {visible.length === 0 ? (
           <div className="border border-border-card bg-bg-card rounded-2xl text-center py-20">
-            <TicketPercent size={48} className="mx-auto mb-4 text-text-muted-3" />
-            <h3 className="text-lg font-bold text-text-heading mb-2">No active offers right now</h3>
+            <TicketPercent
+              size={48}
+              className="mx-auto mb-4 text-text-muted-3"
+            />
+            <h3 className="text-lg font-bold text-text-heading mb-2">
+              No active offers right now
+            </h3>
             <p className="text-sm text-text-muted-2 max-w-sm mx-auto">
               Check back soon — new combo deals are added regularly.
             </p>
@@ -117,22 +148,35 @@ export default async function ComboOffersPage() {
                       />
                     ) : (
                       <div className="h-full w-full flex items-center justify-center bg-bg-card-nested">
-                        <TicketPercent size={44} className="text-text-muted-3" />
+                        <TicketPercent
+                          size={44}
+                          className="text-text-muted-3"
+                        />
                       </div>
                     )}
                     {offer.badge && (
                       <span
                         className="absolute left-4 top-4 bg-primary px-3 py-1 text-[10px] font-black uppercase tracking-wider"
-                        style={{ borderRadius: "var(--t-radius-badge)", color: "var(--t-bg-page)" }}
+                        style={{
+                          borderRadius: "var(--t-radius-badge)",
+                          color: "var(--t-bg-page)",
+                        }}
                       >
                         {offer.badge}
                       </span>
                     )}
                     <span
                       className="absolute bottom-3 right-3 rounded-full px-3 py-1 text-[10px] font-bold text-white"
-                      style={{ background: "rgba(0,0,0,0.45)", backdropFilter: "blur(4px)", borderRadius: "var(--t-radius-badge)" }}
+                      style={{
+                        background: "rgba(0,0,0,0.45)",
+                        backdropFilter: "blur(4px)",
+                        borderRadius: "var(--t-radius-badge)",
+                      }}
                     >
-                      Select {offer.getCount} · Pay {offer.comboType === "PICK_ANY" ? "1" : Number(offer.buyCount) || 1}
+                      Select {offer.getCount} · Pay{" "}
+                      {offer.comboType === "PICK_ANY"
+                        ? "1"
+                        : Number(offer.buyCount) || 1}
                     </span>
                   </div>
 
@@ -142,21 +186,29 @@ export default async function ComboOffersPage() {
                       {offer.title}
                     </h3>
                     {offer.headline && (
-                      <p className="mt-1 text-sm text-text-muted-1 line-clamp-1">{offer.headline}</p>
+                      <p className="mt-1 text-sm text-text-muted-1 line-clamp-1">
+                        {offer.headline}
+                      </p>
                     )}
                     {offer.description && (
-                      <p className="mt-1.5 text-xs text-text-muted-2 line-clamp-2">{offer.description}</p>
+                      <p className="mt-1.5 text-xs text-text-muted-2 line-clamp-2">
+                        {offer.description}
+                      </p>
                     )}
 
                     {!available && (
                       <p className="mt-2 text-[11px] font-semibold text-danger">
-                        Not enough products in stock to fulfil this offer right now.
+                        Not enough products in stock to fulfil this offer right
+                        now.
                       </p>
                     )}
 
                     <div
                       className="mt-4 flex items-center justify-center gap-2 bg-primary text-bg-page text-xs font-black uppercase tracking-wider py-2.5 transition-opacity group-hover:opacity-90"
-                      style={{ borderRadius: "var(--t-radius-button)", fontFamily: "var(--t-font-heading)" }}
+                      style={{
+                        borderRadius: "var(--t-radius-button)",
+                        fontFamily: "var(--t-font-heading)",
+                      }}
                     >
                       {available ? "Shop The Deal" : "View Offer"}
                       <ArrowRight size={14} strokeWidth={2.5} />

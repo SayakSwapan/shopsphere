@@ -1,10 +1,8 @@
 import { getAdminSession } from "@/lib/admin-auth";
 
-import {
-  NextResponse,
-} from "next/server";
+import { NextResponse } from "next/server";
 
-import {prisma} from "@/lib/prisma";
+import { prisma } from "@/lib/prisma";
 import { randomUUID } from "crypto";
 
 interface Props {
@@ -17,10 +15,7 @@ interface Props {
   UPDATE PRODUCT
 */
 
-export async function PUT(
-  req: Request,
-  { params }: Props
-) {
+export async function PUT(req: Request, { params }: Props) {
   try {
     const session = await getAdminSession();
 
@@ -32,161 +27,110 @@ export async function PUT(
         },
         {
           status: 401,
-        }
+        },
       );
     }
 
-    const { id } =
-      await params;
+    const { id } = await params;
 
-    const body =
-      await req.json();
+    const body = await req.json();
 
     /*
       DELETE OLD RELATIONS
     */
 
-    await prisma.productvariant.deleteMany(
-      {
-        where: {
-          productId: id,
-        },
-      }
-    );
+    await prisma.productvariant.deleteMany({
+      where: {
+        productId: id,
+      },
+    });
 
-    await prisma.productimage.deleteMany(
-      {
-        where: {
-          productId: id,
-        },
-      }
-    );
+    await prisma.productimage.deleteMany({
+      where: {
+        productId: id,
+      },
+    });
 
     /*
       UPDATE PRODUCT
     */
 
-    const product =
-      await prisma.product.update(
-        {
-          where: {
-            id,
-          },
+    const product = await prisma.product.update({
+      where: {
+        id,
+      },
 
-          data: {
-            name: body.name,
+      data: {
+        name: body.name,
 
-            slug:
-              body.name
-                .toLowerCase()
-                .replaceAll(
-                  " ",
-                  "-"
-                ) +
-              "-" +
-              Date.now(),
+        slug: body.name.toLowerCase().replaceAll(" ", "-") + "-" + Date.now(),
 
-            description:
-              body.description,
+        description: body.description,
 
-            sellingPrice:
-              Number(
-                body.sellingPrice
-              ),
+        sellingPrice: Number(body.sellingPrice),
 
-            costPrice:
-              Number(
-                body.costPrice
-              ),
+        costPrice: Number(body.costPrice),
 
-            stock:
-              Number(
-                body.stock
-              ),
+        stock: Number(body.stock),
 
-            lowStockAlert:
-              Number(
-                body.lowStockAlert
-              ),
+        lowStockAlert: Number(body.lowStockAlert),
 
-            categoryId:
-              body.categoryId,
+        categoryId: body.categoryId,
 
-            status:
-              body.status,
+        status: body.status,
 
-            isFeatured:
-              body.isFeatured,
+        isFeatured: body.isFeatured,
 
-            /*
+        /*
               IMAGES
             */
 
-            productimage: {
-              create:
-                body.images.map(
-                  (
-                    image: string
-                  ) => ({
-                    id: randomUUID(),
-                    url: image,
-                  })
-                ),
-            },
+        productimage: {
+          create: body.images.map((image: string, index: number) => ({
+            id: randomUUID(),
+            url: image,
+            sortOrder: index,
+          })),
+        },
 
-            /*
+        /*
               VARIANTS
             */
 
-            productvariant: {
-              create:
-                body.productvariant.map(
-                  (
-                    variant: {
-                      genderId: string;
-                      sizeId: string;
-                      stock: number;
-                      sku: string;
-                    }
-                  ) => ({
-                    id: randomUUID(),
-                    genderId:
-                      variant.genderId,
+        productvariant: {
+          create: body.productvariant.map(
+            (variant: {
+              genderId: string;
+              sizeId: string;
+              stock: number;
+              sku: string;
+            }) => ({
+              id: randomUUID(),
+              genderId: variant.genderId,
 
-                    sizeId:
-                      variant.sizeId,
+              sizeId: variant.sizeId,
 
-                    stock:
-                      Number(
-                        variant.stock
-                      ),
+              stock: Number(variant.stock),
 
-                    sku:
-                      variant.sku,
-                    updatedAt: new Date(),
-                  })
-                ),
-            },
-          },
-        }
-      );
+              sku: variant.sku,
+              updatedAt: new Date(),
+            }),
+          ),
+        },
+      },
+    });
 
-    return NextResponse.json(
-      product
-    );
+    return NextResponse.json(product);
   } catch (error) {
-    console.log(
-      error
-    );
+    console.log(error);
 
     return NextResponse.json(
       {
-        error:
-          "Update failed",
+        error: "Update failed",
       },
       {
         status: 500,
-      }
+      },
     );
   }
 }
@@ -195,10 +139,7 @@ export async function PUT(
   DELETE PRODUCT
 */
 
-export async function DELETE(
-  req: Request,
-  { params }: Props
-) {
+export async function DELETE(req: Request, { params }: Props) {
   try {
     const session = await getAdminSession();
 
@@ -210,63 +151,51 @@ export async function DELETE(
         },
         {
           status: 401,
-        }
+        },
       );
     }
 
-    const { id } =
-      await params;
+    const { id } = await params;
 
     /*
       DELETE CHILD DATA
     */
 
-    await prisma.productvariant.deleteMany(
-      {
-        where: {
-          productId: id,
-        },
-      }
-    );
+    await prisma.productvariant.deleteMany({
+      where: {
+        productId: id,
+      },
+    });
 
-    await prisma.productimage.deleteMany(
-      {
-        where: {
-          productId: id,
-        },
-      }
-    );
+    await prisma.productimage.deleteMany({
+      where: {
+        productId: id,
+      },
+    });
 
     /*
       DELETE PRODUCT
     */
 
-    await prisma.product.delete(
-      {
-        where: {
-          id,
-        },
-      }
-    );
+    await prisma.product.delete({
+      where: {
+        id,
+      },
+    });
 
-    return NextResponse.json(
-      {
-        success: true,
-      }
-    );
+    return NextResponse.json({
+      success: true,
+    });
   } catch (error) {
-    console.log(
-      error
-    );
+    console.log(error);
 
     return NextResponse.json(
       {
-        error:
-          "Delete failed",
+        error: "Delete failed",
       },
       {
         status: 500,
-      }
+      },
     );
   }
 }

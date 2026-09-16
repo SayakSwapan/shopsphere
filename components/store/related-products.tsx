@@ -19,7 +19,7 @@ export default async function RelatedProducts({
       NOT: { id: currentProductId },
     },
     include: {
-      productimage: { take: 1 },
+      productimage: { take: 1, orderBy: { sortOrder: "asc" } },
       productvariant: {
         where: { stock: { gt: 0 } },
         include: { size: true },
@@ -42,7 +42,7 @@ export default async function RelatedProducts({
         NOT: { id: currentProductId },
       },
       include: {
-        productimage: { take: 1 },
+        productimage: { take: 1, orderBy: { sortOrder: "asc" } },
         productvariant: {
           where: { stock: { gt: 0 } },
           include: { size: true },

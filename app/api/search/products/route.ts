@@ -26,7 +26,11 @@ export async function GET(req: Request) {
       slug: true,
       sellingPrice: true,
       gstPercentage: true,
-      productimage: { take: 1, select: { url: true } },
+      productimage: {
+        take: 1,
+        select: { url: true },
+        orderBy: { sortOrder: "asc" },
+      },
     },
     orderBy: { totalSold: "desc" },
     take: 10,

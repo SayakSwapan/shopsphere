@@ -147,10 +147,11 @@ export async function PUT(req: Request, { params }: Params) {
 
       if (imageUrls.length) {
         await tx.productimage.createMany({
-          data: imageUrls.map((url: string) => ({
+          data: imageUrls.map((url: string, index: number) => ({
             id: crypto.randomUUID(),
             productId: id,
             url,
+            sortOrder: index,
           })),
         });
       }

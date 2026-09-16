@@ -92,7 +92,7 @@ export default async function OrderDetailPage({ params }: Props) {
               name: true,
               slug: true,
               gstPercentage: true,
-              productimage: true,
+              productimage: { orderBy: { sortOrder: "asc" } },
               isReturnable: true,
               isReplaceable: true,
               returnDays: true,
@@ -110,7 +110,7 @@ export default async function OrderDetailPage({ params }: Props) {
               id: true,
               name: true,
               slug: true,
-              productimage: { take: 1 },
+              productimage: { take: 1, orderBy: { sortOrder: "asc" } },
             },
           },
           messages: { orderBy: { createdAt: "asc" } },
@@ -162,17 +162,18 @@ export default async function OrderDetailPage({ params }: Props) {
       total: Number(item.total),
       gstSnapshot: item.gstSnapshot != null ? Number(item.gstSnapshot) : null,
       mrpSnapshot: item.mrpSnapshot != null ? Number(item.mrpSnapshot) : null,
-      customization: (item.customization as {
-        printTypeId?: string;
-        printTypeName?: string;
-        name?: string;
-        number?: string;
-        imageUrl?: string;
-        letters?: number;
-        pricePerLetter?: number;
-        designFee?: number;
-        price?: number;
-      } | null) ?? null,
+      customization:
+        (item.customization as {
+          printTypeId?: string;
+          printTypeName?: string;
+          name?: string;
+          number?: string;
+          imageUrl?: string;
+          letters?: number;
+          pricePerLetter?: number;
+          designFee?: number;
+          price?: number;
+        } | null) ?? null,
       product: {
         ...item.product,
         sellingPrice: Number(item.product.sellingPrice),
@@ -331,16 +332,17 @@ export default async function OrderDetailPage({ params }: Props) {
                   const gstRate = Number(item.product.gstPercentage) || 0;
                   const printIncl = customizationUnitPriceWithGst(
                     item.customization,
-                    gstRate
+                    gstRate,
                   );
                   const pricePerLetter =
                     Number(item.customization?.pricePerLetter) || 0;
                   const billedLetters = customizationBilledLetters(
                     item.customization,
-                    gstRate
+                    gstRate,
                   );
-                  const designCharge =
-                    customizationDesignCharge(item.customization);
+                  const designCharge = customizationDesignCharge(
+                    item.customization,
+                  );
                   const variant = [
                     item.variantGender,
                     item.variantSize && `Size: ${item.variantSize}`,
@@ -349,10 +351,7 @@ export default async function OrderDetailPage({ params }: Props) {
                     .join(" · ");
 
                   return (
-                    <div
-                      key={item.id}
-                      className="px-4 sm:px-6 py-4 sm:py-5"
-                    >
+                    <div key={item.id} className="px-4 sm:px-6 py-4 sm:py-5">
                       <Link
                         href={`/products/${slug}`}
                         className="flex items-start gap-3 sm:gap-5 transition hover:opacity-80"
@@ -390,11 +389,9 @@ export default async function OrderDetailPage({ params }: Props) {
                                     `"${item.customization.name}"`,
                                   item.customization.number &&
                                     `No. ${item.customization.number}`,
-                                  item.customization.imageUrl &&
-                                    "Design image",
+                                  item.customization.imageUrl && "Design image",
                                   printIncl > 0 &&
-                                    (pricePerLetter > 0 &&
-                                    billedLetters > 0
+                                    (pricePerLetter > 0 && billedLetters > 0
                                       ? `${billedLetters} × ₹${pricePerLetter}/char${designCharge > 0 ? ` + ${formatCurrency(designCharge)} design` : ""} = ${formatCurrency(printIncl)}`
                                       : `+${formatCurrency(printIncl)}/pc`),
                                 ]
@@ -528,8 +525,8 @@ export default async function OrderDetailPage({ params }: Props) {
                       order.paymentStatus === "PAID"
                         ? "text-emerald-500"
                         : order.paymentStatus === "FAILED"
-                        ? "text-red-500"
-                        : "text-primary"
+                          ? "text-red-500"
+                          : "text-primary"
                     }`}
                   >
                     {order.paymentStatus}
@@ -660,9 +657,7 @@ function Row({
     <div className="flex justify-between">
       <span className="text-text-muted-1">{label}</span>
       <span
-        className={
-          green ? "text-emerald-500 font-medium" : "text-text-heading"
-        }
+        className={green ? "text-emerald-500 font-medium" : "text-text-heading"}
       >
         {children}
       </span>

@@ -7,29 +7,23 @@ import { randomUUID } from "crypto";
 
 export async function GET() {
   try {
-    const products =
-      await prisma.product.findMany({
-        include: {
-          category: true,
-        },
+    const products = await prisma.product.findMany({
+      include: {
+        category: true,
+      },
 
-        orderBy: {
-          createdAt:
-            "desc",
-        },
-      });
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
 
     return NextResponse.json({
       success: true,
 
       products,
     });
-  } catch (
-  error
-  ) {
-    console.log(
-      error
-    );
+  } catch (error) {
+    console.log(error);
 
     return NextResponse.json(
       {
@@ -37,7 +31,7 @@ export async function GET() {
       },
       {
         status: 500,
-      }
+      },
     );
   }
 }
@@ -75,9 +69,7 @@ interface ProductBody {
   }[];
 }
 
-export async function POST(
-  req: Request
-) {
+export async function POST(req: Request) {
   try {
     const session = await getAdminSession();
 
@@ -89,98 +81,77 @@ export async function POST(
         },
         {
           status: 401,
-        }
+        },
       );
     }
 
-    const body: ProductBody =
-      await req.json();
+    const body: ProductBody = await req.json();
 
-    const product =
-      await prisma.product.create({
-        data: {
-          id: randomUUID(),
-          name: body.name,
+    const product = await prisma.product.create({
+      data: {
+        id: randomUUID(),
+        name: body.name,
 
-          slug: body.name
-            .toLowerCase()
-            .replace(/\s+/g, "-"),
+        slug: body.name.toLowerCase().replace(/\s+/g, "-"),
 
-          description:
-            body.description,
+        description: body.description,
 
-          sellingPrice:
-            body.sellingPrice,
+        sellingPrice: body.sellingPrice,
 
-          costPrice:
-            body.costPrice,
+        costPrice: body.costPrice,
 
-          stock: body.stock,
+        stock: body.stock,
 
-          categoryId:
-            body.categoryId,
+        categoryId: body.categoryId,
 
-          status:
-            body.status,
+        status: body.status,
 
-          isFeatured:
-            body.isFeatured,
+        isFeatured: body.isFeatured,
 
-          isTrending:
-            body.isTrending,
+        isTrending: body.isTrending,
 
-          createdAt: new Date(),
-          updatedAt: new Date(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
 
-          productimage: {
-            create:
-              body.images.map(
-                (
-                  url: string
-                ) => ({
-                  id: randomUUID(),
-                  url,
-                })
-              ),
-          },
-
-          productvariant: {
-            create:
-              body.productvariant.map(
-                (
-                  variant: {
-                    genderId: string;
-
-                    sizeId: string;
-
-                    stock: number;
-
-                    sku: string;
-                  }
-                ) => ({
-                  id: randomUUID(),
-                  genderId:
-                    variant.genderId,
-
-                  sizeId:
-                    variant.sizeId,
-
-                  stock:
-                    variant.stock,
-
-                  sku: variant.sku,
-                  updatedAt: new Date(),
-                })
-              ),
-          },
+        productimage: {
+          create: body.images.map((url: string, index: number) => ({
+            id: randomUUID(),
+            url,
+            sortOrder: index,
+          })),
         },
 
-        include: {
-          productimage: true,
+        productvariant: {
+          create: body.productvariant.map(
+            (variant: {
+              genderId: string;
 
-          productvariant: true,
+              sizeId: string;
+
+              stock: number;
+
+              sku: string;
+            }) => ({
+              id: randomUUID(),
+              genderId: variant.genderId,
+
+              sizeId: variant.sizeId,
+
+              stock: variant.stock,
+
+              sku: variant.sku,
+              updatedAt: new Date(),
+            }),
+          ),
         },
-      });
+      },
+
+      include: {
+        productimage: { orderBy: { sortOrder: "asc" } },
+
+        productvariant: true,
+      },
+    });
 
     return NextResponse.json({
       success: true,
@@ -192,14 +163,11 @@ export async function POST(
 
     return Response.json(
       {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Internal server error",
+        error: error instanceof Error ? error.message : "Internal server error",
       },
       {
         status: 500,
-      }
+      },
     );
   }
 }

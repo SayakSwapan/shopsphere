@@ -49,7 +49,7 @@ export default async function OrdersPage() {
               name: true,
               slug: true,
               gstPercentage: true,
-              productimage: true,
+              productimage: { orderBy: { sortOrder: "asc" } },
               isReturnable: true,
               isReplaceable: true,
               returnDays: true,
@@ -69,7 +69,9 @@ export default async function OrdersPage() {
     shipping: order.shipping ? Number(order.shipping) : 0,
     discount: order.discount ? Number(order.discount) : 0,
     loyaltyDiscountAmount:
-      order.loyaltyDiscountAmount != null ? Number(order.loyaltyDiscountAmount) : null,
+      order.loyaltyDiscountAmount != null
+        ? Number(order.loyaltyDiscountAmount)
+        : null,
     orderitem: order.orderitem.map((item) => ({
       ...item,
       price: Number(item.price),
@@ -128,7 +130,10 @@ export default async function OrdersPage() {
             <Link
               href="/products"
               className="mt-8 inline-block bg-primary px-8 py-3 font-bold transition hover:opacity-90"
-              style={{ borderRadius: "var(--t-radius-button)", color: "var(--t-bg-page)" }}
+              style={{
+                borderRadius: "var(--t-radius-button)",
+                color: "var(--t-bg-page)",
+              }}
             >
               Browse Products
             </Link>

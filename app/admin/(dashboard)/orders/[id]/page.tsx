@@ -33,9 +33,7 @@ interface Props {
   }>;
 }
 
-export default async function OrderDetailsPage({
-  params,
-}: Props) {
+export default async function OrderDetailsPage({ params }: Props) {
   const { id } = await params;
 
   const orderRaw = await prisma.order.findUnique({
@@ -70,6 +68,7 @@ export default async function OrderDetailsPage({
                 select: {
                   url: true,
                 },
+                orderBy: { sortOrder: "asc" },
               },
             },
           },
@@ -132,18 +131,19 @@ export default async function OrderDetailsPage({
       total: Number(item.total),
       gstSnapshot: item.gstSnapshot != null ? Number(item.gstSnapshot) : null,
       mrpSnapshot: item.mrpSnapshot != null ? Number(item.mrpSnapshot) : null,
-      customization: (item.customization as {
-        printTypeId?: string;
-        printTypeName?: string;
-        name?: string;
-        number?: string;
-        imageUrl?: string;
-        letters?: number;
-        billedLetters?: number;
-        pricePerLetter?: number;
-        designFee?: number;
-        price?: number;
-      } | null) ?? null,
+      customization:
+        (item.customization as {
+          printTypeId?: string;
+          printTypeName?: string;
+          name?: string;
+          number?: string;
+          imageUrl?: string;
+          letters?: number;
+          billedLetters?: number;
+          pricePerLetter?: number;
+          designFee?: number;
+          price?: number;
+        } | null) ?? null,
     })),
   };
 
@@ -191,7 +191,6 @@ export default async function OrderDetailsPage({
 
   return (
     <PageContainer>
-
       {/* Header */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
@@ -237,7 +236,9 @@ export default async function OrderDetailsPage({
           <div className="mt-6 rounded-2xl border border-slate-700 bg-[#111827] p-6">
             <div className="mb-4 flex items-center gap-3">
               <RotateCcw size={18} className="text-amber-400" />
-              <h2 className="text-lg font-bold text-white">Returns &amp; Replacements</h2>
+              <h2 className="text-lg font-bold text-white">
+                Returns &amp; Replacements
+              </h2>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               {replaceReq && (
@@ -245,7 +246,9 @@ export default async function OrderDetailsPage({
                   <div className="flex items-center gap-3">
                     <RefreshCcw size={18} className="text-amber-400" />
                     <div>
-                      <p className="text-sm font-bold text-white">Replacement Request</p>
+                      <p className="text-sm font-bold text-white">
+                        Replacement Request
+                      </p>
                       <span
                         className="mt-1 inline-block rounded-full px-2.5 py-0.5 text-xs font-bold"
                         style={{
@@ -270,7 +273,9 @@ export default async function OrderDetailsPage({
                   <div className="flex items-center gap-3">
                     <RotateCcw size={18} className="text-amber-400" />
                     <div>
-                      <p className="text-sm font-bold text-white">Return Request</p>
+                      <p className="text-sm font-bold text-white">
+                        Return Request
+                      </p>
                       <span
                         className="mt-1 inline-block rounded-full px-2.5 py-0.5 text-xs font-bold"
                         style={{
@@ -296,7 +301,6 @@ export default async function OrderDetailsPage({
       })()}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-
         {/* Items */}
         <div className="lg:col-span-2">
           <div className="rounded-2xl border border-slate-700 bg-[#111827]">
@@ -307,182 +311,185 @@ export default async function OrderDetailsPage({
             </div>
 
             <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-[#0F172A]">
-                <tr>
-                  <th className="px-3 py-3 text-left text-xs font-bold uppercase tracking-wider text-slate-400 sm:px-6">
-                    Product
-                  </th>
-                  <th className="px-3 py-3 text-center text-xs font-bold uppercase tracking-wider text-slate-400 sm:px-6">
-                    Qty
-                  </th>
-                  <th className="px-3 py-3 text-right text-xs font-bold uppercase tracking-wider text-slate-400 sm:px-6">
-                    Price
-                  </th>
-                  <th className="px-3 py-3 text-right text-xs font-bold uppercase tracking-wider text-slate-400 sm:px-6">
-                    Total
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {order.orderitem.map((item) => {
-                  const thumb = item.product.productimage[0]?.url;
+              <table className="w-full">
+                <thead className="bg-[#0F172A]">
+                  <tr>
+                    <th className="px-3 py-3 text-left text-xs font-bold uppercase tracking-wider text-slate-400 sm:px-6">
+                      Product
+                    </th>
+                    <th className="px-3 py-3 text-center text-xs font-bold uppercase tracking-wider text-slate-400 sm:px-6">
+                      Qty
+                    </th>
+                    <th className="px-3 py-3 text-right text-xs font-bold uppercase tracking-wider text-slate-400 sm:px-6">
+                      Price
+                    </th>
+                    <th className="px-3 py-3 text-right text-xs font-bold uppercase tracking-wider text-slate-400 sm:px-6">
+                      Total
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {order.orderitem.map((item) => {
+                    const thumb = item.product.productimage[0]?.url;
 
-                  return (
-                    <tr
-                      key={item.id}
-                      className="border-b border-slate-800 last:border-0"
-                    >
-                      <td className="px-3 py-4 sm:px-6">
-                        <div className="flex items-center gap-4">
-                          <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg border border-slate-700 bg-[#0F172A]">
-                            {thumb ? (
-                              <Image
-                                src={thumb}
-                                alt={item.product.name}
-                                fill
-                                className="object-cover"
-                              />
-                            ) : (
-                              <div className="flex h-full w-full items-center justify-center text-[10px] text-slate-600">
-                                No image
-                              </div>
-                            )}
-                          </div>
-
-                          <div className="min-w-0">
-                            <Link
-                              href={`/admin/products/view/${item.productId}`}
-                              className="font-semibold text-white hover:text-amber-400 hover:underline"
-                            >
-                              {item.product.name}
-                            </Link>
-
-                            {/* Variant details so the admin knows exactly what to pack */}
-                            <div className="mt-1 flex flex-wrap gap-1.5">
-                              {item.variantGender && (
-                                <span className="rounded bg-slate-800 px-2 py-0.5 text-xs text-slate-300">
-                                  {item.variantGender}
-                                </span>
+                    return (
+                      <tr
+                        key={item.id}
+                        className="border-b border-slate-800 last:border-0"
+                      >
+                        <td className="px-3 py-4 sm:px-6">
+                          <div className="flex items-center gap-4">
+                            <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg border border-slate-700 bg-[#0F172A]">
+                              {thumb ? (
+                                <Image
+                                  src={thumb}
+                                  alt={item.product.name}
+                                  fill
+                                  className="object-cover"
+                                />
+                              ) : (
+                                <div className="flex h-full w-full items-center justify-center text-[10px] text-slate-600">
+                                  No image
+                                </div>
                               )}
-                              {item.variantSize && (
-                                <span className="rounded bg-slate-800 px-2 py-0.5 text-xs text-slate-300">
-                                  Size: {item.variantSize}
-                                </span>
-                              )}
-                              {item.variantSku && (
-                                <span className="rounded bg-slate-800 px-2 py-0.5 text-xs font-mono text-slate-400">
-                                  SKU: {item.variantSku}
-                                </span>
-                              )}
-                              {!item.variantGender &&
-                                !item.variantSize &&
-                                !item.variantSku && (
-                                  <span className="text-xs text-slate-600">
-                                    No variant recorded
-                                  </span>
-                                )}
                             </div>
 
-                            {/* Custom printing requested by the customer */}
-                            {(() => {
-                              const c = item.customization as
-                                | {
-                                    printTypeId?: string;
-                                    printTypeName?: string;
-                                    name?: string;
-                                    number?: string;
-                                    imageUrl?: string;
-                                    letters?: number;
-                                    billedLetters?: number;
-                                    pricePerLetter?: number;
-                                    designFee?: number;
-                                    price?: number;
-                                  }
-                                | null
-                                | undefined;
-                              const gstRate =
-                                Number(item.product.gstPercentage) || 0;
-                              const printIncl =
-                                customizationUnitPriceWithGst(c, gstRate);
-                              const pricePerLetter =
-                                Number(c?.pricePerLetter) || 0;
-                              const billedLetters =
-                                customizationBilledLetters(c, gstRate);
-                              const designCharge =
-                                customizationDesignCharge(c);
-                              if (
-                                !c ||
-                                (!c.name && !c.number && !c.imageUrl)
-                              ) {
-                                return null;
-                              }
-                              return (
-                                <div className="mt-2 flex flex-wrap items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-2">
-                                  <span className="text-[10px] font-black uppercase tracking-wider text-amber-400">
-                                    Custom Print
+                            <div className="min-w-0">
+                              <Link
+                                href={`/admin/products/view/${item.productId}`}
+                                className="font-semibold text-white hover:text-amber-400 hover:underline"
+                              >
+                                {item.product.name}
+                              </Link>
+
+                              {/* Variant details so the admin knows exactly what to pack */}
+                              <div className="mt-1 flex flex-wrap gap-1.5">
+                                {item.variantGender && (
+                                  <span className="rounded bg-slate-800 px-2 py-0.5 text-xs text-slate-300">
+                                    {item.variantGender}
                                   </span>
-                                  {c.printTypeName && (
-                                    <span className="rounded bg-slate-800 px-2 py-0.5 text-xs font-bold text-amber-300">
-                                      {c.printTypeName}
+                                )}
+                                {item.variantSize && (
+                                  <span className="rounded bg-slate-800 px-2 py-0.5 text-xs text-slate-300">
+                                    Size: {item.variantSize}
+                                  </span>
+                                )}
+                                {item.variantSku && (
+                                  <span className="rounded bg-slate-800 px-2 py-0.5 text-xs font-mono text-slate-400">
+                                    SKU: {item.variantSku}
+                                  </span>
+                                )}
+                                {!item.variantGender &&
+                                  !item.variantSize &&
+                                  !item.variantSku && (
+                                    <span className="text-xs text-slate-600">
+                                      No variant recorded
                                     </span>
                                   )}
-                                  {c.name && (
-                                    <span className="rounded bg-slate-800 px-2 py-0.5 text-xs font-semibold text-white">
-                                      Name: {c.name}
+                              </div>
+
+                              {/* Custom printing requested by the customer */}
+                              {(() => {
+                                const c = item.customization as
+                                  | {
+                                      printTypeId?: string;
+                                      printTypeName?: string;
+                                      name?: string;
+                                      number?: string;
+                                      imageUrl?: string;
+                                      letters?: number;
+                                      billedLetters?: number;
+                                      pricePerLetter?: number;
+                                      designFee?: number;
+                                      price?: number;
+                                    }
+                                  | null
+                                  | undefined;
+                                const gstRate =
+                                  Number(item.product.gstPercentage) || 0;
+                                const printIncl = customizationUnitPriceWithGst(
+                                  c,
+                                  gstRate,
+                                );
+                                const pricePerLetter =
+                                  Number(c?.pricePerLetter) || 0;
+                                const billedLetters =
+                                  customizationBilledLetters(c, gstRate);
+                                const designCharge =
+                                  customizationDesignCharge(c);
+                                if (
+                                  !c ||
+                                  (!c.name && !c.number && !c.imageUrl)
+                                ) {
+                                  return null;
+                                }
+                                return (
+                                  <div className="mt-2 flex flex-wrap items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-2">
+                                    <span className="text-[10px] font-black uppercase tracking-wider text-amber-400">
+                                      Custom Print
                                     </span>
-                                  )}
-                                  {c.number && (
-                                    <span className="rounded bg-slate-800 px-2 py-0.5 text-xs font-semibold text-white">
-                                      No: {c.number}
-                                    </span>
-                                  )}
-                                  {c.imageUrl && (
-                                    <a
-                                      href={c.imageUrl}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="inline-flex items-center gap-1.5 rounded bg-slate-800 px-2 py-0.5 text-xs text-amber-300 hover:bg-slate-700"
-                                    >
-                                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                                      <img
-                                        src={c.imageUrl}
-                                        alt="Design"
-                                        className="h-5 w-5 rounded object-cover"
-                                      />
-                                      View design
-                                    </a>
-                                  )}
-                                  {typeof c.price === "number" && c.price > 0 && (
-                                    <span className="rounded bg-emerald-500/15 px-2 py-0.5 text-xs font-bold text-emerald-400">
-                                      {pricePerLetter > 0 &&
-                                      billedLetters > 0
-                                        ? `Print: ${billedLetters} × ₹${pricePerLetter}/char${designCharge > 0 ? ` + ${formatCurrency(designCharge)} design` : ""} = ${formatCurrency(printIncl)}/pc`
-                                        : `Print +${formatCurrency(c.price)}/pc`}
-                                    </span>
-                                  )}
-                                </div>
-                              );
-                            })()}
+                                    {c.printTypeName && (
+                                      <span className="rounded bg-slate-800 px-2 py-0.5 text-xs font-bold text-amber-300">
+                                        {c.printTypeName}
+                                      </span>
+                                    )}
+                                    {c.name && (
+                                      <span className="rounded bg-slate-800 px-2 py-0.5 text-xs font-semibold text-white">
+                                        Name: {c.name}
+                                      </span>
+                                    )}
+                                    {c.number && (
+                                      <span className="rounded bg-slate-800 px-2 py-0.5 text-xs font-semibold text-white">
+                                        No: {c.number}
+                                      </span>
+                                    )}
+                                    {c.imageUrl && (
+                                      <a
+                                        href={c.imageUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-1.5 rounded bg-slate-800 px-2 py-0.5 text-xs text-amber-300 hover:bg-slate-700"
+                                      >
+                                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                                        <img
+                                          src={c.imageUrl}
+                                          alt="Design"
+                                          className="h-5 w-5 rounded object-cover"
+                                        />
+                                        View design
+                                      </a>
+                                    )}
+                                    {typeof c.price === "number" &&
+                                      c.price > 0 && (
+                                        <span className="rounded bg-emerald-500/15 px-2 py-0.5 text-xs font-bold text-emerald-400">
+                                          {pricePerLetter > 0 &&
+                                          billedLetters > 0
+                                            ? `Print: ${billedLetters} × ₹${pricePerLetter}/char${designCharge > 0 ? ` + ${formatCurrency(designCharge)} design` : ""} = ${formatCurrency(printIncl)}/pc`
+                                            : `Print +${formatCurrency(c.price)}/pc`}
+                                        </span>
+                                      )}
+                                  </div>
+                                );
+                              })()}
+                            </div>
                           </div>
-                        </div>
-                      </td>
-                      <td className="px-3 py-4 text-center sm:px-6">
-                        <span className="inline-flex min-w-8 items-center justify-center rounded-lg bg-amber-500/15 px-2 py-1 text-base font-bold text-amber-400">
-                          {item.quantity}
-                        </span>
-                      </td>
-                      <td className="px-3 py-4 text-right text-slate-400 sm:px-6">
-                        {formatCurrency(item.price)}
-                      </td>
-                      <td className="px-3 py-4 text-right font-semibold text-white sm:px-6">
-                        {formatCurrency(item.total)}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                        </td>
+                        <td className="px-3 py-4 text-center sm:px-6">
+                          <span className="inline-flex min-w-8 items-center justify-center rounded-lg bg-amber-500/15 px-2 py-1 text-base font-bold text-amber-400">
+                            {item.quantity}
+                          </span>
+                        </td>
+                        <td className="px-3 py-4 text-right text-slate-400 sm:px-6">
+                          {formatCurrency(item.price)}
+                        </td>
+                        <td className="px-3 py-4 text-right font-semibold text-white sm:px-6">
+                          {formatCurrency(item.total)}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
 
             <div className="border-t border-slate-700 px-4 py-4 sm:px-6">
@@ -503,13 +510,18 @@ export default async function OrderDetailsPage({
                   {order.shipping != null && (
                     <div className="flex justify-between text-slate-400">
                       <span>Shipping</span>
-                      <span>{order.shipping === 0 ? "FREE" : formatCurrency(order.shipping)}</span>
+                      <span>
+                        {order.shipping === 0
+                          ? "FREE"
+                          : formatCurrency(order.shipping)}
+                      </span>
                     </div>
                   )}
                   {order.discount != null && order.discount > 0 && (
                     <div className="flex justify-between text-green-400">
                       <span>
-                        Coupon{order.coupon?.code ? ` (${order.coupon.code})` : ""}
+                        Coupon
+                        {order.coupon?.code ? ` (${order.coupon.code})` : ""}
                       </span>
                       <span>-{formatCurrency(order.discount)}</span>
                     </div>
@@ -526,11 +538,8 @@ export default async function OrderDetailsPage({
 
         {/* Customer + shipping */}
         <div className="space-y-6">
-
           <div className="rounded-2xl border border-slate-700 bg-[#111827] p-4 sm:p-6">
-            <h2 className="mb-4 text-lg font-bold text-white">
-              Customer
-            </h2>
+            <h2 className="mb-4 text-lg font-bold text-white">Customer</h2>
             <dl className="space-y-2 text-sm">
               <div>
                 <dt className="text-slate-500">Name</dt>
@@ -556,9 +565,7 @@ export default async function OrderDetailsPage({
               Shipping Address
             </h2>
             <address className="space-y-1 text-sm not-italic text-slate-300">
-              <p className="font-semibold text-white">
-                {order.fullName}
-              </p>
+              <p className="font-semibold text-white">{order.fullName}</p>
               <p>{order.addressLine1}</p>
               {order.addressLine2 && <p>{order.addressLine2}</p>}
               <p>
@@ -579,7 +586,6 @@ export default async function OrderDetailsPage({
             customerEmail={order.user.email}
             paymentMethod={order.paymentMethod}
           />
-
         </div>
       </div>
 
@@ -587,7 +593,6 @@ export default async function OrderDetailsPage({
       <div className="invoice-print hidden bg-white p-6 text-black print:block">
         <InvoiceDocument order={order} business={business} />
       </div>
-
     </PageContainer>
   );
 }

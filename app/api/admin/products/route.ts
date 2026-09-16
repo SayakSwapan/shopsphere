@@ -232,10 +232,11 @@ export async function POST(req: Request) {
 
     if (imageUrls.length > 0) {
       await prisma.productimage.createMany({
-        data: imageUrls.map((url: string) => ({
+        data: imageUrls.map((url: string, index: number) => ({
           id: crypto.randomUUID(),
           productId: product.id,
           url,
+          sortOrder: index,
         })),
       });
     }

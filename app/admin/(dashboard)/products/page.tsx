@@ -10,58 +10,62 @@ export default async function ProductsPage() {
     rawProducts = await prisma.product.findMany({
       include: {
         category: true,
-        productimage: true,
-      }, orderBy: {
+        productimage: { orderBy: { sortOrder: "asc" } },
+      },
+      orderBy: {
         createdAt: "desc",
       },
     });
   } catch {
     return (
       <PageContainer>
-      <PageHeader
-        title="Products"
-        subtitle="Manage all products"
-        description="Create, edit, and manage your product catalog. Set pricing, cost prices, discounts, stock levels, and link size charts."
-      />
-        <p className="text-red-400">Failed to load products. Please try again later.</p>
+        <PageHeader
+          title="Products"
+          subtitle="Manage all products"
+          description="Create, edit, and manage your product catalog. Set pricing, cost prices, discounts, stock levels, and link size charts."
+        />
+        <p className="text-red-400">
+          Failed to load products. Please try again later.
+        </p>
       </PageContainer>
     );
   }
-  const products = rawProducts
-    .map((product) => {
-      const sellingPrice = Number(product.sellingPrice);
-      const salePrice = Number(product.salePrice);
-      const finalPrice = Number(product.finalPrice);
-      const gstRate = Number(product.gstPercentage || 0);
+  const products = rawProducts.map((product) => {
+    const sellingPrice = Number(product.sellingPrice);
+    const salePrice = Number(product.salePrice);
+    const finalPrice = Number(product.finalPrice);
+    const gstRate = Number(product.gstPercentage || 0);
 
-      const base = getEffectivePrice(salePrice, finalPrice, sellingPrice);
-      const customerPrice = priceWithGst(base, gstRate);
-      const originalPrice = priceWithGst(sellingPrice, gstRate);
-      const hasDiscount = customerPrice < originalPrice && base > 0;
-      const discountPercent =
-        hasDiscount && originalPrice > 0
-          ? Math.round(((originalPrice - customerPrice) / originalPrice) * 100)
-          : 0;
+    const base = getEffectivePrice(salePrice, finalPrice, sellingPrice);
+    const customerPrice = priceWithGst(base, gstRate);
+    const originalPrice = priceWithGst(sellingPrice, gstRate);
+    const hasDiscount = customerPrice < originalPrice && base > 0;
+    const discountPercent =
+      hasDiscount && originalPrice > 0
+        ? Math.round(((originalPrice - customerPrice) / originalPrice) * 100)
+        : 0;
 
-      return {
-        ...product,
-        sellingPrice,
-        costPrice: Number(product.costPrice),
-        discountValue: Number(product.discountValue),
-        salePrice,
-        finalPrice,
-        customerPrice,
-        discountPercent,
-        lastSellingProfitPercentage:
-          product.lastSellingProfitPercentage != null
-            ? Number(product.lastSellingProfitPercentage)
-            : null,
-        lastSellingPrice:
-          product.lastSellingPrice != null ? Number(product.lastSellingPrice) : null,
-        offerStart: product.offerStart ? product.offerStart.toISOString() : null,
-        offerEnd: product.offerEnd ? product.offerEnd.toISOString() : null,
-      };
-    });
+    return {
+      ...product,
+      sellingPrice,
+      costPrice: Number(product.costPrice),
+      discountValue: Number(product.discountValue),
+      salePrice,
+      finalPrice,
+      customerPrice,
+      discountPercent,
+      lastSellingProfitPercentage:
+        product.lastSellingProfitPercentage != null
+          ? Number(product.lastSellingProfitPercentage)
+          : null,
+      lastSellingPrice:
+        product.lastSellingPrice != null
+          ? Number(product.lastSellingPrice)
+          : null,
+      offerStart: product.offerStart ? product.offerStart.toISOString() : null,
+      offerEnd: product.offerEnd ? product.offerEnd.toISOString() : null,
+    };
+  });
 
   return (
     <PageContainer>

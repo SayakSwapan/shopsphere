@@ -41,7 +41,7 @@ export default async function TrendingProducts() {
     prisma.product.findMany({
       where: { status: true, isTrending: true },
       include: {
-        productimage: { take: 1 },
+        productimage: { take: 1, orderBy: { sortOrder: "asc" } },
         category: true,
         review: true,
         productvariant: {

@@ -52,7 +52,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         metaTitle: true,
         metaDescription: true,
         productimage: {
-          orderBy: { createdAt: "asc" },
+          orderBy: { sortOrder: "asc" },
           take: 1,
           select: { url: true },
         },
@@ -103,7 +103,7 @@ export default async function ProductPage({ params }: Props) {
     prisma.product.findUnique({
       where: { slug },
       include: {
-        productimage: true,
+        productimage: { orderBy: { sortOrder: "asc" } },
         category: true,
         productvariant: {
           include: {

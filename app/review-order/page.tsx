@@ -49,7 +49,7 @@ export default async function ReviewOrderPage() {
         include: {
           product: {
             include: {
-              productimage: true,
+              productimage: { orderBy: { sortOrder: "asc" } },
             },
           },
           productvariant: {

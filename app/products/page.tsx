@@ -183,7 +183,11 @@ export default async function ProductsPage({
         offerEnd: true,
         isFeatured: true,
         isTrending: true,
-        productimage: { select: { url: true }, take: 1 },
+        productimage: {
+          select: { url: true },
+          take: 1,
+          orderBy: { sortOrder: "asc" },
+        },
         productvariant: {
           select: {
             id: true,

@@ -43,7 +43,7 @@ export default async function ProductViewPage({ params }: Props) {
     include: {
       category: true,
       sizeChart: true,
-      productimage: true,
+      productimage: { orderBy: { sortOrder: "asc" } },
       productvariant: {
         include: {
           gender: true,
@@ -79,7 +79,7 @@ export default async function ProductViewPage({ params }: Props) {
 
   const totalVariantStock = product.productvariant.reduce(
     (acc, item) => acc + item.stock,
-    0
+    0,
   );
 
   const sellingPrice = Number(product.sellingPrice);
@@ -117,7 +117,10 @@ export default async function ProductViewPage({ params }: Props) {
               label={product.isTrending ? "TRENDING" : "NOT TRENDING"}
               tone={product.isTrending ? "pink" : "gray"}
             />
-            <StockHealth stock={product.stock} lowStockAlert={product.lowStockAlert} />
+            <StockHealth
+              stock={product.stock}
+              lowStockAlert={product.lowStockAlert}
+            />
           </div>
         </div>
 
@@ -133,7 +136,7 @@ export default async function ProductViewPage({ params }: Props) {
 
       {/* QUICK ACTIONS */}
       <div className="glass-card rounded-3xl p-5">
-        <p           className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-400">
+        <p className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-400">
           Quick Actions
         </p>
         <ProductQuickActions
@@ -191,12 +194,18 @@ export default async function ProductViewPage({ params }: Props) {
               value={product.sizeChart?.name || "Not linked"}
             />
             <InfoItem label="Stock" value={String(product.stock)} />
-            <InfoItem label="Low Stock Alert" value={String(product.lowStockAlert)} />
+            <InfoItem
+              label="Low Stock Alert"
+              value={String(product.lowStockAlert)}
+            />
             <InfoItem label="Weight" value={`${product.weight} g`} />
             <InfoItem label="Total Sold" value={String(product.totalSold)} />
             <InfoItem label="Total Views" value={String(product.totalViews)} />
             <InfoItem label="Created" value={formatDate(product.createdAt)} />
-            <InfoItem label="Last Updated" value={formatDate(product.updatedAt)} />
+            <InfoItem
+              label="Last Updated"
+              value={formatDate(product.updatedAt)}
+            />
           </div>
         </div>
       </div>
@@ -204,8 +213,16 @@ export default async function ProductViewPage({ params }: Props) {
       {/* PRICING */}
       <SectionCard title="Pricing & Offers">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatBox label="Selling Price (MRP)" value={formatMoney(breakdown.sellingPrice)} accent="text-white" />
-          <StatBox label="Final Price (incl. GST)" value={formatMoney(breakdown.finalPriceInclGst)} accent="text-white" />
+          <StatBox
+            label="Selling Price (MRP)"
+            value={formatMoney(breakdown.sellingPrice)}
+            accent="text-white"
+          />
+          <StatBox
+            label="Final Price (incl. GST)"
+            value={formatMoney(breakdown.finalPriceInclGst)}
+            accent="text-white"
+          />
           <StatBox
             label="Profit / Margin"
             value={`${formatMoney(breakdown.profit)} (${breakdown.profitPercent}%)`}
@@ -213,7 +230,11 @@ export default async function ProductViewPage({ params }: Props) {
           />
           <StatBox
             label="Customer Price (incl. GST)"
-            value={breakdown.hasDiscount ? formatMoney(breakdown.discountedPriceInclGst) : formatMoney(breakdown.finalPriceInclGst)}
+            value={
+              breakdown.hasDiscount
+                ? formatMoney(breakdown.discountedPriceInclGst)
+                : formatMoney(breakdown.finalPriceInclGst)
+            }
             accent={breakdown.hasDiscount ? "text-amber-400" : "text-white"}
           />
         </div>
@@ -222,7 +243,11 @@ export default async function ProductViewPage({ params }: Props) {
           <InfoCard title="Discount">
             <InfoItem
               label="Type"
-              value={product.discountType === "PERCENT" ? "Percentage (%)" : discountTypeLabel}
+              value={
+                product.discountType === "PERCENT"
+                  ? "Percentage (%)"
+                  : discountTypeLabel
+              }
             />
             <InfoItem label="Value" value={String(product.discountValue)} />
             {breakdown.hasDiscount ? (
@@ -232,12 +257,19 @@ export default async function ProductViewPage({ params }: Props) {
                   value={`− ${formatMoney(breakdown.discountAmount)}`}
                 />
                 <div className="mt-2 rounded-xl bg-amber-500/10 px-3 py-2">
-                  <p className="text-[11px] font-semibold text-slate-300">Discounted Final Price (incl. GST)</p>
-                  <p className="text-lg font-bold text-amber-400">{formatMoney(breakdown.discountedPriceInclGst)}</p>
+                  <p className="text-[11px] font-semibold text-slate-300">
+                    Discounted Final Price (incl. GST)
+                  </p>
+                  <p className="text-lg font-bold text-amber-400">
+                    {formatMoney(breakdown.discountedPriceInclGst)}
+                  </p>
                 </div>
               </>
             ) : (
-              <InfoItem label="Sale Price" value={formatMoney(breakdown.salePriceBase)} />
+              <InfoItem
+                label="Sale Price"
+                value={formatMoney(breakdown.salePriceBase)}
+              />
             )}
           </InfoCard>
 
@@ -249,7 +281,8 @@ export default async function ProductViewPage({ params }: Props) {
                 <span className="inline-block rounded-full bg-red-500/15 px-3 py-1 text-xs font-semibold text-red-400">
                   Offer has expired
                 </span>
-              ) : product.offerStart && new Date(product.offerStart) > new Date() ? (
+              ) : product.offerStart &&
+                new Date(product.offerStart) > new Date() ? (
                 <span className="inline-block rounded-full bg-amber-500/15 px-3 py-1 text-xs font-semibold text-amber-400">
                   Offer not started yet
                 </span>
@@ -267,7 +300,10 @@ export default async function ProductViewPage({ params }: Props) {
 
           <InfoCard title="Taxes">
             <InfoItem label="GST" value={`${breakdown.gstRate}%`} />
-            <InfoItem label="GST on MRP" value={formatMoney(breakdown.gstOnSellingPrice)} />
+            <InfoItem
+              label="GST on MRP"
+              value={formatMoney(breakdown.gstOnSellingPrice)}
+            />
             <InfoItem
               label="Price incl. GST (MRP)"
               value={formatMoney(breakdown.finalPriceInclGst)}
@@ -290,8 +326,16 @@ export default async function ProductViewPage({ params }: Props) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <SectionCard title="Inventory Summary">
           <div className="grid grid-cols-2 gap-4">
-            <StatBox label="Base Stock" value={String(product.stock)} accent="text-black" />
-            <StatBox label="Variant Stock" value={String(totalVariantStock)} accent="text-black" />
+            <StatBox
+              label="Base Stock"
+              value={String(product.stock)}
+              accent="text-black"
+            />
+            <StatBox
+              label="Variant Stock"
+              value={String(totalVariantStock)}
+              accent="text-black"
+            />
             <StatBox
               label="Remaining"
               value={String(product.stock - totalVariantStock)}
@@ -301,21 +345,37 @@ export default async function ProductViewPage({ params }: Props) {
                   : "text-emerald-400"
               }
             />
-            <StatBox label="Variants" value={String(product.productvariant.length)} accent="text-white" />
+            <StatBox
+              label="Variants"
+              value={String(product.productvariant.length)}
+              accent="text-white"
+            />
           </div>
           {product.stock - totalVariantStock !== 0 && (
             <p className="mt-4 rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-sm text-amber-300">
-              The base stock and the sum of variant stock do not match. Update stock
-              from the edit page to keep them in sync.
+              The base stock and the sum of variant stock do not match. Update
+              stock from the edit page to keep them in sync.
             </p>
           )}
         </SectionCard>
 
         <SectionCard title="Returns & Replacements">
-          <InfoItem label="Returnable" value={product.isReturnable ? "Yes" : "No"} />
-          <InfoItem label="Return Window" value={`${product.returnDays} days`} />
-          <InfoItem label="Replaceable" value={product.isReplaceable ? "Yes" : "No"} />
-          <InfoItem label="Replacement Window" value={`${product.replaceDays} days`} />
+          <InfoItem
+            label="Returnable"
+            value={product.isReturnable ? "Yes" : "No"}
+          />
+          <InfoItem
+            label="Return Window"
+            value={`${product.returnDays} days`}
+          />
+          <InfoItem
+            label="Replaceable"
+            value={product.isReplaceable ? "Yes" : "No"}
+          />
+          <InfoItem
+            label="Replacement Window"
+            value={`${product.replaceDays} days`}
+          />
           <div className="mt-4">
             {!product.isReturnable && !product.isReplaceable ? (
               <span className="inline-block rounded-full bg-white/5 px-3 py-1 text-xs font-semibold text-slate-300">
@@ -369,7 +429,9 @@ export default async function ProductViewPage({ params }: Props) {
         badge={`${product.productvariant.length} Variants`}
       >
         {product.productvariant.length === 0 ? (
-          <p className="text-slate-400">No variants configured for this product.</p>
+          <p className="text-slate-400">
+            No variants configured for this product.
+          </p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -392,7 +454,9 @@ export default async function ProductViewPage({ params }: Props) {
                     <td className="py-3 px-3">
                       {variant.size?.sizeName || variant.size?.sizeCode || "-"}
                     </td>
-                    <td className="py-3 px-3 font-mono text-xs">{variant.sku}</td>
+                    <td className="py-3 px-3 font-mono text-xs">
+                      {variant.sku}
+                    </td>
                     <td className="py-3 px-3 text-right">
                       <span
                         className={
@@ -488,7 +552,9 @@ function StatusPill({
     gray: "bg-white/5 text-slate-300",
   };
   return (
-    <span className={`inline-block rounded-full px-3 py-1 text-xs font-semibold ${tones[tone]}`}>
+    <span
+      className={`inline-block rounded-full px-3 py-1 text-xs font-semibold ${tones[tone]}`}
+    >
       {label}
     </span>
   );
@@ -498,12 +564,20 @@ function InfoItem({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between gap-4 border-b border-slate-800 py-2.5">
       <span className="text-slate-400">{label}</span>
-      <span className="text-right font-semibold text-slate-100 break-words">{value}</span>
+      <span className="text-right font-semibold text-slate-100 break-words">
+        {value}
+      </span>
     </div>
   );
 }
 
-function InfoCard({ title, children }: { title: string; children: React.ReactNode }) {
+function InfoCard({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="rounded-2xl border border-slate-800 bg-[#0F172A] p-4">
       <h3 className="mb-2 text-sm font-bold uppercase tracking-wider text-slate-400">
@@ -526,7 +600,9 @@ function StatBox({
   return (
     <div className="rounded-2xl border border-slate-800 bg-[#0F172A] p-4">
       <p className="text-xs text-slate-400">{label}</p>
-      <h3 className={`mt-1 text-xl font-black break-words ${accent}`}>{value}</h3>
+      <h3 className={`mt-1 text-xl font-black break-words ${accent}`}>
+        {value}
+      </h3>
     </div>
   );
 }

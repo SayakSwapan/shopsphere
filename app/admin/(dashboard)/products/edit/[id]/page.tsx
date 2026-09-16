@@ -2,7 +2,9 @@ import { notFound } from "next/navigation";
 
 import { prisma } from "@/lib/prisma";
 
-import ProductForm, { ProductData } from "@/components/admin/products/product-form";
+import ProductForm, {
+  ProductData,
+} from "@/components/admin/products/product-form";
 
 interface Props {
   params: Promise<{
@@ -10,9 +12,7 @@ interface Props {
   }>;
 }
 
-export default async function EditProductPage({
-  params,
-}: Props) {
+export default async function EditProductPage({ params }: Props) {
   const { id } = await params;
 
   const product = await prisma.product.findUnique({
@@ -21,7 +21,7 @@ export default async function EditProductPage({
     },
 
     include: {
-      productimage: true,
+      productimage: { orderBy: { sortOrder: "asc" } },
 
       productvariant: {
         include: {
@@ -43,41 +43,52 @@ export default async function EditProductPage({
   if (!product) {
     notFound();
   }
-  const [rawCategories, genders, sizes, sizeCharts, printTypes] = await Promise.all([
-    prisma.category.findMany({ orderBy: { name: "asc" } }),
+  const [rawCategories, genders, sizes, sizeCharts, printTypes] =
+    await Promise.all([
+      prisma.category.findMany({ orderBy: { name: "asc" } }),
 
-    prisma.gender.findMany({ where: { isActive: true } }),
+      prisma.gender.findMany({ where: { isActive: true } }),
 
-    prisma.size.findMany({
-      where: { isActive: true },
-      include: { gender: true },
-    }),
+      prisma.size.findMany({
+        where: { isActive: true },
+        include: { gender: true },
+      }),
 
-    prisma.sizechart.findMany({ orderBy: { name: "asc" } }),
+      prisma.sizechart.findMany({ orderBy: { name: "asc" } }),
 
-    prisma.printtype.findMany({
-      where: { isActive: true },
-      orderBy: { sortOrder: "asc" },
-    }),
-  ]);
-  const categories = rawCategories.map((c) => ({ ...c, }));
+      prisma.printtype.findMany({
+        where: { isActive: true },
+        orderBy: { sortOrder: "asc" },
+      }),
+    ]);
+  const categories = rawCategories.map((c) => ({ ...c }));
 
   const serializedProduct = {
     ...product,
     sellingPrice: Number(product.sellingPrice),
     costPrice: Number(product.costPrice),
-    lastSellingProfitPercentage: product.lastSellingProfitPercentage != null ? Number(product.lastSellingProfitPercentage) : null,
-    lastSellingPrice: product.lastSellingPrice != null ? Number(product.lastSellingPrice) : null,
+    lastSellingProfitPercentage:
+      product.lastSellingProfitPercentage != null
+        ? Number(product.lastSellingProfitPercentage)
+        : null,
+    lastSellingPrice:
+      product.lastSellingPrice != null
+        ? Number(product.lastSellingPrice)
+        : null,
     salePrice: Number(product.salePrice),
     finalPrice: Number(product.finalPrice),
     discountValue: Number(product.discountValue),
     offerStart: product.offerStart ? product.offerStart.toISOString() : null,
     offerEnd: product.offerEnd ? product.offerEnd.toISOString() : null,
-    productimage: product.productimage.map((img) => ({ ...img, })),
-    productvariant: product.productvariant.map((variant) => ({ ...variant, })),
-    printTypes: product.printTypes.map((link) => ({ id: link.printTypeId, name: link.printType.name })),
-    category: { ...product.category, },
-  }; return (
+    productimage: product.productimage.map((img) => ({ ...img })),
+    productvariant: product.productvariant.map((variant) => ({ ...variant })),
+    printTypes: product.printTypes.map((link) => ({
+      id: link.printTypeId,
+      name: link.printType.name,
+    })),
+    category: { ...product.category },
+  };
+  return (
     <ProductForm
       mode="edit"
       product={structuredClone(serializedProduct) as ProductData}
@@ -89,5 +100,7 @@ export default async function EditProductPage({
         ...pt,
         pricePerLetter: Number(pt.pricePerLetter),
         designFee: Number(pt.designFee),
-      }))} />);
+      }))}
+    />
+  );
 }

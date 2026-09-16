@@ -21,7 +21,7 @@ export default async function WishlistPage() {
         include: {
           product: {
             include: {
-              productimage: true,
+              productimage: { orderBy: { sortOrder: "asc" } },
               productvariant: {
                 where: { stock: { gt: 0 } },
                 include: { size: true },

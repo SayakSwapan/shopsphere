@@ -82,7 +82,7 @@ async function fetchHomeData() {
           productvariant: { some: { stock: { gt: 0 } } },
         },
         include: {
-          productimage: { take: 1 },
+          productimage: { take: 1, orderBy: { sortOrder: "asc" } },
           productvariant: {
             where: { stock: { gt: 0 } },
             include: { size: true },
@@ -97,7 +97,7 @@ async function fetchHomeData() {
           productvariant: { some: { stock: { gt: 0 } } },
         },
         include: {
-          productimage: { take: 1 },
+          productimage: { take: 1, orderBy: { sortOrder: "asc" } },
           productvariant: {
             where: { stock: { gt: 0 } },
             include: { size: true },

@@ -63,7 +63,7 @@ export default async function CategoryPage({ params }: Props) {
       categoryId: category.id,
     },
     include: {
-      productimage: { take: 1 },
+      productimage: { take: 1, orderBy: { sortOrder: "asc" } },
       productvariant: {
         where: { stock: { gt: 0 } },
         include: { size: true, gender: true },

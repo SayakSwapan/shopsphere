@@ -469,9 +469,14 @@ model productimage {
   productId String
   url       String
   createdAt DateTime @default(now())
+
+  // Explicit position within a product's gallery — image 0 is the cover.
+  // Set from the upload order on every save so product cards always render
+  // the same cover image (queries order by this, never by implicit row order).
+  sortOrder Int @default(0)
   product   product  @relation(fields: [productId], references: [id], map: "ProductImage_productId_fkey")
 
-  @@index([productId])
+  @@index([productId, sortOrder])
 }
 
 model productvariant {

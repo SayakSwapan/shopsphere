@@ -94,7 +94,7 @@ export default async function PdpComboSection({
               discountValue: true,
               offerStart: true,
               offerEnd: true,
-              productimage: { take: 1 },
+              productimage: { take: 1, orderBy: { sortOrder: "asc" } },
             },
           },
         },

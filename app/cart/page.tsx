@@ -48,7 +48,7 @@ export default async function CartPage() {
       cartitem: {
         include: {
           product: {
-            include: { productimage: true },
+            include: { productimage: { orderBy: { sortOrder: "asc" } } },
           },
           productvariant: {
             include: {

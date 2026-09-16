@@ -37,7 +37,7 @@ interface ProductRow {
 
 export default async function SportsFeaturedProducts() {
   const productInclude = {
-    productimage: { take: 1 },
+    productimage: { take: 1, orderBy: { sortOrder: "asc" } },
     category: true,
     review: { select: { rating: true } },
     productvariant: {

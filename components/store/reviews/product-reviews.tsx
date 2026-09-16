@@ -244,7 +244,7 @@ export default function ProductReviews({
         </div>
 
         {/* ── FORM + LIST ── */}
-        <div className="space-y-4 sm:space-y-6">
+        <div className="min-w-0 space-y-4 sm:space-y-6">
           {showForm && isLoggedIn && (
             <ReviewForm
               productId={productId}
@@ -294,13 +294,7 @@ export default function ProductReviews({
               </p>
             </div>
           ) : (
-            <div
-              className="max-h-[60vh] space-y-3 overflow-y-auto overscroll-contain pr-1.5 sm:max-h-[34rem] sm:space-y-4 sm:pr-2"
-              style={{
-                scrollbarWidth: "thin",
-                WebkitOverflowScrolling: "touch",
-              }}
-            >
+            <div className="pd-review-list-scroll space-y-3 sm:space-y-4">
               {reviews.map((review) => (
                 <div
                   key={review.id}

@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { Upload, X } from "lucide-react";
+import { Crown, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 
 interface Props {
@@ -9,13 +9,29 @@ interface Props {
   setImages: React.Dispatch<React.SetStateAction<string[]>>;
 }
 
-export default function ImageUpload({
-  images,
-  setImages,
-}: Props) {
-  async function upload(
-    e: React.ChangeEvent<HTMLInputElement>
-  ) {
+async function uploadFile(file: File): Promise<string> {
+  const form = new FormData();
+
+  form.append("file", file);
+
+  // Signed, server-side upload via /api/upload (uses the
+  // Cloudinary API secret) — no dependency on an unsigned preset.
+  const res = await fetch("/api/upload", {
+    method: "POST",
+    body: form,
+  });
+
+  const result = await res.json();
+
+  if (!res.ok || !result.url) {
+    throw new Error(result.message || "Upload failed");
+  }
+
+  return result.url as string;
+}
+
+export default function ImageUpload({ images, setImages }: Props) {
+  async function upload(e: React.ChangeEvent<HTMLInputElement>) {
     const files = e.target.files;
 
     if (!files) return;
@@ -26,30 +42,7 @@ export default function ImageUpload({
     }
 
     try {
-      const uploaded = await Promise.all(
-        Array.from(files).map(async (file) => {
-          const form = new FormData();
-
-          form.append("file", file);
-
-          // Signed, server-side upload via /api/upload (uses the
-          // Cloudinary API secret) — no dependency on an unsigned preset.
-          const res = await fetch("/api/upload", {
-            method: "POST",
-            body: form,
-          });
-
-          const result = await res.json();
-
-          if (!res.ok || !result.url) {
-            throw new Error(
-              result.message || "Upload failed"
-            );
-          }
-
-          return result.url as string;
-        })
-      );
+      const uploaded = await Promise.all(Array.from(files).map(uploadFile));
 
       setImages((prev) => [...prev, ...uploaded]);
 
@@ -62,36 +55,66 @@ export default function ImageUpload({
     e.target.value = "";
   }
 
+  // Uploads a single image on top of the existing cover (replaces images[0]).
+  async function replaceCover(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+
+    if (!file) return;
+
+    try {
+      const url = await uploadFile(file);
+
+      setImages((prev) => (prev.length ? [url, ...prev.slice(1)] : [url]));
+
+      toast.success("Cover image replaced");
+    } catch (error) {
+      console.error(error);
+      toast.error("Cover replace failed");
+    }
+
+    e.target.value = "";
+  }
+
+  // Moves the chosen gallery image to the front so it becomes the cover.
+  function makeCover(index: number) {
+    if (index === 0) return;
+
+    setImages((prev) => {
+      const next = [...prev];
+      const [img] = next.splice(index, 1);
+
+      next.unshift(img);
+
+      return next;
+    });
+
+    toast.success("Cover image updated");
+  }
+
   function remove(index: number) {
-    setImages((prev) =>
-      prev.filter((_, i) => i !== index)
-    );
+    setImages((prev) => prev.filter((_, i) => i !== index));
   }
 
   return (
     <div className="rounded-2xl border border-slate-700 bg-[#111827] p-6">
-
       {/* Header */}
 
       <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-bold text-white">Product Images</h2>
 
-          <div>
-            <h2 className="text-xl font-bold text-white">
-              Product Images
-            </h2>
-
-            <p className="mt-1 text-sm text-slate-400">
-              {images.length}/5 Images Uploaded
-            </p>
-            <p className="mt-1 text-xs text-slate-500">
-              The first image becomes the cover. Max 5 images. Supported: JPG, PNG, WebP.
-            </p>
-          </div>
+          <p className="mt-1 text-sm text-slate-400">
+            {images.length}/5 Images Uploaded
+          </p>
+          <p className="mt-1 text-xs text-slate-500">
+            The first image becomes the cover. Use &quot;Make Cover&quot; to
+            pick another image as the cover. Max 5 images. Supported: JPG, PNG,
+            WebP.
+          </p>
+        </div>
 
         <label className="cursor-pointer rounded-xl bg-amber-500 px-5 py-3 font-semibold text-black transition hover:bg-amber-400">
-
           Upload Images
-
           <input
             hidden
             multiple
@@ -99,25 +122,20 @@ export default function ImageUpload({
             accept="image/*"
             onChange={upload}
           />
-
         </label>
-
       </div>
 
       {/* Images */}
 
       <div className="grid grid-cols-12 gap-6">
-
         {/* Cover */}
 
         <div className="col-span-7">
-
           <p className="mb-3 text-sm font-semibold text-slate-300">
             Cover Image
           </p>
 
           <div className="relative h-[240px] overflow-hidden rounded-xl border border-slate-700 bg-[#0F172A]">
-
             {images.length ? (
               <>
                 <Image
@@ -130,47 +148,60 @@ export default function ImageUpload({
                 <span className="absolute left-3 top-3 rounded-lg bg-amber-500 px-3 py-1 text-xs font-bold text-black">
                   COVER
                 </span>
+
+                <label className="absolute bottom-3 left-3 cursor-pointer rounded-lg bg-black/70 px-3 py-1.5 text-xs font-semibold text-white backdrop-blur transition hover:bg-black/90">
+                  <span className="flex items-center gap-1.5">
+                    <Upload size={13} />
+                    Replace Cover
+                  </span>
+
+                  <input
+                    hidden
+                    type="file"
+                    accept="image/*"
+                    onChange={replaceCover}
+                  />
+                </label>
               </>
             ) : (
               <div className="flex h-full flex-col items-center justify-center text-slate-500">
-
                 <Upload size={42} />
 
-                <span className="mt-3">
-                  No Cover Image
-                </span>
-
+                <span className="mt-3">No Cover Image</span>
               </div>
             )}
-
           </div>
-
         </div>
 
         {/* Gallery */}
 
         <div className="col-span-5">
-
-          <p className="mb-3 text-sm font-semibold text-slate-300">
-            Gallery
-          </p>
+          <p className="mb-3 text-sm font-semibold text-slate-300">Gallery</p>
 
           <div className="grid grid-cols-2 gap-4">
-
             {images.map((image, index) => (
-
               <div
                 key={index}
                 className="group relative aspect-square overflow-hidden rounded-xl border border-slate-700 bg-[#0F172A]"
               >
-
                 <Image
-  src={image}
-  alt="Product"
-  width={160}
-  height={160}
-  className="h-full w-full object-cover"
-/>
+                  src={image}
+                  alt="Product"
+                  width={160}
+                  height={160}
+                  className="h-full w-full object-cover"
+                />
+
+                {index !== 0 && (
+                  <button
+                    type="button"
+                    onClick={() => makeCover(index)}
+                    className="absolute bottom-2 left-2 hidden items-center gap-1 rounded-full bg-amber-500 px-2 py-1 text-[10px] font-bold text-black group-hover:flex"
+                  >
+                    <Crown size={11} />
+                    Make Cover
+                  </button>
+                )}
 
                 {index !== 0 && (
                   <button
@@ -187,9 +218,7 @@ export default function ImageUpload({
                     COVER
                   </span>
                 )}
-
               </div>
-
             ))}
 
             {/* Empty Slots */}
@@ -198,16 +227,11 @@ export default function ImageUpload({
               Array.from({
                 length: 5 - images.length,
               }).map((_, index) => (
-
                 <label
                   key={index}
                   className="flex aspect-square cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-slate-600 bg-[#0F172A] transition hover:border-amber-400 hover:bg-slate-800"
                 >
-
-                  <Upload
-                    size={30}
-                    className="text-slate-500"
-                  />
+                  <Upload size={30} className="text-slate-500" />
 
                   <input
                     hidden
@@ -216,17 +240,11 @@ export default function ImageUpload({
                     accept="image/*"
                     onChange={upload}
                   />
-
                 </label>
-
               ))}
-
           </div>
-
         </div>
-
       </div>
-
     </div>
   );
 }

@@ -41,6 +41,8 @@ import {
   Gift,
   Boxes,
   Clapperboard,
+  Store,
+  Coins,
   type LucideIcon,
 } from "lucide-react";
 
@@ -67,7 +69,11 @@ export type NavEntry = NavGroup | NavSection;
 export const navItems: NavEntry[] = [
   {
     type: "item",
-    item: { title: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
+    item: {
+      title: "Dashboard",
+      href: "/admin/dashboard",
+      icon: LayoutDashboard,
+    },
   },
   {
     type: "item",
@@ -83,11 +89,36 @@ export const navItems: NavEntry[] = [
     icon: ShoppingBag,
     children: [
       { title: "Orders", href: "/admin/orders", icon: ShoppingBag },
-      { title: "Archived Orders", href: "/admin/orders/archived", icon: Archive },
+      {
+        title: "Archived Orders",
+        href: "/admin/orders/archived",
+        icon: Archive,
+      },
       { title: "Returns", href: "/admin/returns", icon: RotateCcw },
       { title: "Replacements", href: "/admin/replacements", icon: RefreshCw },
-      { title: "Return Reasons", href: "/admin/return-reasons", icon: CircleHelp },
-      { title: "Product Queries", href: "/admin/product-queries", icon: MessageCircle },
+      {
+        title: "Return Reasons",
+        href: "/admin/return-reasons",
+        icon: CircleHelp,
+      },
+      {
+        title: "Product Queries",
+        href: "/admin/product-queries",
+        icon: MessageCircle,
+      },
+    ],
+  },
+  {
+    type: "section",
+    title: "Offline / POS",
+    icon: Store,
+    children: [
+      { title: "Offline Sales", href: "/admin/offline-sales", icon: Store },
+      {
+        title: "Due Collections",
+        href: "/admin/offline-sales/due",
+        icon: Coins,
+      },
     ],
   },
   {
@@ -99,7 +130,11 @@ export const navItems: NavEntry[] = [
       { title: "Categories", href: "/admin/categories", icon: Shapes },
       { title: "Gender", href: "/admin/genders", icon: Users2 },
       { title: "Sizes", href: "/admin/sizes", icon: Ruler },
-      { title: "Size Charts", href: "/admin/size-charts", icon: TableProperties },
+      {
+        title: "Size Charts",
+        href: "/admin/size-charts",
+        icon: TableProperties,
+      },
       { title: "Print Types", href: "/admin/print-types", icon: Printer },
       { title: "Inventory", href: "/admin/inventory", icon: Warehouse },
     ],
@@ -112,7 +147,11 @@ export const navItems: NavEntry[] = [
       { title: "Customers", href: "/admin/customers", icon: Users2 },
       { title: "Wishlists", href: "/admin/wishlists", icon: Heart },
       { title: "Partners", href: "/admin/partners", icon: Users2 },
-      { title: "Permissions", href: "/admin/partners/permissions", icon: KeyRound },
+      {
+        title: "Permissions",
+        href: "/admin/partners/permissions",
+        icon: KeyRound,
+      },
     ],
   },
   {
@@ -121,9 +160,21 @@ export const navItems: NavEntry[] = [
     icon: Award,
     children: [
       { title: "Loyalty Dashboard", href: "/admin/loyalty", icon: Award },
-      { title: "Program Settings", href: "/admin/loyalty/settings", icon: Gift },
-      { title: "Customer Loyalty", href: "/admin/loyalty/customers", icon: Users2 },
-      { title: "Reward History", href: "/admin/loyalty/history", icon: BadgeIndianRupee },
+      {
+        title: "Program Settings",
+        href: "/admin/loyalty/settings",
+        icon: Gift,
+      },
+      {
+        title: "Customer Loyalty",
+        href: "/admin/loyalty/customers",
+        icon: Users2,
+      },
+      {
+        title: "Reward History",
+        href: "/admin/loyalty/history",
+        icon: BadgeIndianRupee,
+      },
     ],
   },
   {
@@ -133,10 +184,22 @@ export const navItems: NavEntry[] = [
     children: [
       { title: "Coupons", href: "/admin/coupons", icon: TicketPercent },
       { title: "Banners", href: "/admin/banners", icon: Image },
-      { title: "Instagram Reels", href: "/admin/instagram-reels", icon: Clapperboard },
+      {
+        title: "Instagram Reels",
+        href: "/admin/instagram-reels",
+        icon: Clapperboard,
+      },
       { title: "Combo Offers", href: "/admin/combo-offers", icon: Boxes },
-      { title: "Homepage Content", href: "/admin/home-content", icon: LayoutGrid },
-      { title: "Sports Homepage", href: "/admin/sports-home-content", icon: Zap },
+      {
+        title: "Homepage Content",
+        href: "/admin/home-content",
+        icon: LayoutGrid,
+      },
+      {
+        title: "Sports Homepage",
+        href: "/admin/sports-home-content",
+        icon: Zap,
+      },
       { title: "Theme Decider", href: "/admin/theme-decider", icon: Palette },
     ],
   },
@@ -148,8 +211,16 @@ export const navItems: NavEntry[] = [
       { title: "Finance", href: "/admin/finance", icon: DollarSign },
       { title: "Balance Sheet", href: "/admin/balance-sheet", icon: FileText },
       { title: "Refunds", href: "/admin/refunds", icon: BadgeIndianRupee },
-      { title: "Domains & Bills", href: "/admin/domain-payments", icon: CalendarClock },
-      { title: "Transaction Charges", href: "/admin/transaction-charges", icon: Percent },
+      {
+        title: "Domains & Bills",
+        href: "/admin/domain-payments",
+        icon: CalendarClock,
+      },
+      {
+        title: "Transaction Charges",
+        href: "/admin/transaction-charges",
+        icon: Percent,
+      },
       { title: "Shipping", href: "/admin/shipping", icon: Truck },
       { title: "Pincodes", href: "/admin/pincodes", icon: MapPin },
     ],
@@ -163,8 +234,16 @@ export const navItems: NavEntry[] = [
       { title: "Generate Reviews", href: "/admin/reviews/generate", icon: Bot },
       { title: "Messages", href: "/admin/messages", icon: Mail },
       { title: "Callbacks", href: "/admin/callbacks", icon: PhoneCall },
-      { title: "Email Templates", href: "/admin/email-templates", icon: MailPlus },
-      { title: "WhatsApp Templates", href: "/admin/whatsapp-templates", icon: MessageCircle },
+      {
+        title: "Email Templates",
+        href: "/admin/email-templates",
+        icon: MailPlus,
+      },
+      {
+        title: "WhatsApp Templates",
+        href: "/admin/whatsapp-templates",
+        icon: MessageCircle,
+      },
       { title: "FAQs", href: "/admin/faqs", icon: CircleHelp },
       { title: "Policies", href: "/admin/policies", icon: FileText },
     ],
@@ -186,7 +265,11 @@ interface NavItemComponentProps {
   icon: LucideIcon;
 }
 
-export default function NavItem({ href, title, icon: Icon }: NavItemComponentProps) {
+export default function NavItem({
+  href,
+  title,
+  icon: Icon,
+}: NavItemComponentProps) {
   return (
     <Link
       href={href}

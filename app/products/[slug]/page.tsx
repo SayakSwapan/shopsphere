@@ -1,9 +1,9 @@
 import { Suspense } from "react";
-import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { getEffectivePrice, isFlatDiscount, priceWithGst } from "@/lib/pricing";
 import { getSiteSettings, getSiteName } from "@/lib/site-settings";
-import { getReviewSummary } from "@/lib/reviews";
+import { getReviewList, getReviewSummary } from "@/lib/reviews";
+import { getProductBySlug } from "@/lib/product-queries";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -42,22 +42,10 @@ interface Props {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
+  // `getProductBySlug` is React-cached, so this shares one DB query with the
+  // page body instead of fetching the product twice per request.
   const [product, settings] = await Promise.all([
-    prisma.product.findUnique({
-      where: { slug },
-      select: {
-        id: true,
-        name: true,
-        description: true,
-        metaTitle: true,
-        metaDescription: true,
-        productimage: {
-          orderBy: { sortOrder: "asc" },
-          take: 1,
-          select: { url: true },
-        },
-      },
-    }),
+    getProductBySlug(slug),
     getSiteSettings(),
   ]);
 
@@ -100,29 +88,21 @@ export default async function ProductPage({ params }: Props) {
   const { slug } = await params;
 
   const [product, session] = await Promise.all([
-    prisma.product.findUnique({
-      where: { slug },
-      include: {
-        productimage: { orderBy: { sortOrder: "asc" } },
-        category: true,
-        productvariant: {
-          include: {
-            size: true,
-            gender: true,
-          },
-        },
-      },
-    }),
+    getProductBySlug(slug),
     auth(),
   ]);
 
   if (!product) return notFound();
 
   // Review summary (average/count/distribution) comes from one lightweight
-  // aggregate while the full review list is streamed later via the Suspense-
-  // wrapped ReviewsSection — the above-the-fold content never waits on loading
-  // and serializing every review row.
-  const reviewSummary = await getReviewSummary(product.id);
+  // aggregate while the full review list stays small (per-request deduped with
+  // the Suspense-wrapped ReviewsSection via getReviewList). The list powers the
+  // above-the-fold "Customer Reviews" carousel so buyers don't wait on a second
+  // client round-trip.
+  const [reviewSummary, reviews] = await Promise.all([
+    getReviewSummary(product.id),
+    getReviewList(product.id),
+  ]);
   const reviewCount = reviewSummary.count;
   const reviewAverage = reviewSummary.average;
 
@@ -466,6 +446,7 @@ export default async function ProductPage({ params }: Props) {
                 }
                 reviewAverage={reviewAverage}
                 reviewCount={reviewCount}
+                reviews={reviews}
               />
 
               {/* Available sizes (the size chart now lives in the Select Size header) */}

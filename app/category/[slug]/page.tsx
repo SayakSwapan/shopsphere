@@ -6,6 +6,7 @@ import NavbarWrapper from "@/components/store/layout/navbar-wrapper";
 import Footer from "@/components/store/layout/footer";
 import ProductCard from "@/components/store/product-card";
 import { getSiteName, getSiteSettings } from "@/lib/site-settings";
+import { getCategoryBySlug } from "@/lib/product-queries";
 import { Home } from "lucide-react";
 
 interface Props {
@@ -15,10 +16,7 @@ interface Props {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const [cat, settings] = await Promise.all([
-    prisma.category.findUnique({
-      where: { slug },
-      select: { name: true, product: { select: { id: true } } },
-    }),
+    getCategoryBySlug(slug),
     getSiteSettings(),
   ]);
 
@@ -26,7 +24,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   const siteName = getSiteName(settings);
   const title = `${cat.name} — Shop Online | ${siteName}`;
-  const description = `Browse ${cat.name.toLowerCase()} products at ${siteName}. ${cat.product.length} items — free shipping on eligible orders.`;
+  const description = `Browse ${cat.name.toLowerCase()} products at ${siteName}. ${cat._count.product} items — free shipping on eligible orders.`;
 
   return {
     title,
@@ -45,15 +43,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function CategoryPage({ params }: Props) {
   const { slug } = await params;
 
-  const category = await prisma.category.findUnique({
-    where: { slug },
-    select: {
-      id: true,
-      name: true,
-      slug: true,
-      image: true,
-    },
-  });
+  const category = await getCategoryBySlug(slug);
 
   if (!category) return notFound();
 

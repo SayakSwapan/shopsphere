@@ -4,7 +4,12 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { markOrderPaid } from "@/lib/payment-fulfillment";
 import { safeCompare } from "@/lib/security";
-import { fetchPayment, fetchOrderStatus, isPaymentSuccessful, CashfreeError } from "@/lib/payment/cashfree";
+import {
+  fetchPayment,
+  fetchOrderStatus,
+  isPaymentSuccessful,
+  CashfreeError,
+} from "@/lib/payment/cashfree";
 
 /**
  * Payment verification.
@@ -35,14 +40,20 @@ export async function POST(req: Request) {
       });
 
       if (!order) {
-        return NextResponse.json({ success: false, message: "Order not found." }, { status: 404 });
+        return NextResponse.json(
+          { success: false, message: "Order not found." },
+          { status: 404 },
+        );
       }
 
       const orderId = order.id;
       const expectedAmount = Math.round(Number(order.totalAmount) * 100) / 100;
 
       if (order.paymentMethod !== "CASHFREE") {
-        return NextResponse.json({ success: false, message: "Order is not a Cashfree order." }, { status: 400 });
+        return NextResponse.json(
+          { success: false, message: "Order is not a Cashfree order." },
+          { status: 400 },
+        );
       }
 
       if (order.paymentStatus === "PAID") {
@@ -52,7 +63,10 @@ export async function POST(req: Request) {
       // Combines two independent Cashfree signals: a SUCCESS payment attempt
       // (scanning all attempts, not just the first) and the authoritative
       // order status (PAID). Either confirming the full billed amount is enough.
-      async function confirmPayment(): Promise<{ confirmed: boolean; paymentId: string | null }> {
+      async function confirmPayment(): Promise<{
+        confirmed: boolean;
+        paymentId: string | null;
+      }> {
         const payment = await fetchPayment(orderId);
         let confirmed = isPaymentSuccessful(payment, expectedAmount);
         let paymentId = payment?.paymentId ?? null;
@@ -70,44 +84,39 @@ export async function POST(req: Request) {
       // Cashfree's payment status API is eventually-consistent: the record may
       // take a few seconds to appear after the modal closes. Poll before giving up.
       let result = await confirmPayment();
-      console.log("[cashfree verify] first check for order", orderId, "=>", JSON.stringify(result));
       if (!result.confirmed) {
         for (let attempt = 0; attempt < 6; attempt++) {
           await new Promise((resolve) => setTimeout(resolve, 2000));
           result = await confirmPayment();
-          console.log(`[cashfree verify] poll ${attempt + 1} for order ${orderId} =>`, JSON.stringify(result));
           if (result.confirmed) break;
         }
       }
-      console.log("[cashfree verify] final for order", orderId, "=>", JSON.stringify(result), "expected", expectedAmount);
       if (!result.confirmed) {
+        console.warn(
+          "[cashfree verify] payment not confirmed by Cashfree for order",
+          orderId,
+          "expected",
+          expectedAmount,
+        );
         return NextResponse.json(
           { success: false, message: "Payment is not confirmed by Cashfree." },
-          { status: 400 }
+          { status: 400 },
         );
       }
 
       const { processed } = await markOrderPaid(
         orderId,
         result.paymentId ?? orderId,
-        "cashfree:verify"
+        "cashfree:verify",
       );
 
       return NextResponse.json({ success: true, orderId, processed });
     }
 
     // ── Razorpay path (legacy) ──
-    const {
-      razorpay_order_id,
-      razorpay_payment_id,
-      razorpay_signature,
-    } = body;
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = body;
 
-    if (
-      !razorpay_order_id ||
-      !razorpay_payment_id ||
-      !razorpay_signature
-    ) {
+    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
       return NextResponse.json(
         {
           success: false,
@@ -115,18 +124,13 @@ export async function POST(req: Request) {
         },
         {
           status: 400,
-        }
+        },
       );
     }
 
     const expectedSignature = crypto
-      .createHmac(
-        "sha256",
-        process.env.RAZORPAY_KEY_SECRET!
-      )
-      .update(
-        `${razorpay_order_id}|${razorpay_payment_id}`
-      )
+      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET!)
+      .update(`${razorpay_order_id}|${razorpay_payment_id}`)
       .digest("hex");
 
     if (!safeCompare(expectedSignature, razorpay_signature)) {
@@ -137,7 +141,7 @@ export async function POST(req: Request) {
         },
         {
           status: 400,
-        }
+        },
       );
     }
 
@@ -156,7 +160,7 @@ export async function POST(req: Request) {
         },
         {
           status: 404,
-        }
+        },
       );
     }
 
@@ -170,7 +174,7 @@ export async function POST(req: Request) {
     const { processed } = await markOrderPaid(
       order.id,
       razorpay_payment_id,
-      razorpay_signature
+      razorpay_signature,
     );
 
     return NextResponse.json({
@@ -180,7 +184,10 @@ export async function POST(req: Request) {
     });
   } catch (error) {
     if (error instanceof CashfreeError) {
-      return NextResponse.json({ success: false, message: error.message }, { status: error.status });
+      return NextResponse.json(
+        { success: false, message: error.message },
+        { status: error.status },
+      );
     }
     console.error(error);
 
@@ -191,7 +198,7 @@ export async function POST(req: Request) {
       },
       {
         status: 500,
-      }
+      },
     );
   }
 }

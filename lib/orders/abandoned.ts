@@ -20,7 +20,7 @@ export async function cancelAbandonedPaymentOrders(
       userId,
       paymentMethod: { in: ["CASHFREE", "RAZORPAY"] as const },
       paymentStatus: "PENDING" as PaymentStatus,
-      status: { in: ["PENDING", "FAILED"] as order_status[] },
+      status: "PENDING" as order_status,
     },
     data: {
       status: "ABANDONED" as order_status,

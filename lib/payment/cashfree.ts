@@ -1,3 +1,7 @@
+import crypto from "crypto";
+
+import { safeCompare } from "@/lib/security";
+
 /**
  * Cashfree Payment Gateway — server-side client (temporarily replacing
  * Razorpay as the online gateway).
@@ -11,6 +15,8 @@
  *     by calling fetchPayment()/fetchOrderStatus() — we never trust an
  *     amount/signature reported by the browser; the order is only marked PAID
  *     when Cashfree's own API returns a SUCCESS/PAID status for our order id.
+ *  4. A signed server-to-server webhook (/api/payment/cashfree-webhook) marks
+ *     the order paid even when the buyer never returns to /payment/result.
  *
  * Env vars:
  *  CASHFREE_CLIENT_ID       API key (test_: prefixes for sandbox)
@@ -52,6 +58,24 @@ export function cashfreeClientMode(): "production" | "sandbox" {
 }
 
 /**
+ * Normalise a stored phone number into the format Cashfree's order API
+ * accepts. Cashfree rejects `customer_details.customer_phone` unless it is a
+ * valid mobile number (10 digits, with or without the +91 prefix). Typical
+ * address-book formats like "+91 98765 43210" or "98765 43210" would otherwise
+ * fail order creation with a 422. The original value is never modified in the
+ * database — only the payload sent to Cashfree is normalised.
+ */
+export function sanitizeCashfreePhone(phone: string): string {
+  const digits = (phone || "").replace(/\D/g, "");
+  if (digits.length === 10) return `+91${digits}`;
+  if (digits.length === 11 && digits.startsWith("0"))
+    return `+91${digits.slice(1)}`;
+  if (digits.length === 12 && digits.startsWith("91"))
+    return `+91${digits.slice(2)}`;
+  return digits;
+}
+
+/**
  * Absolute base URL for the Cashfree order `return_url` (where the buyer is
  * redirected after the checkout page finishes).
  *
@@ -62,24 +86,45 @@ export function cashfreeClientMode(): "production" | "sandbox" {
  *
  * Resolution order:
  *  1. `NEXT_PUBLIC_APP_URL` when set — but ALWAYS forced to https in
- *     production mode so a stray `http://…` value can't be rejected.
+ *     production mode so a stray `http://…` value can't be rejected. A
+ *     localhost/private-host override is ignored in production (it would
+ *     redirect real buyers to a machine that doesn't exist) and we fall back
+ *     to the request origin instead.
  *  2. Otherwise the request origin, again forced to https in production.
+ *  3. `NEXT_PUBLIC_SITE_URL` as a last resort when no request host is known.
  */
 export function cashfreeReturnUrlBase(request?: Request): string {
   const configured = process.env.NEXT_PUBLIC_APP_URL?.trim().replace(
     /\/+$/,
     "",
   );
+  if (configured && !isCashfreeProd()) {
+    return configured;
+  }
   if (configured) {
-    return isCashfreeProd()
-      ? `https://${configured.replace(/^https?:\/\//i, "")}`
-      : configured;
+    const host = configured.replace(/^https?:\/\//i, "").replace(/\/+$/, "");
+    const hostname = host.split(":")[0].toLowerCase();
+    const isLocalHost =
+      hostname === "localhost" ||
+      hostname === "127.0.0.1" ||
+      hostname === "0.0.0.0" ||
+      hostname === "::1";
+    if (!isLocalHost) return `https://${host}`;
   }
   const proto = request?.headers.get("x-forwarded-proto");
   const host =
     request?.headers.get("x-forwarded-host") ?? request?.headers.get("host");
-  const protocol = isCashfreeProd() ? "https" : (proto ?? "http");
-  return `${protocol}://${host ?? ""}`.replace(/\/+$/, "");
+  if (host) {
+    const protocol = isCashfreeProd() ? "https" : (proto ?? "http");
+    return `${protocol}://${host}`.replace(/\/+$/, "");
+  }
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/+$/, "");
+  if (siteUrl) {
+    return isCashfreeProd()
+      ? `https://${siteUrl.replace(/^https?:\/\//i, "")}`
+      : siteUrl;
+  }
+  return "";
 }
 
 function cashfreeHeaders(): Record<string, string> {
@@ -189,7 +234,7 @@ export async function createPaymentSession(input: {
       customer_id: input.customer.customerId,
       customer_name: input.customer.customerName,
       customer_email: input.customer.customerEmail,
-      customer_phone: input.customer.customerPhone,
+      customer_phone: sanitizeCashfreePhone(input.customer.customerPhone),
     },
   };
 
@@ -235,11 +280,6 @@ export async function fetchPayment(
     : Array.isArray((raw as { data?: unknown })?.data)
       ? (raw as { data: CashfreePaymentRaw[] }).data
       : [];
-  console.log(
-    "[cashfree.fetchPayment] raw response for",
-    orderId,
-    JSON.stringify(raw).slice(0, 1000),
-  );
   // Attempt order is NOT guaranteed newest-first. Never rely on the first
   // entry: pick a successful attempt if one exists, otherwise the most recent.
   const successAttempt = payments.find((p) => p.payment_status === "SUCCESS");
@@ -280,11 +320,6 @@ export async function fetchOrderStatus(
     order_amount?: string | number;
     cf_order_id?: string;
   };
-  console.log(
-    "[cashfree.fetchOrderStatus] raw response for",
-    orderId,
-    JSON.stringify(raw).slice(0, 1000),
-  );
   if (!raw || typeof raw !== "object" || !raw.order_status) return null;
 
   return {
@@ -313,4 +348,27 @@ export function isPaymentSuccessful(
     isConfirmed &&
     payment.amount >= Math.round(expectedAmount * 100) / 100 - 0.01
   );
+}
+
+/**
+ * Verify a Cashfree webhook signature. Cashfree signs the RAW payload (never
+ * the parsed JSON — parsing would rewrite decimal amounts and break the hash):
+ *
+ *   expected = Base64( HMAC-SHA256( x-webhook-timestamp + rawBody, client secret ) )
+ *
+ * The key is the gateway CLIENT SECRET for the environment the event was
+ * delivered from, so the same CASHFREE_CLIENT_SECRET used for the API calls.
+ */
+export function verifyCashfreeWebhookSignature(
+  rawBody: string,
+  timestamp: string,
+  signature: string,
+): boolean {
+  const secret = process.env.CASHFREE_CLIENT_SECRET;
+  if (!secret || !timestamp || !signature) return false;
+  const expected = crypto
+    .createHmac("sha256", secret)
+    .update(`${timestamp}${rawBody}`)
+    .digest("base64");
+  return safeCompare(expected, signature);
 }

@@ -94,7 +94,7 @@ export default function PricingSection({ register, watch, setValue }: Props) {
     <div className="rounded-2xl border border-slate-700 bg-[#111827] p-6">
       <h2 className="mb-6 text-xl font-bold text-white">Pricing</h2>
 
-      <div className="grid grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
         <div>
           <label className="mb-2 block text-white">
             Selling Price{" "}

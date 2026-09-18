@@ -19,13 +19,10 @@ interface Address {
 
 interface Props {
   address?: Address;
-  onSuccess: () => void;
+  onSuccess: (address: Address) => void;
 }
 
-export default function AddressForm({
-  address,
-  onSuccess,
-}: Props) {
+export default function AddressForm({ address, onSuccess }: Props) {
   const [loading, setLoading] = useState(false);
 
   const [form, setForm] = useState({
@@ -40,7 +37,10 @@ export default function AddressForm({
     isDefault: address?.isDefault || false,
   });
 
-  function setField<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
+  function setField<K extends keyof typeof form>(
+    key: K,
+    value: (typeof form)[K],
+  ) {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
 
@@ -94,16 +94,25 @@ export default function AddressForm({
 
       if (!response.ok) {
         toast.error(
-          data?.message || "Could not save the address. Please try again."
+          data?.message || "Could not save the address. Please try again.",
         );
         return;
       }
 
-      toast.success(
-        address ? "Address Updated" : "Address Added"
-      );
+      toast.success(address ? "Address Updated" : "Address Added");
 
-      onSuccess();
+      onSuccess({
+        id: address?.id ?? data?.address?.id ?? "",
+        fullName: form.fullName.trim(),
+        phone: form.phone.trim(),
+        addressLine1: form.addressLine1.trim(),
+        addressLine2: form.addressLine2.trim() || null,
+        city: form.city.trim(),
+        state: form.state.trim(),
+        pincode: form.pincode.trim(),
+        country: form.country.trim(),
+        isDefault: form.isDefault,
+      });
     } catch {
       toast.error("Network error. Please check your connection and try again.");
     } finally {
@@ -228,14 +237,14 @@ export default function AddressForm({
           disabled={loading}
           onClick={submit}
           className="flex w-full items-center justify-center gap-2 py-4 font-black uppercase tracking-wider transition bg-primary text-button-text hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-          style={{ borderRadius: "var(--t-radius-button)", fontFamily: "var(--t-font-heading)", minHeight: 52 }}
+          style={{
+            borderRadius: "var(--t-radius-button)",
+            fontFamily: "var(--t-font-heading)",
+            minHeight: 52,
+          }}
         >
           {loading && <Loader2 size={18} className="animate-spin" />}
-          {loading
-            ? "Saving..."
-            : address
-            ? "Update Address"
-            : "Save Address"}
+          {loading ? "Saving..." : address ? "Update Address" : "Save Address"}
         </button>
       </div>
     </div>

@@ -47,7 +47,9 @@ export default function AddressCard({
     .filter(Boolean)
     .join(", ");
   const shortAddress =
-    fullAddress.length > 20 ? `${fullAddress.slice(0, 20).trimEnd()}…` : fullAddress;
+    fullAddress.length > 20
+      ? `${fullAddress.slice(0, 20).trimEnd()}…`
+      : fullAddress;
 
   return (
     <div
@@ -58,7 +60,8 @@ export default function AddressCard({
         ...(selected
           ? {
               borderColor: "var(--t-primary)",
-              background: "color-mix(in srgb, var(--t-primary) 10%, transparent)",
+              background:
+                "color-mix(in srgb, var(--t-primary) 10%, transparent)",
             }
           : {
               borderColor: "var(--t-border-card)",
@@ -66,13 +69,15 @@ export default function AddressCard({
             }),
       }}
       onMouseEnter={(e) => {
-        if (!selected) e.currentTarget.style.borderColor = "var(--t-border-subtle)";
+        if (!selected)
+          e.currentTarget.style.borderColor = "var(--t-border-subtle)";
       }}
       onMouseLeave={(e) => {
-        if (!selected) e.currentTarget.style.borderColor = "var(--t-border-card)";
+        if (!selected)
+          e.currentTarget.style.borderColor = "var(--t-border-card)";
       }}
     >
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-2.5">
           <MapPin
             size={16}
@@ -124,7 +129,10 @@ export default function AddressCard({
                 onDelete();
               }}
               className="flex h-8 w-8 items-center justify-center text-white transition hover:opacity-90"
-              style={{ borderRadius: "var(--t-radius-button)", background: "var(--t-danger)" }}
+              style={{
+                borderRadius: "var(--t-radius-button)",
+                background: "var(--t-danger)",
+              }}
             >
               <Trash2 size={14} />
             </button>
@@ -132,7 +140,11 @@ export default function AddressCard({
         </div>
       </div>
 
-      <p className="mt-2 truncate text-xs text-text-heading" style={{ opacity: 0.8 }} title={fullAddress}>
+      <p
+        className="mt-2 truncate text-xs text-text-heading"
+        style={{ opacity: 0.8 }}
+        title={fullAddress}
+      >
         {shortAddress}
       </p>
 
@@ -143,7 +155,7 @@ export default function AddressCard({
             e.stopPropagation();
             onDefault();
           }}
-          className="mt-3 flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold transition bg-primary text-button-text hover:opacity-90"
+          className="mt-3 flex w-full items-center justify-center gap-1.5 px-3 py-2 text-[11px] font-bold transition bg-primary text-button-text hover:opacity-90 sm:w-auto sm:justify-start sm:py-1.5"
           style={{ borderRadius: "var(--t-radius-button)" }}
         >
           <Check size={12} />

@@ -99,7 +99,7 @@ export default function ImageUpload({ images, setImages }: Props) {
     <div className="rounded-2xl border border-slate-700 bg-[#111827] p-6">
       {/* Header */}
 
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-xl font-bold text-white">Product Images</h2>
 
@@ -113,7 +113,7 @@ export default function ImageUpload({ images, setImages }: Props) {
           </p>
         </div>
 
-        <label className="cursor-pointer rounded-xl bg-amber-500 px-5 py-3 font-semibold text-black transition hover:bg-amber-400">
+        <label className="cursor-pointer rounded-xl bg-amber-500 px-5 py-3 text-center font-semibold text-black transition hover:bg-amber-400 sm:shrink-0">
           Upload Images
           <input
             hidden
@@ -127,10 +127,10 @@ export default function ImageUpload({ images, setImages }: Props) {
 
       {/* Images */}
 
-      <div className="grid grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-12">
         {/* Cover */}
 
-        <div className="col-span-7">
+        <div className="md:col-span-7">
           <p className="mb-3 text-sm font-semibold text-slate-300">
             Cover Image
           </p>
@@ -175,10 +175,10 @@ export default function ImageUpload({ images, setImages }: Props) {
 
         {/* Gallery */}
 
-        <div className="col-span-5">
+        <div className="md:col-span-5">
           <p className="mb-3 text-sm font-semibold text-slate-300">Gallery</p>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
             {images.map((image, index) => (
               <div
                 key={index}
@@ -196,7 +196,7 @@ export default function ImageUpload({ images, setImages }: Props) {
                   <button
                     type="button"
                     onClick={() => makeCover(index)}
-                    className="absolute bottom-2 left-2 hidden items-center gap-1 rounded-full bg-amber-500 px-2 py-1 text-[10px] font-bold text-black group-hover:flex"
+                    className="absolute bottom-2 left-2 flex items-center gap-1 rounded-full bg-amber-500 px-2 py-1 text-[10px] font-bold text-black sm:hidden sm:group-hover:flex"
                   >
                     <Crown size={11} />
                     Make Cover
@@ -207,7 +207,7 @@ export default function ImageUpload({ images, setImages }: Props) {
                   <button
                     type="button"
                     onClick={() => remove(index)}
-                    className="absolute right-2 top-2 hidden rounded-full bg-red-500 p-1 text-white group-hover:flex"
+                    className="absolute right-2 top-2 flex rounded-full bg-red-500 p-1 text-white sm:hidden sm:group-hover:flex"
                   >
                     <X size={14} />
                   </button>

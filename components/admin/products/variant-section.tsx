@@ -21,9 +21,7 @@ export interface VariantType {
 interface Props {
   variants: VariantType[];
 
-  setVariants: React.Dispatch<
-    React.SetStateAction<VariantType[]>
-  >;
+  setVariants: React.Dispatch<React.SetStateAction<VariantType[]>>;
 
   genders: {
     id: string;
@@ -50,11 +48,11 @@ export default function VariantSection({
   sizeCategory,
   productStock,
 }: Props) {
-  const [open, setOpen] =
-    useState(false);
+  const [open, setOpen] = useState(false);
 
-  const [editingVariant, setEditingVariant] =
-    useState<VariantType | null>(null);
+  const [editingVariant, setEditingVariant] = useState<VariantType | null>(
+    null,
+  );
 
   const noCategory = !sizeCategory;
   const noSizesForCategory = !noCategory && sizes.length === 0;
@@ -65,21 +63,13 @@ export default function VariantSection({
     setOpen(true);
   }
 
-  function editVariant(
-    variant: VariantType
-  ) {
+  function editVariant(variant: VariantType) {
     setEditingVariant(variant);
     setOpen(true);
   }
 
-  function removeVariant(
-    id: string
-  ) {
-    setVariants((prev) =>
-      prev.filter(
-        (v) => v.id !== id
-      )
-    );
+  function removeVariant(id: string) {
+    setVariants((prev) => prev.filter((v) => v.id !== id));
   }
 
   const buttonDisabled = noCategory || noSizesForCategory;
@@ -89,35 +79,32 @@ export default function VariantSection({
 
   let statusNote = "";
   if (noCategory) statusNote = "Select a category to manage variants.";
-  else if (noSizesForCategory) statusNote = "No sizes configured for this category type. Add sizes in Settings > Sizes first.";
-  else if (isFreeSize) statusNote = "This category uses Free Size. Gender and size will be auto-selected.";
+  else if (noSizesForCategory)
+    statusNote =
+      "No sizes configured for this category type. Add sizes in Settings > Sizes first.";
+  else if (isFreeSize)
+    statusNote =
+      "This category uses Free Size. Gender and size will be auto-selected.";
 
   return (
     <div className="rounded-2xl border border-slate-700 bg-[#111827] p-6">
-
-      <div className="mb-6 flex items-center justify-between">
-
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-
-          <h2 className="text-xl font-bold text-white">
-            Product Variants
-          </h2>
+          <h2 className="text-xl font-bold text-white">Product Variants</h2>
 
           <p className="mt-1 text-sm text-slate-400">
             {statusNote || "Create size-gender combinations for this product."}
           </p>
-
         </div>
 
         <button
           type="button"
           onClick={addVariant}
           disabled={buttonDisabled}
-          className="rounded-xl bg-amber-500 px-5 py-3 font-semibold text-black transition hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-40"
+          className="w-full rounded-xl bg-amber-500 px-5 py-3 font-semibold text-black transition hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
         >
           {buttonTitle}
         </button>
-
       </div>
 
       <VariantTable
@@ -138,7 +125,6 @@ export default function VariantSection({
         setEditingVariant={setEditingVariant}
         productStock={productStock}
       />
-
     </div>
   );
 }

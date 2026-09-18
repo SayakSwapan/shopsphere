@@ -8,10 +8,7 @@ export async function POST(req: Request) {
     const session = await auth();
 
     if (!session?.user?.email) {
-      return NextResponse.json(
-        { message: "Unauthorized" },
-        { status: 401 }
-      );
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
     const body = await req.json();
@@ -23,10 +20,7 @@ export async function POST(req: Request) {
     });
 
     if (!user) {
-      return NextResponse.json(
-        { message: "User not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ message: "User not found" }, { status: 404 });
     }
 
     if (body.isDefault) {
@@ -40,7 +34,7 @@ export async function POST(req: Request) {
       });
     }
 
-    await prisma.address.create({
+    const created = await prisma.address.create({
       data: {
         id: randomUUID(),
         userId: user.id,
@@ -59,6 +53,18 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       success: true,
+      address: {
+        id: created.id,
+        fullName: created.fullName,
+        phone: created.phone,
+        addressLine1: created.addressLine1,
+        addressLine2: created.addressLine2,
+        city: created.city,
+        state: created.state,
+        pincode: created.pincode,
+        country: created.country,
+        isDefault: created.isDefault,
+      },
     });
   } catch (error) {
     console.log(error);
@@ -69,7 +75,7 @@ export async function POST(req: Request) {
       },
       {
         status: 500,
-      }
+      },
     );
   }
 }
@@ -85,7 +91,7 @@ export async function PATCH(req: Request) {
         },
         {
           status: 401,
-        }
+        },
       );
     }
 
@@ -104,7 +110,7 @@ export async function PATCH(req: Request) {
         },
         {
           status: 404,
-        }
+        },
       );
     }
 
@@ -142,7 +148,7 @@ export async function PATCH(req: Request) {
     if (updated.count === 0) {
       return NextResponse.json(
         { message: "Address not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -158,7 +164,7 @@ export async function PATCH(req: Request) {
       },
       {
         status: 500,
-      }
+      },
     );
   }
 }
@@ -174,7 +180,7 @@ export async function DELETE(req: Request) {
         },
         {
           status: 401,
-        }
+        },
       );
     }
 
@@ -194,7 +200,7 @@ export async function DELETE(req: Request) {
         },
         {
           status: 404,
-        }
+        },
       );
     }
 
@@ -209,7 +215,7 @@ export async function DELETE(req: Request) {
     if (deleted.count === 0) {
       return NextResponse.json(
         { message: "Address not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -225,7 +231,7 @@ export async function DELETE(req: Request) {
       },
       {
         status: 500,
-      }
+      },
     );
   }
 }

@@ -898,7 +898,7 @@ export default function NewOfflineSale() {
     <div className="space-y-6">
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-5">
         {/* ── Product Browser: search + inner scroll grid ── */}
-        <section className="flex flex-col rounded-2xl border border-slate-700 bg-[#111827] p-4 sm:p-6 xl:col-span-3">
+        <section className="order-1 flex flex-col rounded-2xl border border-slate-700 bg-[#111827] p-4 sm:p-6 xl:order-none xl:col-span-3">
           <SectionHeader
             icon={<ShoppingCart size={18} className="text-indigo-300" />}
             title="Select Products"
@@ -1065,7 +1065,7 @@ export default function NewOfflineSale() {
         </section>
 
         {/* ── Combo Offers: fixed admin-managed price — customer cannot negotiate ── */}
-        <section className="rounded-2xl border border-slate-700 bg-[#111827] p-4 sm:p-6">
+        <section className="order-3 rounded-2xl border border-slate-700 bg-[#111827] p-4 sm:p-6 xl:order-none">
           <SectionHeader
             icon={<Sparkles size={18} className="text-amber-300" />}
             title="Combo Offers"
@@ -1180,7 +1180,7 @@ export default function NewOfflineSale() {
         </section>
 
         {/* ── Right column: Cart + Customer + Payment ── */}
-        <div className="space-y-6 xl:col-span-2">
+        <div className="order-2 space-y-6 xl:order-none xl:col-span-2">
           {/* Cart */}
           <section className="rounded-2xl border border-slate-700 bg-[#111827] p-4 sm:p-6">
             <SectionHeader
@@ -1591,7 +1591,7 @@ export default function NewOfflineSale() {
                       className={inputCls}
                     />
                   </Field>
-                  <div className="grid grid-cols-3 gap-2 sm:col-span-2">
+                  <div className="grid grid-cols-1 gap-2 sm:col-span-2 sm:grid-cols-3">
                     <Field label="City">
                       <input
                         value={city}

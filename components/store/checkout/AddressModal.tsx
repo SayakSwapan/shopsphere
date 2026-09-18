@@ -21,7 +21,7 @@ interface Address {
 interface Props {
   open: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (address: Address) => void;
 
   address?: Address;
 }
@@ -99,8 +99,8 @@ export default function AddressModal({
         <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
           <AddressForm
             address={address}
-            onSuccess={() => {
-              onSuccess();
+            onSuccess={(saved) => {
+              onSuccess(saved);
               onClose();
             }}
           />

@@ -418,8 +418,8 @@ export default function ProductForm({
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
       <ProductGuide mode={mode === "edit" ? "edit" : "create"} defaultOpen />
 
-      <div className="grid grid-cols-12 gap-6">
-        <div className="col-span-8 space-y-6">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+        <div className="space-y-6 lg:col-span-8">
           <GeneralSection
             register={register}
             watch={watch}
@@ -465,7 +465,7 @@ export default function ProductForm({
           <SeoSection register={register} />
         </div>
 
-        <div className="col-span-4 space-y-6">
+        <div className="space-y-6 lg:col-span-4">
           <CategorySelect categories={categories} register={register} />
 
           <SizeChartSection
@@ -497,11 +497,11 @@ export default function ProductForm({
           <ReturnPolicySection register={register} watch={watch} />
         </div>
       </div>
-      <div className="flex justify-end">
+      <div className="flex sm:justify-end">
         <button
           type="submit"
           disabled={submitting}
-          className="h-12 rounded-xl bg-amber-500 px-8 font-bold text-black disabled:opacity-50"
+          className="h-12 w-full rounded-xl bg-amber-500 px-8 font-bold text-black disabled:opacity-50 sm:w-auto"
         >
           {submitting
             ? "Saving..."

@@ -222,9 +222,13 @@ export default function CheckoutClient({
     return item.customization ?? null;
   };
 
+  // Local copy of the addresses so add/edit/set-default/delete can update the
+  // list instantly (optimistic) instead of forcing a full page refresh.
+  const [addressList, setAddressList] = useState<Address[]>(addresses);
+
   const defaultAddress = useMemo(
-    () => addresses.find((a) => a.isDefault) ?? addresses[0],
-    [addresses],
+    () => addressList.find((a) => a.isDefault) ?? addressList[0],
+    [addressList],
   );
 
   const [selectedAddressId, setSelectedAddressId] = useState(
@@ -232,8 +236,8 @@ export default function CheckoutClient({
   );
 
   const selectedAddress = useMemo(
-    () => addresses.find((a) => a.id === selectedAddressId),
-    [addresses, selectedAddressId],
+    () => addressList.find((a) => a.id === selectedAddressId),
+    [addressList, selectedAddressId],
   );
 
   const couponDiscount = useMemo(() => {
@@ -415,7 +419,7 @@ export default function CheckoutClient({
 
   async function handleAddressChange(id: string) {
     setSelectedAddressId(id);
-    const addr = addresses.find((a) => a.id === id);
+    const addr = addressList.find((a) => a.id === id);
     if (addr) {
       try {
         const res = await fetch(
@@ -757,9 +761,10 @@ export default function CheckoutClient({
             </div>
             <div className="p-4 sm:p-6">
               <AddressSection
-                addresses={addresses}
+                addresses={addressList}
                 selectedAddressId={selectedAddressId}
                 onSelectAddress={handleAddressChange}
+                onAddressesChange={setAddressList}
               />
             </div>
           </section>

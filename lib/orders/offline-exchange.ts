@@ -122,6 +122,10 @@ export async function exchangeOfflineOrderItems(
     throw new OfflineSaleError(
       "This sale is not completed yet — complete it before replacing items.",
     );
+  if (order.isPartialPayment && Number(order.dueAmount ?? 0) > 0)
+    throw new OfflineSaleError(
+      "Due / part-payment sales are not eligible for returns or replacements. Collect the outstanding due first.",
+    );
 
   const itemMap = new Map(order.orderitem.map((i) => [i.id, i]));
 

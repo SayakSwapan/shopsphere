@@ -190,17 +190,19 @@ export default function OfflineOrderDetail({
       order.status === "PAID" ||
       order.status === "COMPLETED");
 
-  // A completed offline sale (stock already deducted) that still holds one or
-  // more sizeable lines can have its size swapped post-payment.
-  const canExchange =
-    order.status !== "CANCELLED" &&
-    order.inventoryUpdated &&
-    order.orderitem.length > 0;
-
   const totalAmount = Number(order.totalAmount);
   const paidAmount = Number(order.paidAmount ?? 0);
   const dueAmount = Number(order.dueAmount ?? 0);
   const isPartial = order.isPartialPayment && dueAmount > 0;
+
+  // A completed, fully-paid offline sale (stock already deducted) that still
+  // holds one or more lines can have those lines replaced post-payment. Due /
+  // part-payment sales are excluded — they are strictly no-return/no-exchange.
+  const canExchange =
+    order.status !== "CANCELLED" &&
+    order.inventoryUpdated &&
+    !isPartial &&
+    order.orderitem.length > 0;
 
   const totalCost = order.orderitem.reduce(
     (s, i) =>

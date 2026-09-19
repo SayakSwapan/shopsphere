@@ -1,4 +1,11 @@
-import { ArrowRight, Check, CircleDot, GitFork, Play, ShieldCheck } from "lucide-react";
+import {
+  ArrowRight,
+  Check,
+  CircleDot,
+  GitFork,
+  Play,
+  ShieldCheck,
+} from "lucide-react";
 
 export interface DiagramBranch {
   label: string;
@@ -62,7 +69,11 @@ function NodeIcon({ type }: { type: NonNullable<DiagramNode["type"]> }) {
   );
 }
 
-export default function WorkflowDiagram({ diagrams }: { diagrams: WorkflowDiagramData[] }) {
+export default function WorkflowDiagram({
+  diagrams,
+}: {
+  diagrams: WorkflowDiagramData[];
+}) {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap gap-x-4 gap-y-2 rounded-xl border border-slate-700 bg-[#0F172A] px-4 py-3 text-[11px] font-semibold text-slate-400">
@@ -73,26 +84,37 @@ export default function WorkflowDiagram({ diagrams }: { diagrams: WorkflowDiagra
           <span className="h-3 w-3 rounded-md bg-amber-500/60" /> Action
         </span>
         <span className="flex items-center gap-2">
-          <span className="h-3 w-3 rotate-45 rounded-sm bg-amber-400" /> Decision
+          <span className="h-3 w-3 rotate-45 rounded-sm bg-amber-400" />{" "}
+          Decision
         </span>
         <span className="flex items-center gap-2">
           <span className="h-3 w-3 rounded-full bg-slate-600" /> End / Terminal
         </span>
-        <span className="ml-auto hidden sm:inline">Read top to bottom · arrows connect each step</span>
+        <span className="ml-auto hidden sm:inline">
+          Read top to bottom · arrows connect each step
+        </span>
       </div>
 
       {diagrams.map((diagram, di) => (
-        <div key={di} className="rounded-2xl border border-slate-700 bg-[#111827] p-5 sm:p-6">
+        <div
+          key={di}
+          className="rounded-2xl border border-slate-700 bg-[#111827] p-4 sm:p-6"
+        >
           {diagram.title && (
             <div className="mb-5 flex items-center gap-3">
-              <ShieldCheck size={18} className="text-amber-400" />
-              <h4 className="text-base font-bold text-white">{diagram.title}</h4>
+              <ShieldCheck size={18} className="text-amber-400 shrink-0" />
+              <h4 className="text-sm sm:text-base font-bold text-white">
+                {diagram.title}
+              </h4>
             </div>
           )}
 
           <ol className="space-y-0">
             {diagram.nodes.map((node, idx) => (
-              <li key={idx} className="relative flex gap-4 pb-6 last:pb-0">
+              <li
+                key={idx}
+                className="relative flex gap-3 sm:gap-4 pb-6 last:pb-0"
+              >
                 {idx < diagram.nodes.length - 1 && (
                   <span
                     className="absolute left-[19px] top-11 h-[calc(100%-2.5rem)] w-0.5"
@@ -129,7 +151,9 @@ export default function WorkflowDiagram({ diagrams }: { diagrams: WorkflowDiagra
                     )}
                   </div>
 
-                  <p className="mt-0.5 text-xs leading-relaxed text-slate-400">{node.detail}</p>
+                  <p className="mt-0.5 text-xs leading-relaxed text-slate-400">
+                    {node.detail}
+                  </p>
 
                   {node.branches && node.branches.length > 0 && (
                     <div className="mt-3 grid gap-2 sm:grid-cols-2">
@@ -144,9 +168,14 @@ export default function WorkflowDiagram({ diagrams }: { diagrams: WorkflowDiagra
                             >
                               {b.label}
                             </span>
-                            <ArrowRight size={13} className={BRANCH_TEXT[b.tone].split(" ")[0]} />
+                            <ArrowRight
+                              size={13}
+                              className={BRANCH_TEXT[b.tone].split(" ")[0]}
+                            />
                           </div>
-                          <p className="mt-1.5 text-xs leading-relaxed text-slate-300">{b.outcome}</p>
+                          <p className="mt-1.5 text-xs leading-relaxed text-slate-300">
+                            {b.outcome}
+                          </p>
                         </div>
                       ))}
                     </div>

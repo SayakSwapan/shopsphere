@@ -16,6 +16,7 @@ import {
   Settings,
   ShieldCheck,
   Search,
+  Store,
 } from "lucide-react";
 
 import type { WorkflowDiagramData } from "@/components/admin/guides/workflow-diagram";
@@ -95,7 +96,8 @@ export const guideSections: GuideSection[] = [
               {
                 label: "Yes",
                 tone: "green",
-                outcome: "Process them before they pile up — order statuses, return approvals, query replies.",
+                outcome:
+                  "Process them before they pile up — order statuses, return approvals, query replies.",
               },
               {
                 label: "No",
@@ -336,12 +338,14 @@ export const guideSections: GuideSection[] = [
               {
                 label: "Approve",
                 tone: "green",
-                outcome: "Status becomes APPROVED and a courier pickup is scheduled.",
+                outcome:
+                  "Status becomes APPROVED and a courier pickup is scheduled.",
               },
               {
                 label: "Reject",
                 tone: "red",
-                outcome: "The request is rejected and stays closed. The customer is notified.",
+                outcome:
+                  "The request is rejected and stays closed. The customer is notified.",
               },
             ],
           },
@@ -439,7 +443,8 @@ export const guideSections: GuideSection[] = [
               {
                 label: "Approve",
                 tone: "green",
-                outcome: "Status becomes APPROVED and a pickup is scheduled for the old item.",
+                outcome:
+                  "Status becomes APPROVED and a pickup is scheduled for the old item.",
               },
               {
                 label: "Reject",
@@ -473,6 +478,161 @@ export const guideSections: GuideSection[] = [
             title: "Delivered & closed",
             detail:
               "Replacement reaches the customer (REPLACEMENT_DELIVERED), then the request is marked COMPLETED.",
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: "offline-sales",
+    icon: Store,
+    title: "Offline Sales & Replacement",
+    description:
+      "Run the POS counter, then handle post-payment size swaps and product exchanges with correct settlement — cash difference or customer store credit — and downloadable invoices.",
+    steps: [
+      {
+        title: "The pages you will use",
+        detail:
+          "Offline / POS sales live under the 'Offline Sales' sidebar section. Key pages: Offline Sales list (/admin/offline-sales), Create Offline Sale (/admin/offline-sales/new), Sale Detail (/admin/offline-sales/[id]), and Due Collections (/admin/offline-sales/due). Customers see their store credit balance on their own account page at /account/credit. Every replacement is created from the Sale Detail page.",
+      },
+      {
+        title: "Sell at the counter (context)",
+        detail:
+          "On /admin/offline-sales/new add products, set the GST-inclusive price the customer pays (bargain down to the product's Last Selling Price), pick Full Payment or Part Payment / Due Sale, optionally apply any available Store Credit, then Complete. Stock is deducted only when the sale is completed — a saved Draft never touches stock or profit.",
+      },
+      {
+        title: "Open the sale and start a replacement",
+        detail:
+          "Go to /admin/offline-sales and click the sale, or open it directly at /admin/offline-sales/[id]. Once the sale is completed (stock deducted) and not cancelled, a green 'Replace / Exchange' button appears in the header. Click it to open the exchange modal. This button is available only for fully-paid completed sales — due/part-payment sales are marked 'no returns or exchanges' and must not be exchanged.",
+      },
+      {
+        title: "Size replacement (same item, new size)",
+        detail:
+          "By default each sold line is in 'Same item — new size' mode. Pick a different size from the line's size grid (grouped by gender; out-of-stock sizes are disabled). The returned price stays exactly what the customer paid and the swapped size carries the same price, so a straight size swap settles as EVEN. Use the quantity box to swap only some units — it is capped at the remaining un-exchanged quantity for that line.",
+      },
+      {
+        title: "Different-product replacement",
+        detail:
+          "Toggle the line to 'Different product', type at least 2 characters in the search box, and pick a replacement from the results. Set the issue price (the GST-inclusive price for the new item) — it cannot go below that product's Last Selling Price, and the minimum is shown as a hint. Choose the size for the new product and the quantity. The modal shows returned value, issued value and the live difference as you go.",
+      },
+      {
+        title: "Settle the difference",
+        detail:
+          "The footer selects the settlement automatically: EVEN when the replacement price matches, COLLECT when the new item costs more, and CREDIT when it costs less. For COLLECT, enter the amount collected and choose the payment method (cash/card/UPI) — the difference is added to the sale. For CREDIT, the cheaper difference can never be refunded as cash: it is banked as store credit under that customer automatically. Add optional notes for the record, then submit.",
+      },
+      {
+        title: "Invoices, email and history",
+        detail:
+          "On the Sale Detail header, 'Download Invoice' opens the original sale invoice PDF (/api/admin/offline/orders/[id]/invoice). Each replacement row in the 'Exchange / Replacement History' card links to its own Exchange Invoice PDF (/api/admin/offline/exchanges/[id]/invoice). The exchange invoice is also emailed automatically to the customer's address on file (walk-in or phone-only customers are skipped), with the PDF attached.",
+      },
+      {
+        title: "Store credit for the customer",
+        detail:
+          "When a replacement is cheaper, the difference becomes store credit on the customer's account instead of a cash refund. The customer can view their balance and full history at /account/credit. At the POS on /admin/offline-sales/new, staff see the customer's available Store Credit after looking them up by phone and can apply it at checkout — the remaining amount is collected from the customer.",
+      },
+      {
+        title: "What happens to stock & records",
+        detail:
+          "A replacement is a two-sided stock movement: the returned item is restocked (with a RESTOCK stock movement) and the issued item is sold (with a SALE movement, cost, GST and profit snapshotted on the exchange line). Profit and finance always reflect the exchange correctly, and the original sale keeps its history — nothing is overwritten.",
+      },
+    ],
+    tips: [
+      "Only completed, fully-paid offline sales can be exchanged. Due / part-payment sales are strictly no-return and no-exchange — make this clear before finalising any due sale.",
+      "Size swaps within the same product settle EVEN because the price does not change; different-product swaps settle by difference (COLLECT or CREDIT).",
+      "There are no cash refunds at the counter. When the replacement is cheaper, the difference is always kept as customer store credit at /account/credit.",
+      "The issue price on a different-product replacement is bounded below by that product's Last Selling Price — the same floor as a normal counter sale.",
+      "Use the quantity box to exchange only some units of a line; the sale history tracks how many units of each line have already been exchanged.",
+      "Both invoices are PDFs: the sale invoice from the order, and a separate exchange invoice for every replacement (downloadable and emailed).",
+      "Check the Exchange / Replacement History card to confirm the settlement type (EVEN / COLLECT / CREDIT) and any notes before handing over the item.",
+    ],
+    diagram: [
+      {
+        title: "Offline Size / Product Replacement Flow",
+        nodes: [
+          {
+            type: "start",
+            title: "Completed offline sale",
+            detail:
+              "A fully-paid OFFLINE order with stock deducted. Open it from /admin/offline-sales → sale → /admin/offline-sales/[id].",
+            phase: "Entry",
+          },
+          {
+            type: "decision",
+            title: "Fully paid (no due)?",
+            detail:
+              "Only fully-paid completed sales may be exchanged. Due / part-payment sales are no-return and no-exchange.",
+            branches: [
+              {
+                label: "Fully paid",
+                tone: "green",
+                outcome:
+                  "The 'Replace / Exchange' button is available — open the exchange modal.",
+              },
+              {
+                label: "Has due",
+                tone: "red",
+                outcome:
+                  "Do not exchange. Settle the due first under /admin/offline-sales/due.",
+              },
+            ],
+          },
+          {
+            type: "action",
+            title: "Choose the replacement type per line",
+            detail:
+              "Same item — new size: pick another size from the same product. Different product: search (2+ chars) and pick a new product with its size.",
+            phase: "Return & Issue",
+          },
+          {
+            type: "action",
+            title: "Set price & quantity",
+            detail:
+              "Size swaps keep the paid price. For a different product, set the GST-inclusive issue price (floor = Last Selling Price) and the quantity to exchange.",
+          },
+          {
+            type: "decision",
+            title: "What is the price difference?",
+            detail:
+              "The modal compares the returned value against the issued value.",
+            branches: [
+              {
+                label: "Higher (COLLECT)",
+                tone: "amber",
+                outcome:
+                  "Collect the difference from the customer and choose the payment method.",
+              },
+              {
+                label: "Lower (CREDIT)",
+                tone: "green",
+                outcome:
+                  "The difference is banked as store credit for the customer — no cash refund.",
+              },
+              {
+                label: "Equal (EVEN)",
+                tone: "slate",
+                outcome: "Straight swap, nothing to collect or credit.",
+              },
+            ],
+          },
+          {
+            type: "action",
+            title: "Stock & records update",
+            detail:
+              "Returned item restocked (RESTOCK) and issued item sold (SALE) with cost, GST and profit snapshotted. The exchange is saved with its settlement.",
+            phase: "Commit",
+          },
+          {
+            type: "action",
+            title: "Invoice emailed",
+            detail:
+              "A separate exchange invoice PDF is generated and emailed to the customer (skipped for walk-in/phone-only customers), and is downloadable from the Exchange / Replacement History card.",
+          },
+          {
+            type: "end",
+            title: "Customer hands over the item",
+            detail:
+              "Confirm the settlement on the history card. Store credit, if any, is visible to the customer at /account/credit and usable on a future POS sale.",
+            phase: "Done",
           },
         ],
       },
@@ -537,8 +697,7 @@ export const guideSections: GuideSection[] = [
           {
             type: "decision",
             title: "Is the customer satisfied?",
-            detail:
-              "Did the answer fully resolve their question?",
+            detail: "Did the answer fully resolve their question?",
             branches: [
               {
                 label: "Yes",
@@ -642,12 +801,14 @@ export const guideSections: GuideSection[] = [
               {
                 label: "Yes",
                 tone: "green",
-                outcome: "Mark the refund COMPLETED — the payout is done and the request closes.",
+                outcome:
+                  "Mark the refund COMPLETED — the payout is done and the request closes.",
               },
               {
                 label: "Not yet",
                 tone: "amber",
-                outcome: "Leave the refund INITIATED and process the payout shortly.",
+                outcome:
+                  "Leave the refund INITIATED and process the payout shortly.",
               },
             ],
           },
@@ -819,7 +980,8 @@ export const guideSections: GuideSection[] = [
               {
                 label: "Suspend",
                 tone: "red",
-                outcome: "Toggle the account inactive if there are issues (fraud, abuse).",
+                outcome:
+                  "Toggle the account inactive if there are issues (fraud, abuse).",
               },
             ],
           },
@@ -839,8 +1001,7 @@ export const guideSections: GuideSection[] = [
           {
             type: "end",
             title: "Healthy customer base",
-            detail:
-              "Verified, engaged customers drive repeat business.",
+            detail: "Verified, engaged customers drive repeat business.",
           },
         ],
       },
@@ -987,12 +1148,14 @@ export const guideSections: GuideSection[] = [
               {
                 label: "No",
                 tone: "slate",
-                outcome: "All items are billed at their normal effective price.",
+                outcome:
+                  "All items are billed at their normal effective price.",
               },
               {
                 label: "Yes",
                 tone: "green",
-                outcome: "Large sets first, then by sortOrder — units are reserved for each combo.",
+                outcome:
+                  "Large sets first, then by sortOrder — units are reserved for each combo.",
               },
             ],
           },
@@ -1049,12 +1212,14 @@ export const guideSections: GuideSection[] = [
               {
                 label: "No",
                 tone: "slate",
-                outcome: "Normal counter pricing applies — the admin can still bargain to the last selling price.",
+                outcome:
+                  "Normal counter pricing applies — the admin can still bargain to the last selling price.",
               },
               {
                 label: "Yes",
                 tone: "green",
-                outcome: "Combo-covered lines are locked with a green 'Combo — fixed price' badge and are not negotiable.",
+                outcome:
+                  "Combo-covered lines are locked with a green 'Combo — fixed price' badge and are not negotiable.",
               },
             ],
           },
@@ -1227,13 +1392,13 @@ export const guideSections: GuideSection[] = [
           {
             type: "decision",
             title: "Is the bill due?",
-            detail:
-              "Review payments that are due soon or overdue.",
+            detail: "Review payments that are due soon or overdue.",
             branches: [
               {
                 label: "Due / overdue",
                 tone: "amber",
-                outcome: "Pay the bill, then mark the payment as PAID with the paid date.",
+                outcome:
+                  "Pay the bill, then mark the payment as PAID with the paid date.",
               },
               {
                 label: "Not yet",
@@ -1321,13 +1486,13 @@ export const guideSections: GuideSection[] = [
           {
             type: "decision",
             title: "What needs action?",
-            detail:
-              "Route the item based on its type.",
+            detail: "Route the item based on its type.",
             branches: [
               {
                 label: "Review",
                 tone: "amber",
-                outcome: "Approve, reject, or reply — approved reviews show on the product page.",
+                outcome:
+                  "Approve, reject, or reply — approved reviews show on the product page.",
               },
               {
                 label: "Message",
@@ -1337,7 +1502,8 @@ export const guideSections: GuideSection[] = [
               {
                 label: "Callback",
                 tone: "green",
-                outcome: "Call the customer back and mark the request Called, then Closed.",
+                outcome:
+                  "Call the customer back and mark the request Called, then Closed.",
               },
             ],
           },
@@ -1362,8 +1528,7 @@ export const guideSections: GuideSection[] = [
     id: "settings",
     icon: Settings,
     title: "Settings & Configuration",
-    description:
-      "Configure global site settings, social links, and branding.",
+    description: "Configure global site settings, social links, and branding.",
     steps: [
       {
         title: "Site Settings",
@@ -1494,30 +1659,52 @@ export const guideSections: GuideSection[] = [
           {
             type: "start",
             title: "Admin enters credentials",
-            detail: "At /admin/login. Requests are throttled per IP to slow credential stuffing.",
+            detail:
+              "At /admin/login. Requests are throttled per IP to slow credential stuffing.",
           },
           {
             type: "decision",
             title: "Account locked?",
             detail: "5+ failures for this email in the last 15 minutes?",
             branches: [
-              { label: "Yes", outcome: "Rejected with 'temporarily locked' — no password check runs.", tone: "red" },
-              { label: "No", outcome: "Continue to credential check.", tone: "slate" },
+              {
+                label: "Yes",
+                outcome:
+                  "Rejected with 'temporarily locked' — no password check runs.",
+                tone: "red",
+              },
+              {
+                label: "No",
+                outcome: "Continue to credential check.",
+                tone: "slate",
+              },
             ],
           },
           {
             type: "decision",
             title: "Credentials valid?",
-            detail: "bcrypt comparison against the stored hash; role must be ADMIN.",
+            detail:
+              "bcrypt comparison against the stored hash; role must be ADMIN.",
             branches: [
-              { label: "No", outcome: "Failure recorded (email + IP + user agent). Counts toward lockout.", tone: "red" },
-              { label: "Yes", outcome: "Success recorded, then a signed 7-day JWT is set as an httpOnly cookie.", tone: "green" },
+              {
+                label: "No",
+                outcome:
+                  "Failure recorded (email + IP + user agent). Counts toward lockout.",
+                tone: "red",
+              },
+              {
+                label: "Yes",
+                outcome:
+                  "Success recorded, then a signed 7-day JWT is set as an httpOnly cookie.",
+                tone: "green",
+              },
             ],
           },
           {
             type: "end",
             title: "Session active",
-            detail: "Every admin API re-verifies the token AND the ADMIN role in the database on each request.",
+            detail:
+              "Every admin API re-verifies the token AND the ADMIN role in the database on each request.",
             phase: "Protected",
           },
         ],
@@ -1528,25 +1715,38 @@ export const guideSections: GuideSection[] = [
           {
             type: "start",
             title: "Customer pays via Cashfree",
-            detail: "Order amount is always computed server-side from the database cart — never trusted from the browser.",
+            detail:
+              "Order amount is always computed server-side from the database cart — never trusted from the browser.",
           },
           {
             type: "action",
             title: "Server-side status check",
-            detail: "/api/payment/verify queries Cashfree's Payments API for the order and confirms a SUCCESS payment for the billed amount.",
+            detail:
+              "/api/payment/verify queries Cashfree's Payments API for the order and confirms a SUCCESS payment for the billed amount.",
           },
           {
             type: "action",
             title: "Its own server confirms",
-            detail: "Both the checkout close and the gateway-ledger record agree before anything happens.",
+            detail:
+              "Both the checkout close and the gateway-ledger record agree before anything happens.",
           },
           {
             type: "decision",
             title: "Already processed?",
-            detail: "An atomic PENDING→PAID claim means only the first confirmation triggers side effects.",
+            detail:
+              "An atomic PENDING→PAID claim means only the first confirmation triggers side effects.",
             branches: [
-              { label: "Yes", outcome: "Duplicate is safely ignored.", tone: "amber" },
-              { label: "No", outcome: "Stock decremented, coupon consumed, cart cleared, admins notified.", tone: "green" },
+              {
+                label: "Yes",
+                outcome: "Duplicate is safely ignored.",
+                tone: "amber",
+              },
+              {
+                label: "No",
+                outcome:
+                  "Stock decremented, coupon consumed, cart cleared, admins notified.",
+                tone: "green",
+              },
             ],
           },
           {
@@ -1577,7 +1777,8 @@ export const guideSections: GuideSection[] = [
           "These were built once; you mostly verify them. On any product page, right-click → 'View Page Source' and confirm you see: a <title>, a meta description, a canonical link pointing to /products/{slug}, and an /sitemap.xml with your product URLs. If you ever deploy on a new domain, update NEXT_PUBLIC_SITE_URL in Vercel → Settings → Environment Variables (the sitemap and canonicals read it) and re-deploy.",
       },
       {
-        title: "Phase 2 — Write good per-product SEO (most important daily habit)",
+        title:
+          "Phase 2 — Write good per-product SEO (most important daily habit)",
         detail:
           "Go to Admin → Products → click Edit on a product → scroll to the 'SEO' section. Fill in: Meta Title (the exact sentence a searcher should see, e.g. 'Adidas Running Shoes for Men — Buy Online in India', under ~60 characters), Meta Description (a 140–155 character summary with a buying hook), and Meta Keywords. If these are empty, Google instead uses the product name + first 160 characters of the description, which is weaker. Every new product you add should get its own SEO title and description before you publish it.",
       },

@@ -17,12 +17,20 @@ export const emailTransporter = nodemailer.createTransport({
   },
 });
 
+export interface EmailAttachment {
+  filename: string;
+  content: Buffer;
+  contentType?: string;
+}
+
 export interface SendEmailOptions {
   to: string;
   templateKey: string;
   placeholders: Record<string, string>;
   fallbackSubject?: string;
   fallbackBody?: string;
+  /** Optional file attachments (e.g. a generated PDF invoice). */
+  attachments?: EmailAttachment[];
 }
 
 /** HTML-escape a dynamic value before it is embedded into an email template. */
@@ -111,8 +119,14 @@ async function basePlaceholders(): Promise<{
 export async function sendTemplatedEmail(
   options: SendEmailOptions,
 ): Promise<boolean> {
-  const { to, templateKey, placeholders, fallbackSubject, fallbackBody } =
-    options;
+  const {
+    to,
+    templateKey,
+    placeholders,
+    fallbackSubject,
+    fallbackBody,
+    attachments,
+  } = options;
 
   const injected = await basePlaceholders();
   const allPlaceholders = {
@@ -136,6 +150,7 @@ export async function sendTemplatedEmail(
         to,
         subject: replaceEmailPlaceholders(fallbackSubject, allPlaceholders),
         html: replaceEmailPlaceholders(fallbackBody, allPlaceholders),
+        attachments,
       });
       return true;
     }
@@ -148,6 +163,7 @@ export async function sendTemplatedEmail(
     to,
     subject: replaceEmailPlaceholders(template.subject, allPlaceholders),
     html: replaceEmailPlaceholders(template.body, allPlaceholders),
+    attachments,
   });
 
   return true;

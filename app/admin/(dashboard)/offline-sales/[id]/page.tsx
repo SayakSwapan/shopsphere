@@ -52,6 +52,13 @@ export default async function OfflineSaleDetailPage({ params }: Props) {
           orderBy: { createdAt: "desc" },
           include: { recordedBy: { select: { name: true } } },
         },
+        offlineExchanges: {
+          orderBy: { createdAt: "desc" },
+          include: {
+            items: true,
+            createdBy: { select: { name: true, email: true } },
+          },
+        },
       },
     }),
     getSiteSettings(),

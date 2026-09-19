@@ -20,6 +20,7 @@ import {
   X,
   ImageOff,
   ZoomIn,
+  Wallet,
 } from "lucide-react";
 
 import { formatCurrency } from "@/lib/format";
@@ -55,6 +56,7 @@ interface CustomerOption {
   phone: string | null;
   email: string;
   isWalkIn: boolean;
+  creditBalance?: number;
   addressLine1?: string | null;
   addressLine2?: string | null;
   city?: string | null;
@@ -297,6 +299,7 @@ export default function NewOfflineSale() {
   const [paymentMethod, setPaymentMethod] = useState("CASH");
   const [invoiceMode, setInvoiceMode] = useState<"full" | "partial">("full");
   const [paidAmountInput, setPaidAmountInput] = useState<string>("");
+  const [storeCreditInput, setStoreCreditInput] = useState<string>("");
 
   const [productSearch, setProductSearch] = useState("");
   const [productResults, setProductResults] = useState<ProductOption[]>([]);
@@ -488,6 +491,18 @@ export default function NewOfflineSale() {
     };
   }, [items]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Store credit (customer wallet) that can be applied to this sale.
+  const availableStoreCredit =
+    mode === "existing" ? (selectedCustomer?.creditBalance ?? 0) : 0;
+  const storeCreditApplied = Math.max(
+    0,
+    Math.min(
+      Number(storeCreditInput) || 0,
+      availableStoreCredit,
+      summary.total,
+    ),
+  );
+
   // Live combo pricing preview: whenever the sale changes, ask the server for
   // the exact combo-managed prices (mirrors what the order API will charge).
   // Combo-covered lines are locked — the customer cannot bargain those.
@@ -616,6 +631,7 @@ export default function NewOfflineSale() {
         : null;
       setPhoneLookupFound(found);
       if (found) {
+        setStoreCreditInput("");
         setName(found.name ?? "");
         setCustomerId(found.id);
         setEmail(found.email ?? "");
@@ -824,12 +840,14 @@ export default function NewOfflineSale() {
     }
 
     // Validate partial payment amount if the sale is a due/partial-payment sale.
+    // `paidAmount` is the CASH/other portion; store credit is applied separately.
     const isPartial = invoiceMode === "partial";
     const total = summary.total;
-    let paidAmount = total;
+    const creditUsed = storeCreditApplied;
+    let paidAmount = Math.max(0, total - creditUsed);
     if (isPartial) {
       paidAmount = Number(paidAmountInput) || 0;
-      if (!(paidAmount > 0) || paidAmount >= total) {
+      if (!(paidAmount > 0) || paidAmount + creditUsed >= total) {
         toast.error("Paid amount must be less than the total for a due sale.");
         return;
       }
@@ -841,6 +859,7 @@ export default function NewOfflineSale() {
         mode: as,
         paymentMethod,
         paidAmount,
+        creditUsed,
         isPartialPayment: isPartial,
         useLoyaltyReward: useLoyaltyReward,
         customer:
@@ -1491,6 +1510,7 @@ export default function NewOfflineSale() {
                               setLoyaltyLoading(true);
                               setUseLoyaltyReward(false);
                               setLoyaltyPreviewDiscount(null);
+                              setStoreCreditInput("");
                               setSelectedCustomer(c);
                               setCustomerId(c.id);
                               setCustomerSearch(
@@ -1695,6 +1715,64 @@ export default function NewOfflineSale() {
             </section>
           )}
 
+          {/* Store Credit */}
+          {mode === "existing" &&
+            selectedCustomer &&
+            availableStoreCredit > 0 && (
+              <section className="rounded-2xl border border-emerald-700/60 bg-[#111827] p-4 sm:p-6">
+                <SectionHeader
+                  icon={<Wallet size={18} className="text-emerald-300" />}
+                  title="Store Credit"
+                />
+                <p className="text-sm text-slate-300">
+                  Available balance:{" "}
+                  <span className="font-bold text-emerald-400">
+                    {formatCurrency(availableStoreCredit)}
+                  </span>
+                </p>
+                <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                  <input
+                    type="number"
+                    min={0}
+                    max={Math.min(availableStoreCredit, summary.total)}
+                    step="0.01"
+                    value={storeCreditInput}
+                    onChange={(e) => setStoreCreditInput(e.target.value)}
+                    placeholder="Amount to apply"
+                    className={inputCls}
+                  />
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setStoreCreditInput(
+                        Math.min(availableStoreCredit, summary.total).toFixed(
+                          2,
+                        ),
+                      )
+                    }
+                    className="shrink-0 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-500"
+                  >
+                    Use max
+                  </button>
+                </div>
+                {storeCreditApplied > 0 && (
+                  <p className="mt-2 text-xs text-slate-400">
+                    Applying{" "}
+                    <span className="font-semibold text-emerald-400">
+                      {formatCurrency(storeCreditApplied)}
+                    </span>{" "}
+                    — remaining{" "}
+                    <span className="font-semibold text-white">
+                      {formatCurrency(
+                        Math.max(0, summary.total - storeCreditApplied),
+                      )}
+                    </span>{" "}
+                    collected via {paymentMethod.replace("_", " ")}.
+                  </p>
+                )}
+              </section>
+            )}
+
           {/* Payment + Summary */}
           <section className="rounded-2xl border border-slate-700 bg-[#111827] p-4 sm:p-6">
             <SectionHeader title="Payment & Summary" />
@@ -1779,14 +1857,24 @@ export default function NewOfflineSale() {
                 </Field>
                 {(() => {
                   const paid = Number(paidAmountInput) || 0;
-                  const due = summary.total - paid;
+                  const totalPaid = paid + storeCreditApplied;
+                  const due = summary.total - totalPaid;
                   return (
                     <div className="mt-2 rounded-lg bg-amber-500/10 px-3 py-2 text-sm">
                       <div className="flex justify-between text-slate-300">
-                        <span>Paid</span>
+                        <span>
+                          Paid
+                          {storeCreditApplied > 0 && (
+                            <span className="text-xs text-slate-500">
+                              {" "}
+                              (incl. {formatCurrency(storeCreditApplied)}{" "}
+                              credit)
+                            </span>
+                          )}
+                        </span>
                         <span className="font-semibold text-emerald-400">
                           {formatCurrency(
-                            Math.max(0, Math.min(paid, summary.total)),
+                            Math.max(0, Math.min(totalPaid, summary.total)),
                           )}
                         </span>
                       </div>
@@ -1796,7 +1884,7 @@ export default function NewOfflineSale() {
                           {formatCurrency(Math.max(0, due))}
                         </span>
                       </div>
-                      {paid > 0 && paid < summary.total && (
+                      {totalPaid > 0 && totalPaid < summary.total && (
                         <p className="mt-2 text-[11px] font-semibold text-rose-400">
                           No returns accepted on this due sale. Invoice
                           generated once fully paid.
@@ -1858,6 +1946,17 @@ export default function NewOfflineSale() {
                   {formatCurrency(summary.gst)}
                 </span>
               </div>
+              {storeCreditApplied > 0 && (
+                <div className="flex items-center justify-between pt-1 text-emerald-400">
+                  <span className="flex items-center gap-1.5">
+                    <Wallet size={13} />
+                    Store credit applied
+                  </span>
+                  <span className="font-semibold">
+                    -{formatCurrency(storeCreditApplied)}
+                  </span>
+                </div>
+              )}
               {comboSavingsInclGst > 0 && (
                 <div className="flex items-center justify-between pt-1 text-emerald-400">
                   <span className="flex items-center gap-1.5">

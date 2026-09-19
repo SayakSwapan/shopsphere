@@ -18,6 +18,7 @@ import {
   RotateCcw,
   Landmark,
   Award,
+  Wallet,
 } from "lucide-react";
 
 export default async function AccountPage() {
@@ -95,7 +96,9 @@ export default async function AccountPage() {
       <section className="relative overflow-hidden border-b border-border-subtle">
         <div
           className="absolute inset-0"
-          style={{ background: "color-mix(in srgb, var(--t-primary) 8%, transparent)" }}
+          style={{
+            background: "color-mix(in srgb, var(--t-primary) 8%, transparent)",
+          }}
         />
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-14">
           <p
@@ -111,8 +114,8 @@ export default async function AccountPage() {
             Welcome Back
           </h1>
           <p className="mt-3 text-text-muted-1 max-w-xl">
-            Manage your orders, profile, addresses and
-            account settings from one place.
+            Manage your orders, profile, addresses and account settings from one
+            place.
           </p>
         </div>
       </section>
@@ -121,7 +124,6 @@ export default async function AccountPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
         {/* User Card + Stats */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-
           {/* User Info Card */}
           <div className="lg:col-span-4">
             <div
@@ -129,7 +131,10 @@ export default async function AccountPage() {
               style={{ borderRadius: "var(--t-radius-card)" }}
             >
               <div className="flex items-center gap-4">
-                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary shrink-0" style={{ color: "var(--t-bg-page)" }}>
+                <div
+                  className="flex h-16 w-16 items-center justify-center rounded-full bg-primary shrink-0"
+                  style={{ color: "var(--t-bg-page)" }}
+                >
                   <User size={30} />
                 </div>
                 <div className="min-w-0">
@@ -184,6 +189,11 @@ export default async function AccountPage() {
                     icon: Award,
                   },
                   {
+                    label: "Store Credit",
+                    href: "/account/credit",
+                    icon: Wallet,
+                  },
+                  {
                     label: "Profile Settings",
                     href: "/account/profile",
                     icon: User,
@@ -236,7 +246,6 @@ export default async function AccountPage() {
 
           {/* Stats + Recent Orders */}
           <div className="lg:col-span-8 space-y-8">
-
             {/* Loyalty Widget */}
             {loyaltyProgram.isActive && loyaltyStatus && (
               <Link
@@ -327,7 +336,10 @@ export default async function AccountPage() {
             </div>
 
             {/* Recent Orders */}
-            <div className="border border-border-card bg-bg-card overflow-hidden" style={{ borderRadius: "var(--t-radius-card)" }}>
+            <div
+              className="border border-border-card bg-bg-card overflow-hidden"
+              style={{ borderRadius: "var(--t-radius-card)" }}
+            >
               <div className="flex items-center justify-between px-4 sm:px-8 py-4 sm:py-6 border-b border-border-subtle">
                 <div className="flex items-center gap-3">
                   <Package size={20} className="text-primary" />
@@ -348,7 +360,10 @@ export default async function AccountPage() {
 
               {recentOrders.length === 0 ? (
                 <div className="px-4 sm:px-8 py-8 sm:py-12 text-center">
-                  <ShoppingBag size={40} className="mx-auto text-text-muted-3" />
+                  <ShoppingBag
+                    size={40}
+                    className="mx-auto text-text-muted-3"
+                  />
                   <p className="mt-4 text-sm text-text-muted-1">
                     You haven&apos;t placed any orders yet.
                   </p>
@@ -379,13 +394,14 @@ export default async function AccountPage() {
                             #{order.orderNumber}
                           </p>
                           <p className="text-xs text-text-muted-2 mt-0.5">
-                            {new Date(
-                              order.createdAt
-                            ).toLocaleDateString("en-IN", {
-                              day: "2-digit",
-                              month: "short",
-                              year: "numeric",
-                            })}
+                            {new Date(order.createdAt).toLocaleDateString(
+                              "en-IN",
+                              {
+                                day: "2-digit",
+                                month: "short",
+                                year: "numeric",
+                              },
+                            )}
                           </p>
                         </div>
                       </div>
@@ -397,10 +413,7 @@ export default async function AccountPage() {
                           {order.status.replace(/_/g, " ")}
                         </span>
                         <p className="text-sm font-bold text-text-heading">
-                          ₹
-                          {Number(
-                            order.totalAmount
-                          ).toLocaleString("en-IN")}
+                          ₹{Number(order.totalAmount).toLocaleString("en-IN")}
                         </p>
                       </div>
                     </Link>

@@ -9,7 +9,10 @@ export async function POST(req: Request) {
   try {
     const session = await getAdminSession();
     if (!session || session.user.role !== "ADMIN") {
-      return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
+      return NextResponse.json(
+        { success: false, message: "Unauthorized" },
+        { status: 401 },
+      );
     }
 
     const body = (await req.json()) as {
@@ -19,6 +22,7 @@ export async function POST(req: Request) {
       items?: OfflineOrderInput["items"];
       notes?: string;
       paidAmount?: number;
+      creditUsed?: number;
       isPartialPayment?: boolean;
       useLoyaltyReward?: boolean;
     };
@@ -30,6 +34,7 @@ export async function POST(req: Request) {
       items: Array.isArray(body.items) ? body.items : [],
       notes: body.notes,
       paidAmount: body.paidAmount,
+      creditUsed: body.creditUsed,
       isPartialPayment: body.isPartialPayment,
       useLoyaltyReward: body.useLoyaltyReward,
     };
@@ -43,9 +48,10 @@ export async function POST(req: Request) {
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Unable to create offline sale.";
-    const status = error instanceof Error && (error as unknown as { status?: number }).status
-      ? (error as unknown as { status: number }).status
-      : 400;
+    const status =
+      error instanceof Error && (error as unknown as { status?: number }).status
+        ? (error as unknown as { status: number }).status
+        : 400;
     return NextResponse.json({ success: false, message }, { status });
   }
 }

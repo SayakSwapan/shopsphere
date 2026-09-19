@@ -19,6 +19,7 @@ import {
   handleRefundLoyaltyAdjustment,
 } from "@/lib/loyalty";
 import { sendOfflineInvoiceEmail } from "@/lib/email/offline-invoice-email";
+import { getCreditBalance, useCredit } from "@/lib/customer-credit";
 
 /**
  * Shared service for the Offline / POS sales system.
@@ -70,6 +71,11 @@ export interface OfflineOrderInput {
   isPartialPayment?: boolean;
   /** Apply the customer's available loyalty reward to this sale. */
   useLoyaltyReward?: boolean;
+  /**
+   * Store credit to spend on this sale. Capped server-side at both the total
+   * payable and the customer's live balance; the remainder is collected in cash.
+   */
+  creditUsed?: number;
 }
 
 export class OfflineSaleError extends Error {
@@ -664,9 +670,30 @@ async function createOrderAndItems(opts: {
   // Resolve due / partial payment amounts. The stock is fully handed over at
   // completion; only the cash/UPI flow may be collected later.
   const isPartial = Boolean(input.isPartialPayment);
-  const paidAmount = isPartial
-    ? round2(Math.min(input.paidAmount ?? 0, totalForPayment))
-    : totalForPayment;
+
+  // Store credit: a completed sale may spend the customer's wallet balance.
+  // Credit is never trusted from the client — it is capped at the total
+  // payable AND the live balance; the remainder is collected in cash.
+  const requestedCredit = isComplete
+    ? round2(Math.max(0, input.creditUsed ?? 0))
+    : 0;
+  let creditUsed = 0;
+  if (requestedCredit > 0) {
+    const available = await getCreditBalance(customerUser.userId);
+    if (requestedCredit > available) {
+      throw new OfflineSaleError(
+        `Store credit requested (₹${requestedCredit.toFixed(2)}) exceeds the available balance of ₹${available.toFixed(2)}.`,
+      );
+    }
+    creditUsed = round2(Math.min(requestedCredit, totalForPayment));
+  }
+
+  const cashPaid = isPartial
+    ? round2(
+        Math.min(input.paidAmount ?? 0, round2(totalForPayment - creditUsed)),
+      )
+    : round2(totalForPayment - creditUsed);
+  const paidAmount = round2(cashPaid + creditUsed);
   const dueAmount = round2(totalForPayment - paidAmount);
   if (isPartial && !(dueAmount > 0)) {
     throw new OfflineSaleError(
@@ -836,17 +863,42 @@ async function createOrderAndItems(opts: {
     });
 
     // Record the upfront payment against the offline payment ledger (only for
-    // completed, partial-payment sales where cash was collected).
-    if (isComplete && paidAmount > 0) {
-      await tx.offlinepayment.create({
-        data: {
+    // completed sales). Store credit is spent from the wallet and recorded as
+    // its own ledger line so the cash portion stays explicit.
+    if (isComplete) {
+      if (creditUsed > 0) {
+        await useCredit({
+          customerId: customerUser.userId,
+          amount: creditUsed,
+          reason: `Store credit applied to offline sale ${orderNumber}`,
           orderId: order.id,
-          amount: paidAmount,
-          paymentMethod,
-          notes: "Upfront payment at sale",
           recordedById: adminId,
-        },
-      });
+          client: tx,
+        });
+        await tx.offlinepayment.create({
+          data: {
+            orderId: order.id,
+            amount: creditUsed,
+            paymentMethod: "STORE_CREDIT",
+            notes: "Store credit applied",
+            recordedById: adminId,
+          },
+        });
+      }
+      if (cashPaid > 0) {
+        await tx.offlinepayment.create({
+          data: {
+            orderId: order.id,
+            amount: cashPaid,
+            paymentMethod,
+            notes:
+              creditUsed > 0
+                ? "Cash/other portion collected at sale"
+                : "Upfront payment at sale",
+            recordedById: adminId,
+          },
+        });
+      }
     }
 
     // Loyalty integration — must run inside the same transaction.
@@ -909,6 +961,7 @@ async function createOrderAndItems(opts: {
     dueAmount,
     applied: isComplete,
     loyaltyDiscountApplied: loyaltyDiscount,
+    creditUsed,
   };
 }
 
@@ -944,6 +997,8 @@ export async function completeOfflineOrder(opts: {
   paymentMethod: string;
   isPartialPayment?: boolean;
   paidAmount?: number;
+  /** Store credit to spend; capped at the total and the live balance. */
+  creditUsed?: number;
   recordedById?: string;
 }) {
   const order = await prisma.order.findUnique({
@@ -965,15 +1020,34 @@ export async function completeOfflineOrder(opts: {
 
   const totalAmount = Number(order.totalAmount);
   const isPartial = Boolean(opts.isPartialPayment);
+
+  // Store credit (server-authoritative): capped at the total and the balance.
+  const requestedCredit = round2(Math.max(0, opts.creditUsed ?? 0));
+  let creditUsed = 0;
+  if (requestedCredit > 0) {
+    const available = await getCreditBalance(order.userId);
+    if (requestedCredit > available) {
+      throw new OfflineSaleError(
+        `Store credit requested (₹${requestedCredit.toFixed(2)}) exceeds the available balance of ₹${available.toFixed(2)}.`,
+      );
+    }
+    creditUsed = round2(Math.min(requestedCredit, totalAmount));
+  }
+
+  let cashPaid: number;
   let paidAmount: number;
   if (isPartial) {
-    paidAmount = round2(Math.min(opts.paidAmount ?? 0, totalAmount));
+    cashPaid = round2(
+      Math.min(opts.paidAmount ?? 0, round2(totalAmount - creditUsed)),
+    );
+    paidAmount = round2(cashPaid + creditUsed);
     if (!(round2(totalAmount - paidAmount) > 0)) {
       throw new OfflineSaleError(
         "For a due / partial payment sale the paid amount must be less than the total. Use Complete Sale if fully paid.",
       );
     }
   } else {
+    cashPaid = round2(totalAmount - creditUsed);
     paidAmount = totalAmount;
   }
   const dueAmount = round2(totalAmount - paidAmount);
@@ -1061,18 +1135,46 @@ export async function completeOfflineOrder(opts: {
       },
     });
 
-    // Record the upfront payment into the offline payment ledger.
-    await tx.offlinepayment.create({
-      data: {
+    // Record the upfront payment into the offline payment ledger. Store
+    // credit is spent from the wallet as its own ledger line so the cash
+    // portion remains explicit.
+    if (creditUsed > 0) {
+      await useCredit({
+        customerId: order.userId,
+        amount: creditUsed,
+        reason: `Store credit applied to offline order ${order.orderNumber}`,
         orderId: order.id,
-        amount: paidAmount,
-        paymentMethod: opts.paymentMethod,
-        notes: isPartial
-          ? "Upfront payment (due sale opened)"
-          : "Full payment at sale",
         recordedById: opts.recordedById ?? null,
-      },
-    });
+        client: tx,
+      });
+      await tx.offlinepayment.create({
+        data: {
+          orderId: order.id,
+          amount: creditUsed,
+          paymentMethod: "STORE_CREDIT",
+          notes: "Store credit applied",
+          recordedById: opts.recordedById ?? null,
+        },
+      });
+    }
+    if (cashPaid > 0 || creditUsed <= 0) {
+      await tx.offlinepayment.create({
+        data: {
+          orderId: order.id,
+          amount: cashPaid,
+          paymentMethod: opts.paymentMethod,
+          notes:
+            creditUsed > 0
+              ? isPartial
+                ? "Cash portion (due sale opened)"
+                : "Cash portion at sale"
+              : isPartial
+                ? "Upfront payment (due sale opened)"
+                : "Full payment at sale",
+          recordedById: opts.recordedById ?? null,
+        },
+      });
+    }
   });
 
   createAdminNotification({
@@ -1122,6 +1224,8 @@ export async function completeOfflineOrder(opts: {
     orderId: order.id,
     already: false,
     paidAmount,
+    cashPaid,
+    creditUsed,
     dueAmount,
     isPartial,
   };
@@ -1218,6 +1322,193 @@ export async function collectOfflineDue(opts: {
     dueAmount: isNowCleared ? 0 : newDue,
     cleared: isNowCleared,
   };
+}
+
+/**
+ * Post-payment size change for offline orders.
+ *
+ * After a sale is completed (payment collected, stock already deducted) the
+ * store may exchange the size the customer took for a different size of the
+ * SAME product. This is a stock swap — it never touches prices, profit, GST
+ * or payment balances:
+ *
+ *   - the old variant's units are returned to inventory (RESTOCK movement)
+ *   - the new variant's units are issued (SALE movement)
+ *   - the order line's size snapshots are updated so the invoice / packing
+ *     detail reflect the new size
+ *
+ * `changes` may carry several order items at once (a customer swapping sizes
+ * on multiple products). Draft orders (stock not yet deducted) only update the
+ * snapshots — nothing to restock.
+ */
+export async function changeOfflineOrderItemSizes(opts: {
+  orderId: string;
+  changes: { orderItemId: string; variantId: string }[];
+}) {
+  const order = await prisma.order.findUnique({
+    where: { id: opts.orderId },
+    select: {
+      id: true,
+      orderNumber: true,
+      orderType: true,
+      status: true,
+      paymentStatus: true,
+      inventoryUpdated: true,
+    },
+  });
+  if (!order) throw new OfflineSaleError("Order not found.", 404);
+  if (order.orderType !== "OFFLINE")
+    throw new OfflineSaleError("Not an offline order.");
+  if (order.status === "CANCELLED")
+    throw new OfflineSaleError("A cancelled order cannot be modified.");
+
+  const changes = (opts.changes || []).filter((c) => c.variantId);
+  if (changes.length === 0) {
+    throw new OfflineSaleError("Select a new size for at least one product.");
+  }
+
+  const orderItems = await prisma.orderitem.findMany({
+    where: { orderId: order.id },
+    include: { product: { select: { id: true, name: true } } },
+  });
+  const itemMap = new Map(orderItems.map((i) => [i.id, i]));
+
+  // Validate every change BEFORE any write so a bad request is atomic.
+  const planned: { item: (typeof orderItems)[number]; newVariantId: string }[] =
+    [];
+  for (const change of changes) {
+    const item = itemMap.get(change.orderItemId);
+    if (!item) throw new OfflineSaleError("Order item not found.");
+    if (!item.variantSku) {
+      throw new OfflineSaleError(
+        `"${item.product.name}" has no size assigned, so its size cannot be changed.`,
+      );
+    }
+    const variant = await prisma.productvariant.findUnique({
+      where: { id: change.variantId },
+      select: { id: true, productId: true, sku: true },
+    });
+    if (!variant || variant.productId !== item.productId) {
+      throw new OfflineSaleError(
+        `The selected size does not belong to "${item.product.name}".`,
+      );
+    }
+    // Same size already selected → no-op.
+    if (variant.sku === item.variantSku) continue;
+    planned.push({ item, newVariantId: variant.id });
+  }
+
+  if (planned.length === 0) {
+    return { orderId: order.id, updated: 0 };
+  }
+
+  let updated = 0;
+  await prisma.$transaction(async (tx) => {
+    for (const { item, newVariantId } of planned) {
+      const newVariant = await tx.productvariant.findUnique({
+        where: { id: newVariantId },
+        include: { size: true, gender: true },
+      });
+      if (!newVariant)
+        throw new OfflineSaleError("Selected variant was deleted.");
+
+      const oldVariant = item.variantSku
+        ? await tx.productvariant.findFirst({
+            where: { productId: item.productId, sku: item.variantSku },
+            include: { size: true, gender: true },
+          })
+        : null;
+
+      const qty = item.quantity;
+
+      // Stock was already deducted for this sale → swap sizes.
+      if (order.inventoryUpdated) {
+        if (qty > newVariant.stock) {
+          throw new OfflineSaleError(
+            `Insufficient stock for "${newVariant.size.sizeName} (${newVariant.gender.name})". Available: ${newVariant.stock}.`,
+          );
+        }
+
+        // Return the old size to inventory.
+        if (oldVariant) {
+          const beforeOld = oldVariant.stock;
+          await tx.productvariant.update({
+            where: { id: oldVariant.id },
+            data: { stock: { increment: qty } },
+          });
+          await tx.stockmovement.create({
+            data: {
+              id: crypto.randomUUID(),
+              productId: item.productId,
+              variantId: oldVariant.id,
+              orderId: order.id,
+              orderType: "OFFLINE",
+              referenceOrder: order.orderNumber,
+              type: "RESTOCK",
+              quantity: qty,
+              beforeQuantity: beforeOld,
+              afterQuantity: beforeOld + qty,
+              note: `Size change — ${oldVariant.size?.sizeName} (${oldVariant.gender?.name}) returned for "${item.product.name}".`,
+            },
+          });
+        }
+
+        // Issue the new size.
+        const beforeNew = newVariant.stock;
+        await tx.productvariant.update({
+          where: { id: newVariant.id },
+          data: { stock: { decrement: qty } },
+        });
+        await tx.stockmovement.create({
+          data: {
+            id: crypto.randomUUID(),
+            productId: item.productId,
+            variantId: newVariant.id,
+            orderId: order.id,
+            orderType: "OFFLINE",
+            referenceOrder: order.orderNumber,
+            type: "SALE",
+            quantity: qty,
+            beforeQuantity: beforeNew,
+            afterQuantity: beforeNew - qty,
+            note: `Size change — ${newVariant.size.sizeName} (${newVariant.gender.name}) issued for "${item.product.name}".`,
+          },
+        });
+      }
+
+      // Update the line snapshot so the invoice / packing detail reflects the
+      // new size. Financial snapshots stay untouched (a size swap at the same
+      // price never changes revenue, cost, GST or profit).
+      await tx.orderitem.update({
+        where: { id: item.id },
+        data: {
+          variantSku: newVariant.sku,
+          variantSize: newVariant.size.sizeName,
+          variantGender: newVariant.gender.name,
+        },
+      });
+      updated += 1;
+    }
+  });
+
+  // Re-issue the invoice for fully-paid sales so the customer gets the updated
+  // size on their copy.
+  if (order.paymentStatus === "PAID") {
+    sendOfflineInvoiceEmail({ orderId: order.id }).catch((e) =>
+      console.error("Offline invoice email after size change failed:", e),
+    );
+  }
+
+  createAdminNotification({
+    title: "Offline Sale Size Changed",
+    message: `Order ${order.orderNumber} — size updated for ${updated} item(s).`,
+    type: "ORDER",
+    entityType: "ORDER",
+    entityId: order.id,
+    notifyKey: "notify_on_order",
+  }).catch(console.error);
+
+  return { orderId: order.id, updated };
 }
 
 /**

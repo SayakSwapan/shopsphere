@@ -1,5 +1,6 @@
 import { getAdminSession } from "@/lib/admin-auth";
 import { prisma } from "@/lib/prisma";
+import { getCreditBalance } from "@/lib/customer-credit";
 import { NextResponse } from "next/server";
 
 /**
@@ -67,6 +68,9 @@ export async function GET(req: Request) {
           });
           if (latestOrder) latestAddress = latestOrder;
         }
+        const creditBalance = customer
+          ? await getCreditBalance(customer.id)
+          : 0;
         return NextResponse.json({
           success: true,
           customer: customer
@@ -76,6 +80,7 @@ export async function GET(req: Request) {
                 phone: customer.phone,
                 email: customer.email,
                 isWalkIn: customer.isWalkIn,
+                creditBalance,
                 addressLine1: latestAddress?.offlineAddressLine1 ?? null,
                 addressLine2: latestAddress?.offlineAddressLine2 ?? null,
                 city: latestAddress?.offlineCity ?? null,
@@ -109,7 +114,22 @@ export async function GET(req: Request) {
         orderBy: { createdAt: "desc" },
         take,
       });
-      return NextResponse.json({ success: true, customers });
+
+      const credits = await prisma.customerCredit.findMany({
+        where: { customerId: { in: customers.map((c) => c.id) } },
+        select: { customerId: true, balance: true },
+      });
+      const creditMap = new Map(
+        credits.map((c) => [c.customerId, Number(c.balance)]),
+      );
+
+      return NextResponse.json({
+        success: true,
+        customers: customers.map((c) => ({
+          ...c,
+          creditBalance: creditMap.get(c.id) ?? 0,
+        })),
+      });
     }
 
     // products

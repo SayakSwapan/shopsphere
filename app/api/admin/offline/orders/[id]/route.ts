@@ -1,6 +1,7 @@
 import { getAdminSession } from "@/lib/admin-auth";
 import {
   cancelOfflineOrder,
+  changeOfflineOrderItemSizes,
   collectOfflineDue,
   completeOfflineOrder,
 } from "@/lib/orders/offline-sale";
@@ -14,7 +15,10 @@ export async function PATCH(req: Request, { params }: Context) {
   try {
     const session = await getAdminSession();
     if (!session || session.user.role !== "ADMIN") {
-      return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
+      return NextResponse.json(
+        { success: false, message: "Unauthorized" },
+        { status: 401 },
+      );
     }
 
     const { id } = await params;
@@ -22,8 +26,10 @@ export async function PATCH(req: Request, { params }: Context) {
       action?: string;
       paymentMethod?: string;
       paidAmount?: number;
+      creditUsed?: number;
       isPartialPayment?: boolean;
       notes?: string;
+      changes?: { orderItemId: string; variantId: string }[];
     };
 
     if (body.action === "complete") {
@@ -32,6 +38,7 @@ export async function PATCH(req: Request, { params }: Context) {
         paymentMethod: body.paymentMethod || "CASH",
         isPartialPayment: body.isPartialPayment,
         paidAmount: body.paidAmount,
+        creditUsed: body.creditUsed,
         recordedById: session.user.id,
       });
       return NextResponse.json({ success: true, ...result });
@@ -48,18 +55,30 @@ export async function PATCH(req: Request, { params }: Context) {
       return NextResponse.json({ success: true, ...result });
     }
 
+    if (body.action === "change-sizes") {
+      const result = await changeOfflineOrderItemSizes({
+        orderId: id,
+        changes: Array.isArray(body.changes) ? body.changes : [],
+      });
+      return NextResponse.json({ success: true, ...result });
+    }
+
     if (body.action === "cancel") {
       const result = await cancelOfflineOrder({ orderId: id });
       return NextResponse.json({ success: true, ...result });
     }
 
-    return NextResponse.json({ success: false, message: "Invalid action." }, { status: 400 });
+    return NextResponse.json(
+      { success: false, message: "Invalid action." },
+      { status: 400 },
+    );
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Unable to update offline sale.";
-    const status = error instanceof Error && (error as unknown as { status?: number }).status
-      ? (error as unknown as { status: number }).status
-      : 400;
+    const status =
+      error instanceof Error && (error as unknown as { status?: number }).status
+        ? (error as unknown as { status: number }).status
+        : 400;
     return NextResponse.json({ success: false, message }, { status });
   }
 }

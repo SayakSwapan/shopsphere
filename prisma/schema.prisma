@@ -182,6 +182,7 @@ coupon Coupon? @relation(fields: [couponId], references: [id])
   stockmovement stockmovement[]
   offlinepayment offlinepayment[]
   comboSales ComboSale[]
+  offlineExchanges offlineexchange[]
   createdBy user? @relation("OrderCreatedBy", fields: [createdById], references: [id])
 
   @@index([userId])
@@ -747,6 +748,12 @@ model user {
   loyaltyPurchases  LoyaltyPurchase[]
   loyaltyRedemptions LoyaltyRewardRedemption[]
   loyaltyAuditLogs  LoyaltyAuditLog[]
+
+  // Offline exchange + store-credit (wallet) relations.
+  customerCredit          CustomerCredit?
+  creditEntries           CustomerCreditEntry[] @relation("CreditEntries")
+  creditEntriesRecorded   CustomerCreditEntry[] @relation("CreditEntryRecordedBy")
+  offlineExchangesCreated offlineexchange[] @relation("OfflineExchangeCreatedBy")
 }
 
 model PartnerProfile {
@@ -2033,4 +2040,133 @@ model InstagramReel {
 
   @@index([isActive])
   @@index([sortOrder])
+}
+
+/*
+|--------------------------------------------------------------------------
+| Offline store credit (customer wallet) + exchange / replacement
+|--------------------------------------------------------------------------
+| The offline (POS) store never refunds cash. When a customer replaces an
+| item with a cheaper one, the difference is kept as store credit on the
+| customer's wallet and can be spent on a future offline purchase. A more
+| expensive replacement collects the difference in cash. Every movement is
+| recorded on a ledger for audit and shown in the customer's profile.
+*/
+
+enum credit_entry_type {
+  CREDIT
+  DEBIT
+  ADJUSTMENT
+}
+
+enum offline_exchange_type {
+  SIZE
+  PRODUCT
+}
+
+enum exchange_settlement_type {
+  COLLECT
+  CREDIT
+  EVEN
+}
+
+/** One wallet per customer. `balance` is the live store-credit amount held. */
+model CustomerCredit {
+  id         String   @id @default(cuid())
+  customerId String   @unique
+  balance    Decimal  @default(0) @db.Decimal(12, 2)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  customer user @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+}
+
+/** Immutable ledger of every store-credit movement (credit / debit / adjust). */
+model CustomerCreditEntry {
+  id           String           @id @default(cuid())
+  customerId   String
+  type         credit_entry_type
+  /** Positive magnitude of the movement. */
+  amount       Decimal          @db.Decimal(12, 2)
+  balanceAfter Decimal          @db.Decimal(12, 2)
+  reason       String
+  notes        String?
+  orderId      String?
+  exchangeId   String?
+  recordedById String?
+  createdAt    DateTime         @default(now())
+
+  customer   user  @relation("CreditEntries", fields: [customerId], references: [id], onDelete: Cascade)
+  recordedBy user? @relation("CreditEntryRecordedBy", fields: [recordedById], references: [id])
+
+  @@index([customerId])
+  @@index([orderId])
+  @@index([createdAt])
+}
+
+/**
+ * A post-payment size or product replacement on an offline sale. The original
+ * order is preserved for history; the exchange records what came back, what
+ * went out, and how the value difference was settled (cash COLLECT or store
+ * CREDIT — never a cash refund).
+ */
+model offlineexchange {
+  id                  String                   @id @default(cuid())
+  exchangeNumber      String                   @unique
+  orderId             String
+  originalOrderNumber String
+  type                offline_exchange_type
+  settlementType      exchange_settlement_type @default(EVEN)
+  /** Absolute value of the difference settled. */
+  settlementAmount    Decimal                  @default(0) @db.Decimal(12, 2)
+  /** Total GST-inclusive value of the items returned by the customer. */
+  returnedValue       Decimal                  @default(0) @db.Decimal(12, 2)
+  /** Total GST-inclusive value of the items issued to the customer. */
+  issuedValue         Decimal                  @default(0) @db.Decimal(12, 2)
+  paymentMethod       String?
+  notes               String?
+  createdById         String?
+  emailedAt           DateTime?
+  createdAt           DateTime                 @default(now())
+
+  order     order                @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  createdBy user?                @relation("OfflineExchangeCreatedBy", fields: [createdById], references: [id])
+  items     offlineexchangeitem[]
+
+  @@index([orderId])
+  @@index([createdAt])
+}
+
+/** One returned→issued line within an offline exchange. */
+model offlineexchangeitem {
+  id                    String               @id @default(cuid())
+  exchangeId            String
+  orderItemId           String?
+  returnedProductId     String
+  returnedProductName   String
+  returnedVariantId     String?
+  returnedVariantSku    String?
+  returnedVariantSize   String?
+  returnedVariantGender String?
+  returnedUnitPriceIncl Decimal              @db.Decimal(10, 2)
+  issuedProductId       String
+  issuedProductName     String
+  issuedVariantId       String?
+  issuedVariantSku      String?
+  issuedVariantSize     String?
+  issuedVariantGender   String?
+  issuedUnitPriceIncl   Decimal              @db.Decimal(10, 2)
+  quantity              Int
+  differenceAmount      Decimal              @db.Decimal(12, 2)
+  issuedCostPrice       Decimal?             @db.Decimal(10, 2)
+  issuedGstPercentage   Float?
+  issuedGstAmount       Decimal?             @db.Decimal(10, 2)
+  issuedProfitAmount    Decimal?             @db.Decimal(10, 2)
+  createdAt             DateTime             @default(now())
+
+  exchange offlineexchange @relation(fields: [exchangeId], references: [id], onDelete: Cascade)
+
+  @@index([exchangeId])
 }

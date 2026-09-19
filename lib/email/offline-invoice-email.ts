@@ -9,8 +9,11 @@ import {
   getSiteSettings,
   getInvoiceBusiness,
   getInvoiceLogo,
+  getOfflinePolicy,
 } from "@/lib/site-settings";
 import { PAYMENT_METHOD_LABELS } from "@/lib/constants/order-status";
+import { buildOfflineInvoicePdf } from "@/lib/orders/offline-invoice-pdf";
+import type { EmailAttachment } from "@/lib/email-service";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Offline (POS) invoice email.
@@ -353,12 +356,61 @@ export async function sendOfflineInvoiceEmail(
       .join(", "),
   };
 
+  // Generate the PDF invoice and attach it. A generation failure must never
+  // block the email itself — it falls back to the HTML-only body.
+  let attachments: EmailAttachment[] | undefined;
+  try {
+    const offlinePolicy = getOfflinePolicy(settings);
+    const pdf = await buildOfflineInvoicePdf({
+      business,
+      orderNumber: order.orderNumber,
+      createdAt: order.createdAt,
+      paymentMethodLabel: paymentLabel,
+      customer: {
+        name: order.customerName,
+        phone: order.phone || null,
+        email: order.customerEmail,
+        address:
+          [
+            order.offlineAddressLine1,
+            order.offlineAddressLine2,
+            [order.offlineCity, order.offlineState, order.offlinePincode]
+              .filter(Boolean)
+              .join(", "),
+          ]
+            .filter(Boolean)
+            .join(", ") || null,
+      },
+      items: order.items,
+      subtotal: order.subtotal ?? 0,
+      gst: order.gst ?? 0,
+      loyaltyDiscount: order.loyaltyDiscount,
+      paidAmount: order.paidAmount,
+      dueAmount: order.dueAmount,
+      isPartial: order.isPartialPayment,
+      total: order.totalAmount,
+      noReturnPolicy: order.isPartialPayment
+        ? offlinePolicy.noReturnPolicy
+        : null,
+    });
+    attachments = [
+      {
+        filename: `Invoice-${order.orderNumber}.pdf`,
+        content: pdf,
+        contentType: "application/pdf",
+      },
+    ];
+  } catch (e) {
+    console.error("Offline invoice PDF generation failed:", e);
+  }
+
   const ok = await sendTemplatedEmail({
     to: order.customerEmail,
     templateKey: "offline_invoice",
     placeholders: data,
     fallbackSubject: "Invoice #{{orderNumber}} — {{siteName}}",
     fallbackBody: buildFallbackBody(order, storeName, invoiceNotes),
+    attachments,
   });
 
   return { sent: ok, reason: ok ? undefined : "send-failed" };

@@ -1,3 +1,4 @@
+import { Download } from "lucide-react";
 import { formatDate, formatDateTime, formatCurrency } from "@/lib/format";
 import {
   PAYMENT_METHOD_LABELS,
@@ -5,6 +6,7 @@ import {
 } from "@/lib/constants/order-status";
 import type { InvoiceBusiness, OfflinePolicy } from "@/lib/site-settings";
 import OfflineSaleActions from "./offline-sale-actions";
+import OfflineExchange from "./offline-exchange";
 import OfflineInvoice, {
   OfflineInvoiceOrder,
   OfflineInvoiceItem,
@@ -22,6 +24,7 @@ type OrderShape = {
   status: string;
   paymentStatus: string;
   paymentMethod: string | null;
+  inventoryUpdated: boolean;
   totalAmount: import("@prisma/client").Prisma.Decimal;
   subtotal: import("@prisma/client").Prisma.Decimal | null;
   gst: import("@prisma/client").Prisma.Decimal | null;
@@ -92,6 +95,32 @@ type OrderShape = {
     note: string | null;
     createdAt: Date;
   }[];
+  offlineExchanges: {
+    id: string;
+    exchangeNumber: string;
+    type: string;
+    settlementType: string;
+    settlementAmount: import("@prisma/client").Prisma.Decimal;
+    returnedValue: import("@prisma/client").Prisma.Decimal;
+    issuedValue: import("@prisma/client").Prisma.Decimal;
+    paymentMethod: string | null;
+    notes: string | null;
+    createdAt: Date;
+    createdBy: { name: string | null; email: string | null } | null;
+    items: {
+      id: string;
+      returnedProductName: string;
+      returnedVariantSize: string | null;
+      returnedVariantGender: string | null;
+      issuedProductName: string;
+      issuedVariantSize: string | null;
+      issuedVariantGender: string | null;
+      quantity: number;
+      returnedUnitPriceIncl: import("@prisma/client").Prisma.Decimal;
+      issuedUnitPriceIncl: import("@prisma/client").Prisma.Decimal;
+      differenceAmount: import("@prisma/client").Prisma.Decimal;
+    }[];
+  }[];
 };
 
 interface Props {
@@ -110,20 +139,36 @@ function StatusChip({ status }: { status: string }) {
   };
   const cls = map[status] ?? "bg-slate-500/10 text-slate-300";
   return (
-    <span className={`rounded px-2 py-1 text-xs font-semibold ${cls}`}>{status}</span>
+    <span className={`rounded px-2 py-1 text-xs font-semibold ${cls}`}>
+      {status}
+    </span>
   );
 }
 
-function Label({ title, children }: { title: string; children: React.ReactNode }) {
+function Label({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
   return (
     <div>
-      <div className="text-[11px] uppercase tracking-wide text-slate-500">{title}</div>
+      <div className="text-[11px] uppercase tracking-wide text-slate-500">
+        {title}
+      </div>
       <div className="mt-0.5 font-semibold text-white">{children}</div>
     </div>
   );
 }
 
-function Card({ title, children }: { title: string; children: React.ReactNode }) {
+function Card({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
   return (
     <section className="rounded-2xl border border-slate-700 bg-[#111827] p-6">
       <h2 className="mb-4 text-lg font-bold text-white">{title}</h2>
@@ -132,12 +177,25 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
   );
 }
 
-export default function OfflineOrderDetail({ order, business, offlinePolicy }: Props) {
+export default function OfflineOrderDetail({
+  order,
+  business,
+  offlinePolicy,
+}: Props) {
   const isDraft = isDraftOrder(order);
 
   const isActive =
     order.status !== "CANCELLED" &&
-    (order.paymentStatus === "PAID" || order.status === "PAID" || order.status === "COMPLETED");
+    (order.paymentStatus === "PAID" ||
+      order.status === "PAID" ||
+      order.status === "COMPLETED");
+
+  // A completed offline sale (stock already deducted) that still holds one or
+  // more sizeable lines can have its size swapped post-payment.
+  const canExchange =
+    order.status !== "CANCELLED" &&
+    order.inventoryUpdated &&
+    order.orderitem.length > 0;
 
   const totalAmount = Number(order.totalAmount);
   const paidAmount = Number(order.paidAmount ?? 0);
@@ -145,14 +203,21 @@ export default function OfflineOrderDetail({ order, business, offlinePolicy }: P
   const isPartial = order.isPartialPayment && dueAmount > 0;
 
   const totalCost = order.orderitem.reduce(
-    (s, i) => s + (i.costPriceSnapshot != null ? Number(i.costPriceSnapshot) : 0) * i.quantity,
-    0
+    (s, i) =>
+      s +
+      (i.costPriceSnapshot != null ? Number(i.costPriceSnapshot) : 0) *
+        i.quantity,
+    0,
   );
   const totalProfit = order.orderitem.reduce(
-    (s, i) => s + (i.profitAmountAtSale != null ? Number(i.profitAmountAtSale) : 0) * i.quantity,
-    0
+    (s, i) =>
+      s +
+      (i.profitAmountAtSale != null ? Number(i.profitAmountAtSale) : 0) *
+        i.quantity,
+    0,
   );
-  const profitPct = totalCost > 0 ? Math.round((totalProfit / totalCost) * 10000) / 100 : 0;
+  const profitPct =
+    totalCost > 0 ? Math.round((totalProfit / totalCost) * 10000) / 100 : 0;
 
   // Build the customer-facing invoice order shape.
   const invoiceItems: OfflineInvoiceItem[] = order.orderitem.map((i) => {
@@ -163,7 +228,9 @@ export default function OfflineOrderDetail({ order, business, offlinePolicy }: P
       quantity: i.quantity,
       price: round2(base),
       actualSellingPrice:
-        i.actualSellingPrice != null ? Number(i.actualSellingPrice) : round2(base + perGst),
+        i.actualSellingPrice != null
+          ? Number(i.actualSellingPrice)
+          : round2(base + perGst),
       total: Number(i.total ?? 0),
       gstAmountAtSale: perGst,
       gstPercentageAtSale: i.gstPercentageAtSale,
@@ -222,18 +289,33 @@ export default function OfflineOrderDetail({ order, business, offlinePolicy }: P
           </h1>
           <p className="mt-1 text-sm text-slate-400">
             {formatDateTime(order.createdAt)} · Offline Purchase
-            {order.isWalkIn && <span className="ml-2 rounded bg-slate-700 px-1.5 py-0.5 text-[11px] text-slate-300">Walk-in</span>}
+            {order.isWalkIn && (
+              <span className="ml-2 rounded bg-slate-700 px-1.5 py-0.5 text-[11px] text-slate-300">
+                Walk-in
+              </span>
+            )}
           </p>
         </div>
-        <OfflineSaleActions
-          orderId={order.id}
-          isDraft={isDraftOrder(order)}
-          isActive={isActive}
-          totalAmount={totalAmount}
-          paidAmount={paidAmount}
-          dueAmount={dueAmount}
-          isPartial={isPartial}
-        />
+        <div className="flex flex-wrap items-center gap-2">
+          {!isDraft && (
+            <a
+              href={`/api/admin/offline/orders/${order.id}/invoice`}
+              className="inline-flex items-center gap-2 rounded-lg border border-slate-600 bg-slate-800 px-4 py-2.5 text-sm font-semibold text-slate-100 transition hover:bg-slate-700"
+            >
+              <Download size={16} />
+              Download Invoice
+            </a>
+          )}
+          <OfflineSaleActions
+            orderId={order.id}
+            isDraft={isDraftOrder(order)}
+            isActive={isActive}
+            totalAmount={totalAmount}
+            paidAmount={paidAmount}
+            dueAmount={dueAmount}
+            isPartial={isPartial}
+          />
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-3 text-sm">
@@ -241,14 +323,21 @@ export default function OfflineOrderDetail({ order, business, offlinePolicy }: P
           <StatusChip status={order.status} />
         </Label>
         <Label title="Order Source">
-          <span className="text-indigo-300">{ORDER_SOURCE_LABELS[order.orderType as "ONLINE" | "OFFLINE"] ?? order.orderType}</span>
+          <span className="text-indigo-300">
+            {ORDER_SOURCE_LABELS[order.orderType as "ONLINE" | "OFFLINE"] ??
+              order.orderType}
+          </span>
         </Label>
         <Label title="Payment Method">
-          {PAYMENT_METHOD_LABELS[order.paymentMethod ?? ""] ?? order.paymentMethod ?? "—"}
+          {PAYMENT_METHOD_LABELS[order.paymentMethod ?? ""] ??
+            order.paymentMethod ??
+            "—"}
         </Label>
         <Label title="Payment Status">
           {isPartial && !isDraft ? (
-            <span className="rounded bg-amber-500/10 px-2 py-1 text-xs font-semibold text-amber-400">PARTIAL (DUE)</span>
+            <span className="rounded bg-amber-500/10 px-2 py-1 text-xs font-semibold text-amber-400">
+              PARTIAL (DUE)
+            </span>
           ) : (
             <StatusChip status={order.paymentStatus} />
           )}
@@ -260,23 +349,41 @@ export default function OfflineOrderDetail({ order, business, offlinePolicy }: P
         <Card title="Payment Summary">
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
             <div>
-              <div className="text-xs uppercase tracking-wide text-slate-500">Total Payable</div>
-              <div className="mt-1 text-lg font-bold text-white">{formatCurrency(totalAmount)}</div>
+              <div className="text-xs uppercase tracking-wide text-slate-500">
+                Total Payable
+              </div>
+              <div className="mt-1 text-lg font-bold text-white">
+                {formatCurrency(totalAmount)}
+              </div>
             </div>
             <div>
-              <div className="text-xs uppercase tracking-wide text-slate-500">Paid</div>
-              <div className="mt-1 text-lg font-bold text-emerald-400">{formatCurrency(paidAmount)}</div>
+              <div className="text-xs uppercase tracking-wide text-slate-500">
+                Paid
+              </div>
+              <div className="mt-1 text-lg font-bold text-emerald-400">
+                {formatCurrency(paidAmount)}
+              </div>
             </div>
             <div>
-              <div className="text-xs uppercase tracking-wide text-slate-500">Due</div>
-              <div className={`mt-1 text-lg font-bold ${dueAmount > 0 ? "text-amber-400" : "text-emerald-400"}`}>
+              <div className="text-xs uppercase tracking-wide text-slate-500">
+                Due
+              </div>
+              <div
+                className={`mt-1 text-lg font-bold ${dueAmount > 0 ? "text-amber-400" : "text-emerald-400"}`}
+              >
                 {formatCurrency(dueAmount)}
               </div>
             </div>
             <div>
-              <div className="text-xs uppercase tracking-wide text-slate-500">Return Policy</div>
-              <div className={`mt-1 text-sm font-bold ${order.isPartialPayment ? "text-rose-400" : "text-slate-300"}`}>
-                {order.isPartialPayment ? "No returns on due sales" : "Standard policy"}
+              <div className="text-xs uppercase tracking-wide text-slate-500">
+                Return Policy
+              </div>
+              <div
+                className={`mt-1 text-sm font-bold ${order.isPartialPayment ? "text-rose-400" : "text-slate-300"}`}
+              >
+                {order.isPartialPayment
+                  ? "No returns on due sales"
+                  : "Standard policy"}
               </div>
             </div>
           </div>
@@ -300,15 +407,20 @@ export default function OfflineOrderDetail({ order, business, offlinePolicy }: P
                     className="flex items-center justify-between rounded-lg bg-[#0F172A] px-4 py-3 text-sm"
                   >
                     <div>
-                      <span className="font-bold text-white">{formatCurrency(Number(p.amount))}</span>
+                      <span className="font-bold text-white">
+                        {formatCurrency(Number(p.amount))}
+                      </span>
                       <span className="ml-2 rounded bg-slate-700 px-1.5 py-0.5 text-[10px] uppercase text-slate-300">
-                        {p.paymentMethod}
+                        {PAYMENT_METHOD_LABELS[p.paymentMethod] ??
+                          p.paymentMethod}
                       </span>
                       <span className="ml-2 text-slate-400">{p.notes}</span>
                     </div>
                     <div className="text-xs text-slate-400">
                       {formatDate(p.createdAt)}
-                      {p.recordedBy?.name && <span className="ml-2">· {p.recordedBy.name}</span>}
+                      {p.recordedBy?.name && (
+                        <span className="ml-2">· {p.recordedBy.name}</span>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -327,7 +439,9 @@ export default function OfflineOrderDetail({ order, business, offlinePolicy }: P
             {order.offlineEmail || order.user?.email || "—"}
           </Label>
         </div>
-        {(order.offlineAddressLine1 || order.offlineCity || order.offlineState) && (
+        {(order.offlineAddressLine1 ||
+          order.offlineCity ||
+          order.offlineState) && (
           <div className="mt-4 rounded-xl bg-[#0F172A] p-4 text-sm text-slate-300">
             {[order.offlineAddressLine1, order.offlineAddressLine2]
               .filter(Boolean)
@@ -345,7 +459,13 @@ export default function OfflineOrderDetail({ order, business, offlinePolicy }: P
       </Card>
 
       {/* Items with internal pricing */}
-      <Card title="Products & Internal Pricing">
+      <section className="rounded-2xl border border-slate-700 bg-[#111827] p-6">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-lg font-bold text-white">
+            Products & Internal Pricing
+          </h2>
+          {canExchange && <OfflineExchange orderId={order.id} />}
+        </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-[#0F172A] text-left text-xs uppercase tracking-wider text-slate-400">
@@ -365,35 +485,77 @@ export default function OfflineOrderDetail({ order, business, offlinePolicy }: P
             </thead>
             <tbody>
               {order.orderitem.map((item) => {
-                const cost = item.costPriceSnapshot != null ? Number(item.costPriceSnapshot) : 0;
-                const online = item.sellingPriceSnapshot != null ? Number(item.sellingPriceSnapshot) : 0;
-                const last = item.lastSellingPriceAtSale != null ? Number(item.lastSellingPriceAtSale) : 0;
-                const actual = item.actualSellingPrice != null ? Number(item.actualSellingPrice) : Number(item.price) || 0;
-                const profit = item.profitAmountAtSale != null ? Number(item.profitAmountAtSale) : 0;
-                const profitP = item.profitPercentAtSale != null ? Number(item.profitPercentAtSale) : 0;
-                const variant = [item.variantGender, item.variantSize].filter(Boolean).join(" / ");
+                const cost =
+                  item.costPriceSnapshot != null
+                    ? Number(item.costPriceSnapshot)
+                    : 0;
+                const online =
+                  item.sellingPriceSnapshot != null
+                    ? Number(item.sellingPriceSnapshot)
+                    : 0;
+                const last =
+                  item.lastSellingPriceAtSale != null
+                    ? Number(item.lastSellingPriceAtSale)
+                    : 0;
+                const actual =
+                  item.actualSellingPrice != null
+                    ? Number(item.actualSellingPrice)
+                    : Number(item.price) || 0;
+                const profit =
+                  item.profitAmountAtSale != null
+                    ? Number(item.profitAmountAtSale)
+                    : 0;
+                const profitP =
+                  item.profitPercentAtSale != null
+                    ? Number(item.profitPercentAtSale)
+                    : 0;
+                const variant = [item.variantGender, item.variantSize]
+                  .filter(Boolean)
+                  .join(" / ");
                 return (
                   <tr key={item.id} className="border-b border-slate-800">
                     <td className="px-3 py-3">
-                      <div className="font-semibold text-white">{item.product.name}</div>
-                      <div className="text-xs text-slate-500">{item.product.category?.name}</div>
+                      <div className="font-semibold text-white">
+                        {item.product.name}
+                      </div>
+                      <div className="text-xs text-slate-500">
+                        {item.product.category?.name}
+                      </div>
                     </td>
-                    <td className="px-3 py-3 text-slate-300">{variant || "—"}</td>
-                    <td className="px-3 py-3 text-center text-slate-300">{item.quantity}</td>
-                    <td className="px-3 py-3 text-right text-slate-400">{formatCurrency(cost)}</td>
-                    <td className="px-3 py-3 text-right text-slate-300">{formatCurrency(online)}</td>
-                    <td className="px-3 py-3 text-right text-indigo-300">{formatCurrency(last)}</td>
-                    <td className="px-3 py-3 text-right font-semibold text-white">{formatCurrency(actual)}</td>
+                    <td className="px-3 py-3 text-slate-300">
+                      {variant || "—"}
+                    </td>
                     <td className="px-3 py-3 text-center text-slate-300">
-                      {item.gstPercentageAtSale != null ? `${item.gstPercentageAtSale}%` : "—"}
+                      {item.quantity}
+                    </td>
+                    <td className="px-3 py-3 text-right text-slate-400">
+                      {formatCurrency(cost)}
+                    </td>
+                    <td className="px-3 py-3 text-right text-slate-300">
+                      {formatCurrency(online)}
+                    </td>
+                    <td className="px-3 py-3 text-right text-indigo-300">
+                      {formatCurrency(last)}
+                    </td>
+                    <td className="px-3 py-3 text-right font-semibold text-white">
+                      {formatCurrency(actual)}
+                    </td>
+                    <td className="px-3 py-3 text-center text-slate-300">
+                      {item.gstPercentageAtSale != null
+                        ? `${item.gstPercentageAtSale}%`
+                        : "—"}
                     </td>
                     <td className="px-3 py-3 text-right text-white">
                       {formatCurrency(Number(item.total ?? 0))}
                     </td>
-                    <td className={`px-3 py-3 text-right ${profit >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                    <td
+                      className={`px-3 py-3 text-right ${profit >= 0 ? "text-emerald-400" : "text-rose-400"}`}
+                    >
                       {formatCurrency(profit * item.quantity)}
                     </td>
-                    <td className={`px-3 py-3 text-right ${profitP >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                    <td
+                      className={`px-3 py-3 text-right ${profitP >= 0 ? "text-emerald-400" : "text-rose-400"}`}
+                    >
                       {profitP}%
                     </td>
                   </tr>
@@ -406,35 +568,59 @@ export default function OfflineOrderDetail({ order, business, offlinePolicy }: P
         {/* Summary */}
         <div className="mt-4 grid grid-cols-2 gap-4 rounded-xl bg-[#0F172A] p-5 sm:grid-cols-3">
           <div>
-            <div className="text-xs uppercase tracking-wide text-slate-500">Total Cost</div>
-            <div className="mt-1 text-lg font-bold text-slate-200">{formatCurrency(totalCost)}</div>
+            <div className="text-xs uppercase tracking-wide text-slate-500">
+              Total Cost
+            </div>
+            <div className="mt-1 text-lg font-bold text-slate-200">
+              {formatCurrency(totalCost)}
+            </div>
           </div>
           <div>
-            <div className="text-xs uppercase tracking-wide text-slate-500">Total Customer Payment</div>
-            <div className="mt-1 text-lg font-bold text-white">{formatCurrency(Number(order.totalAmount))}</div>
+            <div className="text-xs uppercase tracking-wide text-slate-500">
+              Total Customer Payment
+            </div>
+            <div className="mt-1 text-lg font-bold text-white">
+              {formatCurrency(Number(order.totalAmount))}
+            </div>
           </div>
           <div>
-            <div className="text-xs uppercase tracking-wide text-slate-500">Total GST</div>
-            <div className="mt-1 text-lg font-bold text-white">{formatCurrency(Number(order.gst ?? 0))}</div>
+            <div className="text-xs uppercase tracking-wide text-slate-500">
+              Total GST
+            </div>
+            <div className="mt-1 text-lg font-bold text-white">
+              {formatCurrency(Number(order.gst ?? 0))}
+            </div>
           </div>
           <div>
-            <div className="text-xs uppercase tracking-wide text-slate-500">Total Revenue (pre-GST)</div>
-            <div className="mt-1 text-lg font-bold text-white">{formatCurrency(Number(order.subtotal ?? 0))}</div>
+            <div className="text-xs uppercase tracking-wide text-slate-500">
+              Total Revenue (pre-GST)
+            </div>
+            <div className="mt-1 text-lg font-bold text-white">
+              {formatCurrency(Number(order.subtotal ?? 0))}
+            </div>
           </div>
           <div>
-            <div className="text-xs uppercase tracking-wide text-slate-500">Total Profit</div>
-            <div className={`mt-1 text-lg font-bold ${totalProfit >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+            <div className="text-xs uppercase tracking-wide text-slate-500">
+              Total Profit
+            </div>
+            <div
+              className={`mt-1 text-lg font-bold ${totalProfit >= 0 ? "text-emerald-400" : "text-rose-400"}`}
+            >
               {formatCurrency(totalProfit)}
             </div>
           </div>
           <div>
-            <div className="text-xs uppercase tracking-wide text-slate-500">Total Profit %</div>
-            <div className={`mt-1 text-lg font-bold ${totalProfit >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+            <div className="text-xs uppercase tracking-wide text-slate-500">
+              Total Profit %
+            </div>
+            <div
+              className={`mt-1 text-lg font-bold ${totalProfit >= 0 ? "text-emerald-400" : "text-rose-400"}`}
+            >
               {profitPct}%
             </div>
           </div>
         </div>
-      </Card>
+      </section>
 
       {/* Stock movements */}
       {order.stockmovement.length > 0 && (
@@ -446,7 +632,9 @@ export default function OfflineOrderDetail({ order, business, offlinePolicy }: P
                 className="flex items-center justify-between rounded-lg bg-[#0F172A] px-4 py-3 text-sm"
               >
                 <div>
-                  <span className={`font-bold ${m.type === "SALE" ? "text-rose-400" : "text-emerald-400"}`}>
+                  <span
+                    className={`font-bold ${m.type === "SALE" ? "text-rose-400" : "text-emerald-400"}`}
+                  >
                     {m.type}
                   </span>
                   <span className="ml-2 text-slate-300">{m.note}</span>
@@ -463,20 +651,155 @@ export default function OfflineOrderDetail({ order, business, offlinePolicy }: P
         </Card>
       )}
 
+      {/* Exchange / replacement history */}
+      {order.offlineExchanges.length > 0 && (
+        <Card title="Exchange / Replacement History">
+          <div className="space-y-4">
+            {order.offlineExchanges.map((ex) => {
+              const settled =
+                ex.settlementType === "CREDIT"
+                  ? "Store credit issued"
+                  : ex.settlementType === "COLLECT"
+                    ? `Collected via ${
+                        PAYMENT_METHOD_LABELS[ex.paymentMethod ?? ""] ??
+                        ex.paymentMethod ??
+                        "—"
+                      }`
+                    : "No value difference";
+              return (
+                <div
+                  key={ex.id}
+                  className="rounded-xl border border-slate-700 bg-[#0F172A] p-4"
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <div className="font-bold text-white">
+                        {ex.exchangeNumber}
+                      </div>
+                      <div className="text-xs text-slate-400">
+                        {formatDateTime(ex.createdAt)} ·{" "}
+                        {ex.type === "PRODUCT"
+                          ? "Product replacement"
+                          : "Size change"}
+                        {ex.createdBy?.name ? ` · ${ex.createdBy.name}` : ""}
+                      </div>
+                    </div>
+                    <a
+                      href={`/api/admin/offline/exchanges/${ex.id}/invoice`}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-slate-600 bg-slate-800 px-3 py-1.5 text-xs font-semibold text-slate-100 transition hover:bg-slate-700"
+                    >
+                      <Download size={14} />
+                      Exchange Invoice
+                    </a>
+                  </div>
+
+                  <div className="mt-3 space-y-2">
+                    {ex.items.map((it) => {
+                      const returnedVariant = [
+                        it.returnedVariantGender,
+                        it.returnedVariantSize,
+                      ]
+                        .filter(Boolean)
+                        .join(" / ");
+                      const issuedVariant = [
+                        it.issuedVariantGender,
+                        it.issuedVariantSize,
+                      ]
+                        .filter(Boolean)
+                        .join(" / ");
+                      const diff = Number(it.differenceAmount);
+                      return (
+                        <div
+                          key={it.id}
+                          className="grid grid-cols-1 gap-1 rounded-lg bg-[#111827] px-3 py-2 text-xs sm:grid-cols-[1fr_auto_1fr_auto] sm:items-center sm:gap-3"
+                        >
+                          <div className="text-slate-400">
+                            <span className="font-semibold text-slate-200">
+                              {it.returnedProductName}
+                            </span>
+                            {returnedVariant && ` · ${returnedVariant}`}
+                          </div>
+                          <div className="hidden text-slate-500 sm:block">
+                            →
+                          </div>
+                          <div className="text-slate-400">
+                            <span className="font-semibold text-emerald-300">
+                              {it.issuedProductName}
+                            </span>
+                            {issuedVariant && ` · ${issuedVariant}`}
+                          </div>
+                          <div
+                            className={`text-right font-bold ${
+                              diff > 0
+                                ? "text-amber-400"
+                                : diff < 0
+                                  ? "text-emerald-400"
+                                  : "text-slate-400"
+                            }`}
+                          >
+                            {formatCurrency(diff)}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-xs text-slate-400">
+                    <span>
+                      Returned:{" "}
+                      <span className="font-semibold text-slate-200">
+                        {formatCurrency(Number(ex.returnedValue))}
+                      </span>
+                    </span>
+                    <span>
+                      Issued:{" "}
+                      <span className="font-semibold text-slate-200">
+                        {formatCurrency(Number(ex.issuedValue))}
+                      </span>
+                    </span>
+                    <span>
+                      Settlement:{" "}
+                      <span
+                        className={`font-semibold ${
+                          ex.settlementType === "CREDIT"
+                            ? "text-emerald-400"
+                            : ex.settlementType === "COLLECT"
+                              ? "text-amber-400"
+                              : "text-slate-300"
+                        }`}
+                      >
+                        {settled} ·{" "}
+                        {formatCurrency(Number(ex.settlementAmount))}
+                      </span>
+                    </span>
+                  </div>
+
+                  {ex.notes && (
+                    <p className="mt-2 text-xs text-slate-500">{ex.notes}</p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      )}
+
       {/* Customer invoice (print target) */}
       <Card title="Customer Invoice">
         <p className="mb-4 text-sm text-slate-400">
-          This invoice shows customer-facing information only (no internal cost / profit values).
+          This invoice shows customer-facing information only (no internal cost
+          / profit values).
         </p>
-        <OfflineInvoice order={invoiceOrder} business={business} offlinePolicy={offlinePolicy} />
+        <OfflineInvoice
+          order={invoiceOrder}
+          business={business}
+          offlinePolicy={offlinePolicy}
+        />
       </Card>
     </div>
   );
 }
 
 function isDraftOrder(order: OrderShape): boolean {
-  return (
-    order.status === "PENDING" &&
-    order.paymentStatus !== "PAID"
-  );
+  return order.status === "PENDING" && order.paymentStatus !== "PAID";
 }

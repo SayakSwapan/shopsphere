@@ -707,241 +707,249 @@ async function createOrderAndItems(opts: {
 
   const orderNumber = await buildOfflineOrderNumber();
 
-  const result = await prisma.$transaction(async (tx) => {
-    const order = await tx.order.create({
-      data: {
-        id: crypto.randomUUID(),
-        orderNumber,
-        userId: customerUser.userId,
-        createdById: adminId,
-        isWalkIn: customerUser.isWalkIn,
-        orderType: "OFFLINE",
-        status: isComplete ? "PAID" : "PENDING",
-        paymentStatus: isComplete ? "PAID" : "PENDING",
-        paymentMethod: paymentMethod as "CASH",
-        totalAmount: totalForPayment,
-        transactionFee,
-        subtotal: round2(subtotal),
-        gst: round2(gst),
-        shipping,
-        discount,
-        comboDiscount:
-          comboAdjust.comboSavingsBase > 0
-            ? comboAdjust.comboSavingsBase
-            : null,
-        loyaltyPurchaseCounted: false,
-        loyaltyRewardApplied: loyaltyDiscount > 0,
-        loyaltyRewardId,
-        loyaltyDiscountAmount: loyaltyDiscount > 0 ? loyaltyDiscount : null,
-        fullName: (input.customer.name || "").trim() || "Walk-in Customer",
-        phone: (input.customer.phone || "").trim(),
-        addressLine1: (input.customer.addressLine1 || "").trim(),
-        addressLine2: (input.customer.addressLine2 || "").trim() || null,
-        city: (input.customer.city || "").trim() || "",
-        state: (input.customer.state || "").trim() || "",
-        pincode: (input.customer.pincode || "").trim() || "",
-        country: "India",
-        offlineEmail: (input.customer.email || "").trim() || null,
-        offlineAddressLine1: (input.customer.addressLine1 || "").trim() || null,
-        offlineAddressLine2: (input.customer.addressLine2 || "").trim() || null,
-        offlineCity: (input.customer.city || "").trim() || null,
-        offlineState: (input.customer.state || "").trim() || null,
-        offlinePincode: (input.customer.pincode || "").trim() || null,
-        paidAt: isComplete ? new Date() : null,
-        paidAmount,
-        dueAmount,
-        isPartialPayment: isPartial,
-        // Marked so the generic order-status fulfilment route never re-decrements.
-        inventoryUpdated: isComplete,
-        updatedAt: new Date(),
-      },
-    });
-
-    for (const { resolved: r, line, pricing, combo } of resolved) {
-      // Validate stock BEFORE write to avoid negative stock (draft skipped).
-      if (isComplete) {
-        if (line.quantity > r.availableStock) {
-          throw new OfflineSaleError(
-            `Insufficient stock available for "${r.product.name}". Available: ${r.availableStock}.`,
-          );
-        }
-      }
-
-      await tx.orderitem.create({
+  const result = await prisma.$transaction(
+    async (tx) => {
+      const order = await tx.order.create({
         data: {
           id: crypto.randomUUID(),
-          orderId: order.id,
-          productId: line.productId,
-          quantity: line.quantity,
-          price: pricing.base,
-          total: pricing.lineTotal,
-          sellingPriceSnapshot: pricing.onlineSellingPrice,
-          mrpSnapshot: r.product.sellingPrice,
-          costPriceSnapshot: pricing.costPrice,
-          gstSnapshot: pricing.gstAmount,
-          discountSnapshot: 0,
-          comboDiscountSnapshot: combo ? round2(combo.discountUnitBase) : 0,
-          lastSellingPriceAtSale: pricing.lastSellingPrice,
-          actualSellingPrice: pricing.actualSellingPrice,
-          gstPercentageAtSale: pricing.gstPercentage,
-          gstAmountAtSale: pricing.gstAmount,
-          profitAmountAtSale: pricing.profit,
-          profitPercentAtSale: pricing.profitPercent,
-          variantSku: r.variant?.sku ?? null,
-          variantSize: r.variant?.size?.sizeName ?? null,
-          variantGender: r.variant?.gender?.name ?? null,
-          customization: undefined,
+          orderNumber,
+          userId: customerUser.userId,
+          createdById: adminId,
+          isWalkIn: customerUser.isWalkIn,
+          orderType: "OFFLINE",
+          status: isComplete ? "PAID" : "PENDING",
+          paymentStatus: isComplete ? "PAID" : "PENDING",
+          paymentMethod: paymentMethod as "CASH",
+          totalAmount: totalForPayment,
+          transactionFee,
+          subtotal: round2(subtotal),
+          gst: round2(gst),
+          shipping,
+          discount,
+          comboDiscount:
+            comboAdjust.comboSavingsBase > 0
+              ? comboAdjust.comboSavingsBase
+              : null,
+          loyaltyPurchaseCounted: false,
+          loyaltyRewardApplied: loyaltyDiscount > 0,
+          loyaltyRewardId,
+          loyaltyDiscountAmount: loyaltyDiscount > 0 ? loyaltyDiscount : null,
+          fullName: (input.customer.name || "").trim() || "Walk-in Customer",
+          phone: (input.customer.phone || "").trim(),
+          addressLine1: (input.customer.addressLine1 || "").trim(),
+          addressLine2: (input.customer.addressLine2 || "").trim() || null,
+          city: (input.customer.city || "").trim() || "",
+          state: (input.customer.state || "").trim() || "",
+          pincode: (input.customer.pincode || "").trim() || "",
+          country: "India",
+          offlineEmail: (input.customer.email || "").trim() || null,
+          offlineAddressLine1:
+            (input.customer.addressLine1 || "").trim() || null,
+          offlineAddressLine2:
+            (input.customer.addressLine2 || "").trim() || null,
+          offlineCity: (input.customer.city || "").trim() || null,
+          offlineState: (input.customer.state || "").trim() || null,
+          offlinePincode: (input.customer.pincode || "").trim() || null,
+          paidAt: isComplete ? new Date() : null,
+          paidAmount,
+          dueAmount,
+          isPartialPayment: isPartial,
+          // Marked so the generic order-status fulfilment route never re-decrements.
+          inventoryUpdated: isComplete,
+          updatedAt: new Date(),
         },
       });
 
-      if (isComplete) {
-        // Deduct variant-level stock, then product-level stock.
-        if (r.variant) {
-          const beforeV = r.variant.stock;
-          await tx.productvariant.update({
-            where: { id: r.variant.id },
-            data: { stock: { decrement: line.quantity } },
-          });
-          await tx.stockmovement.create({
+      for (const { resolved: r, line, pricing, combo } of resolved) {
+        // Validate stock BEFORE write to avoid negative stock (draft skipped).
+        if (isComplete) {
+          if (line.quantity > r.availableStock) {
+            throw new OfflineSaleError(
+              `Insufficient stock available for "${r.product.name}". Available: ${r.availableStock}.`,
+            );
+          }
+        }
+
+        await tx.orderitem.create({
+          data: {
+            id: crypto.randomUUID(),
+            orderId: order.id,
+            productId: line.productId,
+            quantity: line.quantity,
+            price: pricing.base,
+            total: pricing.lineTotal,
+            sellingPriceSnapshot: pricing.onlineSellingPrice,
+            mrpSnapshot: r.product.sellingPrice,
+            costPriceSnapshot: pricing.costPrice,
+            gstSnapshot: pricing.gstAmount,
+            discountSnapshot: 0,
+            comboDiscountSnapshot: combo ? round2(combo.discountUnitBase) : 0,
+            lastSellingPriceAtSale: pricing.lastSellingPrice,
+            actualSellingPrice: pricing.actualSellingPrice,
+            gstPercentageAtSale: pricing.gstPercentage,
+            gstAmountAtSale: pricing.gstAmount,
+            profitAmountAtSale: pricing.profit,
+            profitPercentAtSale: pricing.profitPercent,
+            variantSku: r.variant?.sku ?? null,
+            variantSize: r.variant?.size?.sizeName ?? null,
+            variantGender: r.variant?.gender?.name ?? null,
+            customization: undefined,
+          },
+        });
+
+        if (isComplete) {
+          // Deduct variant-level stock, then product-level stock.
+          if (r.variant) {
+            const beforeV = r.variant.stock;
+            await tx.productvariant.update({
+              where: { id: r.variant.id },
+              data: { stock: { decrement: line.quantity } },
+            });
+            await tx.stockmovement.create({
+              data: {
+                id: crypto.randomUUID(),
+                productId: line.productId,
+                variantId: r.variant.id,
+                orderId: order.id,
+                orderType: "OFFLINE",
+                referenceOrder: orderNumber,
+                type: "SALE",
+                quantity: line.quantity,
+                beforeQuantity: beforeV,
+                afterQuantity: beforeV - line.quantity,
+                note: `Offline sale (${paymentMethod}) — ${line.quantity} × ${r.product.name}`,
+              },
+            });
+          }
+
+          await tx.product.update({
+            where: { id: line.productId },
             data: {
-              id: crypto.randomUUID(),
-              productId: line.productId,
-              variantId: r.variant.id,
-              orderId: order.id,
-              orderType: "OFFLINE",
-              referenceOrder: orderNumber,
-              type: "SALE",
-              quantity: line.quantity,
-              beforeQuantity: beforeV,
-              afterQuantity: beforeV - line.quantity,
-              note: `Offline sale (${paymentMethod}) — ${line.quantity} × ${r.product.name}`,
+              stock: { decrement: line.quantity },
+              totalSold: { increment: line.quantity },
             },
           });
         }
+      }
 
-        await tx.product.update({
-          where: { id: line.productId },
-          data: {
-            stock: { decrement: line.quantity },
-            totalSold: { increment: line.quantity },
-          },
+      // Combo offer finance tracking: snapshot every applied offer onto the
+      // order so the admin Combo Offers finance view can attribute revenue and
+      // discounts per offer over time (per-unit numbers live on the order items).
+      if (comboAdjust.applied.length > 0) {
+        await tx.comboSale.createMany({
+          data: comboAdjust.applied.map((a) => ({
+            id: crypto.randomUUID(),
+            orderId: order.id,
+            orderType: "OFFLINE",
+            comboOfferId: a.offerId,
+            title: a.title,
+            unitsSold: a.unitsSold ?? 0,
+            discountBase: a.discountBase ?? 0,
+          })),
         });
       }
-    }
 
-    // Combo offer finance tracking: snapshot every applied offer onto the
-    // order so the admin Combo Offers finance view can attribute revenue and
-    // discounts per offer over time (per-unit numbers live on the order items).
-    if (comboAdjust.applied.length > 0) {
-      await tx.comboSale.createMany({
-        data: comboAdjust.applied.map((a) => ({
+      // Payment transaction record (offline = settled immediately, no gateway).
+      await tx.paymentTransaction.create({
+        data: {
           id: crypto.randomUUID(),
           orderId: order.id,
-          orderType: "OFFLINE",
-          comboOfferId: a.offerId,
-          title: a.title,
-          unitsSold: a.unitsSold ?? 0,
-          discountBase: a.discountBase ?? 0,
-        })),
+          gateway: "OFFLINE",
+          paymentMethod: paymentMethod,
+          grossAmount: paidAmount,
+          gatewayFee: 0,
+          gatewayGST: 0,
+          netSettlement: paidAmount,
+          settlementStatus: isComplete ? "SETTLED" : "PENDING",
+          paymentStatus: isComplete ? "PAID" : "PENDING",
+        },
       });
-    }
 
-    // Payment transaction record (offline = settled immediately, no gateway).
-    await tx.paymentTransaction.create({
-      data: {
-        id: crypto.randomUUID(),
-        orderId: order.id,
-        gateway: "OFFLINE",
-        paymentMethod: paymentMethod,
-        grossAmount: paidAmount,
-        gatewayFee: 0,
-        gatewayGST: 0,
-        netSettlement: paidAmount,
-        settlementStatus: isComplete ? "SETTLED" : "PENDING",
-        paymentStatus: isComplete ? "PAID" : "PENDING",
-      },
-    });
-
-    // Record the upfront payment against the offline payment ledger (only for
-    // completed sales). Store credit is spent from the wallet and recorded as
-    // its own ledger line so the cash portion stays explicit.
-    if (isComplete) {
-      if (creditUsed > 0) {
-        await useCredit({
-          customerId: customerUser.userId,
-          amount: creditUsed,
-          reason: `Store credit applied to offline sale ${orderNumber}`,
-          orderId: order.id,
-          recordedById: adminId,
-          client: tx,
-        });
-        await tx.offlinepayment.create({
-          data: {
-            orderId: order.id,
+      // Record the upfront payment against the offline payment ledger (only for
+      // completed sales). Store credit is spent from the wallet and recorded as
+      // its own ledger line so the cash portion stays explicit.
+      if (isComplete) {
+        if (creditUsed > 0) {
+          await useCredit({
+            customerId: customerUser.userId,
             amount: creditUsed,
-            paymentMethod: "STORE_CREDIT",
-            notes: "Store credit applied",
-            recordedById: adminId,
-          },
-        });
-      }
-      if (cashPaid > 0) {
-        await tx.offlinepayment.create({
-          data: {
+            reason: `Store credit applied to offline sale ${orderNumber}`,
             orderId: order.id,
-            amount: cashPaid,
-            paymentMethod,
-            notes:
-              creditUsed > 0
-                ? "Cash/other portion collected at sale"
-                : "Upfront payment at sale",
             recordedById: adminId,
-          },
-        });
-      }
-    }
-
-    // Loyalty integration — must run inside the same transaction.
-    if (isComplete) {
-      if (loyaltyDiscount > 0) {
-        // Redeem the reward (resets cycle, records redemption).
-        const redemption = await redeemLoyaltyReward(tx, {
-          customerId: customerUser.userId,
-          orderId: order.id,
-          orderAmount: totalAmount,
-          source: "OFFLINE",
-        });
-        if (redemption) {
-          await tx.order.update({
-            where: { id: order.id },
+            client: tx,
+          });
+          await tx.offlinepayment.create({
             data: {
-              loyaltyCycleId: redemption.cycleId,
-              loyaltyPurchaseCounted: true,
+              orderId: order.id,
+              amount: creditUsed,
+              paymentMethod: "STORE_CREDIT",
+              notes: "Store credit applied",
+              recordedById: adminId,
             },
           });
         }
-      } else {
-        // Count this sale toward loyalty progress.
-        const { counted } = await countEligiblePurchase(
-          {
+        if (cashPaid > 0) {
+          await tx.offlinepayment.create({
+            data: {
+              orderId: order.id,
+              amount: cashPaid,
+              paymentMethod,
+              notes:
+                creditUsed > 0
+                  ? "Cash/other portion collected at sale"
+                  : "Upfront payment at sale",
+              recordedById: adminId,
+            },
+          });
+        }
+      }
+
+      // Loyalty integration — must run inside the same transaction.
+      if (isComplete) {
+        if (loyaltyDiscount > 0) {
+          // Redeem the reward (resets cycle, records redemption).
+          const redemption = await redeemLoyaltyReward(tx, {
             customerId: customerUser.userId,
             orderId: order.id,
             orderAmount: totalAmount,
             source: "OFFLINE",
-          },
-          tx,
-        );
-        if (counted) {
-          await tx.order.update({
-            where: { id: order.id },
-            data: { loyaltyPurchaseCounted: true },
           });
+          if (redemption) {
+            await tx.order.update({
+              where: { id: order.id },
+              data: {
+                loyaltyCycleId: redemption.cycleId,
+                loyaltyPurchaseCounted: true,
+              },
+            });
+          }
+        } else {
+          // Count this sale toward loyalty progress.
+          const { counted } = await countEligiblePurchase(
+            {
+              customerId: customerUser.userId,
+              orderId: order.id,
+              orderAmount: totalAmount,
+              source: "OFFLINE",
+            },
+            tx,
+          );
+          if (counted) {
+            await tx.order.update({
+              where: { id: order.id },
+              data: { loyaltyPurchaseCounted: true },
+            });
+          }
         }
       }
-    }
 
-    return order;
-  });
+      return order;
+    },
+    {
+      maxWait: 10_000,
+      timeout: 15_000,
+    },
+  );
 
   // Fire-and-forget: send invoice email for fully-paid offline sales.
   if (isComplete && !isPartial) {

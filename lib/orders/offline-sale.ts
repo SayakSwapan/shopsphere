@@ -1052,130 +1052,139 @@ export async function completeOfflineOrder(opts: {
   }
   const dueAmount = round2(totalAmount - paidAmount);
 
-  await prisma.$transaction(async (tx) => {
-    // Validate all stock is still available before committing.
-    for (const item of order.orderitem) {
-      const product = await tx.product.findUnique({
-        where: { id: item.productId },
-        select: { id: true, stock: true, name: true },
-      });
-      if (!product) throw new OfflineSaleError("Product not found.");
-      if (item.quantity > product.stock) {
-        throw new OfflineSaleError(
-          `Insufficient stock available for "${product.name}". Available: ${product.stock}.`,
-        );
+  await prisma.$transaction(
+    async (tx) => {
+      // Validate all stock is still available before committing.
+      for (const item of order.orderitem) {
+        const product = await tx.product.findUnique({
+          where: { id: item.productId },
+          select: { id: true, stock: true, name: true },
+        });
+        if (!product) throw new OfflineSaleError("Product not found.");
+        if (item.quantity > product.stock) {
+          throw new OfflineSaleError(
+            `Insufficient stock available for "${product.name}". Available: ${product.stock}.`,
+          );
+        }
+
+        await tx.product.update({
+          where: { id: item.productId },
+          data: {
+            stock: { decrement: item.quantity },
+            totalSold: { increment: item.quantity },
+          },
+        });
+
+        const variant = item.variantSku
+          ? await tx.productvariant.findFirst({
+              where: { productId: item.productId, sku: item.variantSku },
+            })
+          : null;
+        if (variant) {
+          if (item.quantity > variant.stock) {
+            throw new OfflineSaleError(
+              `Insufficient variant stock available. Available: ${variant.stock}.`,
+            );
+          }
+          const beforeV = variant.stock;
+          await tx.productvariant.update({
+            where: { id: variant.id },
+            data: { stock: { decrement: item.quantity } },
+          });
+          await tx.stockmovement.create({
+            data: {
+              id: crypto.randomUUID(),
+              productId: item.productId,
+              variantId: variant.id,
+              orderId: order.id,
+              orderType: "OFFLINE",
+              referenceOrder: order.orderNumber,
+              type: "SALE",
+              quantity: item.quantity,
+              beforeQuantity: beforeV,
+              afterQuantity: beforeV - item.quantity,
+              note: `Offline sale (${opts.paymentMethod}) — ${item.quantity} × ${product.name ?? "product"}`,
+            },
+          });
+        }
       }
 
-      await tx.product.update({
-        where: { id: item.productId },
+      await tx.order.update({
+        where: { id: order.id },
         data: {
-          stock: { decrement: item.quantity },
-          totalSold: { increment: item.quantity },
+          status: "PAID",
+          paymentStatus: isPartial ? "PENDING" : "PAID",
+          paymentMethod: opts.paymentMethod as "CASH",
+          paidAt: new Date(),
+          paidAmount,
+          dueAmount,
+          isPartialPayment: isPartial,
+          inventoryUpdated: true,
+          updatedAt: new Date(),
         },
       });
 
-      const variant = item.variantSku
-        ? await tx.productvariant.findFirst({
-            where: { productId: item.productId, sku: item.variantSku },
-          })
-        : null;
-      if (variant) {
-        if (item.quantity > variant.stock) {
-          throw new OfflineSaleError(
-            `Insufficient variant stock available. Available: ${variant.stock}.`,
-          );
-        }
-        const beforeV = variant.stock;
-        await tx.productvariant.update({
-          where: { id: variant.id },
-          data: { stock: { decrement: item.quantity } },
+      await tx.paymentTransaction.updateMany({
+        where: { orderId: order.id },
+        data: {
+          paymentMethod: opts.paymentMethod,
+          paymentStatus: isPartial ? "PENDING" : "PAID",
+          settlementStatus: isPartial ? "PARTIALLY_SETTLED" : "SETTLED",
+          grossAmount: paidAmount,
+          netSettlement: paidAmount,
+          settlementDate: new Date(),
+        },
+      });
+
+      // Record the upfront payment into the offline payment ledger. Store
+      // credit is spent from the wallet as its own ledger line so the cash
+      // portion remains explicit.
+      if (creditUsed > 0) {
+        await useCredit({
+          customerId: order.userId,
+          amount: creditUsed,
+          reason: `Store credit applied to offline order ${order.orderNumber}`,
+          orderId: order.id,
+          recordedById: opts.recordedById ?? null,
+          client: tx,
         });
-        await tx.stockmovement.create({
+        await tx.offlinepayment.create({
           data: {
-            id: crypto.randomUUID(),
-            productId: item.productId,
-            variantId: variant.id,
             orderId: order.id,
-            orderType: "OFFLINE",
-            referenceOrder: order.orderNumber,
-            type: "SALE",
-            quantity: item.quantity,
-            beforeQuantity: beforeV,
-            afterQuantity: beforeV - item.quantity,
-            note: `Offline sale (${opts.paymentMethod}) — ${item.quantity} × ${product.name ?? "product"}`,
+            amount: creditUsed,
+            paymentMethod: "STORE_CREDIT",
+            notes: "Store credit applied",
+            recordedById: opts.recordedById ?? null,
           },
         });
       }
-    }
-
-    await tx.order.update({
-      where: { id: order.id },
-      data: {
-        status: "PAID",
-        paymentStatus: isPartial ? "PENDING" : "PAID",
-        paymentMethod: opts.paymentMethod as "CASH",
-        paidAt: new Date(),
-        paidAmount,
-        dueAmount,
-        isPartialPayment: isPartial,
-        inventoryUpdated: true,
-        updatedAt: new Date(),
-      },
-    });
-
-    await tx.paymentTransaction.updateMany({
-      where: { orderId: order.id },
-      data: {
-        paymentMethod: opts.paymentMethod,
-        paymentStatus: isPartial ? "PENDING" : "PAID",
-        settlementStatus: isPartial ? "PARTIALLY_SETTLED" : "SETTLED",
-        grossAmount: paidAmount,
-        netSettlement: paidAmount,
-        settlementDate: new Date(),
-      },
-    });
-
-    // Record the upfront payment into the offline payment ledger. Store
-    // credit is spent from the wallet as its own ledger line so the cash
-    // portion remains explicit.
-    if (creditUsed > 0) {
-      await useCredit({
-        customerId: order.userId,
-        amount: creditUsed,
-        reason: `Store credit applied to offline order ${order.orderNumber}`,
-        orderId: order.id,
-        recordedById: opts.recordedById ?? null,
-        client: tx,
-      });
-      await tx.offlinepayment.create({
-        data: {
-          orderId: order.id,
-          amount: creditUsed,
-          paymentMethod: "STORE_CREDIT",
-          notes: "Store credit applied",
-          recordedById: opts.recordedById ?? null,
-        },
-      });
-    }
-    if (cashPaid > 0 || creditUsed <= 0) {
-      await tx.offlinepayment.create({
-        data: {
-          orderId: order.id,
-          amount: cashPaid,
-          paymentMethod: opts.paymentMethod,
-          notes:
-            creditUsed > 0
-              ? isPartial
-                ? "Cash portion (due sale opened)"
-                : "Cash portion at sale"
-              : isPartial
-                ? "Upfront payment (due sale opened)"
-                : "Full payment at sale",
-          recordedById: opts.recordedById ?? null,
-        },
-      });
-    }
-  });
+      if (cashPaid > 0 || creditUsed <= 0) {
+        await tx.offlinepayment.create({
+          data: {
+            orderId: order.id,
+            amount: cashPaid,
+            paymentMethod: opts.paymentMethod,
+            notes:
+              creditUsed > 0
+                ? isPartial
+                  ? "Cash portion (due sale opened)"
+                  : "Cash portion at sale"
+                : isPartial
+                  ? "Upfront payment (due sale opened)"
+                  : "Full payment at sale",
+            recordedById: opts.recordedById ?? null,
+          },
+        });
+      }
+    },
+    {
+      // Completing a draft performs inventory, payment, and ledger writes in
+      // one atomic transaction. This path can legitimately exceed Prisma's
+      // 5-second interactive transaction default on a busy database.
+      maxWait: 10_000,
+      timeout: 15_000,
+    },
+  );
 
   createAdminNotification({
     title: isPartial ? "Offline Due Sale Opened" : "Offline Sale Completed",

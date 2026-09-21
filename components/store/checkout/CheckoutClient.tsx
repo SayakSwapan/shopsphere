@@ -117,7 +117,6 @@ interface Props {
   restrictedItems?: RestrictedItem[];
   totalWeightGrams: number;
   freeShippingThreshold: number | null;
-  amountNeeded: number;
 }
 
 export default function CheckoutClient({
@@ -129,7 +128,6 @@ export default function CheckoutClient({
   pincodeInfo: initialPincodeInfo,
   restrictedItems: initialRestrictedItems = [],
   freeShippingThreshold,
-  amountNeeded,
 }: Props) {
   const router = useRouter();
 
@@ -240,17 +238,43 @@ export default function CheckoutClient({
     [addressList, selectedAddressId],
   );
 
+  const liveSubtotal = (() => {
+    let value = subtotal;
+    for (const item of items) {
+      const qty = effectiveQty(item);
+      const savedPrint = customizationUnitPrice(item.customization);
+      const livePrint = customizationUnitPrice(effectiveCustomization(item));
+      value += (livePrint - savedPrint) * qty;
+      if (qtyOverrides[item.id] !== undefined) {
+        const base =
+          item.product.salePrice && item.product.salePrice > 0
+            ? item.product.salePrice
+            : item.product.sellingPrice;
+        value += base * (qty - item.quantity);
+      }
+      if (removedIds.has(item.id)) {
+        const base =
+          item.product.salePrice && item.product.salePrice > 0
+            ? item.product.salePrice
+            : item.product.sellingPrice;
+        value -= (base + livePrint) * item.quantity;
+      }
+    }
+    return Math.max(0, Number(value.toFixed(2)));
+  })();
+
   const couponDiscount = useMemo(() => {
     if (!selectedCoupon) return 0;
     const dv = Number(selectedCoupon.discountValue);
     const md = selectedCoupon.maxDiscount
       ? Number(selectedCoupon.maxDiscount)
       : null;
-    let d = selectedCoupon.discountType === "FLAT" ? dv : (subtotal * dv) / 100;
+    let d =
+      selectedCoupon.discountType === "FLAT" ? dv : (liveSubtotal * dv) / 100;
     if (md !== null && d > md) d = md;
-    if (d > subtotal) d = subtotal;
+    if (d > liveSubtotal) d = liveSubtotal;
     return Number(d.toFixed(2));
-  }, [selectedCoupon, subtotal]);
+  }, [selectedCoupon, liveSubtotal]);
 
   // Load the customer's loyalty status once on mount so they can apply their
   // unlocked reward at checkout.
@@ -276,8 +300,26 @@ export default function CheckoutClient({
 
   const effectiveShipping = useMemo(() => {
     if (selectedCoupon?.freeShipping) return 0;
+    if (visibleItems.length === 0) return 0;
+    if (
+      freeShippingThreshold !== null &&
+      liveSubtotal >= freeShippingThreshold
+    ) {
+      return 0;
+    }
     return initialShipping;
-  }, [selectedCoupon, initialShipping]);
+  }, [
+    selectedCoupon,
+    initialShipping,
+    visibleItems.length,
+    liveSubtotal,
+    freeShippingThreshold,
+  ]);
+
+  const liveAmountNeeded =
+    freeShippingThreshold === null
+      ? 0
+      : Math.max(0, Number((freeShippingThreshold - liveSubtotal).toFixed(2)));
 
   const itemTotalInclGst = useMemo(() => {
     // Server-computed total (subtotal + gst) plus the GST-inclusive delta of
@@ -1189,7 +1231,7 @@ export default function CheckoutClient({
               {!selectedCoupon?.freeShipping &&
                 effectiveShipping > 0 &&
                 freeShippingThreshold !== null &&
-                amountNeeded > 0 && (
+                liveAmountNeeded > 0 && (
                   <div
                     className="-mx-1 px-4 py-3"
                     style={{
@@ -1209,7 +1251,7 @@ export default function CheckoutClient({
                       <p className="text-xs font-semibold text-text-heading">
                         Add{" "}
                         <span className="font-black text-primary">
-                          ₹{amountNeeded.toLocaleString("en-IN")}
+                          ₹{liveAmountNeeded.toLocaleString("en-IN")}
                         </span>{" "}
                         more to get free shipping!{" "}
                         <span className="font-normal text-text-muted-2">
@@ -1543,7 +1585,7 @@ export default function CheckoutClient({
             </button>
           </div>
           <CouponSelector
-            subtotal={subtotal}
+            subtotal={liveSubtotal}
             selectedCoupon={selectedCoupon}
             onSelect={(c) => {
               setSelectedCoupon(c);

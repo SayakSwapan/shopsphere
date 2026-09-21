@@ -187,7 +187,6 @@ export default async function CheckoutPage() {
         restrictedItems={restrictedItems}
         totalWeightGrams={shippingResult.weightGrams}
         freeShippingThreshold={shippingResult.freeShippingThreshold}
-        amountNeeded={shippingResult.amountNeeded}
       />
 
       <Footer />

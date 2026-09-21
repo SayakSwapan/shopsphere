@@ -7,6 +7,7 @@ interface ModalProps {
   onClose: () => void;
   children: ReactNode;
   maxWidth?: string;
+  themeSurface?: boolean;
 }
 
 export default function Modal({
@@ -14,6 +15,7 @@ export default function Modal({
   onClose,
   children,
   maxWidth = "max-w-md",
+  themeSurface = false,
 }: ModalProps) {
   useEffect(() => {
     if (!open) return;
@@ -52,7 +54,7 @@ export default function Modal({
         onClick={(e) => e.stopPropagation()}
         className={`relative w-full ${maxWidth} rounded-[32px] overflow-hidden border shadow-2xl`}
         style={{
-          background: "rgba(17,24,39,.82)",
+          background: themeSurface ? "var(--t-bg-card)" : "rgba(17,24,39,.82)",
           backdropFilter: "blur(25px)",
           WebkitBackdropFilter: "blur(25px)",
           borderColor: "rgba(255,255,255,.08)",

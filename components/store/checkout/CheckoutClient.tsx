@@ -944,14 +944,14 @@ export default function CheckoutClient({
             </section>
           )}
 
-          {/* Coupons — compact, popup-style. Functionality unchanged. */}
+          {/* Coupon picker */}
           <section
             className="overflow-hidden border border-border-card bg-bg-card"
             style={{ borderRadius: "var(--t-radius-card)" }}
           >
-            <div className="flex items-center gap-3 border-b border-border-subtle px-4 sm:px-6 py-4 sm:py-5">
+            <div className="flex items-center gap-3 border-b border-border-subtle px-4 py-4 sm:px-6 sm:py-5">
               <div
-                className="flex h-8 w-8 items-center justify-center"
+                className="flex h-9 w-9 shrink-0 items-center justify-center"
                 style={{
                   borderRadius: "var(--t-radius-card)",
                   background:
@@ -967,15 +967,17 @@ export default function CheckoutClient({
                 >
                   Step 3
                 </p>
-                <h2 className="text-lg font-bold text-text-heading">Coupon</h2>
+                <h2 className="text-lg font-bold text-text-heading">
+                  Offers & coupons
+                </h2>
               </div>
             </div>
             <div className="p-4 sm:p-6">
-              <div className="flex items-center justify-between gap-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <button
                   type="button"
                   onClick={() => setShowCouponModal(true)}
-                  className="inline-flex min-w-0 flex-1 items-center justify-center gap-2 px-4 py-3.5 text-sm font-black uppercase tracking-wider transition bg-bg-card-nested hover:opacity-90"
+                  className="inline-flex min-h-12 min-w-0 flex-1 items-center justify-center gap-2 px-4 py-3 text-sm font-black uppercase tracking-wider transition bg-bg-card-nested hover:opacity-90"
                   style={{
                     borderRadius: "var(--t-radius-button)",
                     fontFamily: "var(--t-font-heading)",
@@ -988,14 +990,14 @@ export default function CheckoutClient({
                   type="button"
                   onClick={() => setSelectedCoupon(null)}
                   disabled={!selectedCoupon}
-                  className="shrink-0 text-xs font-bold uppercase tracking-wider text-danger transition hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-30"
+                  className="self-end px-1 text-xs font-bold uppercase tracking-wider text-danger transition hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-30 sm:self-auto"
                 >
                   Remove
                 </button>
               </div>
               {selectedCoupon && (
                 <div
-                  className="mt-3 flex items-center justify-between gap-2 border px-4 py-3"
+                  className="mt-3 flex items-center justify-between gap-3 border px-4 py-3.5"
                   style={{
                     borderRadius: "var(--t-radius-input)",
                     borderColor:
@@ -1560,8 +1562,9 @@ export default function CheckoutClient({
         open={showCouponModal}
         onClose={() => setShowCouponModal(false)}
         maxWidth="max-w-lg"
+        themeSurface
       >
-        <div className="p-6 sm:p-8">
+        <div className="max-h-[min(760px,calc(100vh-2rem))] overflow-y-auto p-4 sm:p-7">
           <div className="mb-5 flex items-start justify-between gap-3">
             <div>
               <h2

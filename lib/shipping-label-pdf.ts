@@ -51,6 +51,7 @@ export interface ShippingLabelData {
   items: ShippingLabelItem[];
   soldBy: {
     name: string;
+    logo?: string;
     address?: string;
     phone?: string;
     email?: string;
@@ -72,6 +73,33 @@ function truncateLines(lines: string[], max: number) {
   const trimmed = lines.slice(0, max);
   trimmed[max - 1] = `${trimmed[max - 1].replace(/.{2}$/, "")}…`;
   return trimmed;
+}
+
+async function tryLogoDataUrl(url: string | undefined): Promise<string | null> {
+  if (!url) return null;
+  if (url.startsWith("data:image/")) return url;
+
+  try {
+    const response = await fetch(url);
+    if (!response.ok) return null;
+    const contentType = (
+      response.headers.get("content-type") || ""
+    ).toLowerCase();
+    if (
+      !contentType.includes("png") &&
+      !contentType.includes("jpeg") &&
+      !contentType.includes("jpg")
+    ) {
+      return null;
+    }
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    if (!bytes.length || bytes.length > 3_000_000) return null;
+    let binary = "";
+    for (const byte of bytes) binary += String.fromCharCode(byte);
+    return `data:${contentType.includes("png") ? "image/png" : "image/jpeg"};base64,${btoa(binary)}`;
+  } catch {
+    return null;
+  }
 }
 
 function drawItemsHeader(doc: jsPDF, y: number, R: number, M: number) {
@@ -111,7 +139,7 @@ function drawItemRow(
   index: number,
   y: number,
   R: number,
-  M: number
+  M: number,
 ) {
   const RH = 24;
   const textX = M + 12;
@@ -126,7 +154,7 @@ function drawItemRow(
 
   const nameLines = truncateLines(
     doc.splitTextToSize(item.name, textW) as string[],
-    2
+    2,
   );
   doc.setFont(FONT_FAMILY, "bold");
   doc.setFontSize(9.5);
@@ -140,7 +168,7 @@ function drawItemRow(
   if (item.variant) {
     const variantLine = truncateLines(
       doc.splitTextToSize(item.variant, textW) as string[],
-      1
+      1,
     );
     doc.setFont(FONT_FAMILY, "normal");
     doc.setFontSize(8);
@@ -181,7 +209,7 @@ function drawSoldByAndNotes(
   data: ShippingLabelData,
   y: number,
   R: number,
-  M: number
+  M: number,
 ) {
   const contentW = R - M;
   const leftW = 106;
@@ -206,7 +234,7 @@ function drawSoldByAndNotes(
   if (data.soldBy.address) {
     const addrLines = truncateLines(
       doc.splitTextToSize(data.soldBy.address, leftW - 12) as string[],
-      3
+      3,
     );
     doc.setFont(FONT_FAMILY, "normal");
     doc.setFontSize(8);
@@ -266,7 +294,8 @@ function drawSoldByAndNotes(
 export function buildShippingLabel(
   doc: jsPDF,
   data: ShippingLabelData,
-  qrUrls: string[]
+  qrUrls: string[],
+  logoDataUrl?: string | null,
 ) {
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
@@ -277,28 +306,65 @@ export function buildShippingLabel(
   doc.setFont(FONT_FAMILY, "normal");
 
   doc.setFillColor(...C.navyDeep);
-  doc.rect(0, 0, pageW, 26, "F");
+  doc.rect(0, 0, pageW, 31, "F");
+  doc.triangle(pageW - 42, 0, pageW, 0, pageW, 31, "F");
   doc.setFillColor(...C.gold);
-  doc.rect(0, 26, pageW, 1.2, "F");
+  doc.rect(0, 31, pageW, 1.2, "F");
 
-  doc.setFillColor(...C.gold);
-  doc.rect(M, 9.5, 4, 4, "F");
+  let brandX = M;
+  if (logoDataUrl) {
+    try {
+      const props = doc.getImageProperties(logoDataUrl);
+      const maxW = 38;
+      const maxH = 18;
+      const ratio = props.width / props.height || 1;
+      let logoW = maxW;
+      let logoH = logoW / ratio;
+      if (logoH > maxH) {
+        logoH = maxH;
+        logoW = logoH * ratio;
+      }
+      doc.addImage(
+        logoDataUrl,
+        props.fileType,
+        M,
+        6.5,
+        logoW,
+        logoH,
+        undefined,
+        "FAST",
+      );
+      brandX = M + logoW + 6;
+    } catch {
+      brandX = M;
+    }
+  }
+
+  if (brandX === M) {
+    doc.setFillColor(...C.gold);
+    doc.roundedRect(M, 8, 6, 6, 1.5, 1.5, "F");
+    brandX = M + 9;
+  }
   doc.setFont(FONT_FAMILY, "bold");
-  doc.setFontSize(13);
+  doc.setFontSize(12);
   doc.setTextColor(...C.white);
-  doc.text(data.soldBy.name.toUpperCase(), M + 6.5, 13);
+  doc.text(data.soldBy.name.toUpperCase(), brandX, 12.5);
+  doc.setFont(FONT_FAMILY, "normal");
+  doc.setFontSize(7);
+  doc.setTextColor(...C.slate400);
+  doc.text("PACK & DISPATCH", brandX, 18, { charSpace: 0.9 });
 
   doc.setFontSize(8);
   doc.setTextColor(...C.gold);
-  doc.text("SHIPPING LABEL", R, 9.5, { align: "right", charSpace: 1 });
-  doc.setFontSize(11);
+  doc.text("SHIPPING LABEL", R, 10, { align: "right", charSpace: 1 });
+  doc.setFontSize(13);
   doc.setTextColor(...C.white);
-  doc.text(data.orderNumber, R, 16.5, { align: "right" });
+  doc.text(data.orderNumber, R, 19, { align: "right" });
 
   doc.setFont(FONT_FAMILY, "normal");
   doc.setFontSize(7.5);
   doc.setTextColor(...C.slate500);
-  doc.text(`Placed: ${data.orderDate}`, M, 33.5);
+  doc.text(`Placed: ${data.orderDate}`, M, 39);
   doc.text(
     `Generated: ${new Date().toLocaleString("en-IN", {
       day: "2-digit",
@@ -308,14 +374,14 @@ export function buildShippingLabel(
       minute: "2-digit",
     })}`,
     R,
-    33.5,
-    { align: "right" }
+    39,
+    { align: "right" },
   );
 
   const isCod = data.paymentType === "COD";
   const accent = isCod ? C.orange : C.emerald;
   const bandBg = isCod ? C.orangeBg : C.emeraldBg;
-  const bandY = 38;
+  const bandY = 44;
   const bandH = 17;
 
   doc.setFillColor(...bandBg);
@@ -337,7 +403,7 @@ export function buildShippingLabel(
   doc.text(
     isCod ? "Cash on Delivery" : "Prepaid — Payment Received",
     M + 35,
-    bandY + 8
+    bandY + 8,
   );
   doc.setFont(FONT_FAMILY, "normal");
   doc.setFontSize(8);
@@ -347,7 +413,7 @@ export function buildShippingLabel(
       ? "Collect the amount below from the customer at the door"
       : `Paid online${data.paymentStatus ? ` · ${data.paymentStatus}` : ""} — nothing to collect`,
     M + 35,
-    bandY + 13.5
+    bandY + 13.5,
   );
 
   doc.setFont(FONT_FAMILY, "normal");
@@ -366,11 +432,10 @@ export function buildShippingLabel(
   const innerX = M + 7;
   const innerW = contentW - 14;
   const addrBlocks = data.customer.addressLines.flatMap(
-    (line) => doc.splitTextToSize(line, innerW) as string[]
+    (line) => doc.splitTextToSize(line, innerW) as string[],
   );
   const cardY = 70;
-  const cardH =
-    10 + 7 + 6 + addrBlocks.length * 4.8 + 7.5 + 5;
+  const cardH = 10 + 7 + 6 + addrBlocks.length * 4.8 + 7.5 + 5;
 
   doc.setFillColor(...C.white);
   doc.setDrawColor(...C.slate200);
@@ -406,7 +471,7 @@ export function buildShippingLabel(
     doc,
     M,
     y,
-    `ITEMS IN THIS SHIPMENT (${data.items.reduce((s, i) => s + i.quantity, 0)})`
+    `ITEMS IN THIS SHIPMENT (${data.items.reduce((s, i) => s + i.quantity, 0)})`,
   );
   y += 6;
   drawItemsHeader(doc, y, R, M);
@@ -444,7 +509,7 @@ export function buildShippingLabel(
   doc.text(
     `Total Units: ${data.items.reduce((s, i) => s + i.quantity, 0)}`,
     M,
-    y
+    y,
   );
   doc.setFontSize(10.5);
   doc.setTextColor(...C.ink);
@@ -465,7 +530,7 @@ export function buildShippingLabel(
     doc.text(
       `${data.soldBy.name} · Shipping Label · ${data.orderNumber}`,
       M,
-      pageH - 8.5
+      pageH - 8.5,
     );
     doc.setFont(FONT_FAMILY, "bold");
     doc.setTextColor(...C.ink);
@@ -491,10 +556,11 @@ export async function downloadShippingLabel(data: ShippingLabelData) {
         margin: 1,
         width: 300,
         errorCorrectionLevel: "M",
-      })
-    )
+      }),
+    ),
   );
 
-  buildShippingLabel(doc, data, qrUrls);
+  const logoDataUrl = await tryLogoDataUrl(data.soldBy.logo);
+  buildShippingLabel(doc, data, qrUrls, logoDataUrl);
   doc.save(`shipping-label-${data.orderNumber}.pdf`);
 }

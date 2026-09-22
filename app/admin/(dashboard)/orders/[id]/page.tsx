@@ -182,6 +182,7 @@ export default async function OrderDetailsPage({ params }: Props) {
     })),
     soldBy: {
       name: business.name,
+      logo: business.logo,
       address: business.address,
       phone: business.phone,
       email: business.email,

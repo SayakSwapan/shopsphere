@@ -212,12 +212,11 @@ export default async function SportsFooter() {
                 </>
               ) : null}
             </Link>
-            <p
-              className="mt-4 max-w-sm text-sm leading-relaxed"
+            <div
+              className="prose prose-sm prose-invert mt-4 max-w-sm leading-relaxed [&_p]:m-0 [&_strong]:text-white"
               style={{ color: "rgba(255,255,255,0.45)" }}
-            >
-              {tagline}
-            </p>
+              dangerouslySetInnerHTML={{ __html: tagline }}
+            />
 
             {socialLinks.length > 0 && (
               <div className="mt-6 flex gap-3">

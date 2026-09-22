@@ -1,4 +1,5 @@
 import { getAdminSession } from "@/lib/admin-auth";
+import { invalidateSocialLinksCache } from "@/lib/footer-settings";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
@@ -13,7 +14,7 @@ export async function GET() {
       },
       {
         status: 401,
-      }
+      },
     );
   }
 
@@ -35,7 +36,7 @@ export async function POST(req: Request) {
         },
         {
           status: 401,
-        }
+        },
       );
     }
 
@@ -43,7 +44,7 @@ export async function POST(req: Request) {
     if (!body.platform || !body.url) {
       return NextResponse.json(
         { error: "Platform and URL required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
     const socialLink = await prisma.socialLink.create({
@@ -54,6 +55,7 @@ export async function POST(req: Request) {
         isActive: body.isActive ?? true,
       },
     });
+    invalidateSocialLinksCache();
     return NextResponse.json(socialLink, { status: 201 });
   } catch {
     return NextResponse.json({ error: "Failed to create" }, { status: 500 });

@@ -14,10 +14,20 @@ import {
   getShowStorefrontName,
 } from "@/lib/site-settings";
 import { getActiveTheme } from "@/lib/themes/config";
-import { getFooterLinksGrouped } from "@/lib/footer-settings";
+import { getFooterLinksGrouped, getSocialLinks } from "@/lib/footer-settings";
 import SiteBrand from "@/components/brand/site-brand";
 import SiteLogo from "@/components/brand/site-logo";
 import SportsFooter from "@/components/store/layout/sports-footer";
+
+const SOCIAL_ICONS: Record<
+  string,
+  React.ComponentType<{ size?: number; className?: string }>
+> = {
+  facebook: Globe,
+  instagram: Share2,
+  twitter: ExternalLink,
+  youtube: Play,
+};
 
 const FALLBACK_SHOP = [
   { label: "All Products", href: "/products" },
@@ -42,11 +52,13 @@ const FALLBACK_SUPPORT = [
 ];
 
 export default async function Footer() {
-  const [s, activeTheme, groupedLinks] = await Promise.all([
-    getSiteSettings(),
-    getActiveTheme(),
-    getFooterLinksGrouped(),
-  ]);
+  const [s, activeTheme, groupedLinks, configuredSocialLinks] =
+    await Promise.all([
+      getSiteSettings(),
+      getActiveTheme(),
+      getFooterLinksGrouped(),
+      getSocialLinks(),
+    ]);
 
   if (activeTheme === "sports") {
     return <SportsFooter />;
@@ -59,12 +71,23 @@ export default async function Footer() {
     s.footer_tagline ||
     "Premium marketplace for fashion, footwear, accessories and lifestyle products.";
   const copyrightText = s.copyright_text || "All Rights Reserved.";
-  const socialLinks = [
+  const legacySocialLinks = [
     { key: "social_facebook", icon: Globe, label: "Facebook" },
     { key: "social_instagram", icon: Share2, label: "Instagram" },
     { key: "social_twitter", icon: ExternalLink, label: "Twitter" },
     { key: "social_youtube", icon: Play, label: "YouTube" },
-  ].filter((l) => s[l.key]);
+  ].flatMap((link) => {
+    const url = s[link.key]?.trim();
+    return url ? [{ ...link, url }] : [];
+  });
+  const socialLinks = configuredSocialLinks.length
+    ? configuredSocialLinks.map((link) => ({
+        key: link.id,
+        icon: SOCIAL_ICONS[link.platform.trim().toLowerCase()] || Globe,
+        label: link.platform,
+        url: link.url.trim(),
+      }))
+    : legacySocialLinks;
 
   const shopLinks =
     groupedLinks["Shop"]?.map((l) => ({ label: l.label, href: l.url })) ||
@@ -149,9 +172,10 @@ export default async function Footer() {
                 )
               )}
             </Link>
-            <p className="mt-4 text-sm text-text-muted-1 leading-relaxed max-w-xs">
-              {tagline}
-            </p>
+            <div
+              className="prose prose-sm prose-invert mt-4 max-w-xs text-text-muted-1 leading-relaxed [&_p]:m-0 [&_strong]:text-text-heading"
+              dangerouslySetInnerHTML={{ __html: tagline }}
+            />
             <div className="mt-4 space-y-2">
               {[
                 { label: "About Us", href: "/about" },
@@ -169,10 +193,10 @@ export default async function Footer() {
             </div>
             {socialLinks.length > 0 && (
               <div className="flex gap-3 mt-6">
-                {socialLinks.map(({ key, icon: Icon, label }) => (
+                {socialLinks.map(({ key, icon: Icon, label, url }) => (
                   <a
                     key={key}
-                    href={s[key]}
+                    href={url}
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label={label}

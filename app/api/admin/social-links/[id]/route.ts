@@ -1,10 +1,11 @@
 import { getAdminSession } from "@/lib/admin-auth";
+import { invalidateSocialLinksCache } from "@/lib/footer-settings";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
 export async function GET(
   _req: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const session = await getAdminSession();
 
@@ -16,7 +17,7 @@ export async function GET(
       },
       {
         status: 401,
-      }
+      },
     );
   }
 
@@ -29,7 +30,7 @@ export async function GET(
 
 export async function PUT(
   req: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
   try {
@@ -43,7 +44,7 @@ export async function PUT(
         },
         {
           status: 401,
-        }
+        },
       );
     }
 
@@ -57,6 +58,7 @@ export async function PUT(
         isActive: body.isActive ?? true,
       },
     });
+    invalidateSocialLinksCache();
     return NextResponse.json(socialLink);
   } catch {
     return NextResponse.json({ error: "Failed to update" }, { status: 500 });
@@ -65,7 +67,7 @@ export async function PUT(
 
 export async function DELETE(
   _req: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
   try {
@@ -79,11 +81,12 @@ export async function DELETE(
         },
         {
           status: 401,
-        }
+        },
       );
     }
 
     await prisma.socialLink.delete({ where: { id } });
+    invalidateSocialLinksCache();
     return NextResponse.json({ success: true });
   } catch {
     return NextResponse.json({ error: "Failed to delete" }, { status: 500 });

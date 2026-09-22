@@ -37,12 +37,17 @@ export const getFooterLinksGrouped = cache(
 export const getSocialLinks = cache(async (): Promise<SocialLink[]> => {
   return socialLinksCache.get(async () => {
     try {
-      return await prisma.socialLink.findMany({
+      const links = await prisma.socialLink.findMany({
         where: { isActive: true },
         orderBy: { createdAt: "asc" },
       });
+      return links.filter((link) => link.url.trim().length > 0);
     } catch {
       return [];
     }
   });
 });
+
+export function invalidateSocialLinksCache(): void {
+  socialLinksCache.clear();
+}

@@ -71,6 +71,18 @@ export default async function SportsFooter() {
     settings.footer_tagline ||
     "Premium sports gear for athletes who demand performance. Official kits, footwear, equipment and accessories.";
   const copyrightText = settings.copyright_text || "All Rights Reserved.";
+  const legacySocialLinks = [
+    { key: "social_facebook", platform: "Facebook" },
+    { key: "social_instagram", platform: "Instagram" },
+    { key: "social_twitter", platform: "Twitter" },
+    { key: "social_youtube", platform: "YouTube" },
+  ].flatMap((link) => {
+    const url = settings[link.key]?.trim();
+    return url ? [{ id: link.key, platform: link.platform, url }] : [];
+  });
+  const footerSocialLinks = socialLinks.length
+    ? socialLinks
+    : legacySocialLinks;
 
   const groups = Object.entries(groupedLinks).filter(
     ([group]) => !SKIP_GROUPS.has(group),
@@ -218,11 +230,11 @@ export default async function SportsFooter() {
               dangerouslySetInnerHTML={{ __html: tagline }}
             />
 
-            {socialLinks.length > 0 && (
+            {footerSocialLinks.length > 0 && (
               <div className="mt-6 flex gap-3">
-                {socialLinks.map((social) => {
+                {footerSocialLinks.map((social) => {
                   const Icon =
-                    SOCIAL_ICONS[social.platform.toLowerCase()] || Globe;
+                    SOCIAL_ICONS[social.platform.trim().toLowerCase()] || Globe;
                   return (
                     <a
                       key={social.id}

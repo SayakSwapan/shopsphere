@@ -6,29 +6,10 @@ import {
 } from "@/lib/site-settings";
 import { getFooterLinksGrouped, getSocialLinks } from "@/lib/footer-settings";
 import SiteLogo from "@/components/brand/site-logo";
-import {
-  Globe,
-  Share2,
-  ExternalLink,
-  Play,
-  Zap,
-  Truck,
-  ShieldCheck,
-  BadgeCheck,
-  ArrowRight,
-} from "lucide-react";
+import { getSocialIcon } from "@/lib/social-icons";
+import { Zap, Truck, ShieldCheck, BadgeCheck, ArrowRight } from "lucide-react";
 
 export const dynamic = "force-dynamic";
-
-const SOCIAL_ICONS: Record<
-  string,
-  React.ComponentType<{ size?: number; className?: string }>
-> = {
-  facebook: Globe,
-  instagram: Share2,
-  twitter: ExternalLink,
-  youtube: Play,
-};
 
 const SKIP_GROUPS = new Set(["Company", "Careers", "Press", "Blog"]);
 
@@ -74,7 +55,7 @@ export default async function SportsFooter() {
   const legacySocialLinks = [
     { key: "social_facebook", platform: "Facebook" },
     { key: "social_instagram", platform: "Instagram" },
-    { key: "social_twitter", platform: "Twitter" },
+    { key: "social_twitter", platform: "X" },
     { key: "social_youtube", platform: "YouTube" },
   ].flatMap((link) => {
     const url = settings[link.key]?.trim();
@@ -233,8 +214,7 @@ export default async function SportsFooter() {
             {footerSocialLinks.length > 0 && (
               <div className="mt-6 flex gap-3">
                 {footerSocialLinks.map((social) => {
-                  const Icon =
-                    SOCIAL_ICONS[social.platform.trim().toLowerCase()] || Globe;
+                  const Icon = getSocialIcon(social.platform);
                   return (
                     <a
                       key={social.id}

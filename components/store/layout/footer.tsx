@@ -1,13 +1,5 @@
 import Link from "next/link";
-import {
-  Truck,
-  ShieldCheck,
-  BadgeCheck,
-  Globe,
-  Share2,
-  ExternalLink,
-  Play,
-} from "lucide-react";
+import { Truck, ShieldCheck, BadgeCheck } from "lucide-react";
 import {
   getSiteSettings,
   getSiteLogo,
@@ -18,16 +10,7 @@ import { getFooterLinksGrouped, getSocialLinks } from "@/lib/footer-settings";
 import SiteBrand from "@/components/brand/site-brand";
 import SiteLogo from "@/components/brand/site-logo";
 import SportsFooter from "@/components/store/layout/sports-footer";
-
-const SOCIAL_ICONS: Record<
-  string,
-  React.ComponentType<{ size?: number; className?: string }>
-> = {
-  facebook: Globe,
-  instagram: Share2,
-  twitter: ExternalLink,
-  youtube: Play,
-};
+import { getSocialIcon } from "@/lib/social-icons";
 
 const FALLBACK_SHOP = [
   { label: "All Products", href: "/products" },
@@ -72,18 +55,18 @@ export default async function Footer() {
     "Premium marketplace for fashion, footwear, accessories and lifestyle products.";
   const copyrightText = s.copyright_text || "All Rights Reserved.";
   const legacySocialLinks = [
-    { key: "social_facebook", icon: Globe, label: "Facebook" },
-    { key: "social_instagram", icon: Share2, label: "Instagram" },
-    { key: "social_twitter", icon: ExternalLink, label: "Twitter" },
-    { key: "social_youtube", icon: Play, label: "YouTube" },
+    { key: "social_facebook", label: "Facebook" },
+    { key: "social_instagram", label: "Instagram" },
+    { key: "social_twitter", label: "X" },
+    { key: "social_youtube", label: "YouTube" },
   ].flatMap((link) => {
     const url = s[link.key]?.trim();
-    return url ? [{ ...link, url }] : [];
+    return url ? [{ ...link, icon: getSocialIcon(link.label), url }] : [];
   });
   const socialLinks = configuredSocialLinks.length
     ? configuredSocialLinks.map((link) => ({
         key: link.id,
-        icon: SOCIAL_ICONS[link.platform.trim().toLowerCase()] || Globe,
+        icon: getSocialIcon(link.platform),
         label: link.platform,
         url: link.url.trim(),
       }))

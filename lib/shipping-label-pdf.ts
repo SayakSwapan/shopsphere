@@ -22,6 +22,8 @@ const C = {
   emeraldBg: [236, 253, 245] as Rgb,
   orange: [217, 87, 20] as Rgb,
   orangeBg: [255, 247, 237] as Rgb,
+  coral: [244, 114, 94] as Rgb,
+  coralBg: [255, 241, 238] as Rgb,
 };
 
 const IND = new Intl.NumberFormat("en-IN");
@@ -291,6 +293,49 @@ function drawSoldByAndNotes(
   });
 }
 
+function drawRouteStrip(
+  doc: jsPDF,
+  data: ShippingLabelData,
+  y: number,
+  R: number,
+  M: number,
+) {
+  const width = R - M;
+  const origin = truncateLines(
+    doc.splitTextToSize(data.soldBy.name, 62) as string[],
+    1,
+  )[0];
+
+  doc.setFillColor(...C.coralBg);
+  doc.setDrawColor(...C.coral);
+  doc.setLineWidth(0.35);
+  doc.roundedRect(M, y, width, 10, 2, 2, "FD");
+  doc.setFillColor(...C.coral);
+  doc.roundedRect(M + 3, y + 2.2, 5.5, 5.5, 1.3, 1.3, "F");
+
+  doc.setFont(FONT_FAMILY, "bold");
+  doc.setFontSize(5.5);
+  doc.setTextColor(...C.coral);
+  doc.text("DISPATCH ROUTE", M + 12, y + 4.3, { charSpace: 0.5 });
+
+  doc.setFontSize(8);
+  doc.setTextColor(...C.ink);
+  doc.text(origin, M + 12, y + 8);
+  doc.setFontSize(9);
+  doc.setTextColor(...C.coral);
+  doc.text(">", M + width / 2, y + 7.3, { align: "center" });
+
+  doc.setFontSize(5.5);
+  doc.setTextColor(...C.coral);
+  doc.text("DESTINATION PIN", R - 42, y + 4.3, {
+    align: "right",
+    charSpace: 0.4,
+  });
+  doc.setFontSize(8.5);
+  doc.setTextColor(...C.ink);
+  doc.text(data.customer.pincode, R - 5, y + 8, { align: "right" });
+}
+
 export function buildShippingLabel(
   doc: jsPDF,
   data: ShippingLabelData,
@@ -307,6 +352,7 @@ export function buildShippingLabel(
 
   doc.setFillColor(...C.navyDeep);
   doc.rect(0, 0, pageW, 31, "F");
+  doc.setFillColor(...C.coral);
   doc.triangle(pageW - 42, 0, pageW, 0, pageW, 31, "F");
   doc.setFillColor(...C.gold);
   doc.rect(0, 31, pageW, 1.2, "F");
@@ -356,10 +402,13 @@ export function buildShippingLabel(
 
   doc.setFontSize(8);
   doc.setTextColor(...C.gold);
-  doc.text("SHIPPING LABEL", R, 10, { align: "right", charSpace: 1 });
+  doc.text("DISPATCH DOSSIER", R, 8.5, { align: "right", charSpace: 1 });
+  doc.setFontSize(6.5);
+  doc.setTextColor(...C.slate400);
+  doc.text("SHIPPING LABEL", R, 13.5, { align: "right", charSpace: 0.8 });
   doc.setFontSize(13);
   doc.setTextColor(...C.white);
-  doc.text(data.orderNumber, R, 19, { align: "right" });
+  doc.text(data.orderNumber, R, 23, { align: "right" });
 
   doc.setFont(FONT_FAMILY, "normal");
   doc.setFontSize(7.5);
@@ -427,14 +476,15 @@ export function buildShippingLabel(
   doc.setTextColor(...accent);
   doc.text(inr(data.amount), R - 4, bandY + 14, { align: "right" });
 
-  sectionTitle(doc, M, 66, "DELIVER TO");
+  drawRouteStrip(doc, data, 65, R, M);
+  sectionTitle(doc, M, 81, "DELIVER TO");
 
   const innerX = M + 7;
   const innerW = contentW - 14;
   const addrBlocks = data.customer.addressLines.flatMap(
     (line) => doc.splitTextToSize(line, innerW) as string[],
   );
-  const cardY = 70;
+  const cardY = 85;
   const cardH = 10 + 7 + 6 + addrBlocks.length * 4.8 + 7.5 + 5;
 
   doc.setFillColor(...C.white);

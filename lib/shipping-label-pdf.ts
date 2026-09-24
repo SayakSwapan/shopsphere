@@ -306,34 +306,31 @@ function drawRouteStrip(
     1,
   )[0];
 
-  doc.setFillColor(...C.coralBg);
-  doc.setDrawColor(...C.coral);
+  doc.setFillColor(...C.slate50);
+  doc.setDrawColor(...C.slate200);
   doc.setLineWidth(0.35);
-  doc.roundedRect(M, y, width, 10, 2, 2, "FD");
+  doc.roundedRect(M, y, width, 12, 1.5, 1.5, "FD");
   doc.setFillColor(...C.coral);
-  doc.roundedRect(M + 3, y + 2.2, 5.5, 5.5, 1.3, 1.3, "F");
+  doc.rect(M, y, 3, 12, "F");
 
   doc.setFont(FONT_FAMILY, "bold");
   doc.setFontSize(5.5);
-  doc.setTextColor(...C.coral);
-  doc.text("DISPATCH ROUTE", M + 12, y + 4.3, { charSpace: 0.5 });
+  doc.setTextColor(...C.slate500);
+  doc.text("FROM", M + 10, y + 4.5, { charSpace: 0.6 });
 
   doc.setFontSize(8);
   doc.setTextColor(...C.ink);
-  doc.text(origin, M + 12, y + 8);
-  doc.setFontSize(9);
+  doc.text(origin, M + 10, y + 9);
+  doc.setFontSize(10);
   doc.setTextColor(...C.coral);
-  doc.text(">", M + width / 2, y + 7.3, { align: "center" });
+  doc.text(">", M + width / 2, y + 8.5, { align: "center" });
 
   doc.setFontSize(5.5);
-  doc.setTextColor(...C.coral);
-  doc.text("DESTINATION PIN", R - 42, y + 4.3, {
-    align: "right",
-    charSpace: 0.4,
-  });
+  doc.setTextColor(...C.slate500);
+  doc.text("SHIPMENT", R - 55, y + 4.5, { charSpace: 0.6 });
   doc.setFontSize(8.5);
   doc.setTextColor(...C.ink);
-  doc.text(data.customer.pincode, R - 5, y + 8, { align: "right" });
+  doc.text(data.orderNumber, R - 5, y + 9, { align: "right" });
 }
 
 export function buildShippingLabel(
@@ -477,44 +474,65 @@ export function buildShippingLabel(
   doc.text(inr(data.amount), R - 4, bandY + 14, { align: "right" });
 
   drawRouteStrip(doc, data, 65, R, M);
-  sectionTitle(doc, M, 81, "DELIVER TO");
+  sectionTitle(doc, M, 82, "SHIP TO");
 
   const innerX = M + 7;
-  const innerW = contentW - 14;
+  const pinPanelW = 52;
+  const innerW = contentW - pinPanelW - 22;
   const addrBlocks = data.customer.addressLines.flatMap(
     (line) => doc.splitTextToSize(line, innerW) as string[],
   );
-  const cardY = 85;
-  const cardH = 10 + 7 + 6 + addrBlocks.length * 4.8 + 7.5 + 5;
+  const cardY = 86;
+  const cardH = Math.max(47, 29 + addrBlocks.length * 4.8);
 
-  doc.setFillColor(...C.white);
+  doc.setFillColor(...C.slate50);
   doc.setDrawColor(...C.slate200);
   doc.setLineWidth(0.3);
   doc.roundedRect(M, cardY, contentW, cardH, 2.5, 2.5, "FD");
-  doc.setFillColor(...C.gold);
-  doc.rect(M + 2, cardY + 4, 1.6, cardH - 8, "F");
+  doc.setFillColor(...C.coral);
+  doc.rect(M + 2, cardY + 4, 2, cardH - 8, "F");
 
   doc.setFont(FONT_FAMILY, "bold");
-  doc.setFontSize(13);
+  doc.setFontSize(15);
   doc.setTextColor(...C.ink);
   doc.text(data.customer.name, innerX, cardY + 10);
 
-  doc.setFontSize(10);
+  doc.setFontSize(10.5);
   doc.setTextColor(...C.slate700);
-  doc.text(`Phone: ${data.customer.phone}`, innerX, cardY + 16.5);
+  doc.text(`MOBILE  ${data.customer.phone}`, innerX, cardY + 18.5);
 
-  let ay = cardY + 23;
+  let ay = cardY + 26;
   doc.setFont(FONT_FAMILY, "normal");
-  doc.setFontSize(9.5);
+  doc.setFontSize(9);
   doc.setTextColor(...C.ink);
   addrBlocks.forEach((line) => {
     doc.text(line, innerX, ay);
     ay += 4.8;
   });
 
+  const pinX = R - pinPanelW - 5;
+  doc.setFillColor(...C.white);
+  doc.setDrawColor(...C.coral);
+  doc.setLineWidth(0.5);
+  doc.roundedRect(pinX, cardY + 5, pinPanelW, cardH - 10, 2, 2, "FD");
   doc.setFont(FONT_FAMILY, "bold");
-  doc.setFontSize(10.5);
-  doc.text(data.customer.pincode, innerX, ay + 1.5);
+  doc.setFontSize(6.5);
+  doc.setTextColor(...C.coral);
+  doc.text("DESTINATION PIN", pinX + pinPanelW / 2, cardY + 14, {
+    align: "center",
+    charSpace: 0.5,
+  });
+  doc.setFontSize(19);
+  doc.setTextColor(...C.navyDeep);
+  doc.text(data.customer.pincode, pinX + pinPanelW / 2, cardY + 29, {
+    align: "center",
+  });
+  doc.setFont(FONT_FAMILY, "bold");
+  doc.setFontSize(6.5);
+  doc.setTextColor(...C.slate500);
+  doc.text("VERIFY BEFORE HANDOFF", pinX + pinPanelW / 2, cardY + cardH - 9, {
+    align: "center",
+  });
 
   let y = cardY + cardH + 11;
   sectionTitle(

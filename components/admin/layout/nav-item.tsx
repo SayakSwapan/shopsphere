@@ -43,6 +43,7 @@ import {
   Clapperboard,
   Store,
   Coins,
+  Activity,
   type LucideIcon,
 } from "lucide-react";
 
@@ -82,6 +83,14 @@ export const navItems: NavEntry[] = [
   {
     type: "item",
     item: { title: "Security", href: "/admin/security", icon: ShieldCheck },
+  },
+  {
+    type: "item",
+    item: {
+      title: "Visitor Analytics",
+      href: "/admin/analytics",
+      icon: Activity,
+    },
   },
   {
     type: "section",
@@ -137,6 +146,7 @@ export const navItems: NavEntry[] = [
       },
       { title: "Print Types", href: "/admin/print-types", icon: Printer },
       { title: "Inventory", href: "/admin/inventory", icon: Warehouse },
+      { title: "Stock Overview", href: "/admin/stock-overview", icon: Boxes },
     ],
   },
   {

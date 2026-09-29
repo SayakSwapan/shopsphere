@@ -9,6 +9,7 @@ import "leaflet/dist/leaflet.css";
 import AuthModal from "@/components/auth/auth-modal";
 import LoadingOverlay from "@/components/store/loading-overlay";
 import Analytics from "@/components/analytics/analytics";
+import VisitorTracker from "@/components/analytics/visitor-tracker";
 import { AuthProviderContext } from "@/components/auth/auth-context";
 import SessionProvider from "@/components/providers/session-provider";
 import RootThemeShell from "@/components/store/theme/root-theme-shell";
@@ -135,6 +136,7 @@ export default async function RootLayout({
         </SiteSettingsProvider>
 
         <Analytics />
+        <VisitorTracker />
         <Toaster position="top-center" richColors />
       </body>
     </html>

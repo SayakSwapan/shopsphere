@@ -80,7 +80,7 @@ function ProductImage({ product, index }: { product: Product; index: number }) {
       src={src}
       alt={`${product.name} image ${index + 1}`}
       fill
-      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 30vw"
+      sizes="(max-width: 640px) 25vw, (max-width: 1024px) 50vw, 30vw"
       className="object-cover"
     />
   );
@@ -302,7 +302,7 @@ export default function StockOverview({ products }: { products: Product[] }) {
                     {categoryProducts.length} products
                   </span>
                 </div>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5">
+                <div className="grid grid-cols-4 gap-2 sm:grid-cols-2 sm:gap-3 xl:grid-cols-4 2xl:grid-cols-5">
                   {categoryProducts.map((product) => {
                     const imageIndex = cardImageIndex[product.id] ?? 0;
                     const availableSizes = product.variants
@@ -338,9 +338,12 @@ export default function StockOverview({ products }: { products: Product[] }) {
                                 onClick={(event) =>
                                   moveCardImage(event, product, -1)
                                 }
-                                className="absolute left-2 top-1/2 z-10 grid size-8 -translate-y-1/2 place-items-center rounded-full bg-black/65 text-white hover:bg-black/85"
+                                className="absolute left-1 top-1/2 z-10 grid size-6 -translate-y-1/2 place-items-center rounded-full bg-black/65 text-white hover:bg-black/85 sm:left-2 sm:size-8"
                               >
-                                <ChevronLeft size={18} />
+                                <ChevronLeft
+                                  size={14}
+                                  className="sm:size-[18px]"
+                                />
                               </button>
                               <button
                                 type="button"
@@ -349,19 +352,22 @@ export default function StockOverview({ products }: { products: Product[] }) {
                                 onClick={(event) =>
                                   moveCardImage(event, product, 1)
                                 }
-                                className="absolute right-2 top-1/2 z-10 grid size-8 -translate-y-1/2 place-items-center rounded-full bg-black/65 text-white hover:bg-black/85"
+                                className="absolute right-1 top-1/2 z-10 grid size-6 -translate-y-1/2 place-items-center rounded-full bg-black/65 text-white hover:bg-black/85 sm:right-2 sm:size-8"
                               >
-                                <ChevronRight size={18} />
+                                <ChevronRight
+                                  size={14}
+                                  className="sm:size-[18px]"
+                                />
                               </button>
                             </>
                           )}
                           <span
-                            className={`absolute left-2 top-2 z-10 border px-1.5 py-0.5 text-[10px] font-semibold ${product.status ? "border-emerald-300/50 bg-emerald-950/80 text-emerald-200" : "border-slate-500 bg-slate-950/85 text-slate-300"}`}
+                            className={`absolute left-1 top-1 z-10 border px-1 py-0.5 text-[8px] font-semibold sm:left-2 sm:top-2 sm:px-1.5 sm:text-[10px] ${product.status ? "border-emerald-300/50 bg-emerald-950/80 text-emerald-200" : "border-slate-500 bg-slate-950/85 text-slate-300"}`}
                           >
                             {product.status ? "Active" : "Inactive"}
                           </span>
                           {product.images.length > 1 && (
-                            <span className="absolute bottom-3 right-3 z-10 bg-black/65 px-2 py-1 text-xs tabular-nums text-white">
+                            <span className="absolute bottom-1 right-1 z-10 bg-black/65 px-1.5 py-0.5 text-[9px] tabular-nums text-white sm:bottom-3 sm:right-3 sm:px-2 sm:py-1 sm:text-xs">
                               {imageIndex + 1} / {product.images.length}
                             </span>
                           )}
@@ -370,14 +376,14 @@ export default function StockOverview({ products }: { products: Product[] }) {
                         <button
                           type="button"
                           onClick={() => openProduct(product)}
-                          className="block w-full p-3 text-left"
+                          className="block w-full p-2 text-left sm:p-3"
                         >
-                          <div className="flex items-start justify-between gap-3">
-                            <h3 className="line-clamp-2 min-h-10 text-sm font-semibold text-white">
+                          <div className="flex min-w-0 flex-col items-start gap-1 sm:flex-row sm:justify-between sm:gap-3">
+                            <h3 className="line-clamp-2 min-h-8 w-full break-words text-[10px] leading-tight font-semibold text-white sm:min-h-10 sm:text-sm sm:leading-normal">
                               {product.name}
                             </h3>
                             <span
-                              className={`shrink-0 text-xs font-semibold ${isOutOfStock(product) ? "text-red-300" : hasLowStock(product) ? "text-amber-300" : "text-emerald-300"}`}
+                              className={`shrink-0 text-[9px] font-semibold sm:text-xs ${isOutOfStock(product) ? "text-red-300" : hasLowStock(product) ? "text-amber-300" : "text-emerald-300"}`}
                             >
                               {isOutOfStock(product)
                                 ? "Out"
@@ -386,20 +392,20 @@ export default function StockOverview({ products }: { products: Product[] }) {
                                   : "Available"}
                             </span>
                           </div>
-                          <div className="mt-2 flex items-baseline justify-between gap-3">
-                            <span className="text-[11px] uppercase text-slate-500">
+                          <div className="mt-1 flex min-w-0 flex-col gap-1 sm:mt-2 sm:flex-row sm:items-baseline sm:justify-between sm:gap-3">
+                            <span className="hidden text-[11px] uppercase text-slate-500 sm:inline">
                               Online now
                             </span>
-                            <span className="text-sm font-bold tabular-nums text-white">
+                            <span className="break-words text-[10px] font-bold tabular-nums text-white sm:text-sm">
                               {currency.format(product.currentPrice)}
                             </span>
                           </div>
                           <div className="mt-2 border-t border-slate-800 pt-2">
-                            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                            <p className="hidden text-[11px] font-semibold uppercase tracking-wide text-slate-500 sm:block">
                               Available sizes
                             </p>
                             {availableSizes.length > 0 ? (
-                              <div className="mt-1.5 flex flex-wrap gap-1">
+                              <div className="mt-1.5 hidden flex-wrap gap-1 sm:flex">
                                 {availableSizes.slice(0, 4).map((variant) => (
                                   <span
                                     key={variant.id}
@@ -415,11 +421,19 @@ export default function StockOverview({ products }: { products: Product[] }) {
                                 )}
                               </div>
                             ) : (
-                              <p className="mt-2 text-sm text-slate-400">
+                              <p className="mt-2 hidden text-sm text-slate-400 sm:block">
                                 No size stock available
                               </p>
                             )}
-                            <div className="mt-2 flex justify-between gap-2 text-[11px] text-slate-400">
+                            <div className="flex min-w-0 items-center justify-between gap-1 text-[9px] text-slate-400 sm:hidden">
+                              <span className="truncate">
+                                {variantStock(product)} units
+                              </span>
+                              <span className="shrink-0 text-amber-300">
+                                Details
+                              </span>
+                            </div>
+                            <div className="mt-2 hidden justify-between gap-2 text-[11px] text-slate-400 sm:flex">
                               <span>
                                 {variantStock(product)} units across sizes
                               </span>

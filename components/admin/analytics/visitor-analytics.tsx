@@ -6,6 +6,7 @@ import {
   Monitor,
   RotateCcw,
   Search,
+  ShieldCheck,
   Smartphone,
   Tablet,
   Users,
@@ -16,6 +17,11 @@ type VisitorRow = {
   ipAddress: string;
   visits: number;
   devices: string[];
+  city: string | null;
+  region: string | null;
+  country: string | null;
+  countryCode: string | null;
+  isOwner: boolean;
   lastVisitAt: string | null;
 };
 
@@ -53,8 +59,19 @@ export default function VisitorAnalytics({
   rows,
 }: Props) {
   const [query, setQuery] = useState("");
+  const normalizedQuery = query.trim().toLowerCase();
   const filteredRows = rows.filter((row) =>
-    row.ipAddress.toLowerCase().includes(query.trim().toLowerCase()),
+    [
+      row.ipAddress,
+      row.city,
+      row.region,
+      row.country,
+      row.countryCode,
+      row.isOwner ? "owner" : "visitor",
+    ]
+      .join(" ")
+      .toLowerCase()
+      .includes(normalizedQuery),
   );
   const cards = [
     {
@@ -108,7 +125,7 @@ export default function VisitorAnalytics({
         ))}
       </section>
 
-      <section className="overflow-hidden border border-slate-800 bg-slate-950/40">
+      <section className="min-w-0 overflow-hidden border border-slate-800 bg-slate-950/40">
         <div className="flex flex-col gap-3 border-b border-slate-800 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
           <div>
             <h2 className="text-lg font-semibold text-white">
@@ -127,7 +144,7 @@ export default function VisitorAnalytics({
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Filter by IP address"
+              placeholder="Filter IP, location, owner"
               className="h-10 w-full border border-slate-700 bg-slate-900 pl-9 pr-3 text-sm text-white outline-none transition focus:border-amber-400"
             />
           </label>
@@ -153,7 +170,8 @@ export default function VisitorAnalytics({
               <table className="w-full text-left text-sm">
                 <thead className="bg-slate-900/80 text-xs uppercase text-slate-400">
                   <tr>
-                    <th className="px-5 py-3 font-semibold">Visitor IP</th>
+                    <th className="px-5 py-3 font-semibold">Visitor</th>
+                    <th className="px-5 py-3 font-semibold">Location</th>
                     <th className="px-5 py-3 font-semibold">Device types</th>
                     <th className="px-5 py-3 text-right font-semibold">
                       Visits
@@ -169,8 +187,27 @@ export default function VisitorAnalytics({
                       key={row.ipAddress}
                       className="border-t border-slate-800/80 text-slate-300"
                     >
-                      <td className="px-5 py-4 font-mono text-sm text-white">
-                        {row.ipAddress}
+                      <td className="px-5 py-4">
+                        <p className="font-mono text-sm text-white">
+                          {row.ipAddress}
+                        </p>
+                        <span
+                          className={`mt-1 inline-flex items-center gap-1 text-xs ${row.isOwner ? "text-amber-300" : "text-slate-500"}`}
+                        >
+                          {row.isOwner && <ShieldCheck size={13} />}
+                          {row.isOwner ? "Owner" : "Visitor"}
+                        </span>
+                      </td>
+                      <td className="px-5 py-4">
+                        <p className="text-slate-200">
+                          {[row.city, row.region].filter(Boolean).join(", ") ||
+                            "Location unavailable"}
+                        </p>
+                        <p className="mt-1 text-xs text-slate-500">
+                          {[row.country, row.countryCode]
+                            .filter(Boolean)
+                            .join(" · ") || "-"}
+                        </p>
                       </td>
                       <td className="px-5 py-4">
                         <div className="flex flex-wrap gap-2">
@@ -198,15 +235,39 @@ export default function VisitorAnalytics({
             </div>
             <div className="divide-y divide-slate-800 md:hidden">
               {filteredRows.map((row) => (
-                <article
-                  key={row.ipAddress}
-                  className="flex items-center justify-between gap-3 p-4"
-                >
-                  <div className="min-w-0">
-                    <p className="break-all font-mono text-sm text-white">
+                <article key={row.ipAddress} className="min-w-0 space-y-3 p-4">
+                  <div className="flex min-w-0 items-start justify-between gap-3">
+                    <p className="min-w-0 break-all font-mono text-sm text-white">
                       {row.ipAddress}
                     </p>
-                    <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs capitalize text-slate-400">
+                    <span
+                      className={`inline-flex shrink-0 items-center gap-1 text-xs ${row.isOwner ? "text-amber-300" : "text-slate-500"}`}
+                    >
+                      {row.isOwner && <ShieldCheck size={13} />}
+                      {row.isOwner ? "Owner" : "Visitor"}
+                    </span>
+                  </div>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="break-words text-sm text-slate-200">
+                        {[row.city, row.region].filter(Boolean).join(", ") ||
+                          "Location unavailable"}
+                      </p>
+                      <p className="mt-1 text-xs text-slate-500">
+                        {[row.country, row.countryCode]
+                          .filter(Boolean)
+                          .join(" · ") || "-"}
+                      </p>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <p className="text-lg font-bold tabular-nums text-white">
+                        {numberFormat.format(row.visits)}
+                      </p>
+                      <p className="text-xs text-slate-500">visits</p>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs capitalize text-slate-400">
                       {row.devices.map((device) => (
                         <span
                           key={device}
@@ -217,15 +278,9 @@ export default function VisitorAnalytics({
                         </span>
                       ))}
                     </div>
-                    <p className="mt-1 text-xs text-slate-500">
-                      Latest {formatDate(row.lastVisitAt)}
+                    <p className="text-xs text-slate-500">
+                      {formatDate(row.lastVisitAt)}
                     </p>
-                  </div>
-                  <div className="shrink-0 text-right">
-                    <p className="text-lg font-bold tabular-nums text-white">
-                      {numberFormat.format(row.visits)}
-                    </p>
-                    <p className="text-xs text-slate-500">visits</p>
                   </div>
                 </article>
               ))}

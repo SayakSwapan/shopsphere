@@ -1,9 +1,10 @@
 import { randomUUID } from "node:crypto";
-import { isIP } from "node:net";
 import { NextRequest, NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
+import { getRequestIp } from "@/lib/request-ip";
 import { rateLimit } from "@/lib/security";
+import { isPublicIp, lookupVisitorLocation } from "@/lib/visitor-location";
 
 const VISITOR_COOKIE = "visitor_id";
 const SESSION_COOKIE = "visitor_session";
@@ -14,22 +15,6 @@ const UUID_PATTERN =
   /^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i;
 
 let lastPrunedAt = 0;
-
-function getClientIp(request: NextRequest): string {
-  const forwarded = request.headers.get("x-forwarded-for");
-  const candidates = [
-    request.headers.get("cf-connecting-ip"),
-    request.headers.get("x-real-ip"),
-    forwarded?.split(",")[0],
-  ];
-
-  for (const candidate of candidates) {
-    const ip = candidate?.trim();
-    if (ip && isIP(ip)) return ip;
-  }
-
-  return "unknown";
-}
 
 function getDeviceType(request: NextRequest): string {
   const clientDevice = request.headers.get("x-visitor-device");
@@ -52,7 +37,7 @@ function validCookieId(value: string | undefined): value is string {
 }
 
 export async function POST(request: NextRequest) {
-  const ipAddress = getClientIp(request);
+  const ipAddress = getRequestIp(request.headers);
   const limit = rateLimit(
     `visitor-analytics:${ipAddress}`,
     120,
@@ -105,6 +90,39 @@ export async function POST(request: NextRequest) {
     });
   } catch {
     return new NextResponse(null, { status: 503 });
+  }
+
+  if (isPublicIp(ipAddress)) {
+    try {
+      const locationCacheMaxAge = 30 * 24 * 60 * 60 * 1000;
+      const cachedLocation = await prisma.visitorSession.findFirst({
+        where: {
+          ipAddress,
+          locationResolvedAt: {
+            gte: new Date(now - locationCacheMaxAge),
+          },
+        },
+        orderBy: { locationResolvedAt: "desc" },
+        select: {
+          city: true,
+          region: true,
+          country: true,
+          countryCode: true,
+          locationResolvedAt: true,
+        },
+      });
+
+      const location = cachedLocation ?? {
+        ...(await lookupVisitorLocation(ipAddress)),
+        locationResolvedAt: new Date(now),
+      };
+      await prisma.visitorSession.updateMany({
+        where: { ipAddress },
+        data: location,
+      });
+    } catch {
+      // Visitor recording must remain available when enrichment or its cache fails.
+    }
   }
 
   const response = new NextResponse(null, {

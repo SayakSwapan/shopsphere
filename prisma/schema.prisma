@@ -543,12 +543,17 @@ model stockmovement {
 }
 
 model visitorSession {
-  id         String   @id @db.VarChar(36)
-  visitorId  String   @db.VarChar(36)
-  ipAddress  String   @db.VarChar(45)
-  deviceType String   @db.VarChar(16)
-  createdAt  DateTime @default(now())
-  lastSeenAt DateTime @default(now()) @updatedAt
+  id                 String    @id @db.VarChar(36)
+  visitorId          String    @db.VarChar(36)
+  ipAddress          String    @db.VarChar(45)
+  deviceType         String    @db.VarChar(16)
+  city               String?   @db.VarChar(128)
+  region             String?   @db.VarChar(128)
+  country            String?   @db.VarChar(128)
+  countryCode        String?   @db.VarChar(2)
+  locationResolvedAt DateTime?
+  createdAt          DateTime  @default(now())
+  lastSeenAt         DateTime  @default(now()) @updatedAt
 
   @@index([createdAt])
   @@index([ipAddress, createdAt])

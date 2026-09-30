@@ -1,0 +1,6 @@
+ALTER TABLE "visitorSession"
+ADD COLUMN "city" VARCHAR(128),
+ADD COLUMN "region" VARCHAR(128),
+ADD COLUMN "country" VARCHAR(128),
+ADD COLUMN "countryCode" VARCHAR(2),
+ADD COLUMN "locationResolvedAt" TIMESTAMP(3);

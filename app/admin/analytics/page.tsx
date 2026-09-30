@@ -1,11 +1,14 @@
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 
 import AdminShell from "@/components/admin/layout/admin-shell";
 import PageContainer from "@/components/admin/common/page-container";
 import PageHeader from "@/components/admin/common/page-header";
 import VisitorAnalytics from "@/components/admin/analytics/visitor-analytics";
 import { getAdminSession } from "@/lib/admin-auth";
+import { getRequestIp } from "@/lib/request-ip";
 import { prisma } from "@/lib/prisma";
+import { isPublicIp } from "@/lib/visitor-location";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +20,15 @@ export default async function AnalyticsPage() {
   const session = await getAdminSession();
   if (!session || session.user.role !== "ADMIN") redirect("/admin/login");
 
+  const adminRequestIp = getRequestIp(await headers());
+  const configuredOwnerIps = (process.env.OWNER_IPS ?? "")
+    .split(",")
+    .map((ip) => ip.trim())
+    .filter(isPublicIp);
+  const ownerIps = new Set(
+    [adminRequestIp, ...configuredOwnerIps].filter(isPublicIp),
+  );
+
   let report: {
     visits: number;
     uniqueVisitors: number;
@@ -26,6 +38,11 @@ export default async function AnalyticsPage() {
       ipAddress: string;
       visits: number;
       devices: string[];
+      city: string | null;
+      region: string | null;
+      country: string | null;
+      countryCode: string | null;
+      isOwner: boolean;
       lastVisitAt: string | null;
     }[];
   } | null = null;
@@ -42,7 +59,7 @@ export default async function AnalyticsPage() {
         by: ["ipAddress", "deviceType"],
         where,
         _count: { _all: true },
-        _max: { createdAt: true },
+        _max: { lastSeenAt: true },
       }),
     ]);
 
@@ -68,10 +85,10 @@ export default async function AnalyticsPage() {
       row.visits += visitCount;
       row.devices.add(group.deviceType);
       if (
-        group._max.createdAt &&
-        (!row.lastVisitAt || group._max.createdAt > row.lastVisitAt)
+        group._max.lastSeenAt &&
+        (!row.lastVisitAt || group._max.lastSeenAt > row.lastVisitAt)
       ) {
-        row.lastVisitAt = group._max.createdAt;
+        row.lastVisitAt = group._max.lastSeenAt;
       }
       ipRows.set(group.ipAddress, row);
       deviceVisits.set(
@@ -83,6 +100,26 @@ export default async function AnalyticsPage() {
     const rows = Array.from(ipRows.values())
       .map((row) => ({ ...row, devices: Array.from(row.devices) }))
       .sort((a, b) => b.visits - a.visits);
+    const locations = await prisma.visitorSession.findMany({
+      where: {
+        ipAddress: { in: rows.map((row) => row.ipAddress) },
+        locationResolvedAt: { not: null },
+      },
+      distinct: ["ipAddress"],
+      select: {
+        ipAddress: true,
+        city: true,
+        region: true,
+        country: true,
+        countryCode: true,
+      },
+    });
+    const locationByIp = new Map(
+      locations.map(({ ipAddress, city, region, country, countryCode }) => [
+        ipAddress,
+        { city, region, country, countryCode },
+      ]),
+    );
     const returningVisitors = visitors.filter(
       (visitor) => visitor._count._all > 1,
     ).length;
@@ -96,6 +133,13 @@ export default async function AnalyticsPage() {
       topDevice: topDevice?.[0] ?? "unknown",
       rows: rows.map((row) => ({
         ...row,
+        ...(locationByIp.get(row.ipAddress) ?? {
+          city: null,
+          region: null,
+          country: null,
+          countryCode: null,
+        }),
+        isOwner: ownerIps.has(row.ipAddress),
         lastVisitAt: row.lastVisitAt?.toISOString() ?? null,
       })),
     };

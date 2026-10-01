@@ -24,7 +24,14 @@ interface Props {
   customerName: string;
 }
 
-export default function CollectDueButton({ orderId, total, paid, due, phone, customerName }: Props) {
+export default function CollectDueButton({
+  orderId,
+  total,
+  paid,
+  due,
+  phone,
+  customerName,
+}: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [amount, setAmount] = useState(due > 0 ? due : 0);
@@ -46,17 +53,27 @@ export default function CollectDueButton({ orderId, total, paid, due, phone, cus
       const res = await fetch(`/api/admin/offline/orders/${orderId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "collect-due", paidAmount: amount, paymentMethod: method, notes }),
+        body: JSON.stringify({
+          action: "collect-due",
+          paidAmount: amount,
+          paymentMethod: method,
+          notes,
+        }),
       });
       const data = await res.json();
       if (!data.success) {
         toast.error(data.message || "Failed to record payment.");
         return;
       }
+      if (data.cleared) {
+        toast.success("Due cleared — full payment received.");
+        setOpen(false);
+        router.replace(`/admin/offline-sales/${orderId}`);
+        return;
+      }
+
       toast.success(
-        data.cleared
-          ? "Due cleared — full payment received."
-          : `₹${amount.toFixed(2)} received. Remaining due: ${formatCurrency(data.dueAmount)}`
+        `₹${amount.toFixed(2)} received. Remaining due: ${formatCurrency(data.dueAmount)}`,
       );
       setOpen(false);
       router.refresh();
@@ -79,15 +96,23 @@ export default function CollectDueButton({ orderId, total, paid, due, phone, cus
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="w-full max-w-md rounded-2xl border border-slate-700 bg-[#111827] p-6">
-            <div className="flex items-start justify-between">
-              <div>
-                <h3 className="text-lg font-bold text-white">Collect Due Payment</h3>
-                <p className="mt-1 text-sm text-slate-400">
-                  From <span className="font-semibold text-white">{customerName}</span>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-3 sm:p-4">
+          <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl border border-slate-700 bg-[#111827] p-4 sm:p-6">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <h3 className="text-lg font-bold text-white">
+                  Collect Due Payment
+                </h3>
+                <p className="mt-1 text-sm text-slate-400 break-words">
+                  From{" "}
+                  <span className="font-semibold text-white">
+                    {customerName}
+                  </span>
                   {phone && (
-                    <a href={`tel:${phone}`} className="ml-2 inline-flex items-center gap-1 text-amber-300 hover:underline">
+                    <a
+                      href={`tel:${phone}`}
+                      className="ml-0 mt-1 inline-flex items-center gap-1 text-amber-300 hover:underline sm:ml-2 sm:mt-0"
+                    >
                       <Phone size={13} /> {phone}
                     </a>
                   )}
@@ -97,22 +122,32 @@ export default function CollectDueButton({ orderId, total, paid, due, phone, cus
 
             <div className="mt-4 grid grid-cols-3 gap-2 rounded-xl bg-[#0F172A] p-3 text-center text-sm">
               <div>
-                <div className="text-[11px] uppercase text-slate-500">Total</div>
-                <div className="font-bold text-white">{formatCurrency(total)}</div>
+                <div className="text-[11px] uppercase text-slate-500">
+                  Total
+                </div>
+                <div className="font-bold text-white">
+                  {formatCurrency(total)}
+                </div>
               </div>
               <div>
                 <div className="text-[11px] uppercase text-slate-500">Paid</div>
-                <div className="font-bold text-emerald-400">{formatCurrency(paid)}</div>
+                <div className="font-bold text-emerald-400">
+                  {formatCurrency(paid)}
+                </div>
               </div>
               <div>
                 <div className="text-[11px] uppercase text-slate-500">Due</div>
-                <div className="font-bold text-amber-400">{formatCurrency(due)}</div>
+                <div className="font-bold text-amber-400">
+                  {formatCurrency(due)}
+                </div>
               </div>
             </div>
 
             <div className="mt-4 space-y-3">
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-300">Amount Collecting</label>
+                <label className="mb-1 block text-sm font-medium text-slate-300">
+                  Amount Collecting
+                </label>
                 <input
                   type="number"
                   min={0}
@@ -123,23 +158,31 @@ export default function CollectDueButton({ orderId, total, paid, due, phone, cus
                   className="h-11 w-full rounded-xl border border-slate-700 bg-[#0F172A] px-3 text-white outline-none focus:border-amber-500 text-sm"
                 />
                 {amount >= due && (
-                  <p className="mt-1 text-xs text-emerald-400">This clears the full due.</p>
+                  <p className="mt-1 text-xs text-emerald-400">
+                    This clears the full due.
+                  </p>
                 )}
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-300">Payment Method</label>
+                <label className="mb-1 block text-sm font-medium text-slate-300">
+                  Payment Method
+                </label>
                 <select
                   value={method}
                   onChange={(e) => setMethod(e.target.value)}
                   className="h-11 w-full rounded-xl border border-slate-700 bg-[#0F172A] px-3 text-white outline-none focus:border-amber-500 text-sm"
                 >
                   {PAYMENTS.map((p) => (
-                    <option key={p} value={p}>{PAYMENT_LABELS[p]}</option>
+                    <option key={p} value={p}>
+                      {PAYMENT_LABELS[p]}
+                    </option>
                   ))}
                 </select>
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-300">Notes (optional)</label>
+                <label className="mb-1 block text-sm font-medium text-slate-300">
+                  Notes (optional)
+                </label>
                 <input
                   type="text"
                   value={notes}
@@ -166,7 +209,9 @@ export default function CollectDueButton({ orderId, total, paid, due, phone, cus
                 className="inline-flex items-center justify-center gap-2 rounded-lg bg-amber-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-amber-500 disabled:opacity-50"
               >
                 <Coins size={16} />
-                {loading ? "Recording..." : `Receive ₹${(amount || 0).toFixed(2)}`}
+                {loading
+                  ? "Recording..."
+                  : `Receive ₹${(amount || 0).toFixed(2)}`}
               </button>
             </div>
           </div>

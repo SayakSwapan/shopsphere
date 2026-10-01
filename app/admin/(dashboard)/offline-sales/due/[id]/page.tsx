@@ -1,11 +1,15 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 
 import PageContainer from "@/components/admin/common/page-container";
 import DueOrderDetail from "@/components/admin/offline-sales/due-order-detail";
 import { prisma } from "@/lib/prisma";
-import { getSiteSettings, getInvoiceBusiness, getOfflinePolicy } from "@/lib/site-settings";
+import {
+  getSiteSettings,
+  getInvoiceBusiness,
+  getOfflinePolicy,
+} from "@/lib/site-settings";
 
 export const dynamic = "force-dynamic";
 
@@ -21,11 +25,25 @@ export default async function DueSaleDetailPage({ params }: Props) {
       where: { id },
       include: {
         user: {
-          select: { id: true, name: true, phone: true, email: true, isWalkIn: true },
+          select: {
+            id: true,
+            name: true,
+            phone: true,
+            email: true,
+            isWalkIn: true,
+          },
         },
         createdBy: { select: { name: true, email: true } },
         orderitem: {
-          include: { product: { select: { id: true, name: true, category: { select: { name: true } } } } },
+          include: {
+            product: {
+              select: {
+                id: true,
+                name: true,
+                category: { select: { name: true } },
+              },
+            },
+          },
         },
         offlinepayment: {
           orderBy: { createdAt: "desc" },
@@ -40,7 +58,9 @@ export default async function DueSaleDetailPage({ params }: Props) {
   ]);
 
   if (!order || order.orderType !== "OFFLINE") notFound();
-  if (!(Number(order.dueAmount ?? 0) > 0)) notFound();
+  if (!(Number(order.dueAmount ?? 0) > 0)) {
+    redirect(`/admin/offline-sales/${id}`);
+  }
 
   const business = getInvoiceBusiness(settings);
   const offlinePolicy = getOfflinePolicy(settings);
@@ -57,7 +77,11 @@ export default async function DueSaleDetailPage({ params }: Props) {
         </Link>
       </div>
 
-      <DueOrderDetail order={order} business={business} offlinePolicy={offlinePolicy} />
+      <DueOrderDetail
+        order={order}
+        business={business}
+        offlinePolicy={offlinePolicy}
+      />
     </PageContainer>
   );
 }

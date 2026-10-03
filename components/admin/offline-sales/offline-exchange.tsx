@@ -82,8 +82,18 @@ function groupByGender(
   return [...map.entries()].map(([name, options]) => ({ name, options }));
 }
 
-export default function OfflineExchange({ orderId }: { orderId: string }) {
+export default function OfflineExchange({
+  orderId,
+  orderType = "OFFLINE",
+}: {
+  orderId: string;
+  orderType?: "OFFLINE" | "ONLINE";
+}) {
   const router = useRouter();
+  const exchangeApiPath =
+    orderType === "ONLINE"
+      ? `/api/admin/orders/${orderId}/exchange`
+      : `/api/admin/offline/orders/${orderId}/exchange`;
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -102,7 +112,7 @@ export default function OfflineExchange({ orderId }: { orderId: string }) {
     setNotes("");
     setPickerFor(null);
     try {
-      const res = await fetch(`/api/admin/offline/orders/${orderId}/exchange`);
+      const res = await fetch(exchangeApiPath);
       const data = await res.json();
       if (!data.success) {
         toast.error(data.message || "Failed to load sale items.");
@@ -166,9 +176,7 @@ export default function OfflineExchange({ orderId }: { orderId: string }) {
         setSearching(true);
         try {
           const res = await fetch(
-            `/api/admin/offline/orders/${orderId}/exchange?search=${encodeURIComponent(
-              q,
-            )}`,
+            `${exchangeApiPath}?search=${encodeURIComponent(q)}`,
           );
           const data = await res.json();
           if (active && data.success) setResults(data.products || []);
@@ -184,7 +192,7 @@ export default function OfflineExchange({ orderId }: { orderId: string }) {
       active = false;
       clearTimeout(t);
     };
-  }, [search, pickerFor, orderId]);
+  }, [search, pickerFor, exchangeApiPath]);
 
   const chooseProduct = (orderItemId: string, p: ApiProduct) => {
     const firstVariant = p.variants.length === 1 ? p.variants[0] : null;
@@ -259,7 +267,7 @@ export default function OfflineExchange({ orderId }: { orderId: string }) {
         issuedUnitPriceIncl:
           l.issuedProductId === l.originalProductId ? null : l.price,
       }));
-      const res = await fetch(`/api/admin/offline/orders/${orderId}/exchange`, {
+      const res = await fetch(exchangeApiPath, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -320,8 +328,8 @@ export default function OfflineExchange({ orderId }: { orderId: string }) {
                 </h3>
                 <p className="flex items-center gap-1 text-xs text-slate-400">
                   <Info size={12} className="shrink-0" />
-                  Swap for another size or a completely different product. No
-                  cash refunds — savings become store credit.
+                  Swap for another size or product. Any value difference is
+                  settled at checkout; savings become store credit.
                 </p>
               </div>
               <button
@@ -577,23 +585,31 @@ export default function OfflineExchange({ orderId }: { orderId: string }) {
                               </div>
                               <div className="flex items-center gap-2 text-[11px] text-slate-400">
                                 <span>Issue price (incl. GST)</span>
-                                <input
-                                  type="number"
-                                  min={0}
-                                  step="0.01"
-                                  value={line.price}
-                                  onChange={(e) =>
-                                    patchLine(line.orderItemId, {
-                                      price: Number(e.target.value) || 0,
-                                    })
-                                  }
-                                  className="w-24 rounded border border-slate-700 bg-slate-900 px-2 py-0.5 text-xs text-white"
-                                />
-                                {line.lastSellingPrice != null && (
-                                  <span>
-                                    min {formatCurrency(line.lastSellingPrice)}
+                                {orderType === "OFFLINE" ? (
+                                  <input
+                                    type="number"
+                                    min={0}
+                                    step="0.01"
+                                    value={line.price}
+                                    onChange={(e) =>
+                                      patchLine(line.orderItemId, {
+                                        price: Number(e.target.value) || 0,
+                                      })
+                                    }
+                                    className="w-24 rounded border border-slate-700 bg-slate-900 px-2 py-0.5 text-xs text-white"
+                                  />
+                                ) : (
+                                  <span className="font-semibold text-white">
+                                    {formatCurrency(line.price)}
                                   </span>
                                 )}
+                                {orderType === "OFFLINE" &&
+                                  line.lastSellingPrice != null && (
+                                    <span>
+                                      min{" "}
+                                      {formatCurrency(line.lastSellingPrice)}
+                                    </span>
+                                  )}
                               </div>
                             </div>
                             <button

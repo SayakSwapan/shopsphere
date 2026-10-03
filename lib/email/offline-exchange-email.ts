@@ -15,8 +15,8 @@ import { PAYMENT_METHOD_LABELS } from "@/lib/constants/order-status";
 import { buildExchangeInvoicePdf } from "@/lib/orders/offline-invoice-pdf";
 
 /**
- * Emails the exchange / replacement invoice (PDF attached) for an offline
- * replacement. Deduplicated with `offlineexchange.emailedAt` so a given
+ * Emails the exchange / replacement invoice (PDF attached). Deduplicated with
+ * `offlineexchange.emailedAt` so a given
  * exchange is only ever emailed once. Placeholder walk-in addresses are skipped.
  */
 
@@ -109,17 +109,25 @@ export async function sendOfflineExchangeEmail(options: {
 
   const settlementNote =
     exchange.settlementType === "CREDIT"
-      ? "No cash refund is issued for offline sales. The difference has been added as store credit to your account and can be used on your next purchase."
+      ? `The difference has been added as store credit to your account and can be used on your next purchase.${order.orderType === "OFFLINE" ? " No cash refund is issued for offline sales." : ""}`
       : exchange.settlementType === "COLLECT"
-        ? "The replacement item is of higher value; the additional amount shown was collected at the store."
+        ? `The replacement item is of higher value; the additional amount shown was collected${order.orderType === "OFFLINE" ? " at the store" : " during the exchange"}.`
         : "The replacement was value-neutral — no amount was due either way.";
 
   const customerAddress = [
-    order.offlineAddressLine1,
-    order.offlineAddressLine2,
-    [order.offlineCity, order.offlineState, order.offlinePincode]
-      .filter(Boolean)
-      .join(", "),
+    ...(order.orderType === "OFFLINE"
+      ? [
+          order.offlineAddressLine1,
+          order.offlineAddressLine2,
+          [order.offlineCity, order.offlineState, order.offlinePincode]
+            .filter(Boolean)
+            .join(", "),
+        ]
+      : [
+          order.addressLine1,
+          order.addressLine2,
+          [order.city, order.state, order.pincode].filter(Boolean).join(", "),
+        ]),
   ]
     .filter(Boolean)
     .join(", ");

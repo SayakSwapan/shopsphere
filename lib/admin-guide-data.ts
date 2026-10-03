@@ -411,10 +411,21 @@ export const guideSections: GuideSection[] = [
         detail:
           "Once the replacement is delivered, mark the request COMPLETED to close it.",
       },
+      {
+        title: "Record an Exchange from Order Details",
+        detail:
+          "For a direct item swap or product change, open the order detail page and select Replace / Exchange. Offline sales must be completed and fully paid. Online orders must be delivered; if a customer replacement request exists, first mark its pickup PICKUP_COMPLETED. Choose each returned item, quantity, and replacement product or size, then record the exchange. The system restocks the returned item, deducts the replacement, settles any value difference, and closes the pickup-completed request in one transaction.",
+      },
+      {
+        title: "Review Exchange Settlement and History",
+        detail:
+          "A higher-value replacement records the collection method and amount. A lower-value replacement adds the difference to the customer's store credit; an even exchange has no settlement. Check Exchange History and Stock Movement History on the order to confirm the returned and issued items. Finance reflects the exchanged revenue, replacement cost, tax, and collected settlement without counting the exchange as another order.",
+      },
     ],
     tips: [
       "Never dispatch the replacement before the old item is received and verified.",
       "Add the tracking number when dispatching so the customer can follow the delivery.",
+      "Use Replace / Exchange for product or size swaps that need stock movement and a value settlement; do not also dispatch a second replacement for the same request.",
     ],
     diagram: [
       {

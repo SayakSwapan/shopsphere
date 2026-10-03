@@ -170,7 +170,7 @@ function Card({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-2xl border border-slate-700 bg-[#111827] p-6">
+    <section className="rounded-2xl border border-slate-700 bg-[#111827] p-4 sm:p-6">
       <h2 className="mb-4 text-lg font-bold text-white">{title}</h2>
       {children}
     </section>
@@ -631,9 +631,9 @@ export default function OfflineOrderDetail({
             {order.stockmovement.map((m) => (
               <div
                 key={m.id}
-                className="flex items-center justify-between rounded-lg bg-[#0F172A] px-4 py-3 text-sm"
+                className="flex flex-col gap-1 rounded-lg bg-[#0F172A] px-3 py-3 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-4"
               >
-                <div>
+                <div className="min-w-0 break-words">
                   <span
                     className={`font-bold ${m.type === "SALE" ? "text-rose-400" : "text-emerald-400"}`}
                   >
@@ -641,7 +641,7 @@ export default function OfflineOrderDetail({
                   </span>
                   <span className="ml-2 text-slate-300">{m.note}</span>
                 </div>
-                <div className="text-xs text-slate-400">
+                <div className="shrink-0 text-xs text-slate-400">
                   {m.beforeQuantity != null && m.afterQuantity != null
                     ? `${m.beforeQuantity} → ${m.afterQuantity}`
                     : `Qty ${m.quantity}`}

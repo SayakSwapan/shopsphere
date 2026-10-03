@@ -13,6 +13,10 @@ import {
   ExpenseCategoryBreakdown,
 } from "./expense.service";
 import { getCompletedRefundMap, refundForOrder } from "./refund.service";
+import {
+  getExchangeCashEntries,
+  getExchangeFinancialAdjustments,
+} from "./exchange.service";
 
 export type PeriodType =
   "daily" | "weekly" | "monthly" | "quarterly" | "yearly" | "custom";
@@ -125,9 +129,11 @@ export async function getFinanceSummary(
           orderType: true,
           orderitem: {
             select: {
+              id: true,
               quantity: true,
               costPriceSnapshot: true,
               gstSnapshot: true,
+              gstAmountAtSale: true,
               product: { select: { costPrice: true } },
             },
           },
@@ -164,6 +170,7 @@ export async function getFinanceSummary(
     ]);
 
   const refundLedger = await getCompletedRefundMap(orders.map((o) => o.id));
+  const exchangeAdjustments = await getExchangeFinancialAdjustments(orders);
   const refundAmounts = new Map<string, number>();
   for (const o of orders) {
     const amount = refundForOrder(o, refundLedger);
@@ -175,12 +182,21 @@ export async function getFinanceSummary(
     expenses,
     paymentTransactions,
     refundAmounts,
+    exchangeAdjustments,
   );
-  const gstData = calculateGSTCollected(orders);
+  const gstData = calculateGSTCollected(orders, exchangeAdjustments);
   const totalInvestment = await calculateInventoryValue(allProducts);
   const expensesByCategory = groupExpensesByCategory(expenses);
   const settlementSummary = await aggregateSettlements(paymentTransactions);
-  const cashFlow = buildCashFlow(orders, expenses, paymentTransactions);
+  const exchangeCashEntries = await getExchangeCashEntries(
+    orders.map((order) => order.id),
+  );
+  const cashFlow = buildCashFlow(
+    orders,
+    expenses,
+    paymentTransactions,
+    exchangeCashEntries,
+  );
 
   const monthlyData =
     period === "monthly" || period === "quarterly" || period === "yearly"
@@ -190,6 +206,7 @@ export async function getFinanceSummary(
           paymentTransactions,
           refundAmounts,
           new Date().getFullYear(),
+          exchangeAdjustments,
         )
       : [];
 
@@ -210,7 +227,8 @@ export async function getFinanceSummary(
 
   for (const o of orders) {
     const ch = o.orderType === "OFFLINE" ? offline : online;
-    ch.revenue += Number(o.totalAmount);
+    const exchangeAdjustment = exchangeAdjustments.get(o.id);
+    ch.revenue += Number(o.totalAmount) + (exchangeAdjustment?.revenue ?? 0);
     ch.orders += 1;
     ch.transactionFees += o.transactionFee ? Number(o.transactionFee) : 0;
 
@@ -226,7 +244,8 @@ export async function getFinanceSummary(
         orderCogs += item.quantity * cp;
       }
     }
-    ch.cogs += orderCogs;
+    ch.cogs +=
+      orderCogs + (refundAmt > 0 ? 0 : (exchangeAdjustment?.cogs ?? 0));
   }
 
   online.grossProfit = online.revenue - online.refunds - online.cogs;
@@ -325,6 +344,7 @@ export async function getDashboardWidgets() {
         paymentStatus: true,
         orderitem: {
           select: {
+            id: true,
             quantity: true,
             costPriceSnapshot: true,
             product: { select: { costPrice: true } },
@@ -361,6 +381,11 @@ export async function getDashboardWidgets() {
     }),
   ]);
 
+  const exchangeAdjustments = await getExchangeFinancialAdjustments([
+    ...todayOrders,
+    ...monthOrders,
+    ...yearOrders,
+  ]);
   const [todayRefundMap, monthRefundMap, yearRefundMap] = await Promise.all([
     getCompletedRefundMap(todayOrders.map((o) => o.id)),
     getCompletedRefundMap(monthOrders.map((o) => o.id)),
@@ -368,7 +393,8 @@ export async function getDashboardWidgets() {
   ]);
 
   const todayRevenue = todayOrders.reduce(
-    (s, o) => s + Number(o.totalAmount),
+    (s, o) =>
+      s + Number(o.totalAmount) + (exchangeAdjustments.get(o.id)?.revenue ?? 0),
     0,
   );
   const todayRefunds = todayOrders.reduce(
@@ -380,7 +406,11 @@ export async function getDashboardWidgets() {
     (s, o) => s + (o.transactionFee ? Number(o.transactionFee) : 0),
     0,
   );
-  const todayGST = todayOrders.reduce((s, o) => s + Number(o.gst ?? 0), 0);
+  const todayGST = todayOrders.reduce(
+    (s, o) =>
+      s + Number(o.gst ?? 0) + (exchangeAdjustments.get(o.id)?.gst ?? 0),
+    0,
+  );
   const todayExpensesTotal = todayExpenses.reduce(
     (s, e) => s + Number(e.amount),
     0,
@@ -396,12 +426,14 @@ export async function getDashboardWidgets() {
           : Number(item.product.costPrice);
         cogs += item.quantity * cp;
       }
+      cogs += exchangeAdjustments.get(o.id)?.cogs ?? 0;
     }
     return { totalCOGS: Math.round(cogs * 100) / 100 };
   })();
 
   const monthRevenue = monthOrders.reduce(
-    (s, o) => s + Number(o.totalAmount),
+    (s, o) =>
+      s + Number(o.totalAmount) + (exchangeAdjustments.get(o.id)?.revenue ?? 0),
     0,
   );
   const monthRefunds = monthOrders.reduce(
@@ -416,7 +448,11 @@ export async function getDashboardWidgets() {
     })
   ).reduce((s, e) => s + Number(e.amount), 0);
 
-  const yearRevenue = yearOrders.reduce((s, o) => s + Number(o.totalAmount), 0);
+  const yearRevenue = yearOrders.reduce(
+    (s, o) =>
+      s + Number(o.totalAmount) + (exchangeAdjustments.get(o.id)?.revenue ?? 0),
+    0,
+  );
   const yearRefunds = yearOrders.reduce(
     (s, o) => s + refundForOrder(o, yearRefundMap),
     0,

@@ -21,6 +21,12 @@ function round2(value: number): number {
 }
 
 function addressOf(order: {
+  orderType?: string;
+  addressLine1?: string;
+  addressLine2?: string | null;
+  city?: string;
+  state?: string;
+  pincode?: string;
   offlineAddressLine1: string | null;
   offlineAddressLine2: string | null;
   offlineCity: string | null;
@@ -28,11 +34,19 @@ function addressOf(order: {
   offlinePincode: string | null;
 }): string | null {
   const value = [
-    order.offlineAddressLine1,
-    order.offlineAddressLine2,
-    [order.offlineCity, order.offlineState, order.offlinePincode]
-      .filter(Boolean)
-      .join(", "),
+    ...(order.orderType === "ONLINE"
+      ? [
+          order.addressLine1,
+          order.addressLine2,
+          [order.city, order.state, order.pincode].filter(Boolean).join(", "),
+        ]
+      : [
+          order.offlineAddressLine1,
+          order.offlineAddressLine2,
+          [order.offlineCity, order.offlineState, order.offlinePincode]
+            .filter(Boolean)
+            .join(", "),
+        ]),
   ]
     .filter(Boolean)
     .join(", ");

@@ -24,8 +24,9 @@ import ShippingLabelButton from "@/components/admin/orders/shipping-label-button
 import type { ShippingLabelData } from "@/lib/shipping-label-pdf";
 import InvoiceDocument from "@/components/invoice/invoice-document";
 import PrintInvoiceButton from "@/components/admin/orders/print-invoice-button";
+import OfflineExchange from "@/components/admin/offline-sales/offline-exchange";
 import FlowGuide from "@/components/admin/guides/flow-guide";
-import { RefreshCcw, RotateCcw } from "lucide-react";
+import { Download, RefreshCcw, RotateCcw } from "lucide-react";
 
 interface Props {
   params: Promise<{
@@ -84,6 +85,11 @@ export default async function OrderDetailsPage({ params }: Props) {
         take: 1,
         select: { id: true, status: true, updatedAt: true },
       },
+      offlineExchanges: {
+        orderBy: { createdAt: "desc" },
+        include: { items: true, createdBy: { select: { name: true } } },
+      },
+      stockmovement: { orderBy: { createdAt: "desc" } },
     },
   });
 
@@ -210,7 +216,12 @@ export default async function OrderDetailsPage({ params }: Props) {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          {order.orderType === "ONLINE" &&
+            order.status === "DELIVERED" &&
+            order.inventoryUpdated && (
+              <OfflineExchange orderId={order.id} orderType="ONLINE" />
+            )}
           <OrderStatusSelect
             orderId={order.id}
             currentStatus={order.status as OrderStatus}
@@ -300,6 +311,119 @@ export default async function OrderDetailsPage({ params }: Props) {
           </div>
         );
       })()}
+
+      {orderRaw.offlineExchanges.length > 0 && (
+        <section className="mt-6 rounded-2xl border border-slate-700 bg-[#111827] p-4 sm:p-6">
+          <h2 className="mb-4 text-lg font-bold text-white">
+            Exchange &amp; Finance History
+          </h2>
+          <div className="space-y-3">
+            {orderRaw.offlineExchanges.map((exchange) => (
+              <article
+                key={exchange.id}
+                className="rounded-xl border border-slate-700 bg-[#0F172A] p-3 sm:p-4"
+              >
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0">
+                    <p className="break-all font-bold text-white">
+                      {exchange.exchangeNumber}
+                    </p>
+                    <p className="text-xs text-slate-400">
+                      {formatDateTime(exchange.createdAt)} ·{" "}
+                      {exchange.type === "PRODUCT"
+                        ? "Product replacement"
+                        : "Size exchange"}
+                    </p>
+                  </div>
+                  <p className="shrink-0 text-sm font-semibold text-slate-200">
+                    Returned {formatCurrency(Number(exchange.returnedValue))} ·
+                    Issued {formatCurrency(Number(exchange.issuedValue))}
+                  </p>
+                </div>
+                <a
+                  href={`/api/admin/offline/exchanges/${exchange.id}/invoice`}
+                  className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-amber-400 hover:text-amber-300"
+                >
+                  <Download size={13} /> Exchange invoice
+                </a>
+                <div className="mt-3 space-y-2">
+                  {exchange.items.map((line) => (
+                    <div
+                      key={line.id}
+                      className="grid gap-1 rounded-lg bg-slate-900/70 px-3 py-2 text-xs sm:grid-cols-[1fr_auto_1fr] sm:items-center sm:gap-3"
+                    >
+                      <p className="wrap-break-word text-slate-300">
+                        Returned:{" "}
+                        <span className="font-semibold text-white">
+                          {line.returnedProductName}
+                        </span>
+                        {line.returnedVariantSize
+                          ? ` · ${line.returnedVariantSize}`
+                          : ""}
+                      </p>
+                      <span className="hidden text-slate-500 sm:block">→</span>
+                      <p className="wrap-break-word text-slate-300">
+                        Issued:{" "}
+                        <span className="font-semibold text-emerald-300">
+                          {line.issuedProductName}
+                        </span>
+                        {line.issuedVariantSize
+                          ? ` · ${line.issuedVariantSize}`
+                          : ""}{" "}
+                        · Qty {line.quantity}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-3 text-xs text-slate-400">
+                  {exchange.settlementType === "CREDIT"
+                    ? "Store credit"
+                    : exchange.settlementType === "COLLECT"
+                      ? `Collected (${exchange.paymentMethod ?? "payment method not recorded"})`
+                      : "Even exchange"}
+                  : {formatCurrency(Number(exchange.settlementAmount))}
+                </p>
+                {exchange.notes && (
+                  <p className="mt-2 wrap-break-word text-xs text-slate-500">
+                    {exchange.notes}
+                  </p>
+                )}
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {orderRaw.stockmovement.length > 0 && (
+        <section className="mt-6 rounded-2xl border border-slate-700 bg-[#111827] p-4 sm:p-6">
+          <h2 className="mb-4 text-lg font-bold text-white">
+            Stock Movement History
+          </h2>
+          <div className="space-y-2">
+            {orderRaw.stockmovement.map((movement) => (
+              <div
+                key={movement.id}
+                className="flex flex-col gap-1 rounded-lg bg-[#0F172A] px-3 py-3 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-4"
+              >
+                <p className="wrap-break-word text-slate-300">
+                  <span className="font-bold text-white">{movement.type}</span>{" "}
+                  · {movement.note}
+                </p>
+                <p className="shrink-0 text-xs text-slate-400">
+                  {movement.beforeQuantity != null &&
+                  movement.afterQuantity != null
+                    ? `${movement.beforeQuantity} → ${movement.afterQuantity}`
+                    : `Qty ${movement.quantity}`}
+                  {movement.referenceOrder
+                    ? ` · ${movement.referenceOrder}`
+                    : ""}{" "}
+                  · {formatDateTime(movement.createdAt)}
+                </p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Items */}

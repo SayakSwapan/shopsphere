@@ -18,17 +18,30 @@ export interface CashFlowSummary {
   entries: CashFlowEntry[];
 }
 
-export type CashFlowPeriod = "daily" | "weekly" | "monthly" | "quarterly" | "yearly" | "custom";
+export type CashFlowPeriod =
+  "daily" | "weekly" | "monthly" | "quarterly" | "yearly" | "custom";
 
 /**
  * Build cash flow entries from orders (inflow) and expenses (outflow).
  */
 export function buildCashFlow(
-  orders: { id: string; totalAmount: Money; createdAt: Date; orderNumber?: string | null }[],
+  orders: {
+    id: string;
+    totalAmount: Money;
+    createdAt: Date;
+    orderNumber?: string | null;
+  }[],
   expenses: { id: string; amount: Money; date: Date; title: string }[],
-  gatewayCharges: { id: string; gatewayFee: Money | null; gatewayGST: Money | null; createdAt: Date; orderId: string }[]
+  gatewayCharges: {
+    id: string;
+    gatewayFee: Money | null;
+    gatewayGST: Money | null;
+    createdAt: Date;
+    orderId: string;
+  }[],
+  exchangeEntries: CashFlowEntry[] = [],
 ): CashFlowSummary {
-  const entries: CashFlowEntry[] = [];
+  const entries: CashFlowEntry[] = [...exchangeEntries];
 
   for (const o of orders) {
     entries.push({
@@ -68,8 +81,18 @@ export function buildCashFlow(
 
   entries.sort((a, b) => a.date.getTime() - b.date.getTime());
 
-  const totalInflow = Math.round(entries.filter((e) => e.type === "INFLOW").reduce((s, e) => s + e.amount, 0) * 100) / 100;
-  const totalOutflow = Math.round(entries.filter((e) => e.type === "OUTFLOW").reduce((s, e) => s + e.amount, 0) * 100) / 100;
+  const totalInflow =
+    Math.round(
+      entries
+        .filter((e) => e.type === "INFLOW")
+        .reduce((s, e) => s + e.amount, 0) * 100,
+    ) / 100;
+  const totalOutflow =
+    Math.round(
+      entries
+        .filter((e) => e.type === "OUTFLOW")
+        .reduce((s, e) => s + e.amount, 0) * 100,
+    ) / 100;
 
   return {
     totalInflow,

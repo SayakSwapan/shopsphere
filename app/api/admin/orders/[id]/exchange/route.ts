@@ -17,9 +17,9 @@ export async function GET(req: Request, { params }: Context) {
     }
     const { id } = await params;
     const search = new URL(req.url).searchParams.get("search")?.trim() ?? "";
-    return getExchangeOptions(id, "OFFLINE", search);
+    return getExchangeOptions(id, "ONLINE", search);
   } catch (error) {
-    console.error("OFFLINE EXCHANGE OPTIONS ERROR:", error);
+    console.error("ONLINE EXCHANGE OPTIONS ERROR:", error);
     return NextResponse.json(
       { success: false, message: "Failed to load replacement options." },
       { status: 500 },
@@ -37,9 +37,9 @@ export async function POST(req: Request, { params }: Context) {
       );
     }
     const { id } = await params;
-    return postExchange(id, session.user.id, "OFFLINE", await req.json());
+    return postExchange(id, session.user.id, "ONLINE", await req.json());
   } catch (error) {
-    console.error("OFFLINE EXCHANGE ERROR:", error);
+    console.error("ONLINE EXCHANGE ERROR:", error);
     return NextResponse.json(
       { success: false, message: "Unable to record replacement." },
       { status: 500 },

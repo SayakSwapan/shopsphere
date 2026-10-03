@@ -10,6 +10,9 @@ import {
 import { getActivePriceBase } from "@/lib/pricing";
 import { createAdminNotification } from "@/lib/notifications";
 import { sendOfflineExchangeEmail } from "@/lib/email/offline-exchange-email";
+import { getReturnedUnitValue } from "@/lib/orders/exchange-pricing";
+import { Prisma, type OrderType } from "@prisma/client";
+import { appendTimeline, type TimelineEntry } from "@/lib/return-replacement";
 
 /**
  * Offline (POS) post-payment exchange / replacement.
@@ -36,6 +39,7 @@ export interface OfflineExchangeLineInput {
 export interface OfflineExchangeInput {
   orderId: string;
   adminId: string;
+  expectedOrderType: OrderType;
   lines: OfflineExchangeLineInput[];
   notes?: string;
   paymentMethod?: string;
@@ -58,8 +62,7 @@ function round2(value: number): number {
 
 async function buildExchangeNumber(): Promise<string> {
   const year = new Date().getFullYear();
-  const count = await prisma.offlineexchange.count();
-  return `EXC-${year}-${String(count + 1).padStart(6, "0")}`;
+  return `EXC-${year}-${Date.now()}-${crypto.randomBytes(3).toString("hex").toUpperCase()}`;
 }
 
 interface IssuedVariant {
@@ -77,6 +80,7 @@ interface ExchangePlan {
     quantity: number;
     price: number;
     gstAmountAtSale: unknown;
+    gstSnapshot: unknown;
     variantSku: string | null;
     variantSize: string | null;
     variantGender: string | null;
@@ -110,12 +114,19 @@ export async function exchangeOfflineOrderItems(
   const order = await prisma.order.findUnique({
     where: { id: input.orderId },
     include: {
-      orderitem: { include: { product: { select: { id: true, name: true } } } },
+      orderitem: {
+        include: {
+          product: { select: { id: true, name: true, gstPercentage: true } },
+        },
+      },
     },
   });
   if (!order) throw new OfflineSaleError("Order not found.", 404);
-  if (order.orderType !== "OFFLINE")
-    throw new OfflineSaleError("Not an offline order.");
+  if (order.orderType !== input.expectedOrderType) {
+    throw new OfflineSaleError(
+      "Order type does not match this exchange request.",
+    );
+  }
   if (order.status === "CANCELLED")
     throw new OfflineSaleError("A cancelled order cannot be modified.");
   if (!order.inventoryUpdated)
@@ -127,34 +138,60 @@ export async function exchangeOfflineOrderItems(
       "Due / part-payment sales are not eligible for returns or replacements. Collect the outstanding due first.",
     );
 
+  if (order.orderType === "ONLINE" && order.status !== "DELIVERED") {
+    throw new OfflineSaleError(
+      "Online orders can only be exchanged after delivery.",
+    );
+  }
+  if (order.paymentStatus === "REFUNDED") {
+    throw new OfflineSaleError("A refunded order cannot be exchanged.");
+  }
+  const [returnRequest, replacementRequest, refund] = await Promise.all([
+    prisma.return_request.findFirst({
+      where: { orderId: order.id, status: { not: "REJECTED" } },
+      select: { id: true },
+    }),
+    prisma.replacement_request.findFirst({
+      where: { orderId: order.id, status: { not: "REJECTED" } },
+      select: { id: true, status: true, timeline: true },
+    }),
+    prisma.refund.findFirst({
+      where: { orderId: order.id, status: { in: ["INITIATED", "COMPLETED"] } },
+      select: { id: true },
+    }),
+  ]);
+  if (returnRequest || refund) {
+    throw new OfflineSaleError(
+      "This order already has a return, replacement, or refund in progress.",
+    );
+  }
+  if (replacementRequest && replacementRequest.status !== "PICKUP_COMPLETED") {
+    throw new OfflineSaleError(
+      "Confirm receipt of the returned item before completing its replacement.",
+    );
+  }
+
   const itemMap = new Map(order.orderitem.map((i) => [i.id, i]));
 
-  const prior = await prisma.offlineexchangeitem.groupBy({
-    by: ["orderItemId"],
-    where: { orderItemId: { in: order.orderitem.map((i) => i.id) } },
-    _sum: { quantity: true },
-  });
-  const alreadyExchanged = new Map(
-    prior.map((p) => [p.orderItemId ?? "", p._sum.quantity ?? 0]),
-  );
-
   const plans: ExchangePlan[] = [];
+  const seenOrderItems = new Set<string>();
   let anyDifferentProduct = false;
 
   for (const line of input.lines) {
+    if (seenOrderItems.has(line.orderItemId)) {
+      throw new OfflineSaleError(
+        "An order item can only appear once per exchange.",
+      );
+    }
+    seenOrderItems.add(line.orderItemId);
+
     const item = itemMap.get(line.orderItemId);
     if (!item) throw new OfflineSaleError("Order item not found.");
 
-    const quantity = Math.round(Number(line.quantity) || 0);
-    if (quantity <= 0) {
+    const quantity = Number(line.quantity);
+    if (!Number.isInteger(quantity) || quantity <= 0) {
       throw new OfflineSaleError(
         "Replacement quantity must be greater than 0.",
-      );
-    }
-    const maxReturnable = item.quantity - (alreadyExchanged.get(item.id) ?? 0);
-    if (quantity > maxReturnable) {
-      throw new OfflineSaleError(
-        `Cannot replace ${quantity} × "${item.product.name}" — only ${maxReturnable} still returnable.`,
       );
     }
 
@@ -180,30 +217,57 @@ export async function exchangeOfflineOrderItems(
       throw new OfflineSaleError("Replacement product not found.");
 
     const sameProduct = issuedProduct.id === item.productId;
+    const returnedVariant = item.variantSku
+      ? await prisma.productvariant.findFirst({
+          where: { productId: item.productId, sku: item.variantSku },
+          select: { id: true },
+        })
+      : null;
+    if (item.variantSku && !returnedVariant) {
+      throw new OfflineSaleError(
+        `The original variant for "${item.product.name}" is no longer available.`,
+      );
+    }
+    if (
+      sameProduct &&
+      (!line.issuedVariantId || line.issuedVariantId === returnedVariant?.id)
+    ) {
+      throw new OfflineSaleError(
+        "Choose a different size or replacement product.",
+      );
+    }
 
     let issuedVariant: IssuedVariant | null = null;
     if (line.issuedVariantId) {
-      const v = await prisma.productvariant.findUnique({
+      const variant = await prisma.productvariant.findUnique({
         where: { id: line.issuedVariantId },
         include: { size: true, gender: true },
       });
-      if (!v || v.productId !== issuedProduct.id) {
+      if (!variant || variant.productId !== issuedProduct.id) {
         throw new OfflineSaleError(
           `The selected variant does not belong to "${issuedProduct.name}".`,
         );
       }
       issuedVariant = {
-        id: v.id,
-        sku: v.sku,
-        stock: v.stock,
-        sizeName: v.size.sizeName,
-        genderName: v.gender.name,
+        id: variant.id,
+        sku: variant.sku,
+        stock: variant.stock,
+        sizeName: variant.size.sizeName,
+        genderName: variant.gender.name,
       };
     }
+    if (
+      !line.issuedVariantId &&
+      (await prisma.productvariant.count({
+        where: { productId: issuedProduct.id },
+      })) > 0
+    ) {
+      throw new OfflineSaleError(
+        `Select a variant for replacement product "${issuedProduct.name}".`,
+      );
+    }
 
-    const returnedUnitPriceIncl = round2(
-      Number(item.price) + Number(item.gstAmountAtSale ?? 0),
-    );
+    const returnedUnitPriceIncl = getReturnedUnitValue(order, item);
     const onlineBase = getActivePriceBase({
       salePrice: Number(issuedProduct.salePrice),
       finalPrice: Number(issuedProduct.finalPrice),
@@ -228,10 +292,13 @@ export async function exchangeOfflineOrderItems(
     let issuedUnitPriceIncl: number;
     if (sameProduct) {
       issuedUnitPriceIncl =
-        line.issuedUnitPriceIncl != null
+        order.orderType === "OFFLINE" && line.issuedUnitPriceIncl != null
           ? round2(Number(line.issuedUnitPriceIncl))
           : returnedUnitPriceIncl;
-    } else if (line.issuedUnitPriceIncl != null) {
+    } else if (
+      order.orderType === "OFFLINE" &&
+      line.issuedUnitPriceIncl != null
+    ) {
       issuedUnitPriceIncl = round2(Number(line.issuedUnitPriceIncl));
     } else {
       issuedUnitPriceIncl = onlineIncl;
@@ -242,22 +309,18 @@ export async function exchangeOfflineOrderItems(
     }
 
     if (!sameProduct) {
-      const check = validateOfflineSellingPrice({
-        customerSellingPrice: issuedUnitPriceIncl,
-        lastSellingPrice:
-          issuedProduct.lastSellingPrice != null
-            ? Number(issuedProduct.lastSellingPrice)
-            : null,
-      });
-      if (!check.valid) throw new OfflineSaleError(check.message!);
       anyDifferentProduct = true;
+      if (order.orderType === "OFFLINE") {
+        const check = validateOfflineSellingPrice({
+          customerSellingPrice: issuedUnitPriceIncl,
+          lastSellingPrice:
+            issuedProduct.lastSellingPrice != null
+              ? Number(issuedProduct.lastSellingPrice)
+              : null,
+        });
+        if (!check.valid) throw new OfflineSaleError(check.message!);
+      }
     }
-
-    const returnedVariant = item.variantSku
-      ? await prisma.productvariant.findFirst({
-          where: { productId: item.productId, sku: item.variantSku },
-        })
-      : null;
 
     plans.push({
       orderItem: item,
@@ -307,17 +370,96 @@ export async function exchangeOfflineOrderItems(
 
   const exchangeNumber = await buildExchangeNumber();
 
-  const result = await prisma.$transaction(async (tx) => {
-    for (const p of plans) {
-      const qty = p.quantity;
+  const result = await prisma.$transaction(
+    async (tx) => {
+      await tx.$queryRaw`SELECT "id" FROM "order" WHERE "id" = ${order.id} FOR UPDATE`;
 
-      // 1) Return the original item to inventory.
-      if (p.returnedVariantId) {
-        const rv = await tx.productvariant.findUnique({
-          where: { id: p.returnedVariantId },
-          include: { size: true, gender: true },
-        });
-        if (rv) {
+      {
+        const [returnRequest, replacementRequest, refund] = await Promise.all([
+          tx.return_request.findFirst({
+            where: { orderId: order.id, status: { not: "REJECTED" } },
+            select: { id: true },
+          }),
+          tx.replacement_request.findFirst({
+            where: { orderId: order.id, status: { not: "REJECTED" } },
+            select: { id: true, status: true, timeline: true },
+          }),
+          tx.refund.findFirst({
+            where: {
+              orderId: order.id,
+              status: { in: ["INITIATED", "COMPLETED"] },
+            },
+            select: { id: true },
+          }),
+        ]);
+        if (returnRequest || refund) {
+          throw new OfflineSaleError(
+            "This order already has a return, replacement, or refund in progress.",
+          );
+        }
+        if (
+          replacementRequest &&
+          replacementRequest.status !== "PICKUP_COMPLETED"
+        ) {
+          throw new OfflineSaleError(
+            "Confirm receipt of the returned item before completing its replacement.",
+          );
+        }
+      }
+
+      const prior = await tx.offlineexchangeitem.groupBy({
+        by: ["orderItemId"],
+        where: { orderItemId: { in: order.orderitem.map((item) => item.id) } },
+        _sum: { quantity: true },
+      });
+      const exchangedByItem = new Map(
+        prior.map((entry) => [
+          entry.orderItemId ?? "",
+          entry._sum.quantity ?? 0,
+        ]),
+      );
+      for (const p of plans) {
+        const maxReturnable =
+          p.orderItem.quantity - (exchangedByItem.get(p.orderItem.id) ?? 0);
+        if (p.quantity > maxReturnable) {
+          throw new OfflineSaleError(
+            `Cannot replace ${p.quantity} × "${p.productName}" — only ${maxReturnable} still returnable.`,
+          );
+        }
+      }
+
+      const productIds = [
+        ...new Set(
+          plans.flatMap((p) => [p.orderItem.productId, p.issuedProductId]),
+        ),
+      ].sort();
+      const variantIds = [
+        ...new Set(
+          plans.flatMap((p) =>
+            [p.returnedVariantId, p.issuedVariant?.id].filter(
+              (id): id is string => id !== null && id !== undefined,
+            ),
+          ),
+        ),
+      ].sort();
+      for (const id of productIds) {
+        await tx.$queryRaw`SELECT "id" FROM "product" WHERE "id" = ${id} FOR UPDATE`;
+      }
+      for (const id of variantIds) {
+        await tx.$queryRaw`SELECT "id" FROM "productvariant" WHERE "id" = ${id} FOR UPDATE`;
+      }
+
+      for (const p of plans) {
+        const qty = p.quantity;
+
+        // 1) Return the original item to inventory.
+        if (p.returnedVariantId) {
+          const rv = await tx.productvariant.findUnique({
+            where: { id: p.returnedVariantId },
+            include: { size: true, gender: true },
+          });
+          if (!rv)
+            throw new OfflineSaleError("The returned variant was not found.");
           const before = rv.stock;
           await tx.productvariant.update({
             where: { id: rv.id },
@@ -329,7 +471,7 @@ export async function exchangeOfflineOrderItems(
               productId: p.orderItem.productId,
               variantId: rv.id,
               orderId: order.id,
-              orderType: "OFFLINE",
+              orderType: order.orderType,
               referenceOrder: exchangeNumber,
               type: "RESTOCK",
               quantity: qty,
@@ -341,151 +483,216 @@ export async function exchangeOfflineOrderItems(
             },
           });
         }
-      }
-      await tx.product.update({
-        where: { id: p.orderItem.productId },
-        data: { stock: { increment: qty }, totalSold: { decrement: qty } },
-      });
-
-      // 2) Issue the replacement item.
-      if (p.issuedVariant) {
-        const iv = await tx.productvariant.findUnique({
-          where: { id: p.issuedVariant.id },
-          include: { size: true, gender: true },
+        const returnedProduct = await tx.product.findUnique({
+          where: { id: p.orderItem.productId },
+          select: { stock: true },
         });
-        const available = iv?.stock ?? 0;
-        if (qty > available) {
+        if (!returnedProduct)
+          throw new OfflineSaleError("Returned product not found.");
+        const returnedProductBefore = returnedProduct.stock;
+        await tx.product.update({
+          where: { id: p.orderItem.productId },
+          data: { stock: { increment: qty }, totalSold: { decrement: qty } },
+        });
+        if (!p.returnedVariantId) {
+          await tx.stockmovement.create({
+            data: {
+              id: crypto.randomUUID(),
+              productId: p.orderItem.productId,
+              orderId: order.id,
+              orderType: order.orderType,
+              referenceOrder: exchangeNumber,
+              type: "RESTOCK",
+              quantity: qty,
+              beforeQuantity: returnedProductBefore,
+              afterQuantity: returnedProductBefore + qty,
+              note: `Exchange ${exchangeNumber} — returned ${p.productName}`,
+            },
+          });
+        }
+
+        // 2) Issue the replacement item.
+        if (p.issuedVariant) {
+          const iv = await tx.productvariant.findUnique({
+            where: { id: p.issuedVariant.id },
+            include: { size: true, gender: true },
+          });
+          const available = iv?.stock ?? 0;
+          if (qty > available) {
+            throw new OfflineSaleError(
+              `Insufficient stock for "${p.issuedProductName}" ${
+                iv?.size?.sizeName ?? ""
+              } (${iv?.gender?.name ?? ""}). Available: ${available}.`,
+            );
+          }
+          const before = available;
+          await tx.productvariant.update({
+            where: { id: p.issuedVariant.id },
+            data: { stock: { decrement: qty } },
+          });
+          await tx.stockmovement.create({
+            data: {
+              id: crypto.randomUUID(),
+              productId: p.issuedProductId,
+              variantId: p.issuedVariant.id,
+              orderId: order.id,
+              orderType: order.orderType,
+              referenceOrder: exchangeNumber,
+              type: "SALE",
+              quantity: qty,
+              beforeQuantity: before,
+              afterQuantity: before - qty,
+              note: `Exchange ${exchangeNumber} — issued ${p.issuedProductName} (${p.issuedVariant.sizeName}/${p.issuedVariant.genderName})`,
+            },
+          });
+        }
+        const issuedProd = await tx.product.findUnique({
+          where: { id: p.issuedProductId },
+          select: { stock: true },
+        });
+        if (!issuedProd || qty > issuedProd.stock) {
           throw new OfflineSaleError(
-            `Insufficient stock for "${p.issuedProductName}" ${
-              iv?.size?.sizeName ?? ""
-            } (${iv?.gender?.name ?? ""}). Available: ${available}.`,
+            `Insufficient stock for "${p.issuedProductName}". Available: ${
+              issuedProd?.stock ?? 0
+            }.`,
           );
         }
-        const before = available;
-        await tx.productvariant.update({
-          where: { id: p.issuedVariant.id },
-          data: { stock: { decrement: qty } },
+        await tx.product.update({
+          where: { id: p.issuedProductId },
+          data: { stock: { decrement: qty }, totalSold: { increment: qty } },
         });
-        await tx.stockmovement.create({
-          data: {
-            id: crypto.randomUUID(),
-            productId: p.issuedProductId,
-            variantId: p.issuedVariant.id,
-            orderId: order.id,
-            orderType: "OFFLINE",
-            referenceOrder: exchangeNumber,
-            type: "SALE",
-            quantity: qty,
-            beforeQuantity: before,
-            afterQuantity: before - qty,
-            note: `Exchange ${exchangeNumber} — issued ${p.issuedProductName} (${p.issuedVariant.sizeName}/${p.issuedVariant.genderName})`,
-          },
-        });
+        if (!p.issuedVariant) {
+          await tx.stockmovement.create({
+            data: {
+              id: crypto.randomUUID(),
+              productId: p.issuedProductId,
+              orderId: order.id,
+              orderType: order.orderType,
+              referenceOrder: exchangeNumber,
+              type: "SALE",
+              quantity: qty,
+              beforeQuantity: issuedProd.stock,
+              afterQuantity: issuedProd.stock - qty,
+              note: `Exchange ${exchangeNumber} — issued ${p.issuedProductName}`,
+            },
+          });
+        }
       }
-      const issuedProd = await tx.product.findUnique({
-        where: { id: p.issuedProductId },
-        select: { stock: true },
-      });
-      if (!issuedProd || qty > issuedProd.stock) {
-        throw new OfflineSaleError(
-          `Insufficient stock for "${p.issuedProductName}". Available: ${
-            issuedProd?.stock ?? 0
-          }.`,
-        );
-      }
-      await tx.product.update({
-        where: { id: p.issuedProductId },
-        data: { stock: { decrement: qty }, totalSold: { increment: qty } },
-      });
-    }
 
-    const exchange = await tx.offlineexchange.create({
-      data: {
-        exchangeNumber,
-        orderId: order.id,
-        originalOrderNumber: order.orderNumber,
-        type: exchangeType,
-        settlementType,
-        settlementAmount,
-        returnedValue,
-        issuedValue,
-        paymentMethod: settlementType === "COLLECT" ? paymentMethod : null,
-        notes: input.notes?.trim() || null,
-        createdById: input.adminId,
-      },
-    });
-
-    for (const p of plans) {
-      const pricing = calculateOfflineItemPricing({
-        actualSellingPrice: p.issuedUnitPriceIncl,
-        costPrice: p.issuedCostPrice,
-        gstPercentage: p.issuedGstPercentage,
-        quantity: p.quantity,
-        lastSellingPrice: p.issuedLastSellingPrice,
-        onlineSellingPrice: p.issuedOnlineSellingPrice,
-      });
-
-      await tx.offlineexchangeitem.create({
+      const exchange = await tx.offlineexchange.create({
         data: {
-          exchangeId: exchange.id,
-          orderItemId: p.orderItem.id,
-          returnedProductId: p.orderItem.productId,
-          returnedProductName: p.productName,
-          returnedVariantId: p.returnedVariantId,
-          returnedVariantSku: p.returnedVariantSku,
-          returnedVariantSize: p.returnedVariantSize,
-          returnedVariantGender: p.returnedVariantGender,
-          returnedUnitPriceIncl: p.returnedUnitPriceIncl,
-          issuedProductId: p.issuedProductId,
-          issuedProductName: p.issuedProductName,
-          issuedVariantId: p.issuedVariant?.id ?? null,
-          issuedVariantSku: p.issuedVariant?.sku ?? null,
-          issuedVariantSize: p.issuedVariant?.sizeName ?? null,
-          issuedVariantGender: p.issuedVariant?.genderName ?? null,
-          issuedUnitPriceIncl: p.issuedUnitPriceIncl,
-          quantity: p.quantity,
-          differenceAmount: p.differenceAmount,
-          issuedCostPrice: pricing.costPrice,
-          issuedGstPercentage: pricing.gstPercentage,
-          issuedGstAmount: pricing.gstAmount,
-          issuedProfitAmount: pricing.profit,
+          exchangeNumber,
+          orderId: order.id,
+          originalOrderNumber: order.orderNumber,
+          type: exchangeType,
+          settlementType,
+          settlementAmount,
+          returnedValue,
+          issuedValue,
+          paymentMethod: settlementType === "COLLECT" ? paymentMethod : null,
+          notes: input.notes?.trim() || null,
+          createdById: input.adminId,
         },
       });
 
-      // A full same-product swap updates the original line snapshot so the
-      // customer's copy of the invoice reflects the item they now hold.
-      if (
-        p.sameProduct &&
-        p.issuedVariant &&
-        p.quantity === p.orderItem.quantity
-      ) {
-        await tx.orderitem.update({
-          where: { id: p.orderItem.id },
+      const replacementRequest = await tx.replacement_request.findFirst({
+        where: { orderId: order.id, status: { not: "REJECTED" } },
+        select: { id: true, timeline: true },
+      });
+      if (replacementRequest) {
+        const timeline =
+          (replacementRequest.timeline as TimelineEntry[] | null) ?? [];
+        await tx.replacement_request.update({
+          where: { id: replacementRequest.id },
           data: {
-            variantSku: p.issuedVariant.sku,
-            variantSize: p.issuedVariant.sizeName,
-            variantGender: p.issuedVariant.genderName,
+            status: "COMPLETED",
+            timeline: appendTimeline(
+              timeline,
+              "COMPLETED",
+              `Completed through exchange ${exchangeNumber}`,
+              input.adminId,
+            ) as unknown as Prisma.InputJsonValue,
+            resolvedAt: new Date(),
           },
         });
       }
-    }
 
-    let creditBalance: number | undefined;
-    if (settlementType === "CREDIT" && settlementAmount > 0) {
-      const credit = await addCredit({
-        customerId: order.userId,
-        amount: settlementAmount,
-        reason: `Store credit from replacement ${exchangeNumber}`,
-        orderId: order.id,
-        exchangeId: exchange.id,
-        recordedById: input.adminId,
-        client: tx,
-      });
-      creditBalance = credit.balance;
-    }
+      for (const p of plans) {
+        const pricing = calculateOfflineItemPricing({
+          actualSellingPrice: p.issuedUnitPriceIncl,
+          costPrice: p.issuedCostPrice,
+          gstPercentage: p.issuedGstPercentage,
+          quantity: p.quantity,
+          lastSellingPrice: p.issuedLastSellingPrice,
+          onlineSellingPrice: p.issuedOnlineSellingPrice,
+        });
 
-    return { exchange, creditBalance };
-  });
+        await tx.offlineexchangeitem.create({
+          data: {
+            exchangeId: exchange.id,
+            orderItemId: p.orderItem.id,
+            returnedProductId: p.orderItem.productId,
+            returnedProductName: p.productName,
+            returnedVariantId: p.returnedVariantId,
+            returnedVariantSku: p.returnedVariantSku,
+            returnedVariantSize: p.returnedVariantSize,
+            returnedVariantGender: p.returnedVariantGender,
+            returnedUnitPriceIncl: p.returnedUnitPriceIncl,
+            issuedProductId: p.issuedProductId,
+            issuedProductName: p.issuedProductName,
+            issuedVariantId: p.issuedVariant?.id ?? null,
+            issuedVariantSku: p.issuedVariant?.sku ?? null,
+            issuedVariantSize: p.issuedVariant?.sizeName ?? null,
+            issuedVariantGender: p.issuedVariant?.genderName ?? null,
+            issuedUnitPriceIncl: p.issuedUnitPriceIncl,
+            quantity: p.quantity,
+            differenceAmount: p.differenceAmount,
+            issuedCostPrice: pricing.costPrice,
+            issuedGstPercentage: pricing.gstPercentage,
+            issuedGstAmount: pricing.gstAmount,
+            issuedProfitAmount: pricing.lineProfit,
+          },
+        });
+
+        // A full same-product swap updates the original line snapshot so the
+        // customer's copy of the invoice reflects the item they now hold.
+        if (
+          p.sameProduct &&
+          p.issuedVariant &&
+          p.quantity === p.orderItem.quantity
+        ) {
+          await tx.orderitem.update({
+            where: { id: p.orderItem.id },
+            data: {
+              variantSku: p.issuedVariant.sku,
+              variantSize: p.issuedVariant.sizeName,
+              variantGender: p.issuedVariant.genderName,
+            },
+          });
+        }
+      }
+
+      let creditBalance: number | undefined;
+      if (settlementType === "CREDIT" && settlementAmount > 0) {
+        const credit = await addCredit({
+          customerId: order.userId,
+          amount: settlementAmount,
+          reason: `Store credit from replacement ${exchangeNumber}`,
+          orderId: order.id,
+          exchangeId: exchange.id,
+          recordedById: input.adminId,
+          client: tx,
+        });
+        creditBalance = credit.balance;
+      }
+
+      return { exchange, creditBalance };
+    },
+    {
+      maxWait: 10_000,
+      timeout: 15_000,
+    },
+  );
 
   // Fire-and-forget: email the exchange invoice with its PDF attached.
   sendOfflineExchangeEmail({ exchangeId: result.exchange.id }).catch((e) =>

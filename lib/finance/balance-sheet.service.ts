@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { getCompletedRefundMap, refundForOrder } from "./refund.service";
+import { getExchangeFinancialAdjustments } from "./exchange.service";
 
 const MONTH_NAMES = [
   "Apr",
@@ -93,10 +94,13 @@ export async function generateBalanceSheet(
         createdAt: true,
         orderitem: {
           select: {
+            id: true,
             quantity: true,
             price: true,
             productId: true,
             costPriceSnapshot: true,
+            gstSnapshot: true,
+            gstAmountAtSale: true,
             product: { select: { costPrice: true } },
           },
         },
@@ -116,6 +120,7 @@ export async function generateBalanceSheet(
   ]);
 
   const refundLedger = await getCompletedRefundMap(orders.map((o) => o.id));
+  const exchangeAdjustments = await getExchangeFinancialAdjustments(orders);
 
   const monthly: BalanceSheetMonth[] = MONTH_NAMES.map((name, idx) => {
     const mStart = new Date(idx < 9 ? startYear : endYear, idx + 3, 1);
@@ -136,7 +141,10 @@ export async function generateBalanceSheet(
     );
 
     const grossRevenue = monthOrders.reduce(
-      (s, o) => s + Number(o.totalAmount),
+      (s, o) =>
+        s +
+        Number(o.totalAmount) +
+        (exchangeAdjustments.get(o.id)?.revenue ?? 0),
       0,
     );
     const refunds = monthOrders.reduce(
@@ -156,9 +164,14 @@ export async function generateBalanceSheet(
           : Number(item.product.costPrice);
         cogs += item.quantity * cp;
       }
+      cogs += exchangeAdjustments.get(o.id)?.cogs ?? 0;
     }
 
-    const gst = monthOrders.reduce((s, o) => s + Number(o.gst || 0), 0);
+    const gst = monthOrders.reduce(
+      (s, o) =>
+        s + Number(o.gst || 0) + (exchangeAdjustments.get(o.id)?.gst ?? 0),
+      0,
+    );
     const expensesTotal = monthExpenses.reduce(
       (s, e) => s + Number(e.amount),
       0,
@@ -201,11 +214,18 @@ export async function generateBalanceSheet(
         : Number(item.product.costPrice);
       totalCOGS += item.quantity * cp;
     }
+    totalCOGS += exchangeAdjustments.get(o.id)?.cogs ?? 0;
   }
 
   const summary: BalanceSheetSummary = {
     grossRevenue: Math.round(
-      orders.reduce((s, o) => s + Number(o.totalAmount), 0),
+      orders.reduce(
+        (s, o) =>
+          s +
+          Number(o.totalAmount) +
+          (exchangeAdjustments.get(o.id)?.revenue ?? 0),
+        0,
+      ),
     ),
     refunds: Math.round(
       orders.reduce((s, o) => s + refundForOrder(o, refundLedger), 0),
@@ -217,7 +237,13 @@ export async function generateBalanceSheet(
       expenses.reduce((s, e) => s + Number(e.amount), 0),
     ),
     netProfit: 0,
-    gst: Math.round(orders.reduce((s, o) => s + Number(o.gst || 0), 0)),
+    gst: Math.round(
+      orders.reduce(
+        (s, o) =>
+          s + Number(o.gst || 0) + (exchangeAdjustments.get(o.id)?.gst ?? 0),
+        0,
+      ),
+    ),
     totalOrders: orders.length,
     totalReturns: returnRequests.length,
   };

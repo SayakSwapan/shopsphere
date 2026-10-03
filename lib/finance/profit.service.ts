@@ -1,6 +1,7 @@
 import type { Prisma } from "@prisma/client";
 
 import { calculateCOGS } from "./cogs.service";
+import type { ExchangeFinancialAdjustment } from "./exchange.service";
 
 type Money = number | Prisma.Decimal;
 
@@ -24,7 +25,11 @@ export interface OrderProfitRow {
   transactionFee: Money | null;
   paymentStatus: string;
   createdAt: Date;
-  orderitem: { quantity: number; costPriceSnapshot: Money | null; product: { costPrice: Money } }[];
+  orderitem: {
+    quantity: number;
+    costPriceSnapshot: Money | null;
+    product: { costPrice: Money };
+  }[];
 }
 
 export interface GatewayChargeRow {
@@ -53,26 +58,47 @@ export async function calculateProfit(
   orders: OrderProfitRow[],
   expenses: { amount: Money }[],
   gatewayCharges: GatewayChargeRow[],
-  refundAmounts: Map<string, number>
+  refundAmounts: Map<string, number>,
+  exchangeAdjustments: Map<string, ExchangeFinancialAdjustment> = new Map(),
 ): Promise<ProfitBreakdown> {
-  const grossRevenue = orders.reduce((s, o) => s + Number(o.totalAmount), 0);
-  const refunds = orders.reduce((s, o) => s + (refundAmounts.get(o.id) ?? 0), 0);
+  const grossRevenue = orders.reduce(
+    (s, o) =>
+      s + Number(o.totalAmount) + (exchangeAdjustments.get(o.id)?.revenue ?? 0),
+    0,
+  );
+  const refunds = orders.reduce(
+    (s, o) => s + (refundAmounts.get(o.id) ?? 0),
+    0,
+  );
   const netRevenue = grossRevenue - refunds;
 
   const nonRefundedOrders = orders.filter((o) => !refundAmounts.has(o.id));
-  const { totalCOGS } = await calculateCOGS(nonRefundedOrders);
+  const { totalCOGS: baseCOGS } = await calculateCOGS(nonRefundedOrders);
+  const exchangeCOGS = nonRefundedOrders.reduce(
+    (sum, order) => sum + (exchangeAdjustments.get(order.id)?.cogs ?? 0),
+    0,
+  );
+  const totalCOGS = baseCOGS + exchangeCOGS;
   const grossProfit = netRevenue - totalCOGS;
 
   const totalExpenses = expenses.reduce((s, e) => s + Number(e.amount), 0);
-  const totalTransactionFees = orders.reduce((s, o) => s + (o.transactionFee ? Number(o.transactionFee) : 0), 0);
+  const totalTransactionFees = orders.reduce(
+    (s, o) => s + (o.transactionFee ? Number(o.transactionFee) : 0),
+    0,
+  );
   const totalGatewayCharges = gatewayCharges.reduce(
     (s, g) => s + Number(g.gatewayFee ?? 0) + Number(g.gatewayGST ?? 0),
-    0
+    0,
   );
 
-  const netProfit = grossProfit - totalExpenses - totalTransactionFees - totalGatewayCharges;
-  const grossMargin = grossRevenue > 0 ? Math.round((grossProfit / grossRevenue) * 10000) / 100 : 0;
-  const netMargin = grossRevenue > 0 ? Math.round((netProfit / grossRevenue) * 10000) / 100 : 0;
+  const netProfit =
+    grossProfit - totalExpenses - totalTransactionFees - totalGatewayCharges;
+  const grossMargin =
+    grossRevenue > 0
+      ? Math.round((grossProfit / grossRevenue) * 10000) / 100
+      : 0;
+  const netMargin =
+    grossRevenue > 0 ? Math.round((netProfit / grossRevenue) * 10000) / 100 : 0;
 
   return {
     grossRevenue: Math.round(grossRevenue * 100) / 100,
@@ -97,7 +123,8 @@ export async function buildMonthlyProfit(
   expenses: { amount: Money; date: Date }[],
   gatewayCharges: GatewayChargeRow[],
   refundAmounts: Map<string, number>,
-  year: number
+  year: number,
+  exchangeAdjustments: Map<string, ExchangeFinancialAdjustment> = new Map(),
 ): Promise<MonthlyProfit[]> {
   const monthly: MonthlyProfit[] = [];
 
@@ -105,7 +132,9 @@ export async function buildMonthlyProfit(
     const monthStart = new Date(year, m, 1);
     const monthEnd = new Date(year, m + 1, 0, 23, 59, 59);
 
-    const monthOrders = orders.filter((o) => o.createdAt >= monthStart && o.createdAt <= monthEnd);
+    const monthOrders = orders.filter(
+      (o) => o.createdAt >= monthStart && o.createdAt <= monthEnd,
+    );
     const monthExpenses = expenses.filter((e) => {
       const d = new Date(e.date);
       return d >= monthStart && d <= monthEnd;
@@ -115,11 +144,20 @@ export async function buildMonthlyProfit(
       return d && d >= monthStart && d <= monthEnd;
     });
 
-    const result = await calculateProfit(monthOrders, monthExpenses, monthGateway, refundAmounts);
+    const result = await calculateProfit(
+      monthOrders,
+      monthExpenses,
+      monthGateway,
+      refundAmounts,
+      exchangeAdjustments,
+    );
 
     if (result.grossRevenue > 0 || result.totalExpenses > 0) {
       monthly.push({
-        month: monthStart.toLocaleDateString("en-IN", { month: "short", year: "numeric" }),
+        month: monthStart.toLocaleDateString("en-IN", {
+          month: "short",
+          year: "numeric",
+        }),
         grossRevenue: result.grossRevenue,
         refunds: result.refunds,
         netRevenue: result.netRevenue,

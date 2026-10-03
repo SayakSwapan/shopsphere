@@ -16,7 +16,10 @@ export async function POST(req: Request) {
   try {
     const session = await auth();
     if (!session?.user?.email) {
-      return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
+      return NextResponse.json(
+        { success: false, message: "Unauthorized" },
+        { status: 401 },
+      );
     }
 
     const user = await prisma.user.findUnique({
@@ -25,25 +28,45 @@ export async function POST(req: Request) {
     });
 
     if (!user) {
-      return NextResponse.json({ success: false, message: "User not found" }, { status: 404 });
+      return NextResponse.json(
+        { success: false, message: "User not found" },
+        { status: 404 },
+      );
     }
 
-    const { orderId, reason, reasonOption, customText, description, images, bankDetails } = await req.json();
+    const {
+      orderId,
+      reason,
+      reasonOption,
+      customText,
+      description,
+      images,
+      bankDetails,
+    } = await req.json();
 
     if (!orderId || !reason) {
-      return NextResponse.json({ success: false, message: "Order ID and reason are required" }, { status: 400 });
+      return NextResponse.json(
+        { success: false, message: "Order ID and reason are required" },
+        { status: 400 },
+      );
     }
 
     if (!bankDetails || typeof bankDetails !== "object") {
       return NextResponse.json(
-        { success: false, message: "Bank details are required to submit a return request" },
-        { status: 400 }
+        {
+          success: false,
+          message: "Bank details are required to submit a return request",
+        },
+        { status: 400 },
       );
     }
 
     const bankValidation = validateBankDetails(bankDetails);
     if (!bankValidation.ok) {
-      return NextResponse.json({ success: false, message: bankValidation.error }, { status: 400 });
+      return NextResponse.json(
+        { success: false, message: bankValidation.error },
+        { status: 400 },
+      );
     }
 
     const order = await prisma.order.findFirst({
@@ -51,45 +74,60 @@ export async function POST(req: Request) {
       include: {
         orderitem: {
           include: {
-            product: { select: { name: true, isReturnable: true, returnDays: true } },
+            product: {
+              select: { name: true, isReturnable: true, returnDays: true },
+            },
           },
         },
       },
     });
 
     if (!order) {
-      return NextResponse.json({ success: false, message: "Order not found" }, { status: 404 });
+      return NextResponse.json(
+        { success: false, message: "Order not found" },
+        { status: 404 },
+      );
     }
 
     if (order.status !== "DELIVERED") {
-      return NextResponse.json({ success: false, message: "Returns can only be requested for delivered orders" }, { status: 400 });
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Returns can only be requested for delivered orders",
+        },
+        { status: 400 },
+      );
     }
 
     const damage = isDamageReason(reason + " " + (reasonOption ?? ""));
 
-    const allNotReturnable = order.orderitem.every((i) => !i.product.isReturnable);
-    if (allNotReturnable && !damage) {
-      return NextResponse.json({ success: false, message: "This product is not eligible for return" }, { status: 400 });
-    }
-
-    const daysSinceDelivery = Math.floor(
-      (Date.now() - new Date(order.createdAt).getTime()) / (1000 * 60 * 60 * 24)
+    const allNotReturnable = order.orderitem.every(
+      (i) => !i.product.isReturnable,
     );
-
-    const maxReturnDays = Math.max(...order.orderitem.map((i) => i.product.returnDays), 0);
-    if (maxReturnDays > 0 && daysSinceDelivery > maxReturnDays) {
+    if (allNotReturnable && !damage) {
       return NextResponse.json(
-        { success: false, message: `Return window expired (within ${maxReturnDays} days of delivery)` },
-        { status: 400 }
+        { success: false, message: "This product is not eligible for return" },
+        { status: 400 },
       );
     }
 
-    const existing = await prisma.return_request.findFirst({
-      where: { orderId, userId: user.id },
-    });
+    const daysSinceDelivery = Math.floor(
+      (Date.now() - new Date(order.createdAt).getTime()) /
+        (1000 * 60 * 60 * 24),
+    );
 
-    if (existing) {
-      return NextResponse.json({ success: false, message: "Return request already exists for this order" }, { status: 400 });
+    const maxReturnDays = Math.max(
+      ...order.orderitem.map((i) => i.product.returnDays),
+      0,
+    );
+    if (maxReturnDays > 0 && daysSinceDelivery > maxReturnDays) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: `Return window expired (within ${maxReturnDays} days of delivery)`,
+        },
+        { status: 400 },
+      );
     }
 
     const uploadedImages = parseImages(images);
@@ -97,14 +135,20 @@ export async function POST(req: Request) {
     if (damage) {
       if (uploadedImages.length < MIN_DAMAGE_IMAGES) {
         return NextResponse.json(
-          { success: false, message: `Please upload at least ${MIN_DAMAGE_IMAGES} images as damage proof` },
-          { status: 400 }
+          {
+            success: false,
+            message: `Please upload at least ${MIN_DAMAGE_IMAGES} images as damage proof`,
+          },
+          { status: 400 },
         );
       }
       if (uploadedImages.length > MAX_DAMAGE_IMAGES) {
         return NextResponse.json(
-          { success: false, message: `You can upload a maximum of ${MAX_DAMAGE_IMAGES} images` },
-          { status: 400 }
+          {
+            success: false,
+            message: `You can upload a maximum of ${MAX_DAMAGE_IMAGES} images`,
+          },
+          { status: 400 },
         );
       }
     }
@@ -112,23 +156,69 @@ export async function POST(req: Request) {
     if (reason === "Other" && !description?.trim() && !customText?.trim()) {
       return NextResponse.json(
         { success: false, message: "Please describe your issue in detail" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
-    const returnRequest = await prisma.return_request.create({
-      data: {
-        orderId,
-        userId: user.id,
-        reason,
-        reasonOption: reasonOption || null,
-        customText: customText || null,
-        description: description?.trim() || null,
-        images: uploadedImages.length > 0 ? uploadedImages : undefined,
-        bankDetails: bankValidation.data as unknown as Prisma.InputJsonValue,
-        timeline: appendTimeline(null, "PENDING", damage ? "Request submitted with damage proof" : undefined) as unknown as Prisma.InputJsonValue,
-      },
+    const requestResult = await prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT "id" FROM "order" WHERE "id" = ${orderId} FOR UPDATE`;
+      const [existingReturn, existingReplacement, existingExchange] =
+        await Promise.all([
+          tx.return_request.findFirst({
+            where: { orderId, userId: user.id },
+            select: { id: true },
+          }),
+          tx.replacement_request.findFirst({
+            where: { orderId, userId: user.id },
+            select: { id: true },
+          }),
+          tx.offlineexchange.findFirst({
+            where: { orderId },
+            select: { id: true },
+          }),
+        ]);
+      if (existingReturn || existingReplacement)
+        return { kind: "duplicate" as const };
+      if (existingExchange) return { kind: "exchanged" as const };
+      const request = await tx.return_request.create({
+        data: {
+          orderId,
+          userId: user.id,
+          reason,
+          reasonOption: reasonOption || null,
+          customText: customText || null,
+          description: description?.trim() || null,
+          images: uploadedImages.length > 0 ? uploadedImages : undefined,
+          bankDetails: bankValidation.data as unknown as Prisma.InputJsonValue,
+          timeline: appendTimeline(
+            null,
+            "PENDING",
+            damage ? "Request submitted with damage proof" : undefined,
+          ) as unknown as Prisma.InputJsonValue,
+        },
+      });
+      return { kind: "created" as const, request };
     });
+
+    if (requestResult.kind === "duplicate") {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Return request already exists for this order",
+        },
+        { status: 400 },
+      );
+    }
+    if (requestResult.kind === "exchanged") {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "This order already has a completed exchange.",
+        },
+        { status: 400 },
+      );
+    }
+    const returnRequest = requestResult.request;
 
     createAdminNotification({
       title: "New Return Request",
@@ -143,6 +233,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true, id: returnRequest.id });
   } catch (error) {
     console.error("Return request error:", error);
-    return NextResponse.json({ success: false, message: "Failed to create return request" }, { status: 500 });
+    return NextResponse.json(
+      { success: false, message: "Failed to create return request" },
+      { status: 500 },
+    );
   }
 }

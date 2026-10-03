@@ -1,4 +1,5 @@
 import type { Prisma } from "@prisma/client";
+import type { ExchangeFinancialAdjustment } from "./exchange.service";
 
 type Money = number | Prisma.Decimal;
 
@@ -12,7 +13,12 @@ export interface GSTBreakdown {
  * Uses gstSnapshot on orderitem if available, otherwise falls back to order.gst.
  */
 export function calculateGSTCollected(
-  orders: { id: string; gst?: Money | null; orderitem: { gstSnapshot?: Money | null }[] }[]
+  orders: {
+    id: string;
+    gst?: Money | null;
+    orderitem: { quantity: number; gstSnapshot?: Money | null }[];
+  }[],
+  exchangeAdjustments: Map<string, ExchangeFinancialAdjustment> = new Map(),
 ): GSTBreakdown {
   const byOrder: { orderId: string; gst: number }[] = [];
   let totalGST = 0;
@@ -21,13 +27,16 @@ export function calculateGSTCollected(
     let orderGST = 0;
     for (const item of order.orderitem) {
       if (item.gstSnapshot !== null && item.gstSnapshot !== undefined) {
-        orderGST += Number(item.gstSnapshot);
+        orderGST += Number(item.gstSnapshot) * item.quantity;
       }
     }
     if (orderGST === 0 && order.gst) {
       orderGST = Number(order.gst);
     }
-    orderGST = Math.round(orderGST * 100) / 100;
+    orderGST =
+      Math.round(
+        (orderGST + (exchangeAdjustments.get(order.id)?.gst ?? 0)) * 100,
+      ) / 100;
     totalGST += orderGST;
     byOrder.push({ orderId: order.id, gst: orderGST });
   }

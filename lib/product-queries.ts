@@ -3,20 +3,53 @@ import { cache } from "react";
 import { prisma } from "@/lib/prisma";
 
 /**
- * Full product row for the PDP (with images, category and variants). React
+ * PDP fields with images, category and variants. React
  * `cache()` dedupes within a request, so `generateMetadata` and the page body
  * share ONE database round-trip instead of two identical queries.
  */
 export const getProductBySlug = cache(async (slug: string) =>
   prisma.product.findUnique({
     where: { slug },
-    include: {
-      productimage: { orderBy: { sortOrder: "asc" } },
-      category: true,
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      description: true,
+      metaTitle: true,
+      metaDescription: true,
+      sellingPrice: true,
+      discountType: true,
+      discountValue: true,
+      salePrice: true,
+      offerStart: true,
+      offerEnd: true,
+      finalPrice: true,
+      discountedPrice: true,
+      gstPercentage: true,
+      stock: true,
+      categoryId: true,
+      isFeatured: true,
+      isTrending: true,
+      lowStockAlert: true,
+      isReturnable: true,
+      isReplaceable: true,
+      returnDays: true,
+      totalSold: true,
+      productimage: {
+        select: { id: true, url: true },
+        orderBy: { sortOrder: "asc" },
+      },
+      category: {
+        select: { id: true, name: true, slug: true, sizeCategory: true },
+      },
       productvariant: {
-        include: {
-          size: true,
-          gender: true,
+        select: {
+          id: true,
+          sku: true,
+          stock: true,
+          size: {
+            select: { sizeName: true, sizeCategory: true },
+          },
         },
       },
     },

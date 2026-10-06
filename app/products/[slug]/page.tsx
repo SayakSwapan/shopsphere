@@ -1,8 +1,7 @@
 import { Suspense } from "react";
-import { auth } from "@/lib/auth";
 import { getEffectivePrice, isFlatDiscount, priceWithGst } from "@/lib/pricing";
 import { getSiteSettings, getSiteName } from "@/lib/site-settings";
-import { getReviewList, getReviewSummary } from "@/lib/reviews";
+import { getReviewSummary } from "@/lib/reviews";
 import { getProductBySlug } from "@/lib/product-queries";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
@@ -87,22 +86,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function ProductPage({ params }: Props) {
   const { slug } = await params;
 
-  const [product, session] = await Promise.all([
-    getProductBySlug(slug),
-    auth(),
-  ]);
+  const product = await getProductBySlug(slug);
 
   if (!product) return notFound();
 
-  // Review summary (average/count/distribution) comes from one lightweight
-  // aggregate while the full review list stays small (per-request deduped with
-  // the Suspense-wrapped ReviewsSection via getReviewList). The list powers the
-  // above-the-fold "Customer Reviews" carousel so buyers don't wait on a second
-  // client round-trip.
-  const [reviewSummary, reviews] = await Promise.all([
-    getReviewSummary(product.id),
-    getReviewList(product.id),
-  ]);
+  const reviewSummary = await getReviewSummary(product.id);
   const reviewCount = reviewSummary.count;
   const reviewAverage = reviewSummary.average;
 
@@ -446,7 +434,6 @@ export default async function ProductPage({ params }: Props) {
                 }
                 reviewAverage={reviewAverage}
                 reviewCount={reviewCount}
-                reviews={reviews}
               />
 
               {/* Available sizes (the size chart now lives in the Select Size header) */}
@@ -697,12 +684,7 @@ export default async function ProductPage({ params }: Props) {
       >
         <Suspense fallback={<ReviewsSectionSkeleton />}>
           <div className="pd-card p-5 sm:p-8">
-            <ReviewsSection
-              productId={product.id}
-              isLoggedIn={Boolean(session?.user)}
-              currentUserName={session?.user?.name ?? null}
-              summary={reviewSummary}
-            />
+            <ReviewsSection productId={product.id} summary={reviewSummary} />
           </div>
         </Suspense>
       </section>

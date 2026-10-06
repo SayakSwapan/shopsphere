@@ -1,10 +1,9 @@
 import ProductReviews from "@/components/store/reviews/product-reviews";
+import { auth } from "@/lib/auth";
 import { getReviewList, type ReviewSummary } from "@/lib/reviews";
 
 interface Props {
   productId: string;
-  isLoggedIn: boolean;
-  currentUserName?: string | null;
   summary: ReviewSummary;
 }
 
@@ -14,19 +13,17 @@ interface Props {
  * above-the-fold product content instead of blocking it. `getReviewList` is
  * per-request deduped, so this never re-queries data already fetched elsewhere.
  */
-export default async function ReviewsSection({
-  productId,
-  isLoggedIn,
-  currentUserName,
-  summary,
-}: Props) {
-  const initialReviews = await getReviewList(productId);
+export default async function ReviewsSection({ productId, summary }: Props) {
+  const [initialReviews, session] = await Promise.all([
+    getReviewList(productId),
+    auth(),
+  ]);
 
   return (
     <ProductReviews
       productId={productId}
-      isLoggedIn={isLoggedIn}
-      currentUserName={currentUserName}
+      isLoggedIn={Boolean(session?.user)}
+      currentUserName={session?.user?.name ?? null}
       initialReviews={initialReviews}
       initialSummary={summary}
     />

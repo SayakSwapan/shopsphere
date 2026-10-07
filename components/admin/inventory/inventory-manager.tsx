@@ -35,9 +35,7 @@ const MOVEMENT_STYLES: Record<string, string> = {
   ADJUSTMENT: "bg-blue-500/15 text-blue-400",
 };
 
-export default function InventoryManager({
-  product,
-}: Props) {
+export default function InventoryManager({ product }: Props) {
   const router = useRouter();
 
   const [quantity, setQuantity] = useState(0);
@@ -57,16 +55,13 @@ export default function InventoryManager({
     try {
       setLoading(true);
 
-      const response = await fetch(
-        `/api/admin/inventory/${product.id}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ quantity, note, type }),
-        }
-      );
+      const response = await fetch(`/api/admin/inventory/${product.id}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ quantity, note, type }),
+      });
 
       const data = await response.json();
 
@@ -75,6 +70,11 @@ export default function InventoryManager({
         return;
       }
 
+      if (data.waitingCount > 0) {
+        toast.info(
+          `${data.waitingCount} waiting customer${data.waitingCount === 1 ? "" : "s"} are on the restock list.`,
+        );
+      }
       toast.success("Stock updated");
       setQuantity(0);
       setNote("");
@@ -89,7 +89,6 @@ export default function InventoryManager({
 
   return (
     <div className="space-y-6">
-
       <div>
         <Link
           href="/admin/inventory"
@@ -104,7 +103,6 @@ export default function InventoryManager({
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-
         {/* Current stock */}
         <div className="rounded-2xl border border-slate-700 bg-[#111827] p-6">
           <p className="text-sm text-slate-400">Current Stock</p>
@@ -180,26 +178,18 @@ export default function InventoryManager({
 
       {/* History */}
       <div>
-        <h2 className="mb-4 text-xl font-bold text-white">
-          Stock History
-        </h2>
+        <h2 className="mb-4 text-xl font-bold text-white">Stock History</h2>
 
         <DataTable headers={["Type", "Quantity", "Note", "Date"]}>
           {product.stockmovement.length === 0 ? (
             <tr>
-              <td
-                colSpan={4}
-                className="px-5 py-8 text-center text-slate-500"
-              >
+              <td colSpan={4} className="px-5 py-8 text-center text-slate-500">
                 No stock movements yet.
               </td>
             </tr>
           ) : (
             product.stockmovement.map((movement) => (
-              <tr
-                key={movement.id}
-                className="border-b border-slate-800"
-              >
+              <tr key={movement.id} className="border-b border-slate-800">
                 <td className="px-5 py-4">
                   <span
                     className={`rounded-full px-3 py-1 text-xs font-semibold ${
@@ -210,9 +200,7 @@ export default function InventoryManager({
                     {movement.type}
                   </span>
                 </td>
-                <td className="px-5 py-4 text-white">
-                  {movement.quantity}
-                </td>
+                <td className="px-5 py-4 text-white">{movement.quantity}</td>
                 <td className="px-5 py-4 text-slate-400">
                   {movement.note ?? "—"}
                 </td>
@@ -224,7 +212,6 @@ export default function InventoryManager({
           )}
         </DataTable>
       </div>
-
     </div>
   );
 }

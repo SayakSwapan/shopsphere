@@ -12,17 +12,11 @@ interface Context {
 
 const VALID_TYPES = ["IN", "OUT", "ADJUSTMENT"] as const;
 
-export async function POST(
-  request: NextRequest,
-  { params }: Context
-) {
+export async function POST(request: NextRequest, { params }: Context) {
   try {
     const session = await getAdminSession();
 
-    if (
-      !session ||
-      session.user.role !== "ADMIN"
-    ) {
+    if (!session || session.user.role !== "ADMIN") {
       return NextResponse.json(
         {
           success: false,
@@ -30,7 +24,7 @@ export async function POST(
         },
         {
           status: 401,
-        }
+        },
       );
     }
 
@@ -85,6 +79,21 @@ export async function POST(
       });
     }
 
+    const previousStock = product.stock;
+    const waitingRequests =
+      newStock > 0 && previousStock <= 0
+        ? await prisma.restockrequest.findMany({
+            where: { productId: id, status: "ACTIVE" },
+            select: {
+              id: true,
+              quantity: true,
+              userId: true,
+              guestPhone: true,
+              guestEmail: true,
+            },
+          })
+        : [];
+
     await prisma.product.update({
       where: {
         id,
@@ -108,6 +117,11 @@ export async function POST(
     return NextResponse.json({
       success: true,
       message: "Stock updated successfully.",
+      waitingCount: waitingRequests.length,
+      waitingRequests: waitingRequests.map((item) => ({
+        id: item.id,
+        quantity: item.quantity,
+      })),
     });
   } catch (error) {
     console.error(error);

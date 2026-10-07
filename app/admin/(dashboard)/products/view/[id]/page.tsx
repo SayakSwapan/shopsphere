@@ -6,6 +6,7 @@ import ProductGuide from "@/components/admin/products/product-guide";
 import StockHealth from "@/components/admin/products/stock-health";
 import { prisma } from "@/lib/prisma";
 import { getPriceBreakdown, isFlatDiscount } from "@/lib/pricing";
+import { summarizeRestockDemand } from "@/lib/restock-demand";
 import { updateTrendingProducts } from "@/lib/update-trending-products";
 
 await updateTrendingProducts();
@@ -96,6 +97,30 @@ export default async function ProductViewPage({ params }: Props) {
   const discountTypeLabel = isFlatDiscount(product.discountType)
     ? "Flat (₹)"
     : "Percentage (%)";
+
+  const activeRestockDemand = await prisma.restockrequest.findMany({
+    where: { productId: product.id, status: "ACTIVE" },
+    include: {
+      variant: { include: { size: true, gender: true } },
+      size: true,
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  const restockDemand = summarizeRestockDemand(
+    activeRestockDemand.map((request) => ({
+      productId: request.productId,
+      variantId: request.variantId,
+      variantName:
+        request.variant?.gender?.name ??
+        request.variant?.size?.sizeName ??
+        "Default Version",
+      sizeId: request.sizeId,
+      sizeName:
+        request.size?.sizeName ?? request.variant?.size?.sizeName ?? "Any size",
+      quantity: request.quantity,
+    })),
+  );
 
   return (
     <div className="space-y-8">
@@ -209,6 +234,64 @@ export default async function ProductViewPage({ params }: Props) {
           </div>
         </div>
       </div>
+
+      <section className="glass-card rounded-3xl p-6">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">
+              Restock Demand
+            </p>
+            <h2 className="mt-2 text-2xl font-black text-white">
+              {restockDemand.totalRequests} customers are waiting for this
+              product
+            </h2>
+          </div>
+          <span className="rounded-full bg-amber-500/15 px-3 py-1 text-xs font-bold uppercase tracking-[0.12em] text-amber-300">
+            {restockDemand.byVariant.length} version groups
+          </span>
+        </div>
+
+        {restockDemand.byVariant.length === 0 ? (
+          <p className="mt-4 text-slate-500">
+            No active restock requests for this product yet.
+          </p>
+        ) : (
+          <div className="mt-6 space-y-4">
+            {restockDemand.byVariant.map((group) => (
+              <div
+                key={group.variantName}
+                className="rounded-2xl border border-slate-800 bg-slate-950/40 p-4"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <h3 className="text-lg font-bold text-white">
+                    {group.variantName}
+                  </h3>
+                  <span className="rounded-full bg-violet-500/10 px-2.5 py-1 text-xs font-semibold text-violet-300">
+                    {group.totalRequests} requests
+                  </span>
+                </div>
+                <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                  {group.sizes.map((size) => (
+                    <div
+                      key={`${group.variantName}-${size.sizeName}`}
+                      className="rounded-xl border border-slate-800 bg-[#0F172A] p-3"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-semibold text-slate-200">
+                          {size.sizeName}
+                        </span>
+                        <span className="text-sm font-bold text-amber-300">
+                          {size.totalRequests}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
 
       {/* PRICING */}
       <SectionCard title="Pricing & Offers">

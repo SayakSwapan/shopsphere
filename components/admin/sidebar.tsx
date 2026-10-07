@@ -17,6 +17,7 @@ import {
   Store,
   Coins,
   ChevronRight,
+  Bell,
 } from "lucide-react";
 
 const menuItems = [
@@ -39,6 +40,11 @@ const menuItems = [
     title: "Inventory",
     href: "/admin/inventory",
     icon: Package2,
+  },
+  {
+    title: "Restock Requests",
+    href: "/admin/restock-requests",
+    icon: Bell,
   },
   {
     title: "Sizes",
@@ -79,7 +85,6 @@ export default function Sidebar() {
   return (
     <aside className="fixed left-4 top-4 bottom-4 w-72 z-50">
       <div className="h-full rounded-[32px] bg-gradient-to-b from-slate-950 via-slate-900 to-indigo-950 shadow-2xl border border-white/10 overflow-hidden flex flex-col">
-        
         {/* LOGO */}
         <div className="p-6 border-b border-white/10">
           <div className="flex items-center gap-4">
@@ -88,13 +93,9 @@ export default function Sidebar() {
             </div>
 
             <div>
-              <h1 className="text-white font-black text-2xl">
-                {siteName}
-              </h1>
+              <h1 className="text-white font-black text-2xl">{siteName}</h1>
 
-              <p className="text-slate-400 text-sm">
-                Ecommerce Admin
-              </p>
+              <p className="text-slate-400 text-sm">Ecommerce Admin</p>
             </div>
           </div>
         </div>
@@ -110,8 +111,7 @@ export default function Sidebar() {
               const Icon = item.icon;
 
               const active =
-                pathname === item.href ||
-                pathname.startsWith(`${item.href}/`);
+                pathname === item.href || pathname.startsWith(`${item.href}/`);
 
               return (
                 <Link
@@ -126,17 +126,13 @@ export default function Sidebar() {
                   <div className="flex items-center gap-4">
                     <div
                       className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                        active
-                          ? "bg-white/20"
-                          : "bg-white/5"
+                        active ? "bg-white/20" : "bg-white/5"
                       }`}
                     >
                       <Icon size={20} />
                     </div>
 
-                    <span className="font-medium">
-                      {item.title}
-                    </span>
+                    <span className="font-medium">{item.title}</span>
                   </div>
 
                   <ChevronRight
@@ -162,18 +158,13 @@ export default function Sidebar() {
               </div>
 
               <div>
-                <h4 className="text-white font-semibold">
-                  Admin
-                </h4>
+                <h4 className="text-white font-semibold">Admin</h4>
 
-                <p className="text-slate-400 text-sm">
-                  Super Admin
-                </p>
+                <p className="text-slate-400 text-sm">Super Admin</p>
               </div>
             </div>
           </div>
         </div>
-
       </div>
     </aside>
   );

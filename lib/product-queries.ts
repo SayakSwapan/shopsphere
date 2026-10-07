@@ -45,10 +45,11 @@ export const getProductBySlug = cache(async (slug: string) =>
       productvariant: {
         select: {
           id: true,
+          sizeId: true,
           sku: true,
           stock: true,
           size: {
-            select: { sizeName: true, sizeCategory: true },
+            select: { id: true, sizeName: true, sizeCategory: true },
           },
         },
       },

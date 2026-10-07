@@ -375,6 +375,7 @@ metaKeywords    String?   @db.Text
   printTypes      ProductPrintType[]
   sportsFeaturedProduct SportsFeaturedProduct[]
   comboOffers     ComboOfferItem[]
+  restockRequests restockrequest[]
   @@index([categoryId])
 }
 
@@ -494,6 +495,7 @@ model productvariant {
   size      size     @relation(fields: [sizeId], references: [id], map: "ProductVariant_sizeId_fkey")
   cartitem  cartitem[]
   stockmovement stockmovement[]
+  restockRequests restockrequest[]
 
   @@index([genderId])
   @@index([productId])
@@ -512,6 +514,7 @@ model size {
   updatedAt      DateTime
   productvariant productvariant[]
   gender         gender           @relation(fields: [genderId], references: [id], map: "Size_genderId_fkey")
+  restockRequests restockrequest[]
 
   @@index([genderId])
 }
@@ -765,6 +768,7 @@ model user {
   loyaltyPurchases  LoyaltyPurchase[]
   loyaltyRedemptions LoyaltyRewardRedemption[]
   loyaltyAuditLogs  LoyaltyAuditLog[]
+  restockRequests restockrequest[]
 
   // Offline exchange + store-credit (wallet) relations.
   customerCredit          CustomerCredit?
@@ -860,6 +864,37 @@ model UserPermission {
   @@index([userId])
 
   @@index([permissionId])
+}
+
+model restockrequest {
+  id        String                   @id @default(cuid())
+  productId  String
+  variantId  String?
+  sizeId     String?
+  userId     String?
+  guestName  String?
+  guestEmail String?
+  guestPhone String?
+  quantity   Int                      @default(1)
+  status     RestockRequestStatus     @default(ACTIVE)
+  notificationStatus RestockNotificationStatus @default(PENDING)
+  createdAt  DateTime                 @default(now())
+  updatedAt  DateTime                 @updatedAt
+  notifiedAt DateTime?
+  cancelledAt DateTime?
+
+  product    product                  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variant    productvariant?          @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  size       size?                   @relation(fields: [sizeId], references: [id], onDelete: SetNull)
+  user       user?                   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([productId, status])
+  @@index([userId, status])
+  @@index([variantId, status])
+  @@index([sizeId, status])
+  @@index([notificationStatus, status])
+  @@index([guestPhone, status])
+  @@index([createdAt])
 }
 
 model Notification {
@@ -1290,6 +1325,20 @@ enum NotificationType {
   PAYMENT
   RETURN
   REPLACEMENT
+}
+
+enum RestockRequestStatus {
+  ACTIVE
+  CANCELLED
+  NOTIFIED
+  EXPIRED
+}
+
+enum RestockNotificationStatus {
+  PENDING
+  SENT
+  FAILED
+  SKIPPED
 }
 
 enum CallbackStatus {

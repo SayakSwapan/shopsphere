@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useOptionalAuthModal } from "@/components/auth/auth-context";
@@ -13,6 +13,7 @@ import {
   Plus,
   Loader2,
   ShoppingBag,
+  BellRing,
 } from "lucide-react";
 import AddToCartButton, {
   addToCartRequest,
@@ -31,6 +32,7 @@ interface ProductVariant {
   id: string;
   stock: number;
   sku: string;
+  sizeId?: string | null;
   size?: VariantSize | null;
 }
 
@@ -93,6 +95,12 @@ export default function ProductPurchasePanel({
   // customer tapped Add to Cart or Buy Now so the sheet can auto-continue that
   // flow once a size is picked.
   const [sizeSheetOpen, setSizeSheetOpen] = useState(false);
+  const [notifySheetOpen, setNotifySheetOpen] = useState(false);
+  const [notifyName, setNotifyName] = useState("");
+  const [notifyPhone, setNotifyPhone] = useState("");
+  const [notifyEmail, setNotifyEmail] = useState("");
+  const [notifyQuantity, setNotifyQuantity] = useState(1);
+  const [notifySaving, setNotifySaving] = useState(false);
   const [pendingAction, setPendingAction] = useState<"add" | "buy" | null>(
     null,
   );
@@ -300,6 +308,56 @@ export default function ProductPurchasePanel({
     setSizeSheetOpen(false);
     if (action === "buy") runBuyNow(variant);
     else if (action === "add") runAddToCart(variant);
+  };
+
+  const notifyVariant = selectedVariant ?? filteredVariants[0] ?? null;
+
+  const handleNotifySubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (!notifyVariant) {
+      toast.error("Please select a size first.");
+      return;
+    }
+
+    if (!notifyPhone.trim()) {
+      toast.error("Please enter a mobile number so we can notify you.");
+      return;
+    }
+
+    try {
+      setNotifySaving(true);
+      const response = await fetch("/api/restock-requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          productId,
+          variantId: notifyVariant.id,
+          sizeId: notifyVariant.sizeId ?? null,
+          quantity: notifyQuantity,
+          guestName: notifyName.trim(),
+          guestPhone: notifyPhone.trim(),
+          guestEmail: notifyEmail.trim(),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || "Unable to save your request.");
+      }
+
+      toast.success(data.message || "You're on the list!");
+      setNotifySheetOpen(false);
+      setNotifyName("");
+      setNotifyPhone("");
+      setNotifyEmail("");
+      setNotifyQuantity(1);
+    } catch (error) {
+      toast.error((error as Error).message || "Unable to save your request.");
+    } finally {
+      setNotifySaving(false);
+    }
   };
 
   const canPurchase = Boolean(selectedVariant && selectedVariant.stock > 0);
@@ -599,6 +657,32 @@ export default function ProductPurchasePanel({
         </div>
       </div>
 
+      {!anyInStockVariant && (
+        <div className="rounded-2xl border border-amber-500/30 bg-amber-500/8 p-4">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/15 text-amber-300">
+              <BellRing size={18} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-black uppercase tracking-[0.14em] text-amber-200">
+                Notify Me When Available
+              </p>
+              <p className="mt-1 text-sm text-slate-200">
+                We&apos;ll keep you posted as soon as this item is back in
+                stock.
+              </p>
+              <button
+                type="button"
+                onClick={() => setNotifySheetOpen(true)}
+                className="mt-3 inline-flex items-center justify-center rounded-xl bg-amber-500 px-4 py-2.5 text-sm font-bold text-black transition hover:bg-amber-400"
+              >
+                Notify Me
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Policies */}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 pt-1 pb-2">
         {policies.map((item) => (
@@ -672,6 +756,111 @@ export default function ProductPurchasePanel({
           </button>
         </div>
       </div>
+
+      {notifySheetOpen && (
+        <div className="fixed inset-0 z-[70] bg-black/60">
+          <div
+            className="absolute inset-0"
+            onClick={() => setNotifySheetOpen(false)}
+          />
+          <div className="absolute inset-x-0 bottom-0 mx-auto max-w-lg rounded-t-[28px] border border-slate-700 bg-[#0F172A] p-4 shadow-2xl sm:rounded-[28px] sm:bottom-6">
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-amber-300">
+                  Restock Alert
+                </p>
+                <h3 className="mt-2 text-xl font-black text-white">
+                  Notify Me When Available
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setNotifySheetOpen(false)}
+                className="rounded-full border border-slate-700 px-2.5 py-1 text-xs text-slate-300"
+              >
+                Close
+              </button>
+            </div>
+
+            <form onSubmit={handleNotifySubmit} className="space-y-4">
+              <div>
+                <label className="mb-2 block text-xs font-bold uppercase tracking-[0.14em] text-slate-400">
+                  Product
+                </label>
+                <div className="rounded-xl border border-slate-700 bg-slate-900/70 px-3 py-2 text-sm text-white">
+                  {notifyVariant?.size?.sizeName
+                    ? `${notifyVariant.size.sizeName} •`
+                    : ""}{" "}
+                  {filteredVariants[0]?.sku || "Item"}
+                </div>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="mb-2 block text-xs font-bold uppercase tracking-[0.14em] text-slate-400">
+                    Name
+                  </label>
+                  <input
+                    value={notifyName}
+                    onChange={(e) => setNotifyName(e.target.value)}
+                    className="w-full rounded-xl border border-slate-700 bg-slate-900/70 px-3 py-2.5 text-sm text-white outline-none focus:border-amber-500"
+                    placeholder="Your name"
+                  />
+                </div>
+                <div>
+                  <label className="mb-2 block text-xs font-bold uppercase tracking-[0.14em] text-slate-400">
+                    Mobile
+                  </label>
+                  <input
+                    value={notifyPhone}
+                    onChange={(e) => setNotifyPhone(e.target.value)}
+                    className="w-full rounded-xl border border-slate-700 bg-slate-900/70 px-3 py-2.5 text-sm text-white outline-none focus:border-amber-500"
+                    placeholder="10-digit mobile"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-xs font-bold uppercase tracking-[0.14em] text-slate-400">
+                  Email (optional)
+                </label>
+                <input
+                  type="email"
+                  value={notifyEmail}
+                  onChange={(e) => setNotifyEmail(e.target.value)}
+                  className="w-full rounded-xl border border-slate-700 bg-slate-900/70 px-3 py-2.5 text-sm text-white outline-none focus:border-amber-500"
+                  placeholder="you@example.com"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-xs font-bold uppercase tracking-[0.14em] text-slate-400">
+                  Quantity
+                </label>
+                <select
+                  value={notifyQuantity}
+                  onChange={(e) => setNotifyQuantity(Number(e.target.value))}
+                  className="w-full rounded-xl border border-slate-700 bg-slate-900/70 px-3 py-2.5 text-sm text-white outline-none focus:border-amber-500"
+                >
+                  {[1, 2, 3, 4, 5].map((count) => (
+                    <option key={count} value={count}>
+                      {count}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <button
+                type="submit"
+                disabled={notifySaving}
+                className="w-full rounded-xl bg-amber-500 px-4 py-3 text-sm font-black uppercase tracking-[0.12em] text-black transition hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {notifySaving ? "Saving…" : "Notify Me"}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Mobile size-picker bottom sheet */}
       <SizeSelectionSheet

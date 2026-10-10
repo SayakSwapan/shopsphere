@@ -11,6 +11,7 @@ import OfflineInvoice, {
   OfflineInvoiceOrder,
   OfflineInvoiceItem,
 } from "./offline-invoice";
+import OfflineCustomerInvoiceEmail from "./offline-customer-invoice-email";
 
 function round2(value: number): number {
   return Math.round((value + Number.EPSILON) * 100) / 100;
@@ -437,10 +438,27 @@ export default function OfflineOrderDetail({
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Label title="Name">{order.fullName || "Walk-in Customer"}</Label>
           <Label title="Phone">{order.phone || "—"}</Label>
-          <Label title="Email">
-            {order.offlineEmail || order.user?.email || "—"}
-          </Label>
+          {!order.isWalkIn && (
+            <Label title="Email">
+              {order.offlineEmail || order.user?.email || "—"}
+            </Label>
+          )}
         </div>
+        {order.isWalkIn && (
+          <OfflineCustomerInvoiceEmail
+            orderId={order.id}
+            email={
+              order.offlineEmail ||
+              (order.user?.email &&
+              !/^(walkin\+|phone_)/i.test(order.user.email)
+                ? order.user.email
+                : "")
+            }
+            canResend={
+              !isDraft && order.inventoryUpdated && order.status !== "CANCELLED"
+            }
+          />
+        )}
         {(order.offlineAddressLine1 ||
           order.offlineCity ||
           order.offlineState) && (

@@ -5,6 +5,8 @@ import {
   collectOfflineDue,
   completeOfflineOrder,
 } from "@/lib/orders/offline-sale";
+import { sendOfflineInvoiceEmail } from "@/lib/email/offline-invoice-email";
+import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
 interface Context {
@@ -30,7 +32,89 @@ export async function PATCH(req: Request, { params }: Context) {
       isPartialPayment?: boolean;
       notes?: string;
       changes?: { orderItemId: string; variantId: string }[];
+      email?: string;
     };
+
+    if (body.action === "update-email") {
+      const email = body.email?.trim().toLowerCase() ?? "";
+      if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return NextResponse.json(
+          { success: false, message: "Enter a valid customer email address." },
+          { status: 400 },
+        );
+      }
+
+      const updated = await prisma.order.updateMany({
+        where: { id, orderType: "OFFLINE", isWalkIn: true },
+        data: { offlineEmail: email },
+      });
+      if (updated.count === 0) {
+        return NextResponse.json(
+          { success: false, message: "Walk-in offline sale not found." },
+          { status: 404 },
+        );
+      }
+
+      return NextResponse.json({ success: true, email });
+    }
+
+    if (body.action === "resend-invoice") {
+      const order = await prisma.order.findFirst({
+        where: { id, orderType: "OFFLINE", isWalkIn: true },
+        select: {
+          status: true,
+          inventoryUpdated: true,
+          offlineEmail: true,
+          user: { select: { email: true } },
+        },
+      });
+      if (!order) {
+        return NextResponse.json(
+          { success: false, message: "Walk-in offline sale not found." },
+          { status: 404 },
+        );
+      }
+      if (!order.inventoryUpdated || order.status === "CANCELLED") {
+        return NextResponse.json(
+          {
+            success: false,
+            message: "This sale does not have a final invoice.",
+          },
+          { status: 400 },
+        );
+      }
+
+      const email = order.offlineEmail || order.user.email;
+      if (
+        !email ||
+        /^(walkin\+|phone_)/i.test(email) ||
+        !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+      ) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: "Save a valid customer email before resending.",
+          },
+          { status: 400 },
+        );
+      }
+
+      const result = await sendOfflineInvoiceEmail({
+        orderId: id,
+        force: true,
+      });
+      if (!result.sent) {
+        return NextResponse.json(
+          {
+            success: false,
+            message:
+              "Invoice email could not be sent. Check the mail settings and try again.",
+          },
+          { status: 500 },
+        );
+      }
+      return NextResponse.json({ success: true, email });
+    }
 
     if (body.action === "complete") {
       const result = await completeOfflineOrder({

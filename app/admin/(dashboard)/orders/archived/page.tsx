@@ -4,10 +4,7 @@ import { Archive, ArrowLeft } from "lucide-react";
 import PageContainer from "@/components/admin/common/page-container";
 import PageHeader from "@/components/admin/common/page-header";
 import OrdersTable from "@/components/admin/orders/orders-table";
-import {
-  getAdminOrderRows,
-  ARCHIVED_ORDER_FILTER,
-} from "@/lib/order-archive";
+import { getAdminOrderRows, ARCHIVED_ORDER_FILTER } from "@/lib/order-archive";
 
 export default async function ArchivedOrdersPage() {
   let rows;
@@ -16,8 +13,13 @@ export default async function ArchivedOrdersPage() {
   } catch {
     return (
       <PageContainer>
-        <PageHeader title="Archived Orders" subtitle="Failed or unpaid orders" />
-        <p className="text-red-400">Failed to load archived orders. Please try again later.</p>
+        <PageHeader
+          title="Archived Orders"
+          subtitle="Failed or unpaid orders"
+        />
+        <p className="text-red-400">
+          Failed to load archived orders. Please try again later.
+        </p>
       </PageContainer>
     );
   }
@@ -27,7 +29,7 @@ export default async function ArchivedOrdersPage() {
       <PageHeader
         title="Archived Orders"
         subtitle={`${rows.length} failed / unsuccessful orders`}
-        description="Orders where the online payment did not succeed in any way — cancelled, abandoned, or failed. These are not counted as successful orders."
+        description="Online orders with pending or failed payments, including cancelled and abandoned checkout attempts. These are not counted as successful orders."
         action={
           <Link
             href="/admin/orders"
